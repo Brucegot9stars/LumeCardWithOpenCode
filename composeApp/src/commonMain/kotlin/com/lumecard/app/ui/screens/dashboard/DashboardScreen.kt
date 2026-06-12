@@ -1,0 +1,198 @@
+package com.lumecard.app.ui.screens.dashboard
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.core.screen.ScreenKey
+import cafe.adriel.voyager.navigator.LocalNavigator
+import cafe.adriel.voyager.navigator.currentOrThrow
+import com.lumecard.app.ui.navigation.CardListScreen
+import com.lumecard.app.ui.navigation.StudyScreen
+import com.lumecard.shared.model.Deck
+
+class DashboardScreen : Screen {
+    override val key: ScreenKey = "Dashboard"
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    override fun Content() {
+        val navigator = LocalNavigator.currentOrThrow
+        var decks by remember { mutableStateOf<List<Deck>>(emptyList()) }
+
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("LumeCard") },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                )
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = { navigator.push(CardListScreen("default", "默认牌组")) },
+                    containerColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "创建")
+                }
+            }
+        ) { padding ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    // 今日学习概览
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                "今日学习",
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                StatItem("待复习", "0")
+                                StatItem("新卡片", "0")
+                                StatItem("已掌握", "0")
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    // 快速操作
+                    Text(
+                        "快速操作",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        QuickActionCard(
+                            modifier = Modifier.weight(1f),
+                            title = "开始学习",
+                            icon = Icons.Default.PlayArrow,
+                            onClick = { navigator.push(StudyScreen("default", "默认牌组")) }
+                        )
+                        QuickActionCard(
+                            modifier = Modifier.weight(1f),
+                            title = "管理牌组",
+                            icon = Icons.Default.Add,
+                            onClick = { navigator.push(CardListScreen("default", "默认牌组")) }
+                        )
+                    }
+                }
+
+                item {
+                    // 最近活动
+                    Text(
+                        "我的牌组",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+
+                // 空状态提示
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    "开始你的学习之旅",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "创建第一个牌组，添加卡片，开始学习",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun StatItem(label: String, value: String) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                value,
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                label,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+    }
+
+    @Composable
+    private fun QuickActionCard(
+        modifier: Modifier = Modifier,
+        title: String,
+        icon: androidx.compose.ui.graphics.vector.ImageVector,
+        onClick: () -> Unit
+    ) {
+        Card(
+            modifier = modifier,
+            onClick = onClick
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    title,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+    }
+}

@@ -1,0 +1,60 @@
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.swp
+*.swo
+
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+local.properties
+
+# Kotlin
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Android
+captures/
+.externalNativeBuild/
+.cxx/
+android/local.properties
+
+# iOS
+iosApp/Pods/
+iosApp/build/
+iosApp/*.xcodeproj/project.xcworkspace/xcuserdata/
+iosApp/*.xcodeproj/xcuserdata/
+
+# macOS
+.DS_Store
+*.dmg
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# Node
+node_modules/
+package-lock.json
+
+# Environment
+.env
+.env.local
+*.log
+
+# SQLDelight
+sqldelight/
