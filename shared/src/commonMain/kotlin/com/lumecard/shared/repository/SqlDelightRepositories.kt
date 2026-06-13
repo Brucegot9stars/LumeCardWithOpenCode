@@ -236,6 +236,60 @@ class SqlDelightReviewLogRepository(
     }
 }
 
+class SqlDelightSettingsRepository(
+    private val database: LumeCardDatabase
+) : SettingsRepository {
+
+    private val queries get() = database.lumeCardDatabaseQueries
+
+    override suspend fun get(key: String): String? {
+        return queries.selectSetting(key).executeAsOneOrNull()?.setting_value
+    }
+
+    override suspend fun getAll(): Map<String, String> {
+        return queries.selectAllSettings().executeAsList().associate { it.key to it.setting_value }
+    }
+
+    override suspend fun set(key: String, value: String) {
+        queries.insertSetting(key, value)
+    }
+
+    override suspend fun delete(key: String) {
+        queries.deleteSetting(key)
+    }
+
+    override suspend fun getInt(key: String, default: Int): Int {
+        return get(key)?.toIntOrNull() ?: default
+    }
+
+    override suspend fun getBoolean(key: String, default: Boolean): Boolean {
+        return get(key)?.toBooleanStrictOrNull() ?: default
+    }
+}
+
+class SqlDelightAlgorithmStateRepository(
+    private val database: LumeCardDatabase
+) : AlgorithmStateRepository {
+
+    private val queries get() = database.lumeCardDatabaseQueries
+
+    override suspend fun get(cardId: String): String? {
+        return queries.selectAlgorithmState(cardId).executeAsOneOrNull()?.state_json
+    }
+
+    override suspend fun getAll(): Map<String, String> {
+        return queries.selectAllAlgorithmStates().executeAsList().associate { it.card_id to it.state_json }
+    }
+
+    override suspend fun save(cardId: String, mode: String, stateJson: String) {
+        queries.insertAlgorithmState(cardId, mode, stateJson)
+    }
+
+    override suspend fun delete(cardId: String) {
+        queries.deleteAlgorithmState(cardId)
+    }
+}
+
 private fun com.lumecard.shared.database.KnowledgeBase.toKnowledgeBase() = KnowledgeBase(
     id = id,
     name = name,

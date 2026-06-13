@@ -1,0 +1,167 @@
+CREATE TABLE KnowledgeBase (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE Deck (
+    id TEXT PRIMARY KEY NOT NULL,
+    knowledge_base_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    color TEXT DEFAULT '#4CAF50',
+    icon TEXT DEFAULT '📚',
+    parent_id TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (knowledge_base_id) REFERENCES KnowledgeBase(id),
+    FOREIGN KEY (parent_id) REFERENCES Deck(id)
+);
+
+CREATE TABLE Card (
+    id TEXT PRIMARY KEY NOT NULL,
+    deck_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    front TEXT NOT NULL,
+    back TEXT NOT NULL,
+    tags TEXT DEFAULT '[]',
+    media TEXT DEFAULT '[]',
+    metadata TEXT DEFAULT '{}',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    last_reviewed_at TEXT,
+    next_review_at TEXT,
+    FOREIGN KEY (deck_id) REFERENCES Deck(id)
+);
+
+CREATE TABLE ReviewLog (
+    id TEXT PRIMARY KEY NOT NULL,
+    card_id TEXT NOT NULL,
+    rating INTEGER NOT NULL,
+    review_time INTEGER NOT NULL,
+    interval INTEGER NOT NULL,
+    ease_factor REAL NOT NULL,
+    repetitions INTEGER NOT NULL,
+    lapse_count INTEGER NOT NULL,
+    reviewed_at TEXT NOT NULL,
+    FOREIGN KEY (card_id) REFERENCES Card(id)
+);
+
+CREATE TABLE FSRSCard (
+    id TEXT PRIMARY KEY NOT NULL,
+    due TEXT NOT NULL,
+    stability REAL NOT NULL,
+    difficulty REAL NOT NULL,
+    elapsed_days INTEGER NOT NULL,
+    scheduled_days INTEGER NOT NULL,
+    reps INTEGER NOT NULL,
+    lapse_count INTEGER NOT NULL,
+    state TEXT NOT NULL,
+    FOREIGN KEY (id) REFERENCES Card(id)
+);
+
+CREATE TABLE AppSettings (
+    key TEXT PRIMARY KEY NOT NULL,
+    setting_value TEXT NOT NULL
+);
+
+CREATE TABLE AlgorithmState (
+    card_id TEXT PRIMARY KEY NOT NULL,
+    mode TEXT NOT NULL,
+    state_json TEXT NOT NULL,
+    FOREIGN KEY (card_id) REFERENCES Card(id)
+);
+
+selectAllKnowledgeBases:
+SELECT * FROM KnowledgeBase ORDER BY created_at DESC;
+
+selectKnowledgeBaseById:
+SELECT * FROM KnowledgeBase WHERE id = ?;
+
+selectAllDecks:
+SELECT * FROM Deck ORDER BY created_at DESC;
+
+selectDecksByKnowledgeBase:
+SELECT * FROM Deck WHERE knowledge_base_id = ?;
+
+selectDeckById:
+SELECT * FROM Deck WHERE id = ?;
+
+selectAllCards:
+SELECT * FROM Card ORDER BY created_at DESC;
+
+selectCardsByDeck:
+SELECT * FROM Card WHERE deck_id = ?;
+
+selectCardById:
+SELECT * FROM Card WHERE id = ?;
+
+selectDueCards:
+SELECT * FROM Card WHERE next_review_at IS NOT NULL AND next_review_at <= ? ORDER BY next_review_at ASC;
+
+insertKnowledgeBase:
+INSERT OR REPLACE INTO KnowledgeBase(id, name, description, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?);
+
+insertDeck:
+INSERT OR REPLACE INTO Deck(id, knowledge_base_id, name, description, color, icon, parent_id, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+insertCard:
+INSERT OR REPLACE INTO Card(id, deck_id, type, front, back, tags, media, metadata, created_at, updated_at, last_reviewed_at, next_review_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+insertReviewLog:
+INSERT OR REPLACE INTO ReviewLog(id, card_id, rating, review_time, interval, ease_factor, repetitions, lapse_count, reviewed_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+insertFSRSCard:
+INSERT OR REPLACE INTO FSRSCard(id, due, stability, difficulty, elapsed_days, scheduled_days, reps, lapse_count, state)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateCard:
+UPDATE Card SET deck_id = ?, type = ?, front = ?, back = ?, tags = ?, media = ?, metadata = ?, updated_at = ?, last_reviewed_at = ?, next_review_at = ?
+WHERE id = ?;
+
+deleteCard:
+DELETE FROM Card WHERE id = ?;
+
+deleteDeck:
+DELETE FROM Deck WHERE id = ?;
+
+deleteKnowledgeBase:
+DELETE FROM KnowledgeBase WHERE id = ?;
+
+selectAllReviewLogs:
+SELECT * FROM ReviewLog ORDER BY reviewed_at DESC;
+
+selectReviewLogsByCardId:
+SELECT * FROM ReviewLog WHERE card_id = ? ORDER BY reviewed_at DESC;
+
+selectSetting:
+SELECT * FROM AppSettings WHERE key = ?;
+
+selectAllSettings:
+SELECT * FROM AppSettings;
+
+insertSetting:
+INSERT OR REPLACE INTO AppSettings(key, setting_value)
+VALUES (?, ?);
+
+deleteSetting:
+DELETE FROM AppSettings WHERE key = ?;
+
+selectAlgorithmState:
+SELECT * FROM AlgorithmState WHERE card_id = ?;
+
+selectAllAlgorithmStates:
+SELECT * FROM AlgorithmState;
+
+insertAlgorithmState:
+INSERT OR REPLACE INTO AlgorithmState(card_id, mode, state_json)
+VALUES (?, ?, ?);
+
+deleteAlgorithmState:
+DELETE FROM AlgorithmState WHERE card_id = ?;

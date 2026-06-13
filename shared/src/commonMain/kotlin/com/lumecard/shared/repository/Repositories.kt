@@ -47,3 +47,19 @@ data class ReviewStats(
     val retentionRate: Double,
     val studyTimeMinutes: Int
 )
+
+interface SettingsRepository {
+    suspend fun get(key: String): String?
+    suspend fun getAll(): Map<String, String>
+    suspend fun set(key: String, value: String)
+    suspend fun delete(key: String)
+    suspend fun getInt(key: String, default: Int = 0): Int
+    suspend fun getBoolean(key: String, default: Boolean = false): Boolean
+}
+
+interface AlgorithmStateRepository {
+    suspend fun get(cardId: String): String? // returns state_json
+    suspend fun getAll(): Map<String, String> // card_id -> state_json
+    suspend fun save(cardId: String, mode: String, stateJson: String)
+    suspend fun delete(cardId: String)
+}

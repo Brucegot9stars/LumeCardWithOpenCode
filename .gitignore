@@ -60,5 +60,4 @@ package-lock.json
 # Kotlin
 .kotlin/
 
-# SQLDelight
-sqldelight/
+# SQLDelight (generated code is under build/ which is already ignored)
