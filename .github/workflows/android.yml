@@ -1,4 +1,4 @@
-name: Desktop CI
+name: Android CI
 
 on:
   push:
@@ -8,10 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout code
@@ -26,18 +23,17 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v6
 
-    - name: Grant execute permission for gradlew (Unix)
-      if: runner.os != 'Windows'
+    - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Build Desktop JAR
-      run: ./gradlew :composeApp:packageUberJarForCurrentOS
+    - name: Build Android Debug APK
+      run: ./gradlew :composeApp:assembleDebug
 
-    - name: Upload Desktop artifact
+    - name: Upload APK artifact
       uses: actions/upload-artifact@v6
       with:
-        name: desktop-${{ matrix.os }}
-        path: composeApp/build/compose/jars/*.jar
+        name: debug-apk
+        path: composeApp/build/outputs/apk/debug/*.apk
         retention-days: 7
 
     - name: Run unit tests
@@ -47,6 +43,6 @@ jobs:
       uses: actions/upload-artifact@v6
       if: always()
       with:
-        name: test-results-${{ matrix.os }}
+        name: test-results
         path: shared/build/reports/tests/
         retention-days: 7

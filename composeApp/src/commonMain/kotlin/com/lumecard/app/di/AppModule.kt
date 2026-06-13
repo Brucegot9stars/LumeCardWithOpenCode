@@ -8,6 +8,7 @@ import org.koin.dsl.module
 
 val appModule = module {
     includes(sharedModule)
+    includes(platformModule)
 
     // ViewModels
     factory { DashboardViewModel(get()) }
