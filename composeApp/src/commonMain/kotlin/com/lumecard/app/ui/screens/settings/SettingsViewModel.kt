@@ -7,10 +7,9 @@ import com.lumecard.shared.repository.SettingsRepository
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    val state: SettingsStateHolder
 ) : ScreenModel {
-
-    val state = SettingsStateHolder()
 
     fun loadSettings() {
         screenModelScope.launch {
