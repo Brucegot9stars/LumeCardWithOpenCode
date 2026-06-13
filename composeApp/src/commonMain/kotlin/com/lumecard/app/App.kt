@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import cafe.adriel.voyager.navigator.Navigator
 import com.lumecard.app.di.appModule
 import com.lumecard.app.ui.screens.dashboard.DashboardScreen
 import com.lumecard.app.ui.screens.settings.SettingsScreen
@@ -33,25 +34,32 @@ fun App() {
         LumeCardTheme {
             var currentTab by remember { mutableStateOf(BottomNavItem.Dashboard) }
 
-            Scaffold(
-                bottomBar = {
-                    NavigationBar {
-                        BottomNavItem.entries.forEach { item ->
-                            NavigationBarItem(
-                                selected = currentTab == item,
-                                onClick = { currentTab = item },
-                                icon = { Icon(item.icon, contentDescription = item.label) },
-                                label = { Text(item.label) }
-                            )
-                        }
-                    }
-                }
-            ) { paddingValues ->
-                Box(modifier = Modifier.padding(paddingValues)) {
-                    when (currentTab) {
+            Navigator(DashboardScreen()) { navigator ->
+                LaunchedEffect(currentTab) {
+                    val screen = when (currentTab) {
                         BottomNavItem.Dashboard -> DashboardScreen()
                         BottomNavItem.Stats -> StatsScreen()
                         BottomNavItem.Settings -> SettingsScreen()
+                    }
+                    navigator.replace(screen)
+                }
+
+                Scaffold(
+                    bottomBar = {
+                        NavigationBar {
+                            BottomNavItem.entries.forEach { item ->
+                                NavigationBarItem(
+                                    selected = currentTab == item,
+                                    onClick = { currentTab = item },
+                                    icon = { Icon(item.icon, contentDescription = item.label) },
+                                    label = { Text(item.label) }
+                                )
+                            }
+                        }
+                    }
+                ) { paddingValues ->
+                    Box(modifier = Modifier.padding(paddingValues)) {
+                        cafe.adriel.voyager.navigator.CurrentScreen()
                     }
                 }
             }
