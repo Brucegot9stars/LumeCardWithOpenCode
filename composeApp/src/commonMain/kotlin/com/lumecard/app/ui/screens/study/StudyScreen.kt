@@ -19,6 +19,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.lumecard.app.ui.components.MarkdownText
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
 import com.lumecard.shared.model.Rating
@@ -109,12 +110,10 @@ class StudyScreen(
                                                     viewModel.goBack()
                                                     viewModel.showSwipeFeedback("← 返回上一张")
                                                 }
-                                            } else if (swipeOffset < -threshold) {
-                                                // 左滑 → 简单 + 下一张
-                                                if (isFlipped) {
-                                                    viewModel.rateCard(Rating.EASY)
-                                                    viewModel.showSwipeFeedback("✓ 简单")
-                                                }
+                                             } else if (swipeOffset < -threshold) {
+                                                // 左滑 → 简单 + 下一张（不依赖翻转状态）
+                                                viewModel.rateCard(Rating.EASY)
+                                                viewModel.showSwipeFeedback("✓ 简单")
                                             }
                                             swipeOffset = 0f
                                         },
@@ -274,9 +273,9 @@ private fun CardContent(card: Card, isFlipped: Boolean) {
 
         when (card.type) {
             CardType.BASIC, CardType.MARKDOWN, CardType.AI_GENERATED -> {
-                Text(
-                    if (isFlipped) card.back else card.front,
-                    style = MaterialTheme.typography.headlineSmall,
+                MarkdownText(
+                    markdown = if (isFlipped) card.back else card.front,
+                    modifier = Modifier.fillMaxWidth(),
                     textAlign = TextAlign.Center
                 )
             }

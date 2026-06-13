@@ -15,6 +15,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.lumecard.app.ui.components.MarkdownText
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
 import org.koin.compose.koinInject
@@ -171,11 +172,11 @@ class CreateCardScreen(
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                             Text("问题:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(front, style = MaterialTheme.typography.bodyLarge)
+                            MarkdownText(markdown = front, modifier = Modifier.fillMaxWidth())
                             if (back.isNotBlank()) {
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                                 Text("答案:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(back, style = MaterialTheme.typography.bodyLarge)
+                                MarkdownText(markdown = back, modifier = Modifier.fillMaxWidth())
                             }
                         }
                     }
