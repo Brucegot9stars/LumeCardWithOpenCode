@@ -1,13 +1,13 @@
 object Versions {
-    const val kotlin = "2.0.0"
-    const val compose = "1.6.1"
-    const val sqlDelight = "2.0.1"
-    const val ktor = "2.3.11"
+    const val kotlin = "2.0.20"
+    const val compose = "1.7.0"
+    const val sqlDelight = "2.0.2"
+    const val ktor = "2.3.12"
     const val koin = "3.5.6"
-    const val voyager = "1.0.0"
-    const val kotlinxCoroutines = "1.8.0"
-    const val kotlinxDateTime = "0.6.0"
-    const val kotlinxSerialization = "1.6.3"
+    const val voyager = "1.0.1"
+    const val kotlinxCoroutines = "1.8.1"
+    const val kotlinxDateTime = "0.6.1"
+    const val kotlinxSerialization = "1.7.2"
 }
 
 object Dependencies {
@@ -34,11 +34,12 @@ object Dependencies {
 
     // Koin
     const val koinCore = "io.insert-koin:koin-core:${Versions.koin}"
-    const val koinCompose = "io.insert-koin:koin-compose:${Versions.koin}"
+    const val koinCompose = "io.insert-koin:koin-compose:1.1.5"
 
     // Voyager
     const val voyagerNavigator = "cafe.adriel.voyager:voyager-navigator:${Versions.voyager}"
-    const val voyagerScreen = "cafe.adriel.voyager:voyager-screen-model:${Versions.voyager}"
+    const val voyagerScreen = "cafe.adriel.voyager:voyager-screenmodel:${Versions.voyager}"
+    const val voyagerTabNavigator = "cafe.adriel.voyager:voyager-tab-navigator:${Versions.voyager}"
 
     // Kotlinx
     const val kotlinxCoroutines = "org.jetbrains.kotlinx:kotlinx-coroutines-core:${Versions.kotlinxCoroutines}"

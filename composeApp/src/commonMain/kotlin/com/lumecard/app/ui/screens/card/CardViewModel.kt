@@ -9,9 +9,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
+@OptIn(kotlin.uuid.ExperimentalUuidApi::class)
 class CardViewModel(
     private val cardRepository: CardRepository
 ) : ScreenModel {
+    private val _cards = MutableStateFlow<List<Card>>(emptyList())
+    val cards: StateFlow<List<Card>> = _cards
+
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading
+
     private val _front = MutableStateFlow("")
     val front: StateFlow<String> = _front
 
@@ -26,6 +33,16 @@ class CardViewModel(
 
     private val _isSaving = MutableStateFlow(false)
     val isSaving: StateFlow<Boolean> = _isSaving
+
+    fun loadCards(deckId: String) {
+        screenModelScope.launch {
+            _isLoading.value = true
+            cardRepository.getByDeck(deckId).collect { cards ->
+                _cards.value = cards
+                _isLoading.value = false
+            }
+        }
+    }
 
     fun updateFront(value: String) {
         _front.value = value
@@ -43,6 +60,34 @@ class CardViewModel(
         _tags.value = value
     }
 
+    fun createCard(
+        deckId: String,
+        front: String,
+        back: String,
+        type: CardType = CardType.BASIC,
+        tags: List<String> = emptyList()
+    ) {
+        if (front.isBlank() || back.isBlank()) return
+
+        screenModelScope.launch {
+            val card = Card(
+                id = kotlin.uuid.Uuid.random().toString(),
+                deckId = deckId,
+                type = type,
+                front = front,
+                back = back,
+                tags = tags
+            )
+            cardRepository.insert(card)
+        }
+    }
+
+    fun deleteCard(id: String) {
+        screenModelScope.launch {
+            cardRepository.delete(id)
+        }
+    }
+
     fun saveCard(deckId: String, onSuccess: () -> Unit) {
         if (_front.value.isBlank() || _back.value.isBlank()) return
 
@@ -50,9 +95,7 @@ class CardViewModel(
             _isSaving.value = true
             try {
                 val card = Card(
-                    id = kotlin.uuid.ExperimentalUuidApi::class.let { 
-                        kotlin.uuid.Uuid.random().toString() 
-                    },
+                    id = kotlin.uuid.Uuid.random().toString(),
                     deckId = deckId,
                     type = _cardType.value,
                     front = _front.value,

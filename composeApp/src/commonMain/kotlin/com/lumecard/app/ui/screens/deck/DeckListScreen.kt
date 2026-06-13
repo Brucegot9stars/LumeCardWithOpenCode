@@ -165,9 +165,10 @@ fun DeckCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (deck.description != null) {
+                val desc = deck.description
+                if (desc != null) {
                     Text(
-                        deck.description,
+                        desc,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,

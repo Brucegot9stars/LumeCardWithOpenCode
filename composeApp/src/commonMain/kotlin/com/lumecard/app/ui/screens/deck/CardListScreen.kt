@@ -19,9 +19,11 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import com.lumecard.app.ui.navigation.CreateCardScreen
-import com.lumecard.app.ui.navigation.StudyScreen
+import com.lumecard.app.ui.screens.card.CardViewModel
+import com.lumecard.app.ui.screens.card.CreateCardScreen
+import com.lumecard.app.ui.screens.study.StudyScreen
 import com.lumecard.shared.model.Card
+import org.koin.compose.koinInject
 
 class CardListScreen(
     private val deckId: String,
@@ -33,7 +35,13 @@ class CardListScreen(
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
-        var cards by remember { mutableStateOf<List<Card>>(emptyList()) }
+        val viewModel: CardViewModel = koinInject()
+        val cards by viewModel.cards.collectAsState()
+        val isLoading by viewModel.isLoading.collectAsState()
+
+        LaunchedEffect(deckId) {
+            viewModel.loadCards(deckId)
+        }
 
         Scaffold(
             topBar = {
@@ -64,7 +72,6 @@ class CardListScreen(
             }
         ) { padding ->
             if (cards.isEmpty()) {
-                // 空状态
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -98,8 +105,8 @@ class CardListScreen(
                     items(cards) { card ->
                         CardItem(
                             card = card,
-                            onEdit = { /* 编辑卡片 */ },
-                            onDelete = { /* 删除卡片 */ }
+                            onEdit = { },
+                            onDelete = { viewModel.deleteCard(card.id) }
                         )
                     }
                 }
@@ -124,7 +131,6 @@ fun CardItem(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 卡片类型指示器
             Surface(
                 modifier = Modifier.size(40.dp),
                 shape = MaterialTheme.shapes.small,
@@ -141,7 +147,6 @@ fun CardItem(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // 卡片内容
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     card.front,
@@ -169,7 +174,6 @@ fun CardItem(
                 }
             }
 
-            // 操作按钮
             IconButton(onClick = onEdit) {
                 Icon(
                     Icons.Default.Edit,

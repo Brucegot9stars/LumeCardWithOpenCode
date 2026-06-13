@@ -15,9 +15,10 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import com.lumecard.app.ui.navigation.CardListScreen
-import com.lumecard.app.ui.navigation.StudyScreen
+import com.lumecard.app.ui.screens.deck.CardListScreen
+import com.lumecard.app.ui.screens.study.StudyScreen
 import com.lumecard.shared.model.Deck
+import org.koin.compose.koinInject
 
 class DashboardScreen : Screen {
     override val key: ScreenKey = "Dashboard"
@@ -26,7 +27,9 @@ class DashboardScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
-        var decks by remember { mutableStateOf<List<Deck>>(emptyList()) }
+        val viewModel: DashboardViewModel = koinInject()
+        val decks by viewModel.decks.collectAsState()
+        val isLoading by viewModel.isLoading.collectAsState()
 
         Scaffold(
             topBar = {
@@ -111,38 +114,46 @@ class DashboardScreen : Screen {
                 item {
                     // 最近活动
                     Text(
-                        "我的牌组",
+                        "我的牌组 (${decks.size})",
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
 
-                // 空状态提示
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
+                if (decks.isEmpty()) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    "开始你的学习之旅",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    "创建第一个牌组，添加卡片，开始学习",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        "开始你的学习之旅",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        "创建第一个牌组，添加卡片，开始学习",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
+                    }
+                } else {
+                    items(decks) { deck ->
+                        DeckItem(
+                            deck = deck,
+                            onClick = { navigator.push(StudyScreen(deck.id, deck.name)) }
+                        )
                     }
                 }
             }
@@ -191,6 +202,49 @@ class DashboardScreen : Screen {
                 Text(
                     title,
                     style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+    }
+
+    @Composable
+    private fun DeckItem(
+        deck: Deck,
+        onClick: () -> Unit
+    ) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = onClick
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    deck.icon,
+                    style = MaterialTheme.typography.headlineMedium
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        deck.name,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    val desc = deck.description
+                    if (desc != null) {
+                        Text(
+                            desc,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Icon(
+                    Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }

@@ -1,0 +1,289 @@
+package com.lumecard.shared.repository
+
+import app.cash.sqldelight.coroutines.asFlow
+import app.cash.sqldelight.coroutines.mapToList
+import com.lumecard.shared.database.LumeCardDatabase
+import com.lumecard.shared.model.Card
+import com.lumecard.shared.model.CardType
+import com.lumecard.shared.model.Deck
+import com.lumecard.shared.model.KnowledgeBase
+import com.lumecard.shared.model.ReviewLog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
+
+class SqlDelightKnowledgeBaseRepository(
+    private val database: LumeCardDatabase
+) : KnowledgeBaseRepository {
+
+    private val queries get() = database.lumeCardDatabaseQueries
+
+    override fun getAll(): Flow<List<KnowledgeBase>> {
+        return queries.selectAllKnowledgeBases().asFlow().mapToList(Dispatchers.Default).map { list ->
+            list.map { it.toKnowledgeBase() }
+        }
+    }
+
+    override suspend fun getById(id: String): KnowledgeBase? {
+        return queries.selectKnowledgeBaseById(id).executeAsOneOrNull()?.toKnowledgeBase()
+    }
+
+    override suspend fun insert(knowledgeBase: KnowledgeBase) {
+        queries.insertKnowledgeBase(
+            id = knowledgeBase.id,
+            name = knowledgeBase.name,
+            description = knowledgeBase.description,
+            created_at = knowledgeBase.createdAt.toString(),
+            updated_at = knowledgeBase.updatedAt.toString()
+        )
+    }
+
+    override suspend fun update(knowledgeBase: KnowledgeBase) {
+        queries.insertKnowledgeBase(
+            id = knowledgeBase.id,
+            name = knowledgeBase.name,
+            description = knowledgeBase.description,
+            created_at = knowledgeBase.createdAt.toString(),
+            updated_at = Clock.System.now().toString()
+        )
+    }
+
+    override suspend fun delete(id: String) {
+        queries.deleteKnowledgeBase(id)
+    }
+}
+
+class SqlDelightDeckRepository(
+    private val database: LumeCardDatabase
+) : DeckRepository {
+
+    private val queries get() = database.lumeCardDatabaseQueries
+
+    override fun getAll(): Flow<List<Deck>> {
+        return queries.selectAllDecks().asFlow().mapToList(Dispatchers.Default).map { list ->
+            list.map { it.toDeck() }
+        }
+    }
+
+    override fun getByKnowledgeBase(knowledgeBaseId: String): Flow<List<Deck>> {
+        return queries.selectDecksByKnowledgeBase(knowledgeBaseId).asFlow().mapToList(Dispatchers.Default).map { list ->
+            list.map { it.toDeck() }
+        }
+    }
+
+    override suspend fun getById(id: String): Deck? {
+        return queries.selectDeckById(id).executeAsOneOrNull()?.toDeck()
+    }
+
+    override suspend fun insert(deck: Deck) {
+        queries.insertDeck(
+            id = deck.id,
+            knowledge_base_id = deck.knowledgeBaseId,
+            name = deck.name,
+            description = deck.description,
+            color = deck.color,
+            icon = deck.icon,
+            parent_id = deck.parentId,
+            created_at = deck.createdAt.toString(),
+            updated_at = deck.updatedAt.toString()
+        )
+    }
+
+    override suspend fun update(deck: Deck) {
+        queries.insertDeck(
+            id = deck.id,
+            knowledge_base_id = deck.knowledgeBaseId,
+            name = deck.name,
+            description = deck.description,
+            color = deck.color,
+            icon = deck.icon,
+            parent_id = deck.parentId,
+            created_at = deck.createdAt.toString(),
+            updated_at = Clock.System.now().toString()
+        )
+    }
+
+    override suspend fun delete(id: String) {
+        queries.deleteDeck(id)
+    }
+}
+
+class SqlDelightCardRepository(
+    private val database: LumeCardDatabase
+) : CardRepository {
+
+    private val queries get() = database.lumeCardDatabaseQueries
+
+    override fun getAll(): Flow<List<Card>> {
+        return queries.selectAllCards().asFlow().mapToList(Dispatchers.Default).map { list ->
+            list.map { it.toDomain() }
+        }
+    }
+
+    override fun getByDeck(deckId: String): Flow<List<Card>> {
+        return queries.selectCardsByDeck(deckId).asFlow().mapToList(Dispatchers.Default).map { list ->
+            list.map { it.toDomain() }
+        }
+    }
+
+    override suspend fun getById(id: String): Card? {
+        return queries.selectCardById(id).executeAsOneOrNull()?.toDomain()
+    }
+
+    override suspend fun getDueCards(): Flow<List<Card>> {
+        val now = Clock.System.now().toString()
+        return queries.selectDueCards(now).asFlow().mapToList(Dispatchers.Default).map { list ->
+            list.map { it.toDomain() }
+        }
+    }
+
+    override suspend fun insert(card: Card) {
+        queries.insertCard(
+            id = card.id,
+            deck_id = card.deckId,
+            type = card.type.name,
+            front = card.front,
+            back = card.back,
+            tags = card.tags.joinToString(","),
+            media = "",
+            metadata = "",
+            created_at = card.createdAt.toString(),
+            updated_at = card.updatedAt.toString(),
+            last_reviewed_at = card.lastReviewedAt?.toString(),
+            next_review_at = card.nextReviewAt?.toString()
+        )
+    }
+
+    override suspend fun update(card: Card) {
+        queries.updateCard(
+            deck_id = card.deckId,
+            type = card.type.name,
+            front = card.front,
+            back = card.back,
+            tags = card.tags.joinToString(","),
+            media = "",
+            metadata = "",
+            updated_at = Clock.System.now().toString(),
+            last_reviewed_at = card.lastReviewedAt?.toString(),
+            next_review_at = card.nextReviewAt?.toString(),
+            id = card.id
+        )
+    }
+
+    override suspend fun delete(id: String) {
+        queries.deleteCard(id)
+    }
+
+    override suspend fun search(query: String): Flow<List<Card>> {
+        return queries.selectAllCards().asFlow().mapToList(Dispatchers.Default).map { list ->
+            list.map { it.toDomain() }.filter { card ->
+                card.front.contains(query, ignoreCase = true) ||
+                card.back.contains(query, ignoreCase = true) ||
+                card.tags.any { tag -> tag.contains(query, ignoreCase = true) }
+            }
+        }
+    }
+}
+
+class SqlDelightReviewLogRepository(
+    private val database: LumeCardDatabase
+) : ReviewLogRepository {
+
+    private val queries get() = database.lumeCardDatabaseQueries
+
+    override fun getByCardId(cardId: String): Flow<List<ReviewLog>> {
+        return queries.selectReviewLogsByCardId(cardId).asFlow().mapToList(Dispatchers.Default).map { list ->
+            list.map { it.toReviewLog() }
+        }
+    }
+
+    override suspend fun insert(reviewLog: ReviewLog) {
+        queries.insertReviewLog(
+            id = reviewLog.id,
+            card_id = reviewLog.cardId,
+            rating = reviewLog.rating.toLong(),
+            review_time = reviewLog.reviewTime.toLong(),
+            interval = reviewLog.interval.toLong(),
+            ease_factor = reviewLog.easeFactor.toDouble(),
+            repetitions = reviewLog.repetitions.toLong(),
+            lapse_count = reviewLog.lapseCount.toLong(),
+            reviewed_at = reviewLog.reviewedAt.toString()
+        )
+    }
+
+    override suspend fun getStats(): ReviewStats {
+        val allLogs = queries.selectAllReviewLogs().executeAsList()
+        val totalReviews = allLogs.size
+        val averageRating = if (totalReviews > 0) allLogs.map { it.rating }.average() else 0.0
+        val goodReviews = allLogs.count { it.rating >= 3 }
+        val retentionRate = if (totalReviews > 0) goodReviews.toDouble() / totalReviews else 0.0
+        val studyTimeMinutes = allLogs.sumOf { it.review_time } / 60000
+
+        return ReviewStats(
+            totalReviews = totalReviews,
+            averageRating = averageRating,
+            retentionRate = retentionRate,
+            studyTimeMinutes = studyTimeMinutes.toInt()
+        )
+    }
+}
+
+private fun com.lumecard.shared.database.KnowledgeBase.toKnowledgeBase() = KnowledgeBase(
+    id = id,
+    name = name,
+    description = description,
+    createdAt = Instant.parse(created_at),
+    updatedAt = Instant.parse(updated_at)
+)
+
+private fun com.lumecard.shared.database.Deck.toDeck() = Deck(
+    id = id,
+    knowledgeBaseId = knowledge_base_id,
+    name = name,
+    description = description,
+    color = color ?: "#4CAF50",
+    icon = icon ?: "\uD83D\uDCDA",
+    parentId = parent_id,
+    createdAt = Instant.parse(created_at),
+    updatedAt = Instant.parse(updated_at)
+)
+
+private fun com.lumecard.shared.database.SelectDueCards.toDomain() = Card(
+    id = id,
+    deckId = deck_id,
+    type = CardType.valueOf(type),
+    front = front,
+    back = back,
+    tags = (tags ?: "").split(",").filter { it.isNotBlank() },
+    createdAt = Instant.parse(created_at),
+    updatedAt = Instant.parse(updated_at),
+    lastReviewedAt = last_reviewed_at?.let { Instant.parse(it) },
+    nextReviewAt = Instant.parse(next_review_at)
+)
+
+private fun com.lumecard.shared.database.Card.toDomain() = Card(
+    id = id,
+    deckId = deck_id,
+    type = CardType.valueOf(type),
+    front = front,
+    back = back,
+    tags = (tags ?: "").split(",").filter { it.isNotBlank() },
+    createdAt = Instant.parse(created_at),
+    updatedAt = Instant.parse(updated_at),
+    lastReviewedAt = last_reviewed_at?.let { Instant.parse(it) },
+    nextReviewAt = next_review_at?.let { Instant.parse(it) }
+)
+
+private fun com.lumecard.shared.database.ReviewLog.toReviewLog() = ReviewLog(
+    id = id,
+    cardId = card_id,
+    rating = rating.toInt(),
+    reviewTime = review_time.toInt(),
+    interval = interval.toInt(),
+    easeFactor = ease_factor.toFloat(),
+    repetitions = repetitions.toInt(),
+    lapseCount = lapse_count.toInt(),
+    reviewedAt = Instant.parse(reviewed_at)
+)

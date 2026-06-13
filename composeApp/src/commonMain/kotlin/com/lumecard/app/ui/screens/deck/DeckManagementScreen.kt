@@ -18,7 +18,6 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import com.lumecard.app.ui.navigation.CardListScreen
 import com.lumecard.shared.model.Deck
 
 class DeckManagementScreen : Screen {
@@ -166,9 +165,10 @@ fun DeckManagementCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (deck.description != null) {
+                val desc = deck.description
+                if (desc != null) {
                     Text(
-                        deck.description,
+                        desc,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,

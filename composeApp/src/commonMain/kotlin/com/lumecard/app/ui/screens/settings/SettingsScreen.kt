@@ -5,10 +5,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -94,7 +93,7 @@ class SettingsScreen : Screen {
                         headlineContent = { Text("深色模式") },
                         supportingContent = { Text("使用深色主题") },
                         leadingContent = {
-                            Icon(Icons.Default.DarkMode, contentDescription = null)
+                            Icon(Icons.Default.Settings, contentDescription = null)
                         },
                         trailingContent = {
                             Switch(
@@ -128,7 +127,7 @@ class SettingsScreen : Screen {
                         headlineContent = { Text("导出数据") },
                         supportingContent = { Text("导出所有卡片和学习数据") },
                         leadingContent = {
-                            Icon(Icons.Default.Storage, contentDescription = null)
+                            Icon(Icons.Default.Info, contentDescription = null)
                         }
                     )
                     HorizontalDivider()

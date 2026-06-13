@@ -56,5 +56,8 @@ package-lock.json
 .env.local
 *.log
 
+# Kotlin
+.kotlin/
+
 # SQLDelight
 sqldelight/

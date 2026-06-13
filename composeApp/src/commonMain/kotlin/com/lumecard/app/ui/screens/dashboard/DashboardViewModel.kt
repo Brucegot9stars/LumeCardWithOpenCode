@@ -7,10 +7,12 @@ import com.lumecard.shared.repository.DeckRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import org.koin.core.component.KoinComponent
 
+@OptIn(kotlin.uuid.ExperimentalUuidApi::class)
 class DashboardViewModel(
     private val deckRepository: DeckRepository
-) : ScreenModel {
+) : ScreenModel, KoinComponent {
     private val _decks = MutableStateFlow<List<Deck>>(emptyList())
     val decks: StateFlow<List<Deck>> = _decks
 
@@ -34,9 +36,7 @@ class DashboardViewModel(
     fun createDeck(name: String, description: String?) {
         screenModelScope.launch {
             val deck = Deck(
-                id = kotlin.uuid.ExperimentalUuidApi::class.let { 
-                    kotlin.uuid.Uuid.random().toString() 
-                },
+                id = kotlin.uuid.Uuid.random().toString(),
                 knowledgeBaseId = "default",
                 name = name,
                 description = description
