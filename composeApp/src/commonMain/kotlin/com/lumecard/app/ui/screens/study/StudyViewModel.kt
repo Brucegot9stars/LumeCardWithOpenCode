@@ -37,6 +37,14 @@ class StudyViewModel(
     private val _algorithmStates = MutableStateFlow<Map<String, AlgorithmState>>(emptyMap())
     val algorithmStates: StateFlow<Map<String, AlgorithmState>> = _algorithmStates
 
+    private val _history = MutableStateFlow<List<Pair<Int, Boolean>>>(emptyList())
+    val history: StateFlow<List<Pair<Int, Boolean>>> = _history
+
+    val canGoBack: Boolean get() = _history.value.isNotEmpty()
+
+    private val _swipeFeedback = MutableStateFlow<String?>(null)
+    val swipeFeedback: StateFlow<String?> = _swipeFeedback
+
     fun loadCards(deckId: String) {
         screenModelScope.launch {
             cardRepository.getByDeck(deckId).collect { cards ->
@@ -60,6 +68,16 @@ class StudyViewModel(
         _isFlipped.value = !_isFlipped.value
     }
 
+    fun goBack() {
+        val hist = _history.value.toMutableList()
+        if (hist.isEmpty()) return
+        val (prevIndex, wasFlipped) = hist.removeLast()
+        _history.value = hist
+        _currentCardIndex.value = prevIndex
+        _isFlipped.value = wasFlipped
+        if (_completedCards.value > 0) _completedCards.value--
+    }
+
     fun rateCard(rating: Rating) {
         val currentCard = _cards.value.getOrNull(_currentCardIndex.value) ?: return
         val state = _algorithmStates.value[currentCard.id] ?: return
@@ -68,6 +86,9 @@ class StudyViewModel(
         _algorithmStates.value = _algorithmStates.value + (currentCard.id to updatedState)
 
         val now = Clock.System.now()
+
+        // Save current position to history before advancing
+        _history.value = _history.value + (_currentCardIndex.value to _isFlipped.value)
 
         screenModelScope.launch {
             val reviewLog = ReviewLog(
@@ -104,6 +125,14 @@ class StudyViewModel(
             _currentCardIndex.value++
         } else {
             _currentCardIndex.value = _cards.value.size
+        }
+    }
+
+    fun showSwipeFeedback(text: String) {
+        _swipeFeedback.value = text
+        screenModelScope.launch {
+            kotlinx.coroutines.delay(500)
+            _swipeFeedback.value = null
         }
     }
 

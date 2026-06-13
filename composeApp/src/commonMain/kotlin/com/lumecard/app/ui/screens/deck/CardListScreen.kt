@@ -1,14 +1,11 @@
 package com.lumecard.app.ui.screens.deck
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,8 +35,11 @@ class CardListScreen(
         val viewModel: CardViewModel = koinInject()
         val cards by viewModel.cards.collectAsState()
         val isLoading by viewModel.isLoading.collectAsState()
+        val sortConfig by viewModel.sortConfig.collectAsState()
+        var showSortMenu by remember { mutableStateOf(false) }
 
         LaunchedEffect(deckId) {
+            viewModel.loadSortPref()
             viewModel.loadCards(deckId)
         }
 
@@ -53,6 +53,37 @@ class CardListScreen(
                         }
                     },
                     actions = {
+                        Box {
+                            TextButton(onClick = { showSortMenu = true }) {
+                                Text("排序", style = MaterialTheme.typography.labelLarge)
+                            }
+                            DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
+                                Text("排序方式", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                                HorizontalDivider()
+                                SortField.entries.forEach { field ->
+                                    SortOrder.entries.forEach { order ->
+                                        val label = when (field) {
+                                            SortField.NAME -> "名称 ${if (order == SortOrder.ASC) "↑" else "↓"}"
+                                            SortField.CREATED_AT -> "创建时间 ${if (order == SortOrder.ASC) "↑" else "↓"}"
+                                            SortField.UPDATED_AT -> "修改时间 ${if (order == SortOrder.ASC) "↑" else "↓"}"
+                                            SortField.STUDY_TIME -> "学习时长 ${if (order == SortOrder.ASC) "↑" else "↓"}"
+                                        }
+                                        DropdownMenuItem(
+                                            text = { Text(label) },
+                                            onClick = {
+                                                viewModel.setSortConfig(SortConfig(field, order))
+                                                showSortMenu = false
+                                            },
+                                            leadingIcon = {
+                                                if (sortConfig.field == field && sortConfig.order == order) {
+                                                    Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
                         IconButton(onClick = { navigator.push(StudyScreen(deckId, deckName)) }) {
                             Icon(Icons.Default.PlayArrow, contentDescription = "学习")
                         }
@@ -99,9 +130,17 @@ class CardListScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding)
-                        .padding(16.dp),
+                        .padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    item {
+                        Text(
+                            "排序: ${sortConfig.field.name} ${if (sortConfig.order == SortOrder.ASC) "↑" else "↓"}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
                     items(cards) { card ->
                         CardItem(
                             card = card,
@@ -122,7 +161,7 @@ fun CardItem(
     onDelete: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onEdit),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(

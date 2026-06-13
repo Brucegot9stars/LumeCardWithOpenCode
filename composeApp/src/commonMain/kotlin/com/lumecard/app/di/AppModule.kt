@@ -19,9 +19,9 @@ val appModule = module {
     single { ExportManager() }
 
     factory { DashboardViewModel(get()) }
-    factory { DeckViewModel(get()) }
+    factory { DeckViewModel(get(), get()) }
     factory { StudyViewModel(get(), get(), get(), get()) }
-    factory { CardViewModel(get()) }
+    factory { CardViewModel(get(), get()) }
     factory { StatsViewModel(get(), get()) }
     factory { SettingsViewModel(get(), get()) }
 }

@@ -2,9 +2,13 @@ package com.lumecard.app.ui.screens.card
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import com.lumecard.app.ui.screens.deck.SortConfig
+import com.lumecard.app.ui.screens.deck.SortField
+import com.lumecard.app.ui.screens.deck.SortOrder
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
 import com.lumecard.shared.repository.CardRepository
+import com.lumecard.shared.repository.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -12,7 +16,8 @@ import kotlinx.datetime.Clock
 
 @OptIn(kotlin.uuid.ExperimentalUuidApi::class)
 class CardViewModel(
-    private val cardRepository: CardRepository
+    private val cardRepository: CardRepository,
+    private val settingsRepository: SettingsRepository
 ) : ScreenModel {
     private val _cards = MutableStateFlow<List<Card>>(emptyList())
     val cards: StateFlow<List<Card>> = _cards
@@ -20,14 +25,46 @@ class CardViewModel(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
+    private val _sortConfig = MutableStateFlow(SortConfig())
+    val sortConfig: StateFlow<SortConfig> = _sortConfig
+
+    fun loadSortPref() {
+        screenModelScope.launch {
+            val field = settingsRepository.get("card_sort_field") ?: SortField.CREATED_AT.name
+            val order = settingsRepository.get("card_sort_order") ?: SortOrder.DESC.name
+            _sortConfig.value = SortConfig(
+                field = try { SortField.valueOf(field) } catch (_: Exception) { SortField.CREATED_AT },
+                order = try { SortOrder.valueOf(order) } catch (_: Exception) { SortOrder.DESC }
+            )
+        }
+    }
+
+    fun setSortConfig(config: SortConfig) {
+        _sortConfig.value = config
+        screenModelScope.launch {
+            settingsRepository.set("card_sort_field", config.field.name)
+            settingsRepository.set("card_sort_order", config.order.name)
+        }
+    }
+
     fun loadCards(deckId: String) {
         screenModelScope.launch {
             _isLoading.value = true
             cardRepository.getByDeck(deckId).collect { cards ->
-                _cards.value = cards
+                _cards.value = sortCards(cards, _sortConfig.value)
                 _isLoading.value = false
             }
         }
+    }
+
+    private fun sortCards(cards: List<Card>, config: SortConfig): List<Card> {
+        val sorted = when (config.field) {
+            SortField.NAME -> cards.sortedBy { it.front.lowercase() }
+            SortField.CREATED_AT -> cards.sortedBy { it.createdAt }
+            SortField.UPDATED_AT -> cards.sortedBy { it.updatedAt }
+            SortField.STUDY_TIME -> cards // placeholder
+        }
+        return if (config.order == SortOrder.DESC) sorted.reversed() else sorted
     }
 
     fun createCard(
