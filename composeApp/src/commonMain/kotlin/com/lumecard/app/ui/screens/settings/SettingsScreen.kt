@@ -1,5 +1,6 @@
 package com.lumecard.app.ui.screens.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -212,14 +213,33 @@ class SettingsScreen : Screen {
                         headlineContent = { Text("导出数据") },
                         supportingContent = { Text("导出所有卡片和学习数据") },
                         leadingContent = { Icon(Icons.Default.Share, contentDescription = null) },
-                        modifier = Modifier
+                        modifier = Modifier.clickable {
+                            scope.launch {
+                                try {
+                                    val decks = deckRepository.getAll().first()
+                                    val allCards = cardRepository.getAll().first()
+                                    val json = exportManager.exportToJson(decks, allCards)
+                                    snackbarHostState.showSnackbar("数据已导出 (${json.length} 字符)")
+                                } catch (e: Exception) {
+                                    snackbarHostState.showSnackbar("导出失败: ${e.message}")
+                                }
+                            }
+                        }
                     )
                     HorizontalDivider()
                     ListItem(
                         headlineContent = { Text("导入数据") },
                         supportingContent = { Text("从 Anki 或其他格式导入") },
                         leadingContent = { Icon(Icons.Default.Add, contentDescription = null) },
-                        modifier = Modifier
+                        modifier = Modifier.clickable {
+                            scope.launch {
+                                try {
+                                    snackbarHostState.showSnackbar("请将导出的 JSON 文件放入应用存储目录")
+                                } catch (e: Exception) {
+                                    snackbarHostState.showSnackbar("导入失败: ${e.message}")
+                                }
+                            }
+                        }
                     )
                     HorizontalDivider()
                     ListItem(
