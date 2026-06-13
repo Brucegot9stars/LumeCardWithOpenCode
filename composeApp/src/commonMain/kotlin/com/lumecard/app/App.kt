@@ -13,9 +13,11 @@ import cafe.adriel.voyager.navigator.Navigator
 import com.lumecard.app.di.appModule
 import com.lumecard.app.ui.screens.dashboard.DashboardScreen
 import com.lumecard.app.ui.screens.settings.SettingsScreen
+import com.lumecard.app.ui.screens.settings.ThemeStateHolder
 import com.lumecard.app.ui.screens.stats.StatsScreen
 import com.lumecard.app.ui.theme.LumeCardTheme
 import org.koin.compose.KoinApplication
+import org.koin.compose.koinInject
 
 enum class BottomNavItem(val label: String, val icon: ImageVector) {
     Dashboard("首页", Icons.Default.Home),
@@ -31,7 +33,8 @@ fun App() {
             modules(appModule)
         }
     ) {
-        LumeCardTheme {
+        val themeStateHolder: ThemeStateHolder = koinInject()
+        LumeCardTheme(darkTheme = themeStateHolder.isDarkMode) {
             var currentTab by remember { mutableStateOf(BottomNavItem.Dashboard) }
 
             Navigator(DashboardScreen()) { navigator ->

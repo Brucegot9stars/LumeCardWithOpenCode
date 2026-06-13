@@ -108,6 +108,8 @@ class InMemoryCardRepository : CardRepository {
 class InMemoryReviewLogRepository : ReviewLogRepository {
     private val reviewLogs = MutableStateFlow<List<ReviewLog>>(emptyList())
 
+    override fun getAll(): Flow<List<ReviewLog>> = reviewLogs
+
     override fun getByCardId(cardId: String): Flow<List<ReviewLog>> {
         return reviewLogs.map { list -> list.filter { it.cardId == cardId } }
     }

@@ -4,21 +4,20 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.lumecard.app.ui.screens.study.StudyScreen
 import com.lumecard.shared.model.Deck
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 class DeckListScreen : Screen {
     override val key: ScreenKey = "DeckList"
@@ -27,14 +26,20 @@ class DeckListScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
-        var decks by remember { mutableStateOf<List<Deck>>(emptyList()) }
+        val viewModel: DeckViewModel = koinInject()
+        val decks by viewModel.decks.collectAsState()
+        val isLoading by viewModel.isLoading.collectAsState()
+        val scope = rememberCoroutineScope()
+        val snackbarHostState = remember { SnackbarHostState() }
+
         var showCreateDialog by remember { mutableStateOf(false) }
         var editingDeck by remember { mutableStateOf<Deck?>(null) }
+        var deletingDeck by remember { mutableStateOf<Deck?>(null) }
 
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("我的牌组") },
+                    title = { Text("牌组列表") },
                     navigationIcon = {
                         IconButton(onClick = { navigator.pop() }) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "返回")
@@ -52,27 +57,30 @@ class DeckListScreen : Screen {
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "创建牌组")
                 }
-            }
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) }
         ) { padding ->
-            if (decks.isEmpty()) {
-                // 空状态
+            if (isLoading) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
+                    modifier = Modifier.fillMaxSize().padding(padding),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
+                    CircularProgressIndicator()
+                }
+            } else if (decks.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             "还没有牌组",
-                            style = MaterialTheme.typography.headlineSmall,
+                            style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "点击右下角按钮创建第一个牌组",
+                            "点击 + 创建第一个牌组",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -86,205 +94,176 @@ class DeckListScreen : Screen {
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(decks) { deck ->
-                        DeckCard(
-                            deck = deck,
-                            onEdit = { editingDeck = deck },
-                            onDelete = { /* 删除牌组 */ },
-                            onClick = { /* 打开牌组 */ }
-                        )
+                    items(decks, key = { it.id }) { deck ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = {
+                                navigator.push(CardListScreen(deck.id, deck.name))
+                            }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    deck.icon,
+                                    style = MaterialTheme.typography.headlineMedium
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        deck.name,
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                    val desc = deck.description
+                                    if (!desc.isNullOrBlank()) {
+                                        Text(
+                                            desc,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                Row {
+                                    IconButton(onClick = {
+                                        navigator.push(StudyScreen(deck.id, deck.name))
+                                    }) {
+                                        Icon(Icons.Default.PlayArrow, contentDescription = "学习",
+                                            tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                    IconButton(onClick = { editingDeck = deck }) {
+                                        Icon(Icons.Default.Edit, contentDescription = "编辑",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    IconButton(onClick = { deletingDeck = deck }) {
+                                        Icon(Icons.Default.Delete, contentDescription = "删除",
+                                            tint = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // 创建牌组对话框
+        // Create dialog
         if (showCreateDialog) {
-            CreateDeckDialog(
-                onDismiss = { showCreateDialog = false },
-                onCreate = { name, description ->
-                    // 创建牌组
-                    showCreateDialog = false
+            var name by remember { mutableStateOf("") }
+            var description by remember { mutableStateOf("") }
+
+            AlertDialog(
+                onDismissRequest = { showCreateDialog = false },
+                title = { Text("创建牌组") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = name,
+                            onValueChange = { name = it },
+                            label = { Text("牌组名称") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = description,
+                            onValueChange = { description = it },
+                            label = { Text("描述（可选）") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            if (name.isNotBlank()) {
+                                scope.launch {
+                                    viewModel.createDeck(name, description.ifBlank { null })
+                                    showCreateDialog = false
+                                }
+                            }
+                        },
+                        enabled = name.isNotBlank()
+                    ) { Text("创建") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCreateDialog = false }) { Text("取消") }
                 }
             )
         }
 
-        // 编辑牌组对话框
-        editingDeck?.let { deck ->
-            EditDeckDialog(
-                deck = deck,
-                onDismiss = { editingDeck = null },
-                onUpdate = { name, description ->
-                    // 更新牌组
-                    editingDeck = null
+        // Edit dialog
+        if (editingDeck != null) {
+            var name by remember(editingDeck) { mutableStateOf(editingDeck!!.name) }
+            var description by remember(editingDeck) { mutableStateOf(editingDeck!!.description ?: "") }
+
+            AlertDialog(
+                onDismissRequest = { editingDeck = null },
+                title = { Text("编辑牌组") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = name,
+                            onValueChange = { name = it },
+                            label = { Text("牌组名称") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = description,
+                            onValueChange = { description = it },
+                            label = { Text("描述（可选）") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            if (name.isNotBlank()) {
+                                scope.launch {
+                                    viewModel.updateDeck(editingDeck!!.id, name, description.ifBlank { null })
+                                    editingDeck = null
+                                }
+                            }
+                        },
+                        enabled = name.isNotBlank()
+                    ) { Text("保存") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { editingDeck = null }) { Text("取消") }
+                }
+            )
+        }
+
+        // Delete confirmation
+        if (deletingDeck != null) {
+            AlertDialog(
+                onDismissRequest = { deletingDeck = null },
+                icon = { Icon(Icons.Default.Warning, contentDescription = null) },
+                title = { Text("确认删除") },
+                text = {
+                    Text("确定要删除牌组「${deletingDeck!!.name}」吗？\n牌组中的所有卡片也将被删除。")
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            scope.launch {
+                                viewModel.deleteDeck(deletingDeck!!.id)
+                                deletingDeck = null
+                                snackbarHostState.showSnackbar("牌组已删除")
+                            }
+                        },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) { Text("删除") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { deletingDeck = null }) { Text("取消") }
                 }
             )
         }
     }
-}
-
-@Composable
-fun DeckCard(
-    deck: Deck,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onClick,
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // 图标和颜色指示器
-            Surface(
-                modifier = Modifier.size(48.dp),
-                shape = MaterialTheme.shapes.medium,
-                color = MaterialTheme.colorScheme.primaryContainer
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        deck.icon,
-                        style = MaterialTheme.typography.headlineMedium
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            // 牌组信息
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    deck.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                val desc = deck.description
-                if (desc != null) {
-                    Text(
-                        desc,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-            // 操作按钮
-            IconButton(onClick = onEdit) {
-                Icon(
-                    Icons.Default.Edit,
-                    contentDescription = "编辑",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            IconButton(onClick = onDelete) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "删除",
-                    tint = MaterialTheme.colorScheme.error
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun CreateDeckDialog(
-    onDismiss: () -> Unit,
-    onCreate: (String, String?) -> Unit
-) {
-    var name by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("创建牌组") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("牌组名称") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("描述（可选）") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 2
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onCreate(name, description.ifBlank { null }) },
-                enabled = name.isNotBlank()
-            ) {
-                Text("创建")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
-            }
-        }
-    )
-}
-
-@Composable
-fun EditDeckDialog(
-    deck: Deck,
-    onDismiss: () -> Unit,
-    onUpdate: (String, String?) -> Unit
-) {
-    var name by remember { mutableStateOf(deck.name) }
-    var description by remember { mutableStateOf(deck.description ?: "") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("编辑牌组") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("牌组名称") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("描述（可选）") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 2
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onUpdate(name, description.ifBlank { null }) },
-                enabled = name.isNotBlank()
-            ) {
-                Text("保存")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
-            }
-        }
-    )
 }

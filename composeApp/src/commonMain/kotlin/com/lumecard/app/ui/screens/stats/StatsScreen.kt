@@ -5,8 +5,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,6 +16,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import org.koin.compose.koinInject
 
 class StatsScreen : Screen {
     override val key: ScreenKey = "Stats"
@@ -26,6 +25,12 @@ class StatsScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
+        val viewModel: StatsViewModel = koinInject()
+        val stats by viewModel.stats.collectAsState()
+
+        LaunchedEffect(Unit) {
+            viewModel.loadStats()
+        }
 
         Scaffold(
             topBar = {
@@ -64,19 +69,19 @@ class StatsScreen : Screen {
                     StatCard(
                         modifier = Modifier.weight(1f),
                         title = "总卡片",
-                        value = "0",
+                        value = "${stats.totalCards}",
                         color = MaterialTheme.colorScheme.primary
                     )
                     StatCard(
                         modifier = Modifier.weight(1f),
-                        title = "已掌握",
-                        value = "0",
+                        title = "总牌组",
+                        value = "${stats.totalDecks}",
                         color = Color(0xFF4CAF50)
                     )
                     StatCard(
                         modifier = Modifier.weight(1f),
-                        title = "学习中",
-                        value = "0",
+                        title = "总复习",
+                        value = "${stats.totalReviews}",
                         color = Color(0xFFFF9800)
                     )
                 }
@@ -104,12 +109,12 @@ class StatsScreen : Screen {
                         ) {
                             Column {
                                 Text(
-                                    "复习次数",
+                                    "今日复习",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
-                                    "0",
+                                    "${stats.todayReviews}",
                                     style = MaterialTheme.typography.headlineMedium,
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -121,7 +126,7 @@ class StatsScreen : Screen {
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
-                                    "0%",
+                                    "${"%.1f".format(stats.retentionRate)}%",
                                     style = MaterialTheme.typography.headlineMedium,
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -134,24 +139,24 @@ class StatsScreen : Screen {
                         ) {
                             Column {
                                 Text(
-                                    "学习时间",
+                                    "学习时长",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
-                                    "0分钟",
+                                    "${stats.studyTimeMinutes}分钟",
                                     style = MaterialTheme.typography.titleLarge,
                                     color = MaterialTheme.colorScheme.primary
                                 )
                             }
                             Column(horizontalAlignment = Alignment.End) {
                                 Text(
-                                    "新卡片",
+                                    "连续天数",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
-                                    "0",
+                                    "${stats.streakDays}天",
                                     style = MaterialTheme.typography.titleLarge,
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -162,9 +167,9 @@ class StatsScreen : Screen {
 
                 HorizontalDivider()
 
-                // 预测
+                // 时间统计
                 Text(
-                    "未来7天预测",
+                    "时间统计",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -175,37 +180,46 @@ class StatsScreen : Screen {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        StatRow("本周学习", "${stats.weekReviews} 次")
+                        StatRow("本月学习", "${stats.monthReviews} 次")
+                        StatRow("总学习次数", "${stats.totalReviews} 次")
+                        if (stats.totalReviews > 0) {
+                            StatRow("平均保持率", "${"%.1f".format(stats.retentionRate)}%")
+                        }
+                    }
+                }
+
+                HorizontalDivider()
+
+                // 连续天数
+                Text(
+                    "学习习惯",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Card(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            "预计每日复习量",
+                            "${stats.streakDays}",
+                            style = MaterialTheme.typography.displayMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            "连续学习天数",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        // 简单的柱状图
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            listOf("一", "二", "三", "四", "五", "六", "日").forEach { day ->
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Surface(
-                                        modifier = Modifier
-                                            .width(24.dp)
-                                            .height(40.dp),
-                                        color = MaterialTheme.colorScheme.primaryContainer
-                                    ) {}
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        day,
-                                        style = MaterialTheme.typography.labelSmall
-                                    )
-                                }
-                            }
-                        }
                     }
                 }
 
@@ -245,5 +259,24 @@ fun StatCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+private fun StatRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
     }
 }

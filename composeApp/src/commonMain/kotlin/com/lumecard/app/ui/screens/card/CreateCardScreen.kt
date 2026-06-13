@@ -14,30 +14,33 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
 import org.koin.compose.koinInject
 
 class CreateCardScreen(
     private val deckId: String,
-    private val deckName: String
+    private val deckName: String,
+    private val editCard: Card? = null
 ) : Screen {
-    override val key: ScreenKey = "CreateCard_$deckId"
+    override val key: ScreenKey = "CreateCard_${editCard?.id ?: deckId}"
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
         val viewModel: CardViewModel = koinInject()
-        var front by remember { mutableStateOf("") }
-        var back by remember { mutableStateOf("") }
-        var cardType by remember { mutableStateOf(CardType.BASIC) }
-        var tags by remember { mutableStateOf("") }
+        var front by remember { mutableStateOf(editCard?.front ?: "") }
+        var back by remember { mutableStateOf(editCard?.back ?: "") }
+        var cardType by remember { mutableStateOf(editCard?.type ?: CardType.BASIC) }
+        var tags by remember { mutableStateOf(editCard?.tags?.joinToString(", ") ?: "") }
         var showTypeMenu by remember { mutableStateOf(false) }
+        val isEditing = editCard != null
 
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("创建卡片") },
+                    title = { Text(if (isEditing) "编辑卡片" else "创建卡片") },
                     navigationIcon = {
                         IconButton(onClick = { navigator.pop() }) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "返回")
@@ -46,13 +49,23 @@ class CreateCardScreen(
                     actions = {
                         IconButton(
                             onClick = {
-                                viewModel.createCard(
-                                    deckId = deckId,
-                                    front = front,
-                                    back = back,
-                                    type = cardType,
-                                    tags = tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
-                                )
+                                if (isEditing && editCard != null) {
+                                    viewModel.updateCard(
+                                        card = editCard,
+                                        front = front,
+                                        back = back,
+                                        type = cardType,
+                                        tags = tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
+                                    )
+                                } else {
+                                    viewModel.createCard(
+                                        deckId = deckId,
+                                        front = front,
+                                        back = back,
+                                        type = cardType,
+                                        tags = tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
+                                    )
+                                }
                                 navigator.pop()
                             },
                             enabled = front.isNotBlank() && back.isNotBlank()
@@ -74,7 +87,6 @@ class CreateCardScreen(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 牌组信息
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -89,7 +101,6 @@ class CreateCardScreen(
                     )
                 }
 
-                // 卡片类型选择
                 ExposedDropdownMenuBox(
                     expanded = showTypeMenu,
                     onExpandedChange = { showTypeMenu = it }
@@ -122,7 +133,6 @@ class CreateCardScreen(
                     }
                 }
 
-                // 正面编辑器
                 Text(
                     "正面（问题）",
                     style = MaterialTheme.typography.titleMedium,
@@ -138,7 +148,6 @@ class CreateCardScreen(
                     supportingText = { Text("支持Markdown格式") }
                 )
 
-                // 背面编辑器
                 Text(
                     "背面（答案）",
                     style = MaterialTheme.typography.titleMedium,
@@ -154,7 +163,6 @@ class CreateCardScreen(
                     supportingText = { Text("支持Markdown格式") }
                 )
 
-                // 标签输入
                 OutlinedTextField(
                     value = tags,
                     onValueChange = { tags = it },
@@ -164,7 +172,6 @@ class CreateCardScreen(
                     supportingText = { Text("例如: 英语, 单词, 核心词汇") }
                 )
 
-                // 预览区域
                 if (front.isNotBlank() || back.isNotBlank()) {
                     Text(
                         "预览",
@@ -185,10 +192,7 @@ class CreateCardScreen(
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                Text(
-                                    front,
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
+                                Text(front, style = MaterialTheme.typography.bodyLarge)
                                 Spacer(modifier = Modifier.height(12.dp))
                             }
                             if (back.isNotBlank()) {
@@ -199,10 +203,7 @@ class CreateCardScreen(
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                Text(
-                                    back,
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
+                                Text(back, style = MaterialTheme.typography.bodyLarge)
                             }
                         }
                     }

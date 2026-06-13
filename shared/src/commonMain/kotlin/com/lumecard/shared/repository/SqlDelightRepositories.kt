@@ -193,6 +193,12 @@ class SqlDelightReviewLogRepository(
 
     private val queries get() = database.lumeCardDatabaseQueries
 
+    override fun getAll(): Flow<List<ReviewLog>> {
+        return queries.selectAllReviewLogs().asFlow().mapToList(Dispatchers.Default).map { list ->
+            list.map { it.toReviewLog() }
+        }
+    }
+
     override fun getByCardId(cardId: String): Flow<List<ReviewLog>> {
         return queries.selectReviewLogsByCardId(cardId).asFlow().mapToList(Dispatchers.Default).map { list ->
             list.map { it.toReviewLog() }

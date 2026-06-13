@@ -8,6 +8,7 @@ import com.lumecard.shared.repository.CardRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 
 @OptIn(kotlin.uuid.ExperimentalUuidApi::class)
 class CardViewModel(
@@ -19,21 +20,6 @@ class CardViewModel(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
-    private val _front = MutableStateFlow("")
-    val front: StateFlow<String> = _front
-
-    private val _back = MutableStateFlow("")
-    val back: StateFlow<String> = _back
-
-    private val _cardType = MutableStateFlow(CardType.BASIC)
-    val cardType: StateFlow<CardType> = _cardType
-
-    private val _tags = MutableStateFlow("")
-    val tags: StateFlow<String> = _tags
-
-    private val _isSaving = MutableStateFlow(false)
-    val isSaving: StateFlow<Boolean> = _isSaving
-
     fun loadCards(deckId: String) {
         screenModelScope.launch {
             _isLoading.value = true
@@ -42,22 +28,6 @@ class CardViewModel(
                 _isLoading.value = false
             }
         }
-    }
-
-    fun updateFront(value: String) {
-        _front.value = value
-    }
-
-    fun updateBack(value: String) {
-        _back.value = value
-    }
-
-    fun updateCardType(value: CardType) {
-        _cardType.value = value
-    }
-
-    fun updateTags(value: String) {
-        _tags.value = value
     }
 
     fun createCard(
@@ -79,34 +49,33 @@ class CardViewModel(
                 tags = tags
             )
             cardRepository.insert(card)
+            loadCards(deckId)
+        }
+    }
+
+    fun updateCard(
+        card: Card,
+        front: String,
+        back: String,
+        type: CardType,
+        tags: List<String>
+    ) {
+        screenModelScope.launch {
+            val updated = card.copy(
+                front = front,
+                back = back,
+                type = type,
+                tags = tags,
+                updatedAt = Clock.System.now()
+            )
+            cardRepository.update(updated)
+            loadCards(card.deckId)
         }
     }
 
     fun deleteCard(id: String) {
         screenModelScope.launch {
             cardRepository.delete(id)
-        }
-    }
-
-    fun saveCard(deckId: String, onSuccess: () -> Unit) {
-        if (_front.value.isBlank() || _back.value.isBlank()) return
-
-        screenModelScope.launch {
-            _isSaving.value = true
-            try {
-                val card = Card(
-                    id = kotlin.uuid.Uuid.random().toString(),
-                    deckId = deckId,
-                    type = _cardType.value,
-                    front = _front.value,
-                    back = _back.value,
-                    tags = _tags.value.split(",").map { it.trim() }.filter { it.isNotBlank() }
-                )
-                cardRepository.insert(card)
-                onSuccess()
-            } finally {
-                _isSaving.value = false
-            }
         }
     }
 }

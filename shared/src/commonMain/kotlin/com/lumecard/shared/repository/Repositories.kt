@@ -35,6 +35,7 @@ interface CardRepository {
 }
 
 interface ReviewLogRepository {
+    fun getAll(): Flow<List<ReviewLog>>
     fun getByCardId(cardId: String): Flow<List<ReviewLog>>
     suspend fun insert(reviewLog: ReviewLog)
     suspend fun getStats(): ReviewStats

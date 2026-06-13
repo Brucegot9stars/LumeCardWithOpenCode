@@ -6,14 +6,19 @@ import com.lumecard.shared.domain.scheduler.FSRSAlgorithm
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.FSRSCard
 import com.lumecard.shared.model.Rating
+import com.lumecard.shared.model.ReviewLog
 import com.lumecard.shared.repository.CardRepository
+import com.lumecard.shared.repository.ReviewLogRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import java.util.UUID
 
 class StudyViewModel(
     private val cardRepository: CardRepository,
-    private val fsrsAlgorithm: FSRSAlgorithm
+    private val fsrsAlgorithm: FSRSAlgorithm,
+    private val reviewLogRepository: ReviewLogRepository
 ) : ScreenModel {
     private val _cards = MutableStateFlow<List<Card>>(emptyList())
     val cards: StateFlow<List<Card>> = _cards
@@ -34,7 +39,6 @@ class StudyViewModel(
         screenModelScope.launch {
             cardRepository.getByDeck(deckId).collect { cards ->
                 _cards.value = cards
-                // Initialize FSRS cards
                 cards.forEach { card ->
                     if (!_fsrsCards.value.containsKey(card.id)) {
                         val fsrsCard = fsrsAlgorithm.initCard().copy(id = card.id)
@@ -56,6 +60,32 @@ class StudyViewModel(
         val updatedFsrsCard = fsrsAlgorithm.schedule(fsrsCard, rating)
         _fsrsCards.value = _fsrsCards.value + (currentCard.id to updatedFsrsCard)
 
+        val now = Clock.System.now()
+
+        screenModelScope.launch {
+            // Persist ReviewLog
+            val reviewLog = ReviewLog(
+                id = UUID.randomUUID().toString(),
+                cardId = currentCard.id,
+                rating = rating.value,
+                reviewTime = 0,
+                interval = updatedFsrsCard.scheduledDays,
+                easeFactor = 2.5f,
+                repetitions = updatedFsrsCard.reps,
+                lapseCount = updatedFsrsCard.lapses,
+                reviewedAt = now
+            )
+            reviewLogRepository.insert(reviewLog)
+
+            // Update Card scheduling fields
+            val updatedCard = currentCard.copy(
+                lastReviewedAt = now,
+                nextReviewAt = updatedFsrsCard.due,
+                updatedAt = now
+            )
+            cardRepository.update(updatedCard)
+        }
+
         _isFlipped.value = false
         _completedCards.value++
 
@@ -64,13 +94,5 @@ class StudyViewModel(
         } else {
             _currentCardIndex.value = _cards.value.size
         }
-    }
-
-    fun getCurrentCard(): Card? {
-        return _cards.value.getOrNull(_currentCardIndex.value)
-    }
-
-    fun isComplete(): Boolean {
-        return _currentCardIndex.value >= _cards.value.size
     }
 }
