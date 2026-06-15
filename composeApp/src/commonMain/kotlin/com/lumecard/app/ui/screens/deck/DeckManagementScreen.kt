@@ -17,6 +17,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.shared.model.Deck
 import kotlinx.coroutines.launch
+import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.i18n.I18nManager
 import org.koin.compose.koinInject
 
@@ -40,16 +41,9 @@ class DeckManagementScreen : Screen {
 
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = { Text(strings.deckManageTitle) },
-                    navigationIcon = {
-                        IconButton(onClick = { navigator.pop() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = strings.actionBack)
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
+                LumeCardTopBar(
+                    title = strings.deckManageTitle,
+                    onBack = { navigator.pop() }
                 )
             },
             floatingActionButton = {
@@ -209,3 +203,5 @@ class DeckManagementScreen : Screen {
         }
     }
 }
+
+

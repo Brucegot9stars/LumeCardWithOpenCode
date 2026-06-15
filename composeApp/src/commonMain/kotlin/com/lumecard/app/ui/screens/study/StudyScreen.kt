@@ -83,20 +83,12 @@ class StudyScreen(
             val screenWidth = maxWidth.value
             val threshold = screenWidth * 0.2f
 
-            Scaffold(
-                topBar = {
-                    TopAppBar(
-                        title = { Text("${strings.actionLearning}: $deckName") },
-                        navigationIcon = {
-                            IconButton(onClick = { navigator.pop() }) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = strings.actionBack)
-                            }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        )
-                    )
-                }
+            topBar = {
+                LumeCardTopBar(
+                    title = "{strings.actionLearning}: deckName",
+                    onBack = { navigator.pop() }
+                )
+            }
             ) { padding ->
                 Column(
                     modifier = Modifier
@@ -392,25 +384,18 @@ class StudyScreen(
 
                         if (isFlipped) {
                             Spacer(modifier = Modifier.height(12.dp))
-                            Text(strings.studyRatingPrompt, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                strings.studyRatingPrompt,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                RatingButton(Modifier.weight(1f), Rating.AGAIN, strings.studyRatingForgot, Icons.Default.Close, MaterialTheme.colorScheme.error) {
-                                    viewModel.rateCard(Rating.AGAIN)
-                                }
-                                RatingButton(Modifier.weight(1f), Rating.HARD, strings.studyRatingHard, null, MaterialTheme.colorScheme.tertiary) {
-                                    viewModel.rateCard(Rating.HARD)
-                                }
-                                RatingButton(Modifier.weight(1f), Rating.GOOD, strings.studyRatingGood, null, MaterialTheme.colorScheme.primary) {
-                                    viewModel.rateCard(Rating.GOOD)
-                                }
-                                RatingButton(Modifier.weight(1f), Rating.EASY, strings.studyRatingEasy, Icons.Default.Check, MaterialTheme.colorScheme.secondary) {
-                                    viewModel.rateCard(Rating.EASY)
-                                }
-                            }
+                            LumeCardRatingBar(
+                                onAgain = { viewModel.rateCard(Rating.AGAIN) },
+                                onHard = { viewModel.rateCard(Rating.HARD) },
+                                onGood = { viewModel.rateCard(Rating.GOOD) },
+                                onEasy = { viewModel.rateCard(Rating.EASY) },
+                            )
                         }
                     }
                 }
@@ -618,24 +603,5 @@ private fun cardTypeName(type: CardType): String {
     }
 }
 
-@Composable
-private fun RatingButton(
-    modifier: Modifier = Modifier,
-    rating: Rating,
-    label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector?,
-    color: Color,
-    onClick: () -> Unit
-) {
-    Button(
-        modifier = modifier,
-        onClick = onClick,
-        colors = ButtonDefaults.buttonColors(containerColor = color)
-    ) {
-        if (icon != null) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(4.dp))
-        }
-        Text(label)
-    }
-}
+
+

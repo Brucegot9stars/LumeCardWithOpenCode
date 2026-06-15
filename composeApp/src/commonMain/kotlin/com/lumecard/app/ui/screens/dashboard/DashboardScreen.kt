@@ -15,6 +15,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.screens.deck.CardListScreen
 import com.lumecard.app.ui.screens.deck.DeckListScreen
 import com.lumecard.app.ui.screens.study.StudyModeScreen
@@ -40,12 +41,8 @@ class DashboardScreen : Screen {
 
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = { Text("LumeCard") },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                LumeCardTopBar(
+                    title = strings.appName,
                 )
             },
             floatingActionButton = {
@@ -292,3 +289,5 @@ class DashboardScreen : Screen {
         }
     }
 }
+
+

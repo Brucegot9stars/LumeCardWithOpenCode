@@ -3,6 +3,7 @@ package com.lumecard.app.ui.theme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 
 private val LightColorScheme = lightColorScheme(
@@ -64,9 +65,18 @@ fun LumeCardTheme(
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography(),
-        content = content
-    )
+    CompositionLocalProvider(
+        LocalSpacing provides LumeCardSpacing(),
+        LocalRadius provides LumeCardRadius(),
+        LocalElevation provides LumeCardElevation(),
+        LocalMotion provides LumeCardMotion(),
+        LocalSemanticColors provides lumeCardSemanticColors(darkTheme),
+        LocalTypography provides LumeCardTypography(),
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography(),
+            content = content,
+        )
+    }
 }

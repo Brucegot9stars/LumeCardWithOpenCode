@@ -17,6 +17,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.ui.screens.deck.DeckViewModel
 import com.lumecard.shared.model.Deck
+import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.i18n.I18nManager
 import org.koin.compose.koinInject
 
@@ -49,16 +50,9 @@ class StudyModeScreen : Screen {
 
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = { Text(strings.modeTitle) },
-                    navigationIcon = {
-                        IconButton(onClick = { navigator.pop() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = strings.actionBack)
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
+                LumeCardTopBar(
+                    title = strings.modeTitle,
+                    onBack = { navigator.pop() }
                 )
             },
             bottomBar = {
@@ -296,3 +290,5 @@ class StudyModeScreen : Screen {
         }
     }
 }
+
+

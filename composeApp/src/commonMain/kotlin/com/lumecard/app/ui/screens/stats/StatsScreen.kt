@@ -16,6 +16,8 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.lumecard.app.ui.components.LumeCardTopBar
+import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.app.i18n.I18nManager
 import org.koin.compose.koinInject
 
@@ -36,16 +38,9 @@ class StatsScreen : Screen {
 
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = { Text(strings.statsTitle) },
-                    navigationIcon = {
-                        IconButton(onClick = { navigator.pop() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = strings.actionBack)
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
+                LumeCardTopBar(
+                    title = strings.statsTitle,
+                    onBack = { navigator.pop() }
                 )
             }
         ) { padding ->
@@ -77,13 +72,13 @@ class StatsScreen : Screen {
                         modifier = Modifier.weight(1f),
                         title = strings.statsTotalDecks,
                         value = "${stats.totalDecks}",
-                        color = Color(0xFF4CAF50)
+                        color = MaterialTheme.colorScheme.primary
                     )
                     StatCard(
                         modifier = Modifier.weight(1f),
                         title = strings.statsTotalReviews,
                         value = "${stats.totalReviews}",
-                        color = Color(0xFFFF9800)
+                        color = MaterialTheme.colorScheme.tertiary
                     )
                 }
 
@@ -187,7 +182,7 @@ class StatsScreen : Screen {
                                 Text(
                                     "${stats.newCardsCount}",
                                     style = MaterialTheme.typography.headlineSmall,
-                                    color = Color(0xFF4CAF50)
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                                 Text(
                                     strings.statsNewCards,
@@ -199,7 +194,7 @@ class StatsScreen : Screen {
                                 Text(
                                     "${stats.dueCardsCount}",
                                     style = MaterialTheme.typography.headlineSmall,
-                                    color = Color(0xFFFF9800)
+                                    color = MaterialTheme.colorScheme.tertiary
                                 )
                                 Text(
                                     strings.statsDueCards,
@@ -211,7 +206,7 @@ class StatsScreen : Screen {
                                 Text(
                                     "${stats.upcomingCardsCount}",
                                     style = MaterialTheme.typography.headlineSmall,
-                                    color = Color(0xFF2196F3)
+                                    color = MaterialTheme.colorScheme.secondary
                                 )
                                 Text(
                                     strings.statsUpcomingCards,
@@ -336,3 +331,5 @@ private fun StatRow(label: String, value: String) {
         )
     }
 }
+
+

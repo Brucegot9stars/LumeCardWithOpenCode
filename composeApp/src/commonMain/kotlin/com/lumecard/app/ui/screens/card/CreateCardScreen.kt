@@ -21,6 +21,7 @@ import com.lumecard.app.ui.components.MarkdownText
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
 import com.lumecard.app.i18n.I18nManager
+import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.i18n.I18nStrings
 import org.koin.compose.koinInject
 
@@ -47,14 +48,10 @@ class CreateCardScreen(
 
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = { Text(if (isEditing) strings.cardEdit else strings.cardCreate) },
-                    navigationIcon = {
-                        IconButton(onClick = { navigator.pop() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = strings.actionBack)
-                        }
-                    },
-                    actions = {
+                LumeCardTopBar(
+                    title = if (isEditing) strings.cardEdit else strings.cardCreate,
+                    onBack = { navigator.pop() },
+                    action = {
                         IconButton(
                             onClick = {
                                 if (isEditing) {
@@ -81,9 +78,6 @@ class CreateCardScreen(
                             Icon(Icons.Default.Check, contentDescription = strings.actionSave)
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
                 )
             }
         ) { padding ->
@@ -407,3 +401,5 @@ private fun typeExampleText(type: CardType, strings: I18nStrings): String = when
     CardType.MARKDOWN -> strings.cardTypeMarkdownExample
     CardType.AI_GENERATED -> strings.cardTypeAiExample
 }
+
+

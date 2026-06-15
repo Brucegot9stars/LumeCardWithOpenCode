@@ -19,6 +19,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.ui.screens.card.CardViewModel
 import com.lumecard.app.ui.screens.card.CreateCardScreen
+import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.screens.study.StudyScreen
 import com.lumecard.shared.model.Card
@@ -48,14 +49,10 @@ class CardListScreen(
 
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = { Text(deckName) },
-                    navigationIcon = {
-                        IconButton(onClick = { navigator.pop() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = strings.actionBack)
-                        }
-                    },
-                    actions = {
+                LumeCardTopBar(
+                    title = deckName,
+                    onBack = { navigator.pop() },
+                    action = {
                         Box {
                             TextButton(onClick = { showSortMenu = true }) {
                                 Text(strings.actionSort, style = MaterialTheme.typography.labelLarge)
@@ -104,9 +101,6 @@ class CardListScreen(
                             Icon(Icons.Default.PlayArrow, contentDescription = strings.actionLearning)
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
                 )
             },
             floatingActionButton = {
@@ -247,3 +241,5 @@ fun CardItem(
         }
     }
 }
+
+

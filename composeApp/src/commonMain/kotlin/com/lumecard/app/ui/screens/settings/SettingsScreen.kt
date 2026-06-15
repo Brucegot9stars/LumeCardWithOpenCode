@@ -32,6 +32,7 @@ import com.lumecard.shared.repository.DeckRepository
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import com.lumecard.app.i18n.AppLocale
+import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.i18n.I18nManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -72,19 +73,15 @@ class SettingsScreen : Screen {
 
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = { Text(strings.settingsTitle) },
-                    navigationIcon = {
-                        IconButton(onClick = { navigator.pop() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = strings.actionBack)
-                        }
-                    },
-                    actions = {
+                LumeCardTopBar(
+                    title = strings.settingsTitle,
+                    onBack = { navigator.pop() },
+                    action = {
                         if (settingsState.isDirty) {
                             FilledTonalButton(
                                 onClick = { settingsViewModel.saveSettings() },
                                 enabled = !settingsState.isSaving,
-                                modifier = Modifier.padding(end = 8.dp)
+                                modifier = Modifier.padding(end = 0.dp)
                             ) {
                                 if (settingsState.isSaving) {
                                     CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
@@ -93,10 +90,7 @@ class SettingsScreen : Screen {
                                 }
                             }
                         }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
+                    }
                 )
             },
             snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -247,7 +241,7 @@ class SettingsScreen : Screen {
                     ListItem(
                         headlineContent = { Text(strings.settingsDarkMode) },
                         supportingContent = { Text(strings.settingsDarkModeDesc) },
-                        leadingContent = { Icon(Icons.Default.Settings, contentDescription = null) },
+                        leadingContent = { Icon(Icons.Default.DarkMode, contentDescription = null) },
                         trailingContent = {
                             Switch(
                                 checked = settingsState.isDarkMode,
@@ -849,3 +843,5 @@ fun SettingsSection(
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
+
+
