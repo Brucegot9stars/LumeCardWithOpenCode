@@ -12,6 +12,7 @@ import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.ReviewLogRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import java.util.UUID
@@ -45,20 +46,24 @@ class StudyViewModel(
     private val _swipeFeedback = MutableStateFlow<String?>(null)
     val swipeFeedback: StateFlow<String?> = _swipeFeedback
 
-    fun loadCards(deckId: String) {
+    fun loadCards(deckIds: List<String>) {
         screenModelScope.launch {
-            cardRepository.getByDeck(deckId).collect { cards ->
-                _cards.value = cards
-                cards.forEach { card ->
-                    if (!_algorithmStates.value.containsKey(card.id)) {
-                        val existing = algorithmStateRepository.get(card.id)
-                        val state = if (existing != null) {
-                            deserializeState(existing)
-                        } else {
-                            algorithm.initCard()
-                        }
-                        _algorithmStates.value = _algorithmStates.value + (card.id to state)
+            val allCards = mutableListOf<Card>()
+            for (deckId in deckIds) {
+                val deckCards = cardRepository.getByDeck(deckId).first()
+                allCards.addAll(deckCards)
+            }
+            val shuffled = allCards.shuffled()
+            _cards.value = shuffled
+            shuffled.forEach { card ->
+                if (!_algorithmStates.value.containsKey(card.id)) {
+                    val existing = algorithmStateRepository.get(card.id)
+                    val state = if (existing != null) {
+                        deserializeState(existing)
+                    } else {
+                        algorithm.initCard()
                     }
+                    _algorithmStates.value = _algorithmStates.value + (card.id to state)
                 }
             }
         }
@@ -87,7 +92,6 @@ class StudyViewModel(
 
         val now = Clock.System.now()
 
-        // Save current position to history before advancing
         _history.value = _history.value + (_currentCardIndex.value to _isFlipped.value)
 
         screenModelScope.launch {

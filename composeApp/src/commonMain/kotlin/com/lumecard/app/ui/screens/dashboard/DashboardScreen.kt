@@ -17,6 +17,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.ui.screens.deck.CardListScreen
 import com.lumecard.app.ui.screens.deck.DeckListScreen
+import com.lumecard.app.ui.screens.study.StudyModeScreen
 import com.lumecard.app.ui.screens.study.StudyScreen
 import com.lumecard.shared.model.Deck
 import org.koin.compose.koinInject
@@ -107,13 +108,11 @@ class DashboardScreen : Screen {
                             QuickActionCard(
                                 modifier = Modifier.weight(1f),
                                 title = "开始学习",
-                                subtitle = if (firstStudyableDeck != null) firstStudyableDeck!!.name else "暂无可用卡片",
+                                subtitle = if (firstStudyableDeck != null) "${decksWithCount.count { it.cardCount > 0 }} 个牌组可用" else "暂无可用卡片",
                                 enabled = firstStudyableDeck != null,
                                 icon = Icons.Default.PlayArrow,
                                 onClick = {
-                                    firstStudyableDeck?.let {
-                                        navigator.push(StudyScreen(it.id, it.name))
-                                    }
+                                    navigator.push(StudyModeScreen())
                                 }
                             )
                             QuickActionCard(

@@ -38,10 +38,12 @@ import org.koin.compose.koinInject
 import kotlin.math.abs
 
 class StudyScreen(
-    private val deckId: String,
+    private val deckIds: List<String>,
     private val deckName: String
 ) : Screen {
-    override val key: ScreenKey = "Study_$deckId"
+    constructor(deckId: String, deckName: String) : this(listOf(deckId), deckName)
+
+    override val key: ScreenKey = "Study_${deckIds.sorted().joinToString("_")}"
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
@@ -59,13 +61,12 @@ class StudyScreen(
         val swipeOffset = remember { Animatable(0f) }
         var isAnimatingOut by remember { mutableStateOf(false) }
 
-        // Velocity tracking
         var lastDragTime by remember { mutableLongStateOf(0L) }
         var lastDragX by remember { mutableFloatStateOf(0f) }
         var velocity by remember { mutableFloatStateOf(0f) }
 
-        LaunchedEffect(deckId) {
-            viewModel.loadCards(deckId)
+        LaunchedEffect(deckIds) {
+            viewModel.loadCards(deckIds)
         }
 
         LaunchedEffect(currentCard) {
@@ -147,12 +148,14 @@ class StudyScreen(
                             }
                         }
                     } else if (currentCard != null) {
+                        val isMarkdownType = currentCard.type == CardType.MARKDOWN ||
+                                currentCard.type == CardType.AI_GENERATED
+
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f)
                         ) {
-                            // Stacked card preview (next card behind)
                             if (nextCard != null && !isAnimatingOut) {
                                 Card(
                                     modifier = Modifier
@@ -169,9 +172,7 @@ class StudyScreen(
                                     )
                                 ) {
                                     Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(20.dp),
+                                        modifier = Modifier.fillMaxSize().padding(20.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         CardContent(card = nextCard, isFlipped = false)
@@ -179,7 +180,6 @@ class StudyScreen(
                                 }
                             }
 
-                            // Current card (interactive)
                             Card(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -256,14 +256,29 @@ class StudyScreen(
                                     }
                                 )
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(20.dp)
-                                        .verticalScroll(rememberScrollState()),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CardContent(card = currentCard, isFlipped = isFlipped)
+                                if (isMarkdownType) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(horizontal = 20.dp, vertical = 12.dp)
+                                            .verticalScroll(rememberScrollState()),
+                                        contentAlignment = Alignment.TopStart
+                                    ) {
+                                        MarkdownText(
+                                            markdown = if (isFlipped) currentCard.back else currentCard.front,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(20.dp)
+                                            .verticalScroll(rememberScrollState()),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CardContent(card = currentCard, isFlipped = isFlipped)
+                                    }
                                 }
                             }
 
@@ -327,7 +342,6 @@ class StudyScreen(
                             }
                         }
                     } else {
-                        // Learning complete
                         Card(modifier = Modifier.fillMaxWidth().weight(1f)) {
                             Column(
                                 modifier = Modifier.fillMaxWidth().padding(32.dp),
@@ -422,17 +436,10 @@ private fun CardContent(card: Card, isFlipped: Boolean) {
             verticalArrangement = Arrangement.Center
         ) {
             when (card.type) {
-                CardType.BASIC, CardType.MARKDOWN, CardType.AI_GENERATED -> {
+                CardType.BASIC, CardType.REVERSED, CardType.MARKDOWN, CardType.AI_GENERATED -> {
                     MarkdownText(
                         markdown = if (isFlipped) card.back else card.front,
                         modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center
-                    )
-                }
-                CardType.REVERSED -> {
-                    Text(
-                        if (isFlipped) card.front else card.back,
-                        style = MaterialTheme.typography.headlineSmall,
                         textAlign = TextAlign.Center
                     )
                 }
