@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
@@ -53,9 +54,15 @@ class StudyScreen(
         val completedCards by viewModel.completedCards.collectAsState()
 
         val currentCard = cards.getOrNull(currentIndex)
+        val nextCard = cards.getOrNull(currentIndex + 1)
         val scope = rememberCoroutineScope()
         val swipeOffset = remember { Animatable(0f) }
         var isAnimatingOut by remember { mutableStateOf(false) }
+
+        // Velocity tracking
+        var lastDragTime by remember { mutableLongStateOf(0L) }
+        var lastDragX by remember { mutableFloatStateOf(0f) }
+        var velocity by remember { mutableFloatStateOf(0f) }
 
         LaunchedEffect(deckId) {
             viewModel.loadCards(deckId)
@@ -68,8 +75,7 @@ class StudyScreen(
 
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val screenWidth = maxWidth.value
-            val threshold = screenWidth * 0.3f
-            val screenHeight = maxHeight.value
+            val threshold = screenWidth * 0.2f
 
             Scaffold(
                 topBar = {
@@ -108,40 +114,107 @@ class StudyScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    currentCard?.let { card ->
+                    if (cards.isEmpty()) {
+                        Card(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                            Box(
+                                modifier = Modifier.fillMaxSize().padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        Icons.Default.PlayArrow,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(64.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                                    )
+                                    Spacer(Modifier.height(16.dp))
+                                    Text(
+                                        "暂无可学习卡片",
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        "去创建第一张卡片吧",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(Modifier.height(24.dp))
+                                    Button(onClick = { navigator.pop() }) {
+                                        Text("返回")
+                                    }
+                                }
+                            }
+                        }
+                    } else if (currentCard != null) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f)
                         ) {
+                            // Stacked card preview (next card behind)
+                            if (nextCard != null && !isAnimatingOut) {
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 12.dp, start = 4.dp, end = 4.dp)
+                                        .graphicsLayer {
+                                            scaleX = 0.95f
+                                            scaleY = 0.95f
+                                        }
+                                        .zIndex(0f),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                    )
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(20.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CardContent(card = nextCard, isFlipped = false)
+                                    }
+                                }
+                            }
+
+                            // Current card (interactive)
                             Card(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .graphicsLayer {
                                         translationX = swipeOffset.value
-                                        rotationZ = swipeOffset.value / 20f
-                                        scaleX = 1f - (abs(swipeOffset.value) / (screenWidth * 5f)).coerceIn(0f, 0.15f)
-                                        scaleY = 1f - (abs(swipeOffset.value) / (screenWidth * 5f)).coerceIn(0f, 0.15f)
+                                        rotationZ = swipeOffset.value / 25f
+                                        val scaleReduction = (abs(swipeOffset.value) / (screenWidth * 8f)).coerceIn(0f, 0.1f)
+                                        scaleX = 1f - scaleReduction
+                                        scaleY = 1f - scaleReduction
                                     }
-                                    .pointerInput(card.id) {
+                                    .zIndex(1f)
+                                    .pointerInput(currentCard.id) {
                                         detectHorizontalDragGestures(
                                             onDragStart = {
                                                 if (isAnimatingOut) return@detectHorizontalDragGestures
+                                                lastDragTime = System.currentTimeMillis()
+                                                lastDragX = 0f
+                                                velocity = 0f
                                             },
                                             onDragEnd = {
                                                 if (isAnimatingOut) return@detectHorizontalDragGestures
                                                 val offset = swipeOffset.value
-                                                if (abs(offset) > threshold) {
+                                                val velocityTrigger = abs(velocity) > 800f
+                                                val distanceTrigger = abs(offset) > threshold
+                                                if (distanceTrigger || velocityTrigger) {
                                                     isAnimatingOut = true
-                                                    val target = if (offset > 0) screenWidth * 1.5f else -screenWidth * 1.5f
+                                                    val target = if (offset > 0 || velocity > 0) screenWidth * 1.5f else -screenWidth * 1.5f
                                                     scope.launch {
                                                         swipeOffset.animateTo(
                                                             targetValue = target,
-                                                            animationSpec = tween(250, easing = FastOutLinearInEasing)
+                                                            animationSpec = tween(200, easing = FastOutLinearInEasing)
                                                         )
                                                         swipeOffset.snapTo(0f)
                                                         isAnimatingOut = false
-                                                        if (offset > 0) {
+                                                        if (offset > 0 || velocity > 0) {
                                                             if (viewModel.canGoBack) viewModel.goBack()
                                                         } else {
                                                             viewModel.rateCard(Rating.EASY)
@@ -161,6 +234,10 @@ class StudyScreen(
                                             onHorizontalDrag = { change, dragAmount ->
                                                 if (isAnimatingOut) return@detectHorizontalDragGestures
                                                 change.consume()
+                                                val now = System.currentTimeMillis()
+                                                val dt = (now - lastDragTime).coerceAtLeast(1)
+                                                velocity = dragAmount / dt * 1000f
+                                                lastDragTime = now
                                                 val newOffset = (swipeOffset.value + dragAmount)
                                                     .coerceIn(-screenWidth * 2f, screenWidth * 2f)
                                                 scope.launch {
@@ -186,7 +263,7 @@ class StudyScreen(
                                         .verticalScroll(rememberScrollState()),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    CardContent(card = card, isFlipped = isFlipped)
+                                    CardContent(card = currentCard, isFlipped = isFlipped)
                                 }
                             }
 
@@ -198,6 +275,7 @@ class StudyScreen(
                                     modifier = Modifier
                                         .align(Alignment.CenterEnd)
                                         .padding(16.dp)
+                                        .zIndex(2f)
                                         .graphicsLayer {
                                             alpha = leftAlpha
                                             scaleX = 1f + leftAlpha * 0.5f
@@ -225,6 +303,7 @@ class StudyScreen(
                                     modifier = Modifier
                                         .align(Alignment.CenterStart)
                                         .padding(16.dp)
+                                        .zIndex(2f)
                                         .graphicsLayer {
                                             alpha = rightAlpha
                                             scaleX = 1f + rightAlpha * 0.5f
@@ -247,7 +326,8 @@ class StudyScreen(
                                 }
                             }
                         }
-                    } ?: run {
+                    } else {
+                        // Learning complete
                         Card(modifier = Modifier.fillMaxWidth().weight(1f)) {
                             Column(
                                 modifier = Modifier.fillMaxWidth().padding(32.dp),

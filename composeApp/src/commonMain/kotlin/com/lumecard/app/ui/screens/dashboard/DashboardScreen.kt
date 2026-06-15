@@ -30,7 +30,10 @@ class DashboardScreen : Screen {
         val navigator = LocalNavigator.currentOrThrow
         val viewModel: DashboardViewModel = koinInject()
         val decks by viewModel.decks.collectAsState()
+        val decksWithCount by viewModel.decksWithCount.collectAsState()
         val isLoading by viewModel.isLoading.collectAsState()
+
+        val firstStudyableDeck = decksWithCount.firstOrNull { it.cardCount > 0 }?.deck
 
         Scaffold(
             topBar = {
@@ -81,8 +84,9 @@ class DashboardScreen : Screen {
                                     horizontalArrangement = Arrangement.SpaceEvenly
                                 ) {
                                     StatItem("牌组", "${decks.size}")
-                                    StatItem("待复习", "${decks.size}")
-                                    StatItem("新卡片", "0")
+                                    val totalCards = decksWithCount.sumOf { it.cardCount }
+                                    StatItem("总卡片", "$totalCards")
+                                    StatItem("有卡片牌组", "${decksWithCount.count { it.cardCount > 0 }}")
                                 }
                             }
                         }
@@ -103,10 +107,12 @@ class DashboardScreen : Screen {
                             QuickActionCard(
                                 modifier = Modifier.weight(1f),
                                 title = "开始学习",
+                                subtitle = if (firstStudyableDeck != null) firstStudyableDeck!!.name else "暂无可用卡片",
+                                enabled = firstStudyableDeck != null,
                                 icon = Icons.Default.PlayArrow,
                                 onClick = {
-                                    if (decks.isNotEmpty()) {
-                                        navigator.push(StudyScreen(decks.first().id, decks.first().name))
+                                    firstStudyableDeck?.let {
+                                        navigator.push(StudyScreen(it.id, it.name))
                                     }
                                 }
                             )
@@ -152,10 +158,16 @@ class DashboardScreen : Screen {
                             }
                         }
                     } else {
-                        items(decks) { deck ->
+                        items(decksWithCount) { item ->
                             DeckItem(
-                                deck = deck,
-                                onClick = { navigator.push(StudyScreen(deck.id, deck.name)) }
+                                deck = item.deck,
+                                cardCount = item.cardCount,
+                                onClick = { navigator.push(CardListScreen(item.deck.id, item.deck.name)) },
+                                onStudy = {
+                                    if (item.cardCount > 0) {
+                                        navigator.push(StudyScreen(item.deck.id, item.deck.name))
+                                    }
+                                }
                             )
                         }
                     }
@@ -183,12 +195,15 @@ class DashboardScreen : Screen {
     private fun QuickActionCard(
         modifier: Modifier = Modifier,
         title: String,
+        subtitle: String? = null,
+        enabled: Boolean = true,
         icon: androidx.compose.ui.graphics.vector.ImageVector,
         onClick: () -> Unit
     ) {
         Card(
             modifier = modifier,
-            onClick = onClick
+            onClick = onClick,
+            enabled = enabled
         ) {
             Column(
                 modifier = Modifier
@@ -200,13 +215,23 @@ class DashboardScreen : Screen {
                     icon,
                     contentDescription = null,
                     modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = if (enabled) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     title,
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (enabled) MaterialTheme.colorScheme.onSurface
+                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 )
+                if (subtitle != null) {
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
             }
         }
     }
@@ -214,7 +239,9 @@ class DashboardScreen : Screen {
     @Composable
     private fun DeckItem(
         deck: Deck,
-        onClick: () -> Unit
+        cardCount: Int,
+        onClick: () -> Unit,
+        onStudy: () -> Unit
     ) {
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -236,6 +263,11 @@ class DashboardScreen : Screen {
                         deck.name,
                         style = MaterialTheme.typography.titleMedium
                     )
+                    Text(
+                        "$cardCount 张卡片",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     val desc = deck.description
                     if (desc != null) {
                         Text(
@@ -245,11 +277,14 @@ class DashboardScreen : Screen {
                         )
                     }
                 }
-                Icon(
-                    Icons.Default.PlayArrow,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
+                IconButton(onClick = onStudy, enabled = cardCount > 0) {
+                    Icon(
+                        Icons.Default.PlayArrow,
+                        contentDescription = "学习",
+                        tint = if (cardCount > 0) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                    )
+                }
             }
         }
     }

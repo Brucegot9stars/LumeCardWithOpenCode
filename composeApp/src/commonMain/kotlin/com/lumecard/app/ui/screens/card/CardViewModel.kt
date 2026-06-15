@@ -11,6 +11,7 @@ import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 
@@ -27,6 +28,8 @@ class CardViewModel(
 
     private val _sortConfig = MutableStateFlow(SortConfig())
     val sortConfig: StateFlow<SortConfig> = _sortConfig
+
+    private var currentDeckId: String? = null
 
     fun loadSortPref() {
         screenModelScope.launch {
@@ -48,10 +51,13 @@ class CardViewModel(
     }
 
     fun loadCards(deckId: String) {
+        currentDeckId = deckId
         screenModelScope.launch {
             _isLoading.value = true
-            cardRepository.getByDeck(deckId).collect { cards ->
-                _cards.value = sortCards(cards, _sortConfig.value)
+            combine(cardRepository.getByDeck(deckId), _sortConfig) { cards, sort ->
+                sortCards(cards, sort)
+            }.collect { sorted ->
+                _cards.value = sorted
                 _isLoading.value = false
             }
         }
@@ -62,9 +68,18 @@ class CardViewModel(
             SortField.NAME -> cards.sortedBy { it.front.lowercase() }
             SortField.CREATED_AT -> cards.sortedBy { it.createdAt }
             SortField.UPDATED_AT -> cards.sortedBy { it.updatedAt }
-            SortField.STUDY_TIME -> cards // placeholder
+            SortField.STUDY_TIME -> cards
         }
         return if (config.order == SortOrder.DESC) sorted.reversed() else sorted
+    }
+
+    fun getCardCount(deckId: String, onResult: (Int) -> Unit) {
+        screenModelScope.launch {
+            cardRepository.getByDeck(deckId).collect { cards ->
+                onResult(cards.size)
+                return@collect
+            }
+        }
     }
 
     fun createCard(
@@ -86,7 +101,6 @@ class CardViewModel(
                 tags = tags
             )
             cardRepository.insert(card)
-            loadCards(deckId)
         }
     }
 
@@ -106,7 +120,6 @@ class CardViewModel(
                 updatedAt = Clock.System.now()
             )
             cardRepository.update(updated)
-            loadCards(card.deckId)
         }
     }
 

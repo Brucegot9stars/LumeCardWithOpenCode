@@ -31,6 +31,7 @@ class DeckListScreen : Screen {
         val decks by viewModel.decks.collectAsState()
         val isLoading by viewModel.isLoading.collectAsState()
         val sortConfig by viewModel.sortConfig.collectAsState()
+        val deckCardCounts by viewModel.deckCardCounts.collectAsState()
         val scope = rememberCoroutineScope()
         val snackbarHostState = remember { SnackbarHostState() }
 
@@ -139,6 +140,7 @@ class DeckListScreen : Screen {
                         )
                     }
                     items(decks, key = { it.id }) { deck ->
+                        val cardCount = deckCardCounts[deck.id] ?: 0
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             onClick = {
@@ -161,6 +163,11 @@ class DeckListScreen : Screen {
                                         deck.name,
                                         style = MaterialTheme.typography.titleMedium
                                     )
+                                    Text(
+                                        "$cardCount 张卡片",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                     val desc = deck.description
                                     if (!desc.isNullOrBlank()) {
                                         Text(
@@ -171,11 +178,18 @@ class DeckListScreen : Screen {
                                     }
                                 }
                                 Row {
-                                    IconButton(onClick = {
-                                        navigator.push(StudyScreen(deck.id, deck.name))
-                                    }) {
-                                        Icon(Icons.Default.PlayArrow, contentDescription = "学习",
-                                            tint = MaterialTheme.colorScheme.primary)
+                                    IconButton(
+                                        onClick = {
+                                            navigator.push(StudyScreen(deck.id, deck.name))
+                                        },
+                                        enabled = cardCount > 0
+                                    ) {
+                                        Icon(
+                                            Icons.Default.PlayArrow,
+                                            contentDescription = "学习",
+                                            tint = if (cardCount > 0) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                                        )
                                     }
                                     IconButton(onClick = { editingDeck = deck }) {
                                         Icon(Icons.Default.Edit, contentDescription = "编辑",
