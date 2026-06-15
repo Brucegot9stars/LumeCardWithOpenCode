@@ -8,12 +8,16 @@ import com.lumecard.shared.database.AndroidContextHolder
 
 actual fun applyAppLocale(locale: AppLocale) {
     if (locale == AppLocale.SYSTEM) return
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        val context = AndroidContextHolder.context
-        val localeManager = context.getSystemService(Context.LOCALE_SERVICE) as LocaleManager
-        localeManager.applicationLocales = android.os.LocaleList(
-            java.util.Locale.forLanguageTag(locale.code)
-        )
+    try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val context = AndroidContextHolder.context ?: return
+            val localeManager = context.getSystemService(Context.LOCALE_SERVICE) as LocaleManager
+            localeManager.applicationLocales = android.os.LocaleList(
+                java.util.Locale.forLanguageTag(locale.code)
+            )
+        }
+    } catch (_: Exception) {
+        // Silently ignore locale setting failures
     }
 }
 
@@ -27,3 +31,4 @@ actual fun detectSystemLocaleTag(): String {
         config.locale.toLanguageTag()
     }
 }
+
