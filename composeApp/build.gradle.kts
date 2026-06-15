@@ -8,12 +8,12 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 kotlin {
     androidTarget {
-        compilations.all {
-            kotlinOptions {
-                jvmTarget = "17"
-            }
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
         }
     }
 
@@ -61,12 +61,12 @@ kotlin {
 
 android {
     namespace = "com.lumecard.app"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.lumecard.app"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
     }

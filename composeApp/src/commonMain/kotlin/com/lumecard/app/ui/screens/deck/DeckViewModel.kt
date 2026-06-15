@@ -89,18 +89,14 @@ class DeckViewModel(
     }
 
     suspend fun createDeck(name: String, description: String?) {
-        val existingDecks = deckRepository.getAll().let { flow ->
-            var result: List<Deck> = emptyList()
-            flow.collect { result = it; return@collect }
-            result
-        }
+        val existingCount = _decks.value.size
         val deck = Deck(
             id = "deck_${UUID.randomUUID().toString().take(8)}",
             knowledgeBaseId = "default",
             name = name,
             description = description,
-            color = deckColors[existingDecks.size % deckColors.size],
-            icon = deckIcons[existingDecks.size % deckIcons.size],
+            color = deckColors[existingCount % deckColors.size],
+            icon = deckIcons[existingCount % deckIcons.size],
             createdAt = kotlinx.datetime.Clock.System.now(),
             updatedAt = kotlinx.datetime.Clock.System.now()
         )

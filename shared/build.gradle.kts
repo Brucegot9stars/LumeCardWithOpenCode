@@ -5,12 +5,16 @@ plugins {
     id("app.cash.sqldelight")
 }
 
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 kotlin {
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     androidTarget {
-        compilations.all {
-            kotlinOptions {
-                jvmTarget = "17"
-            }
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
         }
     }
 
@@ -52,7 +56,7 @@ kotlin {
 
 android {
     namespace = "com.lumecard.shared"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 26

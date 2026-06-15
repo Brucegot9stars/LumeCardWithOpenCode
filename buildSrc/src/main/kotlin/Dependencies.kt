@@ -1,6 +1,6 @@
 object Versions {
     const val kotlin = "2.0.20"
-    const val compose = "1.7.0"
+    const val compose = "1.7.3"
     const val sqlDelight = "2.0.2"
     const val ktor = "2.3.12"
     const val koin = "3.5.6"
