@@ -339,16 +339,100 @@ class StudyScreen(
                             }
                         }
                     } else {
-                        Card(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                        // ── Study Complete ─────────────────────────────
+                        Card(
+                            modifier = Modifier.fillMaxWidth().weight(1f),
+                            shape = LumeCardTheme.radius.card,
+                        ) {
                             Column(
-                                modifier = Modifier.fillMaxWidth().padding(32.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
-                                Text(strings.studyComplete, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(strings.studyCompleteMsg(completedCards), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                // Celebration ring
+                                ProgressRing(
+                                    progress = 1f,
+                                    size = 88.dp,
+                                    strokeWidth = 7.dp,
+                                    trackColor = LumeCardTheme.semanticColors.progressTrack,
+                                    progressColor = LumeCardTheme.semanticColors.progressFill,
+                                    showPercentage = false,
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                // Large checkmark overlay
+                                Surface(
+                                    shape = LumeCardTheme.radius.pill,
+                                    color = LumeCardTheme.semanticColors.progressFill.copy(alpha = 0.15f),
+                                    modifier = Modifier.size(64.dp),
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(32.dp),
+                                            tint = LumeCardTheme.semanticColors.progressFill,
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(20.dp))
+
+                                Text(
+                                    strings.studyComplete,
+                                    style = MaterialTheme.typography.heading2,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    strings.studyCompleteMsg(completedCards),
+                                    style = MaterialTheme.typography.body,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+
                                 Spacer(modifier = Modifier.height(24.dp))
-                                Button(onClick = { navigator.pop() }) { Text(strings.actionBack) }
+
+                                // Stats row
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceEvenly,
+                                ) {
+                                    CompletionStat(
+                                        value = "$completedCards",
+                                        label = "Reviewed",
+                                    )
+                                    CompletionStat(
+                                        value = "${(completedCards * 15).coerceAtMost(999)}m",
+                                        label = "Est. time",
+                                    )
+                                    CompletionStat(
+                                        value = "${(completedCards * 75 + 100).coerceAtMost(999)}",
+                                        label = "XP earned",
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(32.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    OutlinedButton(
+                                        onClick = { navigator.pop() },
+                                        modifier = Modifier.weight(1f),
+                                    ) {
+                                        Text(strings.actionDone)
+                                    }
+                                    Button(
+                                        onClick = { navigator.pop() },
+                                        modifier = Modifier.weight(1f),
+                                    ) {
+                                        Text(strings.dashStartLearning)
+                                    }
+                                }
                             }
                         }
                     }
@@ -602,6 +686,23 @@ private fun cardTypeName(type: CardType): String {
         CardType.AI_GENERATED -> strings.studyCardTypeAi
     }
 }
-
-
+@Composable
+private fun CompletionStat(
+    value: String,
+    label: String,
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            value,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Text(
+            label,
+            style = MaterialTheme.typography.caption,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
 

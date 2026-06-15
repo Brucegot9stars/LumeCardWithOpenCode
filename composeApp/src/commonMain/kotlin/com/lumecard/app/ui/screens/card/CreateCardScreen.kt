@@ -23,6 +23,7 @@ import com.lumecard.shared.model.CardType
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.i18n.I18nStrings
+import com.lumecard.app.ui.theme.LumeCardTheme
 import org.koin.compose.koinInject
 
 class CreateCardScreen(
@@ -85,12 +86,13 @@ class CreateCardScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(16.dp)
+                    .padding(LumeCardTheme.spacing.md)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
+                    shape = LumeCardTheme.radius.card,
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer
                     )
@@ -401,5 +403,7 @@ private fun typeExampleText(type: CardType, strings: I18nStrings): String = when
     CardType.MARKDOWN -> strings.cardTypeMarkdownExample
     CardType.AI_GENERATED -> strings.cardTypeAiExample
 }
+
+
 
 

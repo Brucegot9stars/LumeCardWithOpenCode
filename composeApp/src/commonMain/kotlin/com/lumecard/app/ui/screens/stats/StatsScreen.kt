@@ -48,9 +48,9 @@ class StatsScreen : Screen {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(16.dp)
+                    .padding(LumeCardTheme.spacing.md)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(LumeCardTheme.spacing.md)
             ) {
                 Text(
                     strings.statsOverview,
@@ -331,5 +331,6 @@ private fun StatRow(label: String, value: String) {
         )
     }
 }
+
 
 

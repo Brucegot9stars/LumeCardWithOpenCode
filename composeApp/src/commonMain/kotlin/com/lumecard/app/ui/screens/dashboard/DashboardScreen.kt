@@ -1,26 +1,37 @@
 package com.lumecard.app.ui.screens.dashboard
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.lumecard.app.ui.components.CompactProgressBar
 import com.lumecard.app.ui.components.LumeCardTopBar
+import com.lumecard.app.ui.components.ProgressRing
 import com.lumecard.app.ui.screens.deck.CardListScreen
 import com.lumecard.app.ui.screens.deck.DeckListScreen
 import com.lumecard.app.ui.screens.study.StudyModeScreen
 import com.lumecard.app.ui.screens.study.StudyScreen
 import com.lumecard.app.i18n.I18nManager
+import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.shared.model.Deck
 import org.koin.compose.koinInject
 
@@ -33,22 +44,27 @@ class DashboardScreen : Screen {
         val navigator = LocalNavigator.currentOrThrow
         val viewModel: DashboardViewModel = koinInject()
         val strings = koinInject<I18nManager>().strings
+        val spacing = LumeCardTheme.spacing
+        val radius = LumeCardTheme.radius
+        val semanticColors = LumeCardTheme.semanticColors
+
         val decks by viewModel.decks.collectAsState()
         val decksWithCount by viewModel.decksWithCount.collectAsState()
         val isLoading by viewModel.isLoading.collectAsState()
 
         val firstStudyableDeck = decksWithCount.firstOrNull { it.cardCount > 0 }?.deck
+        val studyableCount = decksWithCount.count { it.cardCount > 0 }
+        val totalCards = decksWithCount.sumOf { it.cardCount }
+        val overallProgress = if (decks.isNotEmpty()) studyableCount.toFloat() / decks.size.toFloat() else 0f
 
         Scaffold(
             topBar = {
-                LumeCardTopBar(
-                    title = strings.appName,
-                )
+                LumeCardTopBar(title = strings.appName)
             },
             floatingActionButton = {
                 FloatingActionButton(
                     onClick = { navigator.push(DeckListScreen()) },
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = MaterialTheme.colorScheme.primary,
                 ) {
                     Icon(Icons.Default.Add, contentDescription = strings.dashManageDecks)
                 }
@@ -63,111 +79,131 @@ class DashboardScreen : Screen {
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding)
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .padding(horizontal = spacing.md),
+                    verticalArrangement = Arrangement.spacedBy(spacing.section),
                 ) {
-                    item {
+                    // ── Today Study Card ──────────────────────────────────
+                    item(key = "overview") {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
+                            shape = radius.card,
                             colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer
-                            )
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                            ),
                         ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    strings.dashTodayStudy,
-                                    style = MaterialTheme.typography.titleLarge
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(spacing.md),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                // Progress ring
+                                ProgressRing(
+                                    progress = overallProgress,
+                                    size = 80.dp,
+                                    strokeWidth = 7.dp,
+                                    trackColor = MaterialTheme.colorScheme.outlineVariant,
+                                    progressColor = MaterialTheme.colorScheme.primary,
                                 )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceEvenly
-                                ) {
-                                    StatItem(strings.dashDecksLabel, "${decks.size}")
-                                    val totalCards = decksWithCount.sumOf { it.cardCount }
-                                    StatItem(strings.dashTotalCards, "$totalCards")
-                                    StatItem(strings.dashDecksWithCards, "${decksWithCount.count { it.cardCount > 0 }}")
+
+                                Spacer(modifier = Modifier.width(spacing.md))
+
+                                // Stats column
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        strings.dashTodayStudy,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                    Spacer(modifier = Modifier.height(spacing.sm))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                    ) {
+                                        StatItem(strings.dashDecksLabel, "${decks.size}")
+                                        StatItem(strings.dashTotalCards, "$totalCards")
+                                        StatItem(strings.dashDecksWithCards, "$studyableCount")
+                                    }
                                 }
                             }
                         }
                     }
 
-                    item {
-                        Text(
-                            strings.dashQuickActions,
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                    }
+                    // ── Quick Actions ─────────────────────────────────────
+                    item(key = "quickActions") {
+                        Column {
+                            Text(
+                                strings.dashQuickActions,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
+                            )
 
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            QuickActionCard(
-                                modifier = Modifier.weight(1f).fillMaxHeight(),
-                                title = strings.dashStartLearning,
-                                subtitle = if (firstStudyableDeck != null) strings.dashDecksAvailable(decksWithCount.count { it.cardCount > 0 }) else strings.dashNoCardsAvailable,
-                                enabled = firstStudyableDeck != null,
-                                icon = Icons.Default.PlayArrow,
-                                onClick = {
-                                    navigator.push(StudyModeScreen())
-                                }
-                            )
-                            QuickActionCard(
-                                modifier = Modifier.weight(1f).fillMaxHeight(),
-                                title = strings.dashManageDecks,
-                                icon = Icons.AutoMirrored.Filled.List,
-                                onClick = { navigator.push(DeckListScreen()) }
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                            ) {
+                                QuickActionCard(
+                                    modifier = Modifier.weight(1f),
+                                    title = strings.dashStartLearning,
+                                    subtitle = if (firstStudyableDeck != null) strings.dashDecksAvailable(studyableCount) else strings.dashNoCardsAvailable,
+                                    enabled = firstStudyableDeck != null,
+                                    icon = Icons.Default.PlayArrow,
+                                    onClick = { navigator.push(StudyModeScreen()) },
+                                )
+                                QuickActionCard(
+                                    modifier = Modifier.weight(1f),
+                                    title = strings.dashManageDecks,
+                                    icon = Icons.AutoMirrored.Filled.List,
+                                    onClick = { navigator.push(DeckListScreen()) },
+                                )
+                            }
                         }
                     }
 
-                    item {
+                    // ── My Decks Header ───────────────────────────────────
+                    item(key = "decksHeader") {
                         Text(
                             "${strings.dashMyDecks} (${decks.size})",
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
                         )
                     }
 
+                    // ── Decks List ────────────────────────────────────────
                     if (decks.isEmpty()) {
-                        item {
-                            Card(modifier = Modifier.fillMaxWidth()) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(32.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(
-                                            strings.dashBeginJourney,
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            strings.dashJourneyDesc,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
+                        item(key = "empty") {
+                            EmptyDecksCard(strings.dashBeginJourney, strings.dashJourneyDesc, strings.dashCreateFirstDeck) {
+                                navigator.push(DeckListScreen())
                             }
                         }
                     } else {
-                        items(decksWithCount) { item ->
-                            DeckItem(
-                                deck = item.deck,
-                                cardCount = item.cardCount,
-                                onClick = { navigator.push(CardListScreen(item.deck.id, item.deck.name)) },
-                                onStudy = {
-                                    if (item.cardCount > 0) {
-                                        navigator.push(StudyScreen(item.deck.id, item.deck.name))
-                                    }
-                                }
-                            )
+                        itemsIndexed(
+                            items = decksWithCount,
+                            key = { _, item -> item.deck.id },
+                        ) { index, item ->
+                            AnimatedItem(delayMs = index * 60) {
+                                DeckItem(
+                                    deck = item.deck,
+                                    cardCount = item.cardCount,
+                                    progress = if (item.cardCount > 0) 0.6f else 0f,
+                                    onClick = { navigator.push(CardListScreen(item.deck.id, item.deck.name)) },
+                                    onStudy = {
+                                        if (item.cardCount > 0) {
+                                            navigator.push(StudyScreen(item.deck.id, item.deck.name))
+                                        }
+                                    },
+                                )
+                            }
                         }
+                    }
+
+                    // Bottom spacing
+                    item(key = "bottomSpacer") {
+                        Spacer(modifier = Modifier.height(spacing.xxl))
                     }
                 }
             }
@@ -179,12 +215,14 @@ class DashboardScreen : Screen {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 value,
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.primary
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
             )
             Text(
                 label,
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
@@ -195,40 +233,57 @@ class DashboardScreen : Screen {
         title: String,
         subtitle: String? = null,
         enabled: Boolean = true,
-        icon: androidx.compose.ui.graphics.vector.ImageVector,
-        onClick: () -> Unit
+        icon: ImageVector,
+        onClick: () -> Unit,
     ) {
+        val spacing = LumeCardTheme.spacing
+        val radius = LumeCardTheme.radius
+
         Card(
             modifier = modifier,
+            shape = radius.card,
             onClick = onClick,
-            enabled = enabled
+            enabled = enabled,
+            colors = CardDefaults.cardColors(
+                containerColor = if (enabled) MaterialTheme.colorScheme.surface
+                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            ),
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
+                    .fillMaxWidth()
+                    .padding(spacing.md),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
             ) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(32.dp),
-                    tint = if (enabled) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    shape = radius.pill,
+                    color = if (enabled) MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier.size(40.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            icon,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                            tint = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer
+                                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(spacing.sm))
                 Text(
                     title,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
                     color = if (enabled) MaterialTheme.colorScheme.onSurface
-                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                 )
                 if (subtitle != null) {
                     Text(
                         subtitle,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        style = MaterialTheme.typography.caption,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     )
                 }
             }
@@ -239,55 +294,174 @@ class DashboardScreen : Screen {
     private fun DeckItem(
         deck: Deck,
         cardCount: Int,
+        progress: Float,
         onClick: () -> Unit,
-        onStudy: () -> Unit
+        onStudy: () -> Unit,
     ) {
         val strings = koinInject<I18nManager>().strings
+        val spacing = LumeCardTheme.spacing
+        val radius = LumeCardTheme.radius
+
         Card(
             modifier = Modifier.fillMaxWidth(),
-            onClick = onClick
+            shape = radius.card,
+            onClick = onClick,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+            ),
         ) {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(spacing.md),
             ) {
-                Text(
-                    deck.icon,
-                    style = MaterialTheme.typography.headlineMedium
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        deck.name,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        strings.dashCardsCount(cardCount),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    val desc = deck.description
-                    if (desc != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // Deck emoji with container
+                    Surface(
+                        shape = radius.button,
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.size(44.dp),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                deck.icon,
+                                style = MaterialTheme.typography.headlineSmall,
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(spacing.md))
+
+                    // Deck info
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            desc,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            deck.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                        )
+                        Text(
+                            strings.dashCardsCount(cardCount),
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        if (cardCount > 0) {
+                            Spacer(modifier = Modifier.height(spacing.xs))
+                            CompactProgressBar(
+                                progress = progress,
+                                modifier = Modifier.fillMaxWidth().height(3.dp),
+                                trackColor = MaterialTheme.colorScheme.outlineVariant,
+                                progressColor = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(spacing.sm))
+
+                    // Study button
+                    FilledTonalIconButton(
+                        onClick = onStudy,
+                        enabled = cardCount > 0,
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Icon(
+                            Icons.Default.PlayArrow,
+                            contentDescription = strings.actionLearning,
+                            modifier = Modifier.size(20.dp),
                         )
                     }
                 }
-                IconButton(onClick = onStudy, enabled = cardCount > 0) {
-                    Icon(
-                        Icons.Default.PlayArrow,
-                        contentDescription = strings.actionLearning,
-                        tint = if (cardCount > 0) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                    )
+            }
+        }
+    }
+
+    @Composable
+    private fun EmptyDecksCard(
+        title: String,
+        description: String,
+        ctaLabel: String,
+        onCta: () -> Unit,
+    ) {
+        val spacing = LumeCardTheme.spacing
+        val radius = LumeCardTheme.radius
+        val semanticColors = LumeCardTheme.semanticColors
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = radius.card,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+            ),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(spacing.xl),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                // Empty state icon
+                Surface(
+                    shape = radius.pill,
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                    modifier = Modifier.size(64.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Default.Star,
+                            contentDescription = null,
+                            modifier = Modifier.size(28.dp),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(spacing.md))
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(modifier = Modifier.height(spacing.sm))
+                Text(
+                    description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(spacing.lg))
+                FilledTonalButton(onClick = onCta) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(spacing.sm))
+                    Text(ctaLabel)
                 }
             }
         }
     }
 }
 
+/**
+ * Wraps content with a fade-in + slide-up animation, with configurable delay.
+ */
+@Composable
+private fun AnimatedItem(
+    delayMs: Int = 0,
+    content: @Composable () -> Unit,
+) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(delayMs.toLong())
+        visible = true
+    }
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(300, delayMs)) +
+            slideInVertically(
+                animationSpec = tween(300, delayMs),
+                initialOffsetY = { it / 4 },
+            ),
+    ) {
+        content()
+    }
+}
 
