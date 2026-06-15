@@ -3,6 +3,7 @@ package com.lumecard.app.ui.screens.settings
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.lumecard.app.i18n.AppLocale
 import com.lumecard.shared.domain.scheduler.ReviewMode
 
 class SettingsStateHolder {
@@ -12,9 +13,7 @@ class SettingsStateHolder {
     var dailyGoal by mutableStateOf(20)
     var newCardsPerDay by mutableStateOf(20)
     var notificationsEnabled by mutableStateOf(true)
-    var webdavUrl by mutableStateOf("")
-    var webdavUser by mutableStateOf("")
-    var webdavPass by mutableStateOf("")
+    var language by mutableStateOf(AppLocale.SYSTEM)
     var isDirty by mutableStateOf(false)
     var isSaving by mutableStateOf(false)
 

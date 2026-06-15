@@ -1,13 +1,19 @@
 package com.lumecard.shared.di
 
+import com.lumecard.shared.data.SyncManager
+import com.lumecard.shared.data.WebDavConfigManager
 import com.lumecard.shared.database.LumeCardDatabase
 import com.lumecard.shared.domain.scheduler.*
 import com.lumecard.shared.repository.*
+import io.ktor.client.HttpClient
 import org.koin.dsl.module
 
 val sharedModule = module {
     // Database (DatabaseDriverFactory must be provided by platform module)
     single { LumeCardDatabase(get<com.lumecard.shared.database.DatabaseDriverFactory>().createDriver()) }
+
+    // HTTP client (auto-detects platform engine: OkHttp on JVM/Android)
+    single { HttpClient() }
 
     // Repositories
     single<KnowledgeBaseRepository> { SqlDelightKnowledgeBaseRepository(get()) }
@@ -17,17 +23,13 @@ val sharedModule = module {
     single<SettingsRepository> { SqlDelightSettingsRepository(get()) }
     single<AlgorithmStateRepository> { SqlDelightAlgorithmStateRepository(get()) }
 
+    // Data services
+    single { SyncManager(get()) }
+    single { WebDavConfigManager(get(), get()) }
+
     // Algorithm implementations
     single { FSRSAlgorithm() }
 
-    // Factory to create the right algorithm based on mode
-    fun createAlgorithm(mode: ReviewMode): ReviewAlgorithm {
-        return when (mode) {
-            ReviewMode.FSRS -> FSRSAlgorithmAdapter(FSRSAlgorithm())
-            ReviewMode.SM2 -> SM2Algorithm()
-            ReviewMode.LEITNER -> LeitnerAlgorithm()
-            ReviewMode.SIMPLE -> SimpleAlgorithm()
-        }
-    }
-    factory<ReviewAlgorithm> { createAlgorithm(ReviewMode.SM2) } // default fallback
+    // Default algorithm (FSRS) — uses the FSRSAlgorithm singleton via get()
+    factory<ReviewAlgorithm> { FSRSAlgorithmAdapter(get()) }
 }

@@ -2,14 +2,20 @@ package com.lumecard.app.ui.screens.settings
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import com.lumecard.app.i18n.AppLocale
+import com.lumecard.app.i18n.I18nManager
 import com.lumecard.shared.domain.scheduler.ReviewMode
 import com.lumecard.shared.repository.SettingsRepository
 import kotlinx.coroutines.launch
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     val state: SettingsStateHolder
-) : ScreenModel {
+) : ScreenModel, KoinComponent {
+
+    private val i18nManager: I18nManager by inject()
 
     fun loadSettings() {
         screenModelScope.launch {
@@ -21,9 +27,8 @@ class SettingsViewModel(
             state.dailyGoal = settingsRepository.getInt("dailyGoal", 20)
             state.newCardsPerDay = settingsRepository.getInt("newCardsPerDay", 20)
             state.notificationsEnabled = settingsRepository.getBoolean("notificationsEnabled", true)
-            state.webdavUrl = settingsRepository.get("webdavUrl") ?: ""
-            state.webdavUser = settingsRepository.get("webdavUser") ?: ""
-            state.webdavPass = settingsRepository.get("webdavPass") ?: ""
+            val langStr = settingsRepository.get("language") ?: AppLocale.SYSTEM.name
+            state.language = try { AppLocale.valueOf(langStr) } catch (_: Exception) { AppLocale.SYSTEM }
         }
     }
 
@@ -36,9 +41,7 @@ class SettingsViewModel(
             settingsRepository.set("dailyGoal", state.dailyGoal.toString())
             settingsRepository.set("newCardsPerDay", state.newCardsPerDay.toString())
             settingsRepository.set("notificationsEnabled", state.notificationsEnabled.toString())
-            settingsRepository.set("webdavUrl", state.webdavUrl)
-            settingsRepository.set("webdavUser", state.webdavUser)
-            settingsRepository.set("webdavPass", state.webdavPass)
+            settingsRepository.set("language", state.language.name)
             state.markClean()
             state.isSaving = false
         }
@@ -59,6 +62,15 @@ class SettingsViewModel(
         state.markDirty()
     }
 
+    fun setLanguage(locale: AppLocale) {
+        state.language = locale
+        i18nManager.setLocale(locale)
+        state.markDirty()
+        screenModelScope.launch {
+            settingsRepository.set("language", locale.name)
+        }
+    }
+
     fun setDailyGoal(goal: Int) {
         state.dailyGoal = goal.coerceIn(1, 999)
         state.markDirty()
@@ -71,21 +83,6 @@ class SettingsViewModel(
 
     fun setNotifications(enabled: Boolean) {
         state.notificationsEnabled = enabled
-        state.markDirty()
-    }
-
-    fun setWebdavUrl(url: String) {
-        state.webdavUrl = url
-        state.markDirty()
-    }
-
-    fun setWebdavUser(user: String) {
-        state.webdavUser = user
-        state.markDirty()
-    }
-
-    fun setWebdavPass(pass: String) {
-        state.webdavPass = pass
         state.markDirty()
     }
 }
