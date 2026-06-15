@@ -17,6 +17,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.shared.model.Deck
 import kotlinx.coroutines.launch
+import com.lumecard.app.i18n.I18nManager
 import org.koin.compose.koinInject
 
 class DeckManagementScreen : Screen {
@@ -27,6 +28,7 @@ class DeckManagementScreen : Screen {
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
         val viewModel: DeckViewModel = koinInject()
+        val strings = koinInject<I18nManager>().strings
         val decks by viewModel.decks.collectAsState()
         val isLoading by viewModel.isLoading.collectAsState()
         val scope = rememberCoroutineScope()
@@ -39,10 +41,10 @@ class DeckManagementScreen : Screen {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("牌组管理") },
+                    title = { Text(strings.deckManageTitle) },
                     navigationIcon = {
                         IconButton(onClick = { navigator.pop() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = strings.actionBack)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -55,7 +57,7 @@ class DeckManagementScreen : Screen {
                     onClick = { showCreateDialog = true },
                     containerColor = MaterialTheme.colorScheme.primary
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "创建牌组")
+                    Icon(Icons.Default.Add, contentDescription = strings.deckCreate)
                 }
             },
             snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -111,20 +113,20 @@ class DeckManagementScreen : Screen {
                                         Icon(Icons.Default.Info, contentDescription = null,
                                             modifier = Modifier.size(18.dp))
                                         Spacer(Modifier.width(4.dp))
-                                        Text("查看卡片")
+                                        Text(strings.deckViewCards)
                                     }
                                     TextButton(onClick = { editingDeck = deck }) {
                                         Icon(Icons.Default.Edit, contentDescription = null,
                                             modifier = Modifier.size(18.dp))
                                         Spacer(Modifier.width(4.dp))
-                                        Text("编辑")
+                                        Text(strings.actionEdit)
                                     }
                                     TextButton(onClick = { deletingDeck = deck }) {
                                         Icon(Icons.Default.Delete, contentDescription = null,
                                             modifier = Modifier.size(18.dp),
                                             tint = MaterialTheme.colorScheme.error)
                                         Spacer(Modifier.width(4.dp))
-                                        Text("删除", color = MaterialTheme.colorScheme.error)
+                                        Text(strings.actionDelete, color = MaterialTheme.colorScheme.error)
                                     }
                                 }
                             }
@@ -140,13 +142,13 @@ class DeckManagementScreen : Screen {
             var description by remember { mutableStateOf("") }
             AlertDialog(
                 onDismissRequest = { showCreateDialog = false },
-                title = { Text("创建牌组") },
+                title = { Text(strings.deckCreate) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(value = name, onValueChange = { name = it },
-                            label = { Text("牌组名称") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                            label = { Text(strings.deckName) }, singleLine = true, modifier = Modifier.fillMaxWidth())
                         OutlinedTextField(value = description, onValueChange = { description = it },
-                            label = { Text("描述（可选）") }, modifier = Modifier.fillMaxWidth())
+                            label = { Text(strings.deckDescPlaceholder) }, modifier = Modifier.fillMaxWidth())
                     }
                 },
                 confirmButton = {
@@ -154,9 +156,9 @@ class DeckManagementScreen : Screen {
                         if (name.isNotBlank()) {
                             scope.launch { viewModel.createDeck(name, description.ifBlank { null }); showCreateDialog = false }
                         }
-                    }, enabled = name.isNotBlank()) { Text("创建") }
+                    }, enabled = name.isNotBlank()) { Text(strings.actionCreate) }
                 },
-                dismissButton = { TextButton(onClick = { showCreateDialog = false }) { Text("取消") } }
+                dismissButton = { TextButton(onClick = { showCreateDialog = false }) { Text(strings.actionCancel) } }
             )
         }
 
@@ -166,13 +168,13 @@ class DeckManagementScreen : Screen {
             var description by remember(editingDeck) { mutableStateOf(editingDeck!!.description ?: "") }
             AlertDialog(
                 onDismissRequest = { editingDeck = null },
-                title = { Text("编辑牌组") },
+                title = { Text(strings.deckEdit) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(value = name, onValueChange = { name = it },
-                            label = { Text("牌组名称") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                            label = { Text(strings.deckName) }, singleLine = true, modifier = Modifier.fillMaxWidth())
                         OutlinedTextField(value = description, onValueChange = { description = it },
-                            label = { Text("描述（可选）") }, modifier = Modifier.fillMaxWidth())
+                            label = { Text(strings.deckDescPlaceholder) }, modifier = Modifier.fillMaxWidth())
                     }
                 },
                 confirmButton = {
@@ -180,9 +182,9 @@ class DeckManagementScreen : Screen {
                         if (name.isNotBlank()) {
                             scope.launch { viewModel.updateDeck(editingDeck!!.id, name, description.ifBlank { null }); editingDeck = null }
                         }
-                    }, enabled = name.isNotBlank()) { Text("保存") }
+                    }, enabled = name.isNotBlank()) { Text(strings.actionSave) }
                 },
-                dismissButton = { TextButton(onClick = { editingDeck = null }) { Text("取消") } }
+                dismissButton = { TextButton(onClick = { editingDeck = null }) { Text(strings.actionCancel) } }
             )
         }
 
@@ -191,18 +193,18 @@ class DeckManagementScreen : Screen {
             AlertDialog(
                 onDismissRequest = { deletingDeck = null },
                 icon = { Icon(Icons.Default.Warning, contentDescription = null) },
-                title = { Text("确认删除") },
-                text = { Text("确定要删除牌组「${deletingDeck!!.name}」吗？") },
+                title = { Text(strings.deckConfirmDelete) },
+                text = { Text(strings.deckDeleteConfirmText(deletingDeck!!.name)) },
                 confirmButton = {
                     TextButton(onClick = {
                         scope.launch {
                             viewModel.deleteDeck(deletingDeck!!.id)
                             deletingDeck = null
-                            snackbarHostState.showSnackbar("牌组已删除")
+                            snackbarHostState.showSnackbar(strings.deckDeleted)
                         }
-                    }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("删除") }
+                    }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(strings.actionDelete) }
                 },
-                dismissButton = { TextButton(onClick = { deletingDeck = null }) { Text("取消") } }
+                dismissButton = { TextButton(onClick = { deletingDeck = null }) { Text(strings.actionCancel) } }
             )
         }
     }

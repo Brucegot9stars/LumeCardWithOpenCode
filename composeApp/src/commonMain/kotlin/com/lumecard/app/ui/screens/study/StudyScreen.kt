@@ -31,6 +31,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.ui.components.MarkdownText
 import com.lumecard.app.ui.screens.settings.AnswerDisplayMode
+import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.screens.settings.SettingsStateHolder
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
@@ -53,6 +54,7 @@ class StudyScreen(
         val navigator = LocalNavigator.currentOrThrow
         val viewModel: StudyViewModel = koinInject()
         val settingsState: SettingsStateHolder = koinInject()
+        val strings = koinInject<I18nManager>().strings
         val cards by viewModel.cards.collectAsState()
         val currentIndex by viewModel.currentCardIndex.collectAsState()
         val isFlipped by viewModel.isFlipped.collectAsState()
@@ -84,10 +86,10 @@ class StudyScreen(
             Scaffold(
                 topBar = {
                     TopAppBar(
-                        title = { Text("学习: $deckName") },
+                        title = { Text("${strings.actionLearning}: $deckName") },
                         navigationIcon = {
                             IconButton(onClick = { navigator.pop() }) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = strings.actionBack)
                             }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
@@ -110,7 +112,7 @@ class StudyScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "进度: ${if (currentIndex < cards.size) currentIndex + 1 else cards.size} / ${cards.size}",
+                            strings.studyProgressText(if (currentIndex < cards.size) currentIndex + 1 else cards.size, cards.size),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -147,19 +149,19 @@ class StudyScreen(
                                     )
                                     Spacer(Modifier.height(16.dp))
                                     Text(
-                                        "暂无可学习卡片",
+                                        strings.studyNoCards,
                                         style = MaterialTheme.typography.headlineSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Spacer(Modifier.height(8.dp))
                                     Text(
-                                        "去创建第一张卡片吧",
+                                        strings.studyGoCreateCards,
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Spacer(Modifier.height(24.dp))
                                     Button(onClick = { navigator.pop() }) {
-                                        Text("返回")
+                                        Text(strings.actionBack)
                                     }
                                 }
                             }
@@ -310,7 +312,7 @@ class StudyScreen(
                                         ) {
                                             Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(22.dp))
                                             Spacer(Modifier.width(6.dp))
-                                            Text("简单", style = MaterialTheme.typography.titleMedium)
+                                            Text(strings.studySwipeEasy, style = MaterialTheme.typography.titleMedium)
                                         }
                                     }
                                 }
@@ -338,7 +340,7 @@ class StudyScreen(
                                         ) {
                                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(22.dp))
                                             Spacer(Modifier.width(6.dp))
-                                            Text("返回", style = MaterialTheme.typography.titleMedium)
+                                            Text(strings.studySwipeBack, style = MaterialTheme.typography.titleMedium)
                                         }
                                     }
                                 }
@@ -350,11 +352,11 @@ class StudyScreen(
                                 modifier = Modifier.fillMaxWidth().padding(32.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Text("学习完成！", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+                                Text(strings.studyComplete, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.height(16.dp))
-                                Text("你完成了 $completedCards 张卡片的复习", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(strings.studyCompleteMsg(completedCards), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(modifier = Modifier.height(24.dp))
-                                Button(onClick = { navigator.pop() }) { Text("返回") }
+                                Button(onClick = { navigator.pop() }) { Text(strings.actionBack) }
                             }
                         }
                     }
@@ -374,7 +376,7 @@ class StudyScreen(
                             ) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("上一张")
+                                Text(strings.studyPreviousCard)
                             }
 
                             if (!isFlipped) {
@@ -383,29 +385,29 @@ class StudyScreen(
                                     modifier = Modifier.weight(2f),
                                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                                 ) {
-                                    Text("显示答案")
+                                    Text(strings.studyShowAnswer)
                                 }
                             }
                         }
 
                         if (isFlipped) {
                             Spacer(modifier = Modifier.height(12.dp))
-                            Text("你记得这个答案吗？", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(strings.studyRatingPrompt, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(modifier = Modifier.height(8.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                RatingButton(Modifier.weight(1f), Rating.AGAIN, "忘记", Icons.Default.Close, MaterialTheme.colorScheme.error) {
+                                RatingButton(Modifier.weight(1f), Rating.AGAIN, strings.studyRatingForgot, Icons.Default.Close, MaterialTheme.colorScheme.error) {
                                     viewModel.rateCard(Rating.AGAIN)
                                 }
-                                RatingButton(Modifier.weight(1f), Rating.HARD, "困难", null, MaterialTheme.colorScheme.tertiary) {
+                                RatingButton(Modifier.weight(1f), Rating.HARD, strings.studyRatingHard, null, MaterialTheme.colorScheme.tertiary) {
                                     viewModel.rateCard(Rating.HARD)
                                 }
-                                RatingButton(Modifier.weight(1f), Rating.GOOD, "良好", null, MaterialTheme.colorScheme.primary) {
+                                RatingButton(Modifier.weight(1f), Rating.GOOD, strings.studyRatingGood, null, MaterialTheme.colorScheme.primary) {
                                     viewModel.rateCard(Rating.GOOD)
                                 }
-                                RatingButton(Modifier.weight(1f), Rating.EASY, "简单", Icons.Default.Check, MaterialTheme.colorScheme.secondary) {
+                                RatingButton(Modifier.weight(1f), Rating.EASY, strings.studyRatingEasy, Icons.Default.Check, MaterialTheme.colorScheme.secondary) {
                                     viewModel.rateCard(Rating.EASY)
                                 }
                             }
@@ -423,6 +425,7 @@ private fun CardContent(
     isFlipped: Boolean,
     displayMode: AnswerDisplayMode
 ) {
+    val strings = koinInject<I18nManager>().strings
     Column(modifier = Modifier.fillMaxWidth()) {
         when (displayMode) {
             AnswerDisplayMode.FLIP -> {
@@ -444,10 +447,10 @@ private fun CardContent(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                "问题",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer
-                            )
+                                    strings.studyQuestion,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
                             Spacer(Modifier.weight(1f))
                             Text(
                                 cardTypeName(card.type),
@@ -474,16 +477,16 @@ private fun CardContent(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                "答案",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
+                                    strings.studyAnswer,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
                             Spacer(Modifier.weight(1f))
                             Text(
-                                "已展示",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
-                            )
+                                    strings.studyRevealed,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
+                                )
                         }
                     }
                     Spacer(Modifier.height(4.dp))
@@ -538,6 +541,7 @@ private fun FlipCard(
 
 @Composable
 private fun CardFace(card: Card, showBack: Boolean) {
+    val strings = koinInject<I18nManager>().strings
     Column(modifier = Modifier.fillMaxWidth()) {
         when (card.type) {
             CardType.BASIC, CardType.REVERSED, CardType.MARKDOWN, CardType.AI_GENERATED -> {
@@ -561,7 +565,7 @@ private fun CardFace(card: Card, showBack: Boolean) {
                 )
                 if (!showBack) {
                     Spacer(Modifier.height(8.dp))
-                    Text("点击显示答案查看填空内容", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(strings.studyClozeHint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             CardType.MULTIPLE_CHOICE -> {
@@ -584,7 +588,7 @@ private fun CardFace(card: Card, showBack: Boolean) {
             CardType.IMAGE_OCCLUSION -> {
                 Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
-                Text(if (showBack) card.back else "点击显示答案查看图片说明", style = MaterialTheme.typography.bodyMedium)
+                Text(if (showBack) card.back else strings.studyImageHint, style = MaterialTheme.typography.bodyMedium)
             }
             CardType.AUDIO, CardType.VIDEO -> {
                 Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
@@ -598,16 +602,20 @@ private fun CardFace(card: Card, showBack: Boolean) {
     }
 }
 
-private fun cardTypeName(type: CardType): String = when (type) {
-    CardType.BASIC -> "基础"
-    CardType.REVERSED -> "反转"
-    CardType.CLOZE -> "填空"
-    CardType.MULTIPLE_CHOICE -> "选择"
-    CardType.IMAGE_OCCLUSION -> "遮挡"
-    CardType.AUDIO -> "音频"
-    CardType.VIDEO -> "视频"
-    CardType.MARKDOWN -> "Markdown"
-    CardType.AI_GENERATED -> "AI"
+@Composable
+private fun cardTypeName(type: CardType): String {
+    val strings = koinInject<I18nManager>().strings
+    return when (type) {
+        CardType.BASIC -> strings.studyCardTypeBasic
+        CardType.REVERSED -> strings.studyCardTypeReversed
+        CardType.CLOZE -> strings.studyCardTypeCloze
+        CardType.MULTIPLE_CHOICE -> strings.studyCardTypeChoice
+        CardType.IMAGE_OCCLUSION -> strings.studyCardTypeOcclusion
+        CardType.AUDIO -> strings.studyCardTypeAudio
+        CardType.VIDEO -> strings.studyCardTypeVideo
+        CardType.MARKDOWN -> strings.studyCardTypeMarkdown
+        CardType.AI_GENERATED -> strings.studyCardTypeAi
+    }
 }
 
 @Composable

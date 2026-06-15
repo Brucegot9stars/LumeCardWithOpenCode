@@ -19,6 +19,9 @@ import kotlinx.datetime.toLocalDateTime
 data class AppStats(
     val totalCards: Int = 0,
     val totalDecks: Int = 0,
+    val newCardsCount: Int = 0,
+    val dueCardsCount: Int = 0,
+    val upcomingCardsCount: Int = 0,
     val todayReviews: Int = 0,
     val weekReviews: Int = 0,
     val monthReviews: Int = 0,
@@ -49,6 +52,16 @@ class StatsViewModel(
 
                 val now = Clock.System.now()
                 val today = now.toLocalDateTime(TimeZone.currentSystemDefault()).date
+
+                val newCards = allCards.count { it.nextReviewAt == null }
+                val dueCards = allCards.count { card ->
+                    val next = card.nextReviewAt
+                    next != null && next <= now
+                }
+                val upcomingCards = allCards.count { card ->
+                    val next = card.nextReviewAt
+                    next != null && next > now
+                }
                 val weekStart = today.minus(today.dayOfWeek.ordinal, DateTimeUnit.DAY)
                 val monthStart = LocalDate(today.year, today.monthNumber, 1)
 
@@ -75,6 +88,9 @@ class StatsViewModel(
                 _stats.value = AppStats(
                     totalCards = allCards.size,
                     totalDecks = allCards.distinctBy { it.deckId }.size,
+                    newCardsCount = newCards,
+                    dueCardsCount = dueCards,
+                    upcomingCardsCount = upcomingCards,
                     todayReviews = todayLogs.size,
                     weekReviews = weekLogs.size,
                     monthReviews = monthLogs.size,

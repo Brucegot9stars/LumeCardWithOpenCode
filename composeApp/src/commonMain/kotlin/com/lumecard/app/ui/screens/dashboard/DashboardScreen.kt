@@ -19,6 +19,7 @@ import com.lumecard.app.ui.screens.deck.CardListScreen
 import com.lumecard.app.ui.screens.deck.DeckListScreen
 import com.lumecard.app.ui.screens.study.StudyModeScreen
 import com.lumecard.app.ui.screens.study.StudyScreen
+import com.lumecard.app.i18n.I18nManager
 import com.lumecard.shared.model.Deck
 import org.koin.compose.koinInject
 
@@ -30,6 +31,7 @@ class DashboardScreen : Screen {
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
         val viewModel: DashboardViewModel = koinInject()
+        val strings = koinInject<I18nManager>().strings
         val decks by viewModel.decks.collectAsState()
         val decksWithCount by viewModel.decksWithCount.collectAsState()
         val isLoading by viewModel.isLoading.collectAsState()
@@ -51,7 +53,7 @@ class DashboardScreen : Screen {
                     onClick = { navigator.push(DeckListScreen()) },
                     containerColor = MaterialTheme.colorScheme.primary
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "管理牌组")
+                    Icon(Icons.Default.Add, contentDescription = strings.dashManageDecks)
                 }
             }
         ) { padding ->
@@ -76,7 +78,7 @@ class DashboardScreen : Screen {
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Text(
-                                    "今日学习",
+                                    strings.dashTodayStudy,
                                     style = MaterialTheme.typography.titleLarge
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
@@ -84,10 +86,10 @@ class DashboardScreen : Screen {
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceEvenly
                                 ) {
-                                    StatItem("牌组", "${decks.size}")
+                                    StatItem(strings.dashDecksLabel, "${decks.size}")
                                     val totalCards = decksWithCount.sumOf { it.cardCount }
-                                    StatItem("总卡片", "$totalCards")
-                                    StatItem("有卡片牌组", "${decksWithCount.count { it.cardCount > 0 }}")
+                                    StatItem(strings.dashTotalCards, "$totalCards")
+                                    StatItem(strings.dashDecksWithCards, "${decksWithCount.count { it.cardCount > 0 }}")
                                 }
                             }
                         }
@@ -95,7 +97,7 @@ class DashboardScreen : Screen {
 
                     item {
                         Text(
-                            "快速操作",
+                            strings.dashQuickActions,
                             style = MaterialTheme.typography.titleMedium
                         )
                     }
@@ -107,8 +109,8 @@ class DashboardScreen : Screen {
                         ) {
                             QuickActionCard(
                                 modifier = Modifier.weight(1f).fillMaxHeight(),
-                                title = "开始学习",
-                                subtitle = if (firstStudyableDeck != null) "${decksWithCount.count { it.cardCount > 0 }} 个牌组可用" else "暂无可用卡片",
+                                title = strings.dashStartLearning,
+                                subtitle = if (firstStudyableDeck != null) strings.dashDecksAvailable(decksWithCount.count { it.cardCount > 0 }) else strings.dashNoCardsAvailable,
                                 enabled = firstStudyableDeck != null,
                                 icon = Icons.Default.PlayArrow,
                                 onClick = {
@@ -117,7 +119,7 @@ class DashboardScreen : Screen {
                             )
                             QuickActionCard(
                                 modifier = Modifier.weight(1f).fillMaxHeight(),
-                                title = "管理牌组",
+                                title = strings.dashManageDecks,
                                 icon = Icons.AutoMirrored.Filled.List,
                                 onClick = { navigator.push(DeckListScreen()) }
                             )
@@ -126,7 +128,7 @@ class DashboardScreen : Screen {
 
                     item {
                         Text(
-                            "我的牌组 (${decks.size})",
+                            "${strings.dashMyDecks} (${decks.size})",
                             style = MaterialTheme.typography.titleMedium
                         )
                     }
@@ -142,13 +144,13 @@ class DashboardScreen : Screen {
                                 ) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Text(
-                                            "开始你的学习之旅",
+                                            strings.dashBeginJourney,
                                             style = MaterialTheme.typography.bodyLarge,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                         Spacer(modifier = Modifier.height(8.dp))
                                         Text(
-                                            "创建第一个牌组，添加卡片，开始学习",
+                                            strings.dashJourneyDesc,
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -243,6 +245,7 @@ class DashboardScreen : Screen {
         onClick: () -> Unit,
         onStudy: () -> Unit
     ) {
+        val strings = koinInject<I18nManager>().strings
         Card(
             modifier = Modifier.fillMaxWidth(),
             onClick = onClick
@@ -264,7 +267,7 @@ class DashboardScreen : Screen {
                         style = MaterialTheme.typography.titleMedium
                     )
                     Text(
-                        "$cardCount 张卡片",
+                        strings.dashCardsCount(cardCount),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -280,7 +283,7 @@ class DashboardScreen : Screen {
                 IconButton(onClick = onStudy, enabled = cardCount > 0) {
                     Icon(
                         Icons.Default.PlayArrow,
-                        contentDescription = "学习",
+                        contentDescription = strings.actionLearning,
                         tint = if (cardCount > 0) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                     )

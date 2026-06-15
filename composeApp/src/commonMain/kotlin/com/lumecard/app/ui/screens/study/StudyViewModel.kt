@@ -46,6 +46,8 @@ class StudyViewModel(
     private val _swipeFeedback = MutableStateFlow<String?>(null)
     val swipeFeedback: StateFlow<String?> = _swipeFeedback
 
+    private val _cardStartTimes = mutableMapOf<String, kotlinx.datetime.Instant>()
+
     fun loadCards(deckIds: List<String>) {
         screenModelScope.launch {
             val allCards = mutableListOf<Card>()
@@ -53,7 +55,12 @@ class StudyViewModel(
                 val deckCards = cardRepository.getByDeck(deckId).first()
                 allCards.addAll(deckCards)
             }
-            val shuffled = allCards.shuffled()
+            val now = Clock.System.now()
+            val dueCards = allCards.filter { card ->
+                val next = card.nextReviewAt
+                next == null || next <= now
+            }
+            val shuffled = dueCards.shuffled()
             _cards.value = shuffled
             shuffled.forEach { card ->
                 if (!_algorithmStates.value.containsKey(card.id)) {
@@ -66,6 +73,7 @@ class StudyViewModel(
                     _algorithmStates.value = _algorithmStates.value + (card.id to state)
                 }
             }
+            shuffled.firstOrNull()?.let { _cardStartTimes[it.id] = Clock.System.now() }
         }
     }
 
@@ -81,6 +89,7 @@ class StudyViewModel(
         _currentCardIndex.value = prevIndex
         _isFlipped.value = wasFlipped
         if (_completedCards.value > 0) _completedCards.value--
+        _cards.value.getOrNull(prevIndex)?.let { _cardStartTimes[it.id] = Clock.System.now() }
     }
 
     fun rateCard(rating: Rating) {
@@ -91,6 +100,8 @@ class StudyViewModel(
         _algorithmStates.value = _algorithmStates.value + (currentCard.id to updatedState)
 
         val now = Clock.System.now()
+        val startTime = _cardStartTimes.remove(currentCard.id) ?: now
+        val reviewTimeMs = ((now.toEpochMilliseconds() - startTime.toEpochMilliseconds()).coerceAtLeast(0)).toInt()
 
         _history.value = _history.value + (_currentCardIndex.value to _isFlipped.value)
 
@@ -99,7 +110,7 @@ class StudyViewModel(
                 id = UUID.randomUUID().toString(),
                 cardId = currentCard.id,
                 rating = rating.value,
-                reviewTime = 0,
+                reviewTime = reviewTimeMs,
                 interval = updatedState.intervalDays,
                 easeFactor = updatedState.easeFactor,
                 repetitions = updatedState.repetitions,
@@ -127,6 +138,7 @@ class StudyViewModel(
 
         if (_currentCardIndex.value < _cards.value.size - 1) {
             _currentCardIndex.value++
+            _cards.value.getOrNull(_currentCardIndex.value)?.let { _cardStartTimes[it.id] = Clock.System.now() }
         } else {
             _currentCardIndex.value = _cards.value.size
         }

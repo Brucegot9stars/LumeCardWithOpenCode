@@ -19,6 +19,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.ui.screens.card.CardViewModel
 import com.lumecard.app.ui.screens.card.CreateCardScreen
+import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.screens.study.StudyScreen
 import com.lumecard.shared.model.Card
 import org.koin.compose.koinInject
@@ -34,6 +35,7 @@ class CardListScreen(
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
         val viewModel: CardViewModel = koinInject()
+        val strings = koinInject<I18nManager>().strings
         val cards by viewModel.cards.collectAsState()
         val isLoading by viewModel.isLoading.collectAsState()
         val sortConfig by viewModel.sortConfig.collectAsState()
@@ -50,43 +52,56 @@ class CardListScreen(
                     title = { Text(deckName) },
                     navigationIcon = {
                         IconButton(onClick = { navigator.pop() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = strings.actionBack)
                         }
                     },
                     actions = {
                         Box {
                             TextButton(onClick = { showSortMenu = true }) {
-                                Text("排序", style = MaterialTheme.typography.labelLarge)
+                                Text(strings.actionSort, style = MaterialTheme.typography.labelLarge)
                             }
                             DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
-                                Text("排序方式", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                                Text(strings.cardSortTitle, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                                 HorizontalDivider()
                                 SortField.entries.forEach { field ->
-                                    SortOrder.entries.forEach { order ->
-                                        val label = when (field) {
-                                            SortField.NAME -> "名称 ${if (order == SortOrder.ASC) "↑" else "↓"}"
-                                            SortField.CREATED_AT -> "创建时间 ${if (order == SortOrder.ASC) "↑" else "↓"}"
-                                            SortField.UPDATED_AT -> "修改时间 ${if (order == SortOrder.ASC) "↑" else "↓"}"
-                                            SortField.STUDY_TIME -> "学习时长 ${if (order == SortOrder.ASC) "↑" else "↓"}"
-                                        }
-                                        DropdownMenuItem(
-                                            text = { Text(label) },
-                                            onClick = {
-                                                viewModel.setSortConfig(SortConfig(field, order))
-                                                showSortMenu = false
-                                            },
-                                            leadingIcon = {
-                                                if (sortConfig.field == field && sortConfig.order == order) {
-                                                    Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                                }
-                                            }
-                                        )
+                                    val label = when (field) {
+                                        SortField.NAME -> strings.cardSortName
+                                        SortField.CREATED_AT -> strings.cardSortCreated
+                                        SortField.UPDATED_AT -> strings.cardSortModified
+                                        SortField.STUDY_TIME -> strings.cardSortStudyTime
                                     }
+                                    val isActive = sortConfig.field == field
+                                    DropdownMenuItem(
+                                        text = { Text(label) },
+                                        onClick = {
+                                            if (isActive) {
+                                                val newOrder = if (sortConfig.order == SortOrder.ASC) SortOrder.DESC else SortOrder.ASC
+                                                viewModel.setSortConfig(SortConfig(field, newOrder))
+                                            } else {
+                                                viewModel.setSortConfig(SortConfig(field, SortOrder.ASC))
+                                            }
+                                            showSortMenu = false
+                                        },
+                                        leadingIcon = {
+                                            if (isActive) {
+                                                Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                            }
+                                        },
+                                        trailingIcon = {
+                                            if (isActive) {
+                                                Text(
+                                                    if (sortConfig.order == SortOrder.ASC) "\u2191" else "\u2193",
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    style = MaterialTheme.typography.titleMedium
+                                                )
+                                            }
+                                        }
+                                    )
                                 }
                             }
                         }
                         IconButton(onClick = { navigator.push(StudyScreen(deckId, deckName)) }) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = "学习")
+                            Icon(Icons.Default.PlayArrow, contentDescription = strings.actionLearning)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -99,7 +114,7 @@ class CardListScreen(
                     onClick = { navigator.push(CreateCardScreen(deckId, deckName)) },
                     containerColor = MaterialTheme.colorScheme.primary
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "添加卡片")
+                    Icon(Icons.Default.Add, contentDescription = strings.cardAdd)
                 }
             }
         ) { padding ->
@@ -114,13 +129,13 @@ class CardListScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            "还没有卡片",
+                            strings.cardEmpty,
                             style = MaterialTheme.typography.headlineSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "点击右下角按钮添加第一张卡片",
+                            strings.cardEmptyDesc,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -136,7 +151,7 @@ class CardListScreen(
                 ) {
                     item {
                         Text(
-                            "排序: ${sortConfig.field.name} ${if (sortConfig.order == SortOrder.ASC) "↑" else "↓"}",
+                            "${strings.actionSort}: ${sortConfig.field.name}",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 8.dp)
@@ -161,6 +176,7 @@ fun CardItem(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val strings = koinInject<I18nManager>().strings
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onEdit),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -217,14 +233,14 @@ fun CardItem(
             IconButton(onClick = onEdit) {
                 Icon(
                     Icons.Default.Edit,
-                    contentDescription = "编辑",
+                    contentDescription = strings.actionEdit,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "删除",
+                    contentDescription = strings.actionDelete,
                     tint = MaterialTheme.colorScheme.error
                 )
             }

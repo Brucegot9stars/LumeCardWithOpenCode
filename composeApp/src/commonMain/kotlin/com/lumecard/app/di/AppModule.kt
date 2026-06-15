@@ -1,5 +1,6 @@
 package com.lumecard.app.di
 
+import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.screens.card.CardViewModel
 import com.lumecard.app.ui.screens.dashboard.DashboardViewModel
 import com.lumecard.app.ui.screens.deck.DeckViewModel
@@ -17,6 +18,7 @@ val appModule = module {
 
     single { SettingsStateHolder() }
     single { ExportManager() }
+    single { I18nManager() }
 
     factory { DashboardViewModel(get(), get()) }
     factory { DeckViewModel(get(), get(), get()) }

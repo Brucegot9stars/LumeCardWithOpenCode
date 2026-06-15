@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.lumecard.app.i18n.I18nManager
 import org.commonmark.ext.autolink.AutolinkExtension
 import org.commonmark.ext.gfm.strikethrough.Strikethrough
 import org.commonmark.ext.gfm.strikethrough.StrikethroughExtension
@@ -37,6 +38,7 @@ import org.commonmark.ext.task.list.items.TaskListItemMarker
 import org.commonmark.ext.task.list.items.TaskListItemsExtension
 import org.commonmark.node.*
 import org.commonmark.parser.Parser
+import org.koin.compose.koinInject
 
 private val LinkColor = Color(0xFF0969DA)
 
@@ -471,6 +473,7 @@ fun MathBlock(mathContent: String) {
 
 @Composable
 fun MermaidBlock(diagram: String) {
+    val strings = koinInject<I18nManager>().strings
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
@@ -484,7 +487,7 @@ fun MermaidBlock(diagram: String) {
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    text = "Mermaid 流程图",
+                    text = strings.mermaidChartTitle,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary

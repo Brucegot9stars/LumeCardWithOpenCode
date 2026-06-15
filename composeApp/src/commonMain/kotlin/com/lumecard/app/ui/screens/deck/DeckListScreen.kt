@@ -18,6 +18,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.ui.screens.study.StudyScreen
 import com.lumecard.shared.model.Deck
 import kotlinx.coroutines.launch
+import com.lumecard.app.i18n.I18nManager
 import org.koin.compose.koinInject
 
 class DeckListScreen : Screen {
@@ -28,6 +29,7 @@ class DeckListScreen : Screen {
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
         val viewModel: DeckViewModel = koinInject()
+        val strings = koinInject<I18nManager>().strings
         val decks by viewModel.decks.collectAsState()
         val isLoading by viewModel.isLoading.collectAsState()
         val sortConfig by viewModel.sortConfig.collectAsState()
@@ -43,41 +45,54 @@ class DeckListScreen : Screen {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("牌组列表") },
+                    title = { Text(strings.deckListTitle) },
                     navigationIcon = {
                         IconButton(onClick = { navigator.pop() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = strings.actionBack)
                         }
                     },
                     actions = {
                         Box {
                             TextButton(onClick = { showSortMenu = true }) {
-                                Text("排序", style = MaterialTheme.typography.labelLarge)
+                                Text(strings.actionSort, style = MaterialTheme.typography.labelLarge)
                             }
                             DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
-                                Text("排序方式", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                                Text(strings.deckSortTitle, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                                 HorizontalDivider()
                                 SortField.entries.forEach { field ->
-                                    SortOrder.entries.forEach { order ->
-                                        val label = when (field) {
-                                            SortField.NAME -> "名称 ${if (order == SortOrder.ASC) "↑" else "↓"}"
-                                            SortField.CREATED_AT -> "创建时间 ${if (order == SortOrder.ASC) "↑" else "↓"}"
-                                            SortField.UPDATED_AT -> "修改时间 ${if (order == SortOrder.ASC) "↑" else "↓"}"
-                                            SortField.STUDY_TIME -> "学习时长 ${if (order == SortOrder.ASC) "↑" else "↓"}"
-                                        }
-                                        DropdownMenuItem(
-                                            text = { Text(label) },
-                                            onClick = {
-                                                viewModel.setSortConfig(SortConfig(field, order))
-                                                showSortMenu = false
-                                            },
-                                            leadingIcon = {
-                                                if (sortConfig.field == field && sortConfig.order == order) {
-                                                    Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                                }
-                                            }
-                                        )
+                                    val label = when (field) {
+                                        SortField.NAME -> strings.deckSortName
+                                        SortField.CREATED_AT -> strings.deckSortCreated
+                                        SortField.UPDATED_AT -> strings.deckSortModified
+                                        SortField.STUDY_TIME -> strings.deckSortStudyTime
                                     }
+                                    val isActive = sortConfig.field == field
+                                    DropdownMenuItem(
+                                        text = { Text(label) },
+                                        onClick = {
+                                            if (isActive) {
+                                                val newOrder = if (sortConfig.order == SortOrder.ASC) SortOrder.DESC else SortOrder.ASC
+                                                viewModel.setSortConfig(SortConfig(field, newOrder))
+                                            } else {
+                                                viewModel.setSortConfig(SortConfig(field, SortOrder.ASC))
+                                            }
+                                            showSortMenu = false
+                                        },
+                                        leadingIcon = {
+                                            if (isActive) {
+                                                Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                            }
+                                        },
+                                        trailingIcon = {
+                                            if (isActive) {
+                                                Text(
+                                                    if (sortConfig.order == SortOrder.ASC) "\u2191" else "\u2193",
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    style = MaterialTheme.typography.titleMedium
+                                                )
+                                            }
+                                        }
+                                    )
                                 }
                             }
                         }
@@ -92,7 +107,7 @@ class DeckListScreen : Screen {
                     onClick = { showCreateDialog = true },
                     containerColor = MaterialTheme.colorScheme.primary
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "创建牌组")
+                    Icon(Icons.Default.Add, contentDescription = strings.deckCreate)
                 }
             },
             snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -111,13 +126,13 @@ class DeckListScreen : Screen {
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            "还没有牌组",
+                            strings.deckEmpty,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "点击 + 创建第一个牌组",
+                            strings.deckEmptyDesc,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -133,7 +148,7 @@ class DeckListScreen : Screen {
                 ) {
                     item {
                         Text(
-                            "排序: ${sortConfig.field.name} ${if (sortConfig.order == SortOrder.ASC) "↑" else "↓"}",
+                            "${strings.actionSort}: ${sortConfig.field.name} ${if (sortConfig.order == SortOrder.ASC) "↑" else "↓"}",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 8.dp)
@@ -164,7 +179,7 @@ class DeckListScreen : Screen {
                                         style = MaterialTheme.typography.titleMedium
                                     )
                                     Text(
-                                        "$cardCount 张卡片",
+                                        strings.deckCardsCount(cardCount),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -186,17 +201,17 @@ class DeckListScreen : Screen {
                                     ) {
                                         Icon(
                                             Icons.Default.PlayArrow,
-                                            contentDescription = "学习",
+                                            contentDescription = strings.actionLearning,
                                             tint = if (cardCount > 0) MaterialTheme.colorScheme.primary
                                             else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                                         )
                                     }
                                     IconButton(onClick = { editingDeck = deck }) {
-                                        Icon(Icons.Default.Edit, contentDescription = "编辑",
+                                        Icon(Icons.Default.Edit, contentDescription = strings.actionEdit,
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                     IconButton(onClick = { deletingDeck = deck }) {
-                                        Icon(Icons.Default.Delete, contentDescription = "删除",
+                                        Icon(Icons.Default.Delete, contentDescription = strings.actionDelete,
                                             tint = MaterialTheme.colorScheme.error)
                                     }
                                 }
@@ -214,20 +229,20 @@ class DeckListScreen : Screen {
 
             AlertDialog(
                 onDismissRequest = { showCreateDialog = false },
-                title = { Text("创建牌组") },
+                title = { Text(strings.deckCreate) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(
                             value = name,
                             onValueChange = { name = it },
-                            label = { Text("牌组名称") },
+                            label = { Text(strings.deckName) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
                         OutlinedTextField(
                             value = description,
                             onValueChange = { description = it },
-                            label = { Text("描述（可选）") },
+                            label = { Text(strings.deckDescPlaceholder) },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -243,10 +258,10 @@ class DeckListScreen : Screen {
                             }
                         },
                         enabled = name.isNotBlank()
-                    ) { Text("创建") }
+                    ) { Text(strings.actionCreate) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showCreateDialog = false }) { Text("取消") }
+                    TextButton(onClick = { showCreateDialog = false }) { Text(strings.actionCancel) }
                 }
             )
         }
@@ -258,20 +273,20 @@ class DeckListScreen : Screen {
 
             AlertDialog(
                 onDismissRequest = { editingDeck = null },
-                title = { Text("编辑牌组") },
+                title = { Text(strings.deckEdit) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(
                             value = name,
                             onValueChange = { name = it },
-                            label = { Text("牌组名称") },
+                            label = { Text(strings.deckName) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
                         OutlinedTextField(
                             value = description,
                             onValueChange = { description = it },
-                            label = { Text("描述（可选）") },
+                            label = { Text(strings.deckDescPlaceholder) },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -287,10 +302,10 @@ class DeckListScreen : Screen {
                             }
                         },
                         enabled = name.isNotBlank()
-                    ) { Text("保存") }
+                    ) { Text(strings.actionSave) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { editingDeck = null }) { Text("取消") }
+                    TextButton(onClick = { editingDeck = null }) { Text(strings.actionCancel) }
                 }
             )
         }
@@ -300,9 +315,9 @@ class DeckListScreen : Screen {
             AlertDialog(
                 onDismissRequest = { deletingDeck = null },
                 icon = { Icon(Icons.Default.Warning, contentDescription = null) },
-                title = { Text("确认删除") },
+                title = { Text(strings.deckConfirmDelete) },
                 text = {
-                    Text("确定要删除牌组「${deletingDeck!!.name}」吗？\n牌组中的所有卡片也将被删除。")
+                    Text(strings.deckDeleteConfirmText(deletingDeck!!.name))
                 },
                 confirmButton = {
                     TextButton(
@@ -310,16 +325,16 @@ class DeckListScreen : Screen {
                             scope.launch {
                                 viewModel.deleteDeck(deletingDeck!!.id)
                                 deletingDeck = null
-                                snackbarHostState.showSnackbar("牌组已删除")
+                                snackbarHostState.showSnackbar(strings.deckDeleted)
                             }
                         },
                         colors = ButtonDefaults.textButtonColors(
                             contentColor = MaterialTheme.colorScheme.error
                         )
-                    ) { Text("删除") }
+                    ) { Text(strings.actionDelete) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { deletingDeck = null }) { Text("取消") }
+                    TextButton(onClick = { deletingDeck = null }) { Text(strings.actionCancel) }
                 }
             )
         }

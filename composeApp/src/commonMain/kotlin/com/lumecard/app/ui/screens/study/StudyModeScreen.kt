@@ -17,12 +17,13 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.ui.screens.deck.DeckViewModel
 import com.lumecard.shared.model.Deck
+import com.lumecard.app.i18n.I18nManager
 import org.koin.compose.koinInject
 
-enum class StudyMode(val label: String, val description: String) {
-    MIXED("混合牌组", "从所有牌组中随机抽取卡片"),
-    SINGLE("单牌组", "仅学习某一个牌组"),
-    MULTI("多牌组", "选择多个牌组进行学习")
+enum class StudyMode {
+    MIXED,
+    SINGLE,
+    MULTI
 }
 
 class StudyModeScreen : Screen {
@@ -33,6 +34,7 @@ class StudyModeScreen : Screen {
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
         val deckViewModel: DeckViewModel = koinInject()
+        val strings = koinInject<I18nManager>().strings
         val decks by deckViewModel.decks.collectAsState()
         val deckCardCounts by deckViewModel.deckCardCounts.collectAsState()
 
@@ -48,10 +50,10 @@ class StudyModeScreen : Screen {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("学习模式") },
+                    title = { Text(strings.modeTitle) },
                     navigationIcon = {
                         IconButton(onClick = { navigator.pop() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = strings.actionBack)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -80,7 +82,7 @@ class StudyModeScreen : Screen {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "共 $totalCards 张卡片",
+                            strings.modeCardsCount(totalCards),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f)
@@ -92,12 +94,12 @@ class StudyModeScreen : Screen {
                                     StudyMode.SINGLE, StudyMode.MULTI -> selectedDeckIds.toList()
                                 }
                                 val name = when (selectedMode) {
-                                    StudyMode.MIXED -> "混合学习"
+                                    StudyMode.MIXED -> strings.modeStartMixed
                                     StudyMode.SINGLE -> {
                                         val deck = studyableDecks.find { it.id in selectedDeckIds }
-                                        deck?.name ?: "单牌组学习"
+                                        deck?.name ?: strings.modeStartSingle
                                     }
-                                    StudyMode.MULTI -> "多牌组学习"
+                                    StudyMode.MULTI -> strings.modeStartMulti
                                 }
                                 navigator.push(StudyScreen(deckIds, name))
                             },
@@ -105,7 +107,7 @@ class StudyModeScreen : Screen {
                         ) {
                             Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("开始学习")
+                            Text(strings.modeStartLearning)
                         }
                     }
                 }
@@ -121,7 +123,7 @@ class StudyModeScreen : Screen {
                 item {
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "选择学习模式",
+                        strings.modeSelectMode,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -167,17 +169,27 @@ class StudyModeScreen : Screen {
                                 }
                             )
                             Spacer(Modifier.width(12.dp))
+                            val label = when (mode) {
+                                StudyMode.MIXED -> strings.modeMixed
+                                StudyMode.SINGLE -> strings.modeSingle
+                                StudyMode.MULTI -> strings.modeMulti
+                            }
+                            val description = when (mode) {
+                                StudyMode.MIXED -> strings.modeMixedDesc
+                                StudyMode.SINGLE -> strings.modeSingleDesc
+                                StudyMode.MULTI -> strings.modeMultiDesc
+                            }
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(mode.label, style = MaterialTheme.typography.titleSmall)
+                                Text(label, style = MaterialTheme.typography.titleSmall)
                                 Text(
-                                    mode.description,
+                                    description,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             if (mode == StudyMode.MIXED && count > 0) {
                                 Text(
-                                    "$count 张",
+                                    strings.deckCardsCount(count),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -190,7 +202,7 @@ class StudyModeScreen : Screen {
                     item {
                         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                         Text(
-                            "选择牌组",
+                            strings.modeSelectDecks,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -204,7 +216,7 @@ class StudyModeScreen : Screen {
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        "暂无可用牌组",
+                                        strings.modeNoDecks,
                                         style = MaterialTheme.typography.bodyLarge,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -268,7 +280,7 @@ class StudyModeScreen : Screen {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(deck.name, style = MaterialTheme.typography.titleSmall)
                                         Text(
-                                            "$cardCount 张卡片",
+                                            strings.deckCardsCount(cardCount),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )

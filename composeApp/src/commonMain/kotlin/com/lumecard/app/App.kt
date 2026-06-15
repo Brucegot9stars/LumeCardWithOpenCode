@@ -10,31 +10,39 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import cafe.adriel.voyager.navigator.Navigator
-import com.lumecard.app.di.appModule
+import com.lumecard.app.i18n.AppLocale
+import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.screens.dashboard.DashboardScreen
 import com.lumecard.app.ui.screens.settings.SettingsScreen
 import com.lumecard.app.ui.screens.settings.SettingsStateHolder
 import com.lumecard.app.ui.screens.stats.StatsScreen
 import com.lumecard.app.ui.theme.LumeCardTheme
-import org.koin.compose.KoinApplication
+import com.lumecard.shared.repository.SettingsRepository
 import org.koin.compose.koinInject
 
-enum class BottomNavItem(val label: String, val icon: ImageVector) {
-    Dashboard("首页", Icons.Default.Home),
-    Stats("统计", Icons.Default.DateRange),
-    Settings("设置", Icons.Default.Settings)
+enum class BottomNavItem(val icon: ImageVector) {
+    Dashboard(Icons.Default.Home),
+    Stats(Icons.Default.DateRange),
+    Settings(Icons.Default.Settings)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun App() {
-    KoinApplication(
-        application = {
-            modules(appModule)
-        }
-    ) {
-        val settingsStateHolder: SettingsStateHolder = koinInject()
-        LumeCardTheme(darkTheme = settingsStateHolder.isDarkMode) {
+    val settingsStateHolder: SettingsStateHolder = koinInject()
+    val i18nManager: I18nManager = koinInject()
+    val settingsRepository: SettingsRepository = koinInject()
+    val strings = i18nManager.strings
+
+    LaunchedEffect(Unit) {
+        settingsStateHolder.isDarkMode = settingsRepository.getBoolean("isDarkMode", false)
+        val langStr = settingsRepository.get("language") ?: AppLocale.SYSTEM.name
+        val savedLang = try { AppLocale.valueOf(langStr) } catch (_: Exception) { AppLocale.SYSTEM }
+        settingsStateHolder.language = savedLang
+        i18nManager.setLocale(savedLang)
+    }
+
+    LumeCardTheme(darkTheme = settingsStateHolder.isDarkMode) {
             var currentTab by remember { mutableStateOf(BottomNavItem.Dashboard) }
 
             Navigator(DashboardScreen()) { navigator ->
@@ -54,8 +62,15 @@ fun App() {
                                 NavigationBarItem(
                                     selected = currentTab == item,
                                     onClick = { currentTab = item },
-                                    icon = { Icon(item.icon, contentDescription = item.label) },
-                                    label = { Text(item.label) }
+                                    icon = { Icon(item.icon, contentDescription = null) },
+                                    label = {
+                        val label = when (item) {
+                            BottomNavItem.Dashboard -> strings.navHome
+                            BottomNavItem.Stats -> strings.navStats
+                            BottomNavItem.Settings -> strings.navSettings
+                        }
+                        Text(label)
+                    }
                                 )
                             }
                         }
@@ -66,6 +81,5 @@ fun App() {
                     }
                 }
             }
-        }
     }
 }

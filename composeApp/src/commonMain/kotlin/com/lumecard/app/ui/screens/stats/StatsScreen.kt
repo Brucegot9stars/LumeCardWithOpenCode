@@ -16,6 +16,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.lumecard.app.i18n.I18nManager
 import org.koin.compose.koinInject
 
 class StatsScreen : Screen {
@@ -26,6 +27,7 @@ class StatsScreen : Screen {
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
         val viewModel: StatsViewModel = koinInject()
+        val strings = koinInject<I18nManager>().strings
         val stats by viewModel.stats.collectAsState()
 
         LaunchedEffect(Unit) {
@@ -35,10 +37,10 @@ class StatsScreen : Screen {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("学习统计") },
+                    title = { Text(strings.statsTitle) },
                     navigationIcon = {
                         IconButton(onClick = { navigator.pop() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = strings.actionBack)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -55,9 +57,8 @@ class StatsScreen : Screen {
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 总览统计
                 Text(
-                    "总览",
+                    strings.statsOverview,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -68,19 +69,19 @@ class StatsScreen : Screen {
                 ) {
                     StatCard(
                         modifier = Modifier.weight(1f),
-                        title = "总卡片",
+                        title = strings.statsTotalCards,
                         value = "${stats.totalCards}",
                         color = MaterialTheme.colorScheme.primary
                     )
                     StatCard(
                         modifier = Modifier.weight(1f),
-                        title = "总牌组",
+                        title = strings.statsTotalDecks,
                         value = "${stats.totalDecks}",
                         color = Color(0xFF4CAF50)
                     )
                     StatCard(
                         modifier = Modifier.weight(1f),
-                        title = "总复习",
+                        title = strings.statsTotalReviews,
                         value = "${stats.totalReviews}",
                         color = Color(0xFFFF9800)
                     )
@@ -88,9 +89,8 @@ class StatsScreen : Screen {
 
                 HorizontalDivider()
 
-                // 今日统计
                 Text(
-                    "今日学习",
+                    strings.statsTodayLearning,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -109,7 +109,7 @@ class StatsScreen : Screen {
                         ) {
                             Column {
                                 Text(
-                                    "今日复习",
+                                    strings.statsTodayReviews,
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -121,12 +121,12 @@ class StatsScreen : Screen {
                             }
                             Column(horizontalAlignment = Alignment.End) {
                                 Text(
-                                    "保持率",
+                                    strings.statsRetentionRate,
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
-                                    "${"%.1f".format(stats.retentionRate)}%",
+                                    strings.statsRetentionValue(stats.retentionRate),
                                     style = MaterialTheme.typography.headlineMedium,
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -139,24 +139,24 @@ class StatsScreen : Screen {
                         ) {
                             Column {
                                 Text(
-                                    "学习时长",
+                                    strings.statsStudyTime,
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
-                                    "${stats.studyTimeMinutes}分钟",
+                                    strings.statsStudyTimeValue(stats.studyTimeMinutes),
                                     style = MaterialTheme.typography.titleLarge,
                                     color = MaterialTheme.colorScheme.primary
                                 )
                             }
                             Column(horizontalAlignment = Alignment.End) {
                                 Text(
-                                    "连续天数",
+                                    strings.statsStreak,
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
-                                    "${stats.streakDays}天",
+                                    strings.statsStreakValue(stats.streakDays),
                                     style = MaterialTheme.typography.titleLarge,
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -167,9 +167,66 @@ class StatsScreen : Screen {
 
                 HorizontalDivider()
 
-                // 时间统计
                 Text(
-                    "时间统计",
+                    strings.statsCardDistribution,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    "${stats.newCardsCount}",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    color = Color(0xFF4CAF50)
+                                )
+                                Text(
+                                    strings.statsNewCards,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    "${stats.dueCardsCount}",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    color = Color(0xFFFF9800)
+                                )
+                                Text(
+                                    strings.statsDueCards,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    "${stats.upcomingCardsCount}",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    color = Color(0xFF2196F3)
+                                )
+                                Text(
+                                    strings.statsUpcomingCards,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+
+                HorizontalDivider()
+
+                Text(
+                    strings.statsTimeStats,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -183,20 +240,19 @@ class StatsScreen : Screen {
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        StatRow("本周学习", "${stats.weekReviews} 次")
-                        StatRow("本月学习", "${stats.monthReviews} 次")
-                        StatRow("总学习次数", "${stats.totalReviews} 次")
+                        StatRow(strings.statsThisWeek, strings.statsThisWeekValue(stats.weekReviews))
+                        StatRow(strings.statsThisMonth, strings.statsThisMonthValue(stats.monthReviews))
+                        StatRow(strings.statsTotal, strings.statsTotalValue(stats.totalReviews))
                         if (stats.totalReviews > 0) {
-                            StatRow("平均保持率", "${"%.1f".format(stats.retentionRate)}%")
+                            StatRow(strings.statsAvgRetention, strings.statsRetentionValue(stats.retentionRate))
                         }
                     }
                 }
 
                 HorizontalDivider()
 
-                // 连续天数
                 Text(
-                    "学习习惯",
+                    strings.statsHabits,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -216,7 +272,7 @@ class StatsScreen : Screen {
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            "连续学习天数",
+                            strings.statsStreakDays,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

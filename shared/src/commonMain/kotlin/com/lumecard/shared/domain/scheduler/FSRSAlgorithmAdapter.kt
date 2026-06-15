@@ -3,6 +3,7 @@ package com.lumecard.shared.domain.scheduler
 import com.lumecard.shared.model.CardState
 import com.lumecard.shared.model.FSRSCard
 import com.lumecard.shared.model.Rating
+import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 
 class FSRSAlgorithmAdapter(private val inner: FSRSAlgorithm) : ReviewAlgorithm {
@@ -36,7 +37,7 @@ class FSRSAlgorithmAdapter(private val inner: FSRSAlgorithm) : ReviewAlgorithm {
             due = nextReviewAt,
             stability = stability,
             difficulty = difficulty,
-            elapsedDays = 0,
+            elapsedDays = ((Clock.System.now().toEpochMilliseconds() - nextReviewAt.toEpochMilliseconds()) / 86400000).coerceAtLeast(0).toInt(),
             scheduledDays = intervalDays,
             reps = repetitions,
             lapses = lapses,
