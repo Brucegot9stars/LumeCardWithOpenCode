@@ -6,14 +6,23 @@ import com.lumecard.shared.database.LumeCardDatabase
 import com.lumecard.shared.domain.scheduler.*
 import com.lumecard.shared.repository.*
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.HttpTimeout
 import org.koin.dsl.module
 
 val sharedModule = module {
     // Database (DatabaseDriverFactory must be provided by platform module)
     single { LumeCardDatabase(get<com.lumecard.shared.database.DatabaseDriverFactory>().createDriver()) }
 
-    // HTTP client (auto-detects platform engine: OkHttp on JVM/Android)
-    single { HttpClient() }
+    // HTTP client with timeout configuration
+    single {
+        HttpClient {
+            install(HttpTimeout) {
+                requestTimeoutMillis = 30_000
+                connectTimeoutMillis = 15_000
+            }
+            expectSuccess = false
+        }
+    }
 
     // Repositories
     single<KnowledgeBaseRepository> { SqlDelightKnowledgeBaseRepository(get()) }

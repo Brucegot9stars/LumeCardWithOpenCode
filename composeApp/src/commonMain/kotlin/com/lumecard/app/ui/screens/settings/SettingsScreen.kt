@@ -67,8 +67,7 @@ class SettingsScreen : Screen {
 
         LaunchedEffect(Unit) {
             settingsViewModel.loadSettings()
-            val default = webDavConfigManager.getDefault()
-            defaultConfigName = default?.name ?: ""
+            try { withContext(Dispatchers.IO) { webDavConfigManager.getDefault() }?.let { defaultConfigName = it.name } } catch (_: Exception) { }
         }
 
         Scaffold(
@@ -476,9 +475,12 @@ class SettingsScreen : Screen {
 
             fun reloadConfigs() {
                 scope.launch {
-                    dialogConfigs = webDavConfigManager.getAll()
-                    val d = webDavConfigManager.getDefault()
-                    defaultConfigName = d?.name ?: ""
+                    try {
+                        val configs = withContext(Dispatchers.IO) { webDavConfigManager.getAll() }
+                        dialogConfigs = configs
+                        val d = withContext(Dispatchers.IO) { webDavConfigManager.getDefault() }
+                        if (d != null) defaultConfigName = d.name
+                    } catch (_: Exception) { }
                 }
             }
 
@@ -491,9 +493,15 @@ class SettingsScreen : Screen {
                     confirmButton = {
                         TextButton(onClick = {
                             scope.launch {
-                                webDavConfigManager.delete(deleteConfirmId!!)
-                                deleteConfirmId = null
-                                reloadConfigs()
+                                try {
+                                    val id = deleteConfirmId ?: return@launch
+                                    withContext(Dispatchers.IO) { webDavConfigManager.delete(id) }
+                                    deleteConfirmId = null
+                                    reloadConfigs()
+                                } catch (e: Exception) {
+                                    deleteConfirmId = null
+                                    snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
+                                }
                             }
                         }) { Text(strings.actionConfirm) }
                     },
@@ -579,10 +587,11 @@ class SettingsScreen : Screen {
                                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                                             Text(config.name, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
                                             if (config.isDefault) {
-                                                SuggestionChip(
-                                                    onClick = {},
-                                                    label = { Text(strings.settingsSyncDefault, style = MaterialTheme.typography.labelSmall) },
-                                                    modifier = Modifier.height(24.dp)
+                                                Text(
+                                                    strings.settingsSyncDefault,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                                 )
                                             }
                                         }
@@ -622,8 +631,12 @@ class SettingsScreen : Screen {
                                                 TextButton(
                                                     onClick = {
                                                         scope.launch {
-                                                            webDavConfigManager.setDefault(config.id)
-                                                            reloadConfigs()
+                                                            try {
+                                                                withContext(Dispatchers.IO) { webDavConfigManager.setDefault(config.id) }
+                                                                reloadConfigs()
+                                                            } catch (e: Exception) {
+                                                                snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
+                                                            }
                                                         }
                                                     },
                                                     modifier = Modifier.height(32.dp)
@@ -632,13 +645,20 @@ class SettingsScreen : Screen {
                                             TextButton(
                                                 onClick = {
                                                     scope.launch {
-                                                        testResult = null
-                                                        val result = withContext(Dispatchers.IO) { webDavConfigManager.testConnection(config) }
-                                                        testResult = result.fold(
-                                                            onSuccess = { strings.settingsSyncTestSuccess },
-                                                            onFailure = { strings.settingsSyncTestError(it.message ?: "Unknown") }
-                                                        )
-                                                        snackbarHostState.showSnackbar(testResult!!)
+                                                        try {
+                                                            testResult = null
+                                                            val result = withContext(Dispatchers.IO) { webDavConfigManager.testConnection(config) }
+                                                            testResult = result.fold(
+                                                                onSuccess = { strings.settingsSyncTestSuccess },
+                                                                onFailure = { strings.settingsSyncTestError(it.message ?: "Unknown") }
+                                                            )
+                                                            val msg = testResult ?: return@launch
+                                                            snackbarHostState.showSnackbar(msg)
+                                                        } catch (e: Exception) {
+                                                            val errMsg = strings.settingsSyncTestError(e.message ?: "Unknown")
+                                                            testResult = errMsg
+                                                            snackbarHostState.showSnackbar(errMsg)
+                                                        }
                                                     }
                                                 },
                                                 modifier = Modifier.height(32.dp)
@@ -717,19 +737,23 @@ class SettingsScreen : Screen {
                     if (isEditing) {
                         TextButton(onClick = {
                             scope.launch {
-                                val config = WebDavConfig(
-                                    id = editConfig?.id ?: Clock.System.now().toEpochMilliseconds().toString(),
-                                    name = editName.ifBlank { editUrl },
-                                    url = editUrl,
-                                    username = editUser,
-                                    password = editPass,
-                                    isDefault = editConfig?.isDefault ?: dialogConfigs.isEmpty()
-                                )
-                                webDavConfigManager.save(config)
-                                isEditing = false
-                                editConfig = null
-                                testResult = null
-                                reloadConfigs()
+                                try {
+                                    val config = WebDavConfig(
+                                        id = editConfig?.id ?: Clock.System.now().toEpochMilliseconds().toString(),
+                                        name = editName.ifBlank { editUrl },
+                                        url = editUrl,
+                                        username = editUser,
+                                        password = editPass,
+                                        isDefault = editConfig?.isDefault ?: dialogConfigs.isEmpty()
+                                    )
+                                    withContext(Dispatchers.IO) { webDavConfigManager.save(config) }
+                                    isEditing = false
+                                    editConfig = null
+                                    testResult = null
+                                    reloadConfigs()
+                                } catch (e: Exception) {
+                                    snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
+                                }
                             }
                         }) { Text(strings.actionSave) }
                     } else {

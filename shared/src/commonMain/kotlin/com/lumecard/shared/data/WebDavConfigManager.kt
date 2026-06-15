@@ -77,16 +77,25 @@ class WebDavConfigManager(
 
     suspend fun testConnection(config: WebDavConfig): Result<String> {
         return try {
-            val url = config.url.trimEnd('/') + "/"
-            val response = client.request(url) {
-                method = HttpMethod.Options
+            val url = config.url.trimEnd('/')
+            if (url.isBlank()) return Result.failure(SyncException("URL is empty"))
+            val response = client.get("$url/") {
                 basicAuth(config.username, config.password)
             }
-            if (response.status.isSuccess()) {
-                Result.success("HTTP ${response.status.value}")
-            } else {
-                Result.failure(SyncException("Connection failed: ${response.status}"))
+            Result.success("HTTP ${response.status.value}")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun testConnectionLiveness(url: String, username: String, password: String): Result<String> {
+        return try {
+            val base = url.trimEnd('/')
+            if (base.isBlank()) return Result.failure(SyncException("URL is empty"))
+            val response = client.get("$base/") {
+                basicAuth(username, password)
             }
+            Result.success("HTTP ${response.status.value}")
         } catch (e: Exception) {
             Result.failure(e)
         }

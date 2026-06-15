@@ -9,7 +9,25 @@ class SyncManager(
     private val client: HttpClient
 ) {
     companion object {
+        private const val BACKUP_DIR = "LumeCard"
         private const val BACKUP_FILENAME = "lumecard_backup.json"
+        private const val BACKUP_PATH = "$BACKUP_DIR/$BACKUP_FILENAME"
+        private const val LEGACY_PATH = BACKUP_FILENAME
+    }
+
+    private suspend fun ensureDir(baseUrl: String, username: String, password: String, dir: String) {
+        val dirUrl = baseUrl.trimEnd('/') + "/" + dir.trim('/') + "/"
+        try {
+            val r = client.request(dirUrl) {
+                method = HttpMethod("MKCOL")
+                basicAuth(username, password)
+            }
+            val s = r.status.value
+            val ok = s in 200..299 || s == 405
+            if (!ok) throw SyncException("MKCOL $dir failed: $s")
+        } catch (e: SyncException) {
+            throw e
+        } catch (_: Exception) { }
     }
 
     suspend fun upload(
@@ -19,7 +37,8 @@ class SyncManager(
         json: String
     ): Result<Unit> {
         return try {
-            val url = baseUrl.trimEnd('/') + "/" + BACKUP_FILENAME
+            ensureDir(baseUrl, username, password, BACKUP_DIR)
+            val url = baseUrl.trimEnd('/') + "/" + BACKUP_PATH
             val response = client.put(url) {
                 basicAuth(username, password)
                 contentType(ContentType.Application.Json)
@@ -41,7 +60,24 @@ class SyncManager(
         password: String
     ): Result<String> {
         return try {
-            val url = baseUrl.trimEnd('/') + "/" + BACKUP_FILENAME
+            val result = downloadPath(baseUrl, username, password, BACKUP_PATH)
+            if (result.isSuccess) return result
+            val newResult = downloadPath(baseUrl, username, password, LEGACY_PATH)
+            if (newResult.isSuccess) return newResult
+            result
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    private suspend fun downloadPath(
+        baseUrl: String,
+        username: String,
+        password: String,
+        path: String
+    ): Result<String> {
+        return try {
+            val url = baseUrl.trimEnd('/') + "/" + path
             val response = client.get(url) {
                 basicAuth(username, password)
             }
