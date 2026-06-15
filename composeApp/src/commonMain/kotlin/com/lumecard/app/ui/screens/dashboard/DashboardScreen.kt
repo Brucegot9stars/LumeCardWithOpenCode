@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -112,7 +113,7 @@ class DashboardScreen : Screen {
                             QuickActionCard(
                                 modifier = Modifier.weight(1f),
                                 title = "管理牌组",
-                                icon = Icons.Default.List,
+                                icon = Icons.AutoMirrored.Filled.List,
                                 onClick = { navigator.push(DeckListScreen()) }
                             )
                         }

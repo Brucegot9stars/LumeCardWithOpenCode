@@ -6,7 +6,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,13 +48,13 @@ class CreateCardScreen(
                     title = { Text(if (isEditing) "编辑卡片" else "创建卡片") },
                     navigationIcon = {
                         IconButton(onClick = { navigator.pop() }) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                         }
                     },
                     actions = {
                         IconButton(
                             onClick = {
-                                if (isEditing && editCard != null) {
+                                if (isEditing) {
                                     viewModel.updateCard(
                                         card = editCard,
                                         front = front,
@@ -116,7 +118,7 @@ class CreateCardScreen(
                         label = { Text("卡片类型") },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor(),
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable),
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(expanded = showTypeMenu)
                         }
