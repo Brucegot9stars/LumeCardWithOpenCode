@@ -100,19 +100,10 @@ class SyncManager(
     suspend fun download(config: WebDavConfig): Result<String> {
         return download(config.url, config.username, config.password)
     }
-}
-
-class SyncException(message: String) : Exception(message)
 
     /**
-     * Perform a full bidirectional sync with WebDAV.
-     *
-     * Strategy:
-     * 1. Download remote backup FIRST
-     * 2. If remote not found → upload local as initial backup
-     * 3. If local is empty AND remote exists → import all remote (new device restore)
-     * 4. If both have data → union merge (add remote items not in local, keep local items)
-     * 5. Upload merged result, return merged data for caller to apply locally
+     * Perform bidirectional sync: download remote first, then merge.
+     * New device scenario: if local empty, import all remote data.
      */
     suspend fun performSync(
         config: WebDavConfig,
@@ -120,103 +111,56 @@ class SyncException(message: String) : Exception(message)
         localCards: List<com.lumecard.shared.model.Card>,
         exportManager: ExportManager,
     ): SyncResult {
-        // Step 1: Download remote first
         val remoteResult = download(config)
-
         if (remoteResult.isFailure) {
-            // No remote backup → upload local as initial backup
-            if (localDecks.isEmpty() && localCards.isEmpty()) {
-                return SyncResult.Skipped("Nothing to sync")
-            }
+            if (localDecks.isEmpty() && localCards.isEmpty()) return SyncResult.Skipped("Nothing to sync")
             val json = exportManager.exportToJson(localDecks, localCards)
-            val uploadResult = upload(config, json)
-            return if (uploadResult.isSuccess) {
-                SyncResult.Success(backedUp = true, imported = false, decksSynced = localDecks.size)
-            } else {
-                SyncResult.Error(uploadResult.exceptionOrNull()?.message ?: "Upload failed")
-            }
+            val up = upload(config, json)
+            return if (up.isSuccess) SyncResult.Success(true, false, localDecks.size)
+            else SyncResult.Error(up.exceptionOrNull()?.message ?: "Upload failed")
         }
-
-        // Parse remote
         val remoteJson = remoteResult.getOrThrow()
         val remoteExport = exportManager.importFromJson(remoteJson)
         if (remoteExport == null) {
-            // Remote corrupt → overwrite with local
-            if (localDecks.isNotEmpty()) {
-                val json = exportManager.exportToJson(localDecks, localCards)
-                upload(config, json)
-            }
-            return SyncResult.Success(backedUp = true, imported = false, decksSynced = localDecks.size)
+            if (localDecks.isNotEmpty()) upload(config, exportManager.exportToJson(localDecks, localCards))
+            return SyncResult.Success(true, false, localDecks.size)
         }
-
-        // Step 2: If local is empty → new device, import all remote
-        if (localDecks.isEmpty() && localCards.isEmpty()) {
-            return SyncResult.RemoteImport(remoteExport)
-        }
-
-        // Step 3: Both have data → union merge
+        if (localDecks.isEmpty() && localCards.isEmpty()) return SyncResult.RemoteImport(remoteExport)
+        val now = kotlinx.datetime.Clock.System.now()
         val localDeckIds = localDecks.map { it.id }.toSet()
         val localCardIds = localCards.map { it.id }.toSet()
-
         val mergedDecks = localDecks.toMutableList()
         val mergedCards = localCards.toMutableList()
-
-        // Add remote decks not in local
         for (ed in remoteExport.decks) {
             if (ed.id !in localDeckIds) {
-                val now = kotlinx.datetime.Clock.System.now()
-                mergedDecks.add(com.lumecard.shared.model.Deck(
-                    id = ed.id,
-                    knowledgeBaseId = ed.knowledgeBaseId,
-                    name = ed.name,
-                    description = ed.description,
-                    color = ed.color,
-                    icon = ed.icon,
-                    parentId = ed.parentId,
-                    createdAt = try { kotlinx.datetime.Instant.parse(ed.createdAt) } catch (_: Exception) { now },
-                    updatedAt = try { kotlinx.datetime.Instant.parse(ed.updatedAt) } catch (_: Exception) { now },
-                ))
+                mergedDecks.add(com.lumecard.shared.model.Deck(id=ed.id, knowledgeBaseId=ed.knowledgeBaseId,
+                    name=ed.name, description=ed.description, color=ed.color, icon=ed.icon,
+                    parentId=ed.parentId,
+                    createdAt=try { kotlinx.datetime.Instant.parse(ed.createdAt) } catch(_: Exception) { now },
+                    updatedAt=try { kotlinx.datetime.Instant.parse(ed.updatedAt) } catch(_: Exception) { now }))
             }
         }
-
-        // Add remote cards not in local
         for (ec in remoteExport.cards) {
             if (ec.id !in localCardIds) {
-                val now = kotlinx.datetime.Clock.System.now()
-                mergedCards.add(com.lumecard.shared.model.Card(
-                    id = ec.id,
-                    deckId = ec.deckId,
-                    type = try { com.lumecard.shared.model.CardType.valueOf(ec.type) } catch (_: Exception) { com.lumecard.shared.model.CardType.BASIC },
-                    front = ec.front,
-                    back = ec.back,
-                    tags = ec.tags,
-                    createdAt = try { kotlinx.datetime.Instant.parse(ec.createdAt) } catch (_: Exception) { now },
-                    updatedAt = try { kotlinx.datetime.Instant.parse(ec.updatedAt) } catch (_: Exception) { now },
-                ))
+                mergedCards.add(com.lumecard.shared.model.Card(id=ec.id, deckId=ec.deckId,
+                    type=try { com.lumecard.shared.model.CardType.valueOf(ec.type) } catch(_: Exception) { com.lumecard.shared.model.CardType.BASIC },
+                    front=ec.front, back=ec.back, tags=ec.tags,
+                    createdAt=try { kotlinx.datetime.Instant.parse(ec.createdAt) } catch(_: Exception) { now },
+                    updatedAt=try { kotlinx.datetime.Instant.parse(ec.updatedAt) } catch(_: Exception) { now }))
             }
         }
-
-        // Upload merged result
         val mergedJson = exportManager.exportToJson(mergedDecks, mergedCards)
         upload(config, mergedJson)
-
-        return SyncResult.Success(
-            backedUp = true,
-            imported = (mergedDecks.size - localDecks.size) > 0 || (mergedCards.size - localCards.size) > 0,
-            decksSynced = mergedDecks.size,
-        )
+        return SyncResult.Success(true, (mergedDecks.size-localDecks.size)>0||(mergedCards.size-localCards.size)>0, mergedDecks.size)
     }
+
 }
 
+class SyncException(message: String) : Exception(message)
+
 sealed class SyncResult {
-    /** Remote backup created/updated with local data. No merge needed. */
     data class Success(val backedUp: Boolean, val imported: Boolean, val decksSynced: Int) : SyncResult()
-
-    /** Local was empty, all remote data returned for import. Caller must apply locally. */
     data class RemoteImport(val export: LumeCardExport) : SyncResult()
-
-    /** Nothing to sync (both local and remote are empty). */
     data class Skipped(val reason: String) : SyncResult()
-
     data class Error(val message: String) : SyncResult()
 }
