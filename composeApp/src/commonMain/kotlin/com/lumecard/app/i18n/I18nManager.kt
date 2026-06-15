@@ -6,13 +6,13 @@ import androidx.compose.runtime.setValue
 import com.lumecard.app.platform.applyAppLocale
 import com.lumecard.app.platform.detectSystemLocaleTag
 
-enum class AppLocale(val code: String, val displayName: String) {
-    SYSTEM("system", "跟随系统"),
-    ZH_CN("zh-CN", "简体中文"),
-    ZH_TW("zh-TW", "繁體中文"),
-    EN("en", "English"),
-    JA("ja", "日本語"),
-    ES("es", "Español")
+enum class AppLocale(val code: String, val displayName: String, val flag: String = "") {
+    SYSTEM("system", "跟随系统", ""),
+    ZH_CN("zh-CN", "简体中文", "\uD83C\uDDE8\uD83C\uDDF3"),
+    ZH_TW("zh-TW", "繁體中文", "\uD83C\uDDF9\uD83C\uDDFC"),
+    EN("en", "English", "\uD83C\uDDFA\uD83C\uDDF8"),
+    JA("ja", "日本語", "\uD83C\uDDEF\uD83C\uDDF5"),
+    ES("es", "Español", "\uD83C\uDDEA\uD83C\uDDF8")
 }
 
 class I18nManager {
@@ -66,3 +66,4 @@ fun String.i18nFormat(vararg args: Any?): String {
     }
     return result
 }
+

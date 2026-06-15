@@ -8,7 +8,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,6 +21,7 @@ import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.components.LumeCardTopBar
+import com.lumecard.app.ui.components.CardTypeSelector
 import com.lumecard.app.i18n.I18nStrings
 import com.lumecard.app.ui.theme.LumeCardTheme
 import org.koin.compose.koinInject
@@ -106,47 +106,11 @@ class CreateCardScreen(
                 }
 
                 // 卡片类型选择
-                ExposedDropdownMenuBox(
-                    expanded = showTypeMenu,
-                    onExpandedChange = { showTypeMenu = it }
-                ) {
-                    OutlinedTextField(
-                        value = cardTypeLabel(cardType, strings),
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text(strings.cardType) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(MenuAnchorType.PrimaryNotEditable),
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = showTypeMenu)
-                        }
-                    )
-                    ExposedDropdownMenu(
-                        expanded = showTypeMenu,
-                        onDismissRequest = { showTypeMenu = false }
-                    ) {
-                        CardType.entries.forEach { type ->
-                            DropdownMenuItem(
-                                text = {
-                                    Column {
-                                        Text(cardTypeLabel(type, strings), style = MaterialTheme.typography.bodyLarge)
-                                        Text(cardTypeDesc(type, strings), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                },
-                                onClick = {
-                                    cardType = type
-                                    showTypeMenu = false
-                                },
-                                leadingIcon = {
-                                    if (type == cardType) {
-                                        Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                    }
-                                }
-                            )
-                        }
-                    }
-                }
+                Text(strings.cardType, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                CardTypeSelector(
+                    selectedType = cardType,
+                    onTypeSelected = { cardType = it },
+                )
 
                 // 类型专用输入区
                 CardTypeInput(
@@ -403,6 +367,7 @@ private fun typeExampleText(type: CardType, strings: I18nStrings): String = when
     CardType.MARKDOWN -> strings.cardTypeMarkdownExample
     CardType.AI_GENERATED -> strings.cardTypeAiExample
 }
+
 
 
 

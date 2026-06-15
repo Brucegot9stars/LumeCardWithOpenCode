@@ -262,11 +262,11 @@ class SettingsScreen : Screen {
                                     Text(
                                         when (settingsState.language) {
                                             AppLocale.SYSTEM -> strings.langSystem
-                                            AppLocale.ZH_CN -> strings.langZhCn
-                                            AppLocale.ZH_TW -> strings.langZhTw
-                                            AppLocale.EN -> strings.langEn
-                                            AppLocale.JA -> strings.langJa
-                                            AppLocale.ES -> strings.langEs
+                                            AppLocale.ZH_CN -> " "
+                                            AppLocale.ZH_TW -> " "
+                                            AppLocale.EN -> " "
+                                            AppLocale.JA -> " "
+                                            AppLocale.ES -> " "
                                         },
                                         style = MaterialTheme.typography.titleMedium,
                                         color = MaterialTheme.colorScheme.primary
@@ -282,12 +282,12 @@ class SettingsScreen : Screen {
                                             text = {
                                                 Text(
                                                     when (locale) {
-                                                        AppLocale.SYSTEM -> strings.langSystem
-                                                        AppLocale.ZH_CN -> strings.langZhCn
-                                                        AppLocale.ZH_TW -> strings.langZhTw
-                                                        AppLocale.EN -> strings.langEn
-                                                        AppLocale.JA -> strings.langJa
-                                                        AppLocale.ES -> strings.langEs
+                                                        AppLocale.SYSTEM -> "\u2699\uFE0F "
+                                                        AppLocale.ZH_CN -> " "
+                                                        AppLocale.ZH_TW -> " "
+                                                        AppLocale.EN -> " "
+                                                        AppLocale.JA -> " "
+                                                        AppLocale.ES -> " "
                                                     }
                                                 )
                                             },
@@ -843,5 +843,7 @@ fun SettingsSection(
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
+
+
 
 
