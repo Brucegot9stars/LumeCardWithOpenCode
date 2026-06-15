@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import cafe.adriel.voyager.core.screen.Screen
@@ -433,33 +434,65 @@ private fun CardContent(
             }
             AnswerDisplayMode.SPLIT -> {
                 if (isFlipped) {
+                    // Question section
                     Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f)
+                        shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
                     ) {
-                        Text(
-                            "问题",
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "问题",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                            Spacer(Modifier.weight(1f))
+                            Text(
+                                cardTypeName(card.type),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.6f)
+                            )
+                        }
                     }
-                    Spacer(Modifier.height(8.dp))
-                    CardFace(card, showBack = false)
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                    Spacer(Modifier.height(4.dp))
                     Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                        shape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
                     ) {
-                        Text(
-                            "答案",
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+                        CardFace(card, showBack = false).let { it }
                     }
-                    Spacer(Modifier.height(8.dp))
-                    CardFace(card, showBack = true)
+                    Spacer(Modifier.height(16.dp))
+                    // Answer section
+                    Surface(
+                        shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "答案",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Spacer(Modifier.weight(1f))
+                            Text(
+                                "已展示",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Surface(
+                        shape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.2f)
+                    ) {
+                        CardFace(card, showBack = true).let { it }
+                    }
                 } else {
                     CardFace(card, showBack = false)
                 }
@@ -475,21 +508,22 @@ private fun FlipCard(
     back: @Composable () -> Unit
 ) {
     val rotation = remember { Animatable(if (isFlipped) 180f else 0f) }
-    val density = androidx.compose.ui.platform.LocalDensity.current
+    var cardWidth by remember { mutableFloatStateOf(1f) }
 
     LaunchedEffect(isFlipped) {
         rotation.animateTo(
             targetValue = if (isFlipped) 180f else 0f,
-            animationSpec = tween(400)
+            animationSpec = tween(500)
         )
     }
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .onSizeChanged { cardWidth = it.width.coerceAtLeast(1).toFloat() }
             .graphicsLayer {
                 rotationY = rotation.value
-                cameraDistance = 12f * density.density
+                cameraDistance = cardWidth * 8f
             }
     ) {
         if (rotation.value < 90f) {
