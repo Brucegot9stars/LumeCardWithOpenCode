@@ -20,6 +20,7 @@ import com.lumecard.shared.model.Deck
 import kotlinx.coroutines.launch
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.i18n.I18nManager
+import com.lumecard.app.ui.theme.LumeCardTheme
 import org.koin.compose.koinInject
 
 class DeckListScreen : Screen {
@@ -137,8 +138,8 @@ class DeckListScreen : Screen {
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding)
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(horizontal = LumeCardTheme.spacing.md),
+                    verticalArrangement = Arrangement.spacedBy(LumeCardTheme.spacing.section)
                 ) {
                     item {
                         Text(
@@ -334,5 +335,6 @@ class DeckListScreen : Screen {
         }
     }
 }
+
 
 

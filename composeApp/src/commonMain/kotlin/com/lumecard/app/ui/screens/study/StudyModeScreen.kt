@@ -19,6 +19,7 @@ import com.lumecard.app.ui.screens.deck.DeckViewModel
 import com.lumecard.shared.model.Deck
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.i18n.I18nManager
+import com.lumecard.app.ui.theme.LumeCardTheme
 import org.koin.compose.koinInject
 
 enum class StudyMode {
@@ -71,8 +72,8 @@ class StudyModeScreen : Screen {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            .padding(LumeCardTheme.spacing.md),
+                        horizontalArrangement = Arrangement.spacedBy(LumeCardTheme.spacing.section),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
@@ -290,5 +291,6 @@ class StudyModeScreen : Screen {
         }
     }
 }
+
 
 

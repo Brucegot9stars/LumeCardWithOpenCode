@@ -12,6 +12,7 @@ import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.ReviewLogRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -46,6 +47,14 @@ class StudyViewModel(
     private val _swipeFeedback = MutableStateFlow<String?>(null)
     val swipeFeedback: StateFlow<String?> = _swipeFeedback
 
+    private val _sessionStartTime = MutableStateFlow<kotlinx.datetime.Instant?>(null)
+    val sessionStartTime: StateFlow<kotlinx.datetime.Instant?> = _sessionStartTime
+
+    private val _elapsedSeconds = MutableStateFlow(0)
+    val elapsedSeconds: StateFlow<Int> = _elapsedSeconds
+
+    private var timerJob: Job? = null
+
     private val _cardStartTimes = mutableMapOf<String, kotlinx.datetime.Instant>()
 
     fun loadCards(deckIds: List<String>) {
@@ -74,6 +83,18 @@ class StudyViewModel(
                 }
             }
             shuffled.firstOrNull()?.let { _cardStartTimes[it.id] = Clock.System.now() }
+
+            // Start session timer
+            _sessionStartTime.value = Clock.System.now()
+            _elapsedSeconds.value = 0
+            timerJob?.cancel()
+            timerJob = screenModelScope.launch {
+                while (true) {
+                    kotlinx.coroutines.delay(1000)
+                    val start = _sessionStartTime.value ?: continue
+                    _elapsedSeconds.value = ((Clock.System.now().toEpochMilliseconds() - start.toEpochMilliseconds()) / 1000).toInt()
+                }
+            }
         }
     }
 
@@ -179,3 +200,4 @@ class StudyViewModel(
         )
     }
 }
+

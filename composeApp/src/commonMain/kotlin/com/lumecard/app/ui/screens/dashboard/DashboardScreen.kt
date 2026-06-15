@@ -51,11 +51,14 @@ class DashboardScreen : Screen {
         val decks by viewModel.decks.collectAsState()
         val decksWithCount by viewModel.decksWithCount.collectAsState()
         val isLoading by viewModel.isLoading.collectAsState()
+        val todayReviews by viewModel.todayReviews.collectAsState()
+        val dailyGoal by viewModel.dailyGoal.collectAsState()
+        val totalDueCards by viewModel.totalDueCards.collectAsState()
 
         val firstStudyableDeck = decksWithCount.firstOrNull { it.cardCount > 0 }?.deck
         val studyableCount = decksWithCount.count { it.cardCount > 0 }
         val totalCards = decksWithCount.sumOf { it.cardCount }
-        val overallProgress = if (decks.isNotEmpty()) studyableCount.toFloat() / decks.size.toFloat() else 0f
+        val goalProgress = if (dailyGoal > 0) (todayReviews.toFloat() / dailyGoal).coerceIn(0f, 1f) else 0f
 
         Scaffold(
             topBar = {
@@ -99,7 +102,7 @@ class DashboardScreen : Screen {
                             ) {
                                 // Progress ring
                                 ProgressRing(
-                                    progress = overallProgress,
+                                    progress = goalProgress,
                                     size = 80.dp,
                                     strokeWidth = 7.dp,
                                     trackColor = MaterialTheme.colorScheme.outlineVariant,
@@ -111,7 +114,7 @@ class DashboardScreen : Screen {
                                 // Stats column
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        strings.dashTodayStudy,
+                                        " /  today",
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.SemiBold,
                                     )
@@ -464,4 +467,5 @@ private fun AnimatedItem(
         content()
     }
 }
+
 

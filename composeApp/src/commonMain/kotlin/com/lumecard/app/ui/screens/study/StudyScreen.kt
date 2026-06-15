@@ -59,6 +59,7 @@ class StudyScreen(
         val currentIndex by viewModel.currentCardIndex.collectAsState()
         val isFlipped by viewModel.isFlipped.collectAsState()
         val completedCards by viewModel.completedCards.collectAsState()
+        val elapsedSeconds by viewModel.elapsedSeconds.collectAsState()
 
         val currentCard = cards.getOrNull(currentIndex)
         val nextCard = cards.getOrNull(currentIndex + 1)
@@ -103,11 +104,21 @@ class StudyScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            strings.studyProgressText(if (currentIndex < cards.size) currentIndex + 1 else cards.size, cards.size),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                strings.studyProgressText(if (currentIndex < cards.size) currentIndex + 1 else cards.size, cards.size),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                formatElapsedTime(elapsedSeconds),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            )
+                        }
                         if (currentCard != null) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Surface(
@@ -706,3 +717,20 @@ private fun CompletionStat(
     }
 }
 
+
+
+private fun formatElapsedTime(totalSeconds: Int): String {
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return if (minutes > 0) {
+        if (minutes >= 60) {
+            val hours = minutes / 60
+            val mins = minutes % 60
+            ""hours"h mins"m""
+        } else {
+            ""minutes"m seconds"s""
+        }
+    } else {
+        ""seconds"s""
+    }
+}
