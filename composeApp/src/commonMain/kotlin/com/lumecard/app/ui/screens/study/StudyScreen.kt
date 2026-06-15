@@ -18,6 +18,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusable
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -70,6 +76,7 @@ class StudyScreen(
         var lastDragTime by remember { mutableLongStateOf(0L) }
         var lastDragX by remember { mutableFloatStateOf(0f) }
         var velocity by remember { mutableFloatStateOf(0f) }
+        val focusRequester = remember { FocusRequester() }
 
         LaunchedEffect(deckIds) {
             viewModel.loadCards(deckIds)
@@ -80,7 +87,31 @@ class StudyScreen(
             isAnimatingOut = false
         }
 
-        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        LaunchedEffect(Unit) {
+            focusRequester.requestFocus()
+        }
+
+        BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .focusRequester(focusRequester)
+            .focusable()
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyUp) {
+                    when (event.key) {
+                        Key.Spacebar -> { viewModel.flipCard(); true }
+                        Key.DirectionLeft -> { viewModel.goBack(); true }
+                        Key.DirectionRight, Key.DirectionDown -> { viewModel.rateCard(Rating.EASY); true }
+                        Key.DirectionUp -> { viewModel.rateCard(Rating.GOOD); true }
+                        Key.One -> { viewModel.rateCard(Rating.AGAIN); true }
+                        Key.Two -> { viewModel.rateCard(Rating.HARD); true }
+                        Key.Three -> { viewModel.rateCard(Rating.GOOD); true }
+                        Key.Four -> { viewModel.rateCard(Rating.EASY); true }
+                        else -> false
+                    }
+                } else false
+            }
+    ) {
             val screenWidth = maxWidth.value
             val threshold = screenWidth * 0.2f
 
@@ -484,6 +515,11 @@ class StudyScreen(
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            Text(
+                                "Press 1-4 to rate, Space to flip",
+                                style = MaterialTheme.typography.caption,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            )
                             Spacer(modifier = Modifier.height(8.dp))
                             LumeCardRatingBar(
                                 onAgain = { viewModel.rateCard(Rating.AGAIN) },
@@ -734,3 +770,7 @@ private fun formatElapsedTime(totalSeconds: Int): String {
         ""seconds"s""
     }
 }
+
+
+
+

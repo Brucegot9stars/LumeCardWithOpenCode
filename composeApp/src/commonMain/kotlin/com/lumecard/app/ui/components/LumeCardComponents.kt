@@ -83,6 +83,7 @@ fun LumeCardRatingBar(
     onGood: () -> Unit,
     onEasy: () -> Unit,
     modifier: Modifier = Modifier,
+    showShortcuts: Boolean = true,
 ) {
     val colors = LumeCardTheme.semanticColors
     val spacing = LumeCardTheme.spacing
@@ -94,24 +95,28 @@ fun LumeCardRatingBar(
     ) {
         RatingChip(
             label = "Again",
+            shortcut = if (showShortcuts) "1" else null,
             accentColor = colors.ratingAgain,
             modifier = Modifier.weight(1f),
             onClick = onAgain,
         )
         RatingChip(
             label = "Hard",
+            shortcut = if (showShortcuts) "2" else null,
             accentColor = colors.ratingHard,
             modifier = Modifier.weight(1f),
             onClick = onHard,
         )
         RatingChip(
             label = "Good",
+            shortcut = if (showShortcuts) "3" else null,
             accentColor = colors.ratingGood,
             modifier = Modifier.weight(1f),
             onClick = onGood,
         )
         RatingChip(
             label = "Easy",
+            shortcut = if (showShortcuts) "4" else null,
             accentColor = colors.ratingEasy,
             modifier = Modifier.weight(1f),
             onClick = onEasy,
@@ -152,6 +157,7 @@ private fun RatingChip(
     accentColor: Color,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
+    shortcut: String? = null,
 ) {
     val surfaceColor = MaterialTheme.colorScheme.surfaceVariant
 
@@ -168,12 +174,25 @@ private fun RatingChip(
                 .padding(horizontal = 8.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Color accent dot
-            Surface(
-                modifier = Modifier.size(6.dp),
-                shape = RoundedCornerShape(3.dp),
-                color = accentColor,
-            ) {}
+            // Row: shortcut badge + accent dot
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                if (shortcut != null) {
+                    Text(
+                        text = shortcut,
+                        style = MaterialTheme.typography.caption,
+                        fontWeight = FontWeight.Bold,
+                        color = accentColor,
+                    )
+                }
+                Surface(
+                    modifier = Modifier.size(6.dp),
+                    shape = RoundedCornerShape(3.dp),
+                    color = accentColor,
+                ) {}
+            }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = label,
@@ -220,3 +239,4 @@ private fun MiniRatingChip(
         }
     }
 }
+
