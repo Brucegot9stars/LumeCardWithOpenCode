@@ -182,7 +182,7 @@ private fun RatingChip(
                 if (shortcut != null) {
                     Text(
                         text = shortcut,
-                        style = MaterialTheme.typography.caption,
+                        style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = accentColor,
                     )
@@ -239,4 +239,5 @@ private fun MiniRatingChip(
         }
     }
 }
+
 

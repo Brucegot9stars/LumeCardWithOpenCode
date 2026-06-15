@@ -18,12 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusable
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.onKeyEvent
+
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -36,6 +31,10 @@ import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.ui.components.MarkdownText
+import com.lumecard.app.ui.components.LumeCardTopBar
+import com.lumecard.app.ui.components.LumeCardRatingBar
+import com.lumecard.app.ui.components.ProgressRing
+import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.app.ui.screens.settings.AnswerDisplayMode
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.screens.settings.SettingsStateHolder
@@ -44,6 +43,7 @@ import com.lumecard.shared.model.CardType
 import com.lumecard.shared.model.Rating
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+import androidx.compose.ui.text.font.FontWeight
 import kotlin.math.abs
 
 class StudyScreen(
@@ -76,7 +76,6 @@ class StudyScreen(
         var lastDragTime by remember { mutableLongStateOf(0L) }
         var lastDragX by remember { mutableFloatStateOf(0f) }
         var velocity by remember { mutableFloatStateOf(0f) }
-        val focusRequester = remember { FocusRequester() }
 
         LaunchedEffect(deckIds) {
             viewModel.loadCards(deckIds)
@@ -87,40 +86,21 @@ class StudyScreen(
             isAnimatingOut = false
         }
 
-        LaunchedEffect(Unit) {
-            focusRequester.requestFocus()
-        }
 
         BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .focusRequester(focusRequester)
-            .focusable()
-            .onKeyEvent { event ->
-                if (event.type == KeyEventType.KeyUp) {
-                    when (event.key) {
-                        Key.Spacebar -> { viewModel.flipCard(); true }
-                        Key.DirectionLeft -> { viewModel.goBack(); true }
-                        Key.DirectionRight, Key.DirectionDown -> { viewModel.rateCard(Rating.EASY); true }
-                        Key.DirectionUp -> { viewModel.rateCard(Rating.GOOD); true }
-                        Key.One -> { viewModel.rateCard(Rating.AGAIN); true }
-                        Key.Two -> { viewModel.rateCard(Rating.HARD); true }
-                        Key.Three -> { viewModel.rateCard(Rating.GOOD); true }
-                        Key.Four -> { viewModel.rateCard(Rating.EASY); true }
-                        else -> false
-                    }
-                } else false
-            }
     ) {
             val screenWidth = maxWidth.value
             val threshold = screenWidth * 0.2f
 
-            topBar = {
-                LumeCardTopBar(
-                    title = "{strings.actionLearning}: deckName",
-                    onBack = { navigator.pop() }
-                )
-            }
+            Scaffold(
+                topBar = {
+                    LumeCardTopBar(
+                        title = "{strings.actionLearning}: deckName",
+                        onBack = { navigator.pop() }
+                    )
+                }
             ) { padding ->
                 Column(
                     modifier = Modifier
@@ -425,13 +405,13 @@ class StudyScreen(
 
                                 Text(
                                     strings.studyComplete,
-                                    style = MaterialTheme.typography.heading2,
+                                    style = LumeCardTheme.typography.heading2,
                                     color = MaterialTheme.colorScheme.onSurface,
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     strings.studyCompleteMsg(completedCards),
-                                    style = MaterialTheme.typography.body,
+                                    style = LumeCardTheme.typography.body,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
 
@@ -514,11 +494,6 @@ class StudyScreen(
                                 strings.studyRatingPrompt,
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                "Press 1-4 to rate, Space to flip",
-                                style = MaterialTheme.typography.caption,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             LumeCardRatingBar(
@@ -747,7 +722,7 @@ private fun CompletionStat(
         )
         Text(
             label,
-            style = MaterialTheme.typography.caption,
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
@@ -762,14 +737,20 @@ private fun formatElapsedTime(totalSeconds: Int): String {
         if (minutes >= 60) {
             val hours = minutes / 60
             val mins = minutes % 60
-            ""hours"h mins"m""
+            StringBuilder().append(hours).append("h ").append(mins).append("m").toString()
         } else {
-            ""minutes"m seconds"s""
+            StringBuilder().append(minutes).append("m ").append(seconds).append("s").toString()
         }
     } else {
-        ""seconds"s""
+        StringBuilder().append(seconds).append("s").toString()
     }
 }
+
+
+
+
+
+
 
 
 

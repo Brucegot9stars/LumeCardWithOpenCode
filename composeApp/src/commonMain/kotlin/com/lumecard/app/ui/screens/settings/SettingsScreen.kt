@@ -241,7 +241,7 @@ class SettingsScreen : Screen {
                     ListItem(
                         headlineContent = { Text(strings.settingsDarkMode) },
                         supportingContent = { Text(strings.settingsDarkModeDesc) },
-                        leadingContent = { Icon(Icons.Default.DarkMode, contentDescription = null) },
+                        leadingContent = { Icon(Icons.Default.Settings, contentDescription = null) },
                         trailingContent = {
                             Switch(
                                 checked = settingsState.isDarkMode,
@@ -665,56 +665,56 @@ class SettingsScreen : Screen {
                                                         isSyncing = true
                                                         syncStatus = strings.settingsSyncing
                                                         try {
-                                                            val result = withContext(Dispatchers.IO) {
-                                                                val localDecks = deckRepository.getAll().first()
-                                                                val localCards = cardRepository.getAll().first()
-                                                                val json = exportManager.exportToJson(localDecks, localCards)
-                                                                syncManager.upload(config, json).getOrThrow()
-                                                                val remoteResult = syncManager.download(config)
-                                                                var importedDecks = 0
-                                                                var importedCards = 0
-                                                                if (remoteResult.isSuccess) {
-                                                                    val remote = exportManager.importFromJson(remoteResult.getOrThrow())
-                                                                    if (remote != null) {
-                                                                        val localDeckIds = localDecks.map { it.id }.toSet()
-                                                                        for (deck in remote.decks) {
-                                                                            if (deck.id !in localDeckIds) {
-                                                                                val now = Clock.System.now()
-                                                                                deckRepository.insert(Deck(
-                                                                                    id = deck.id, knowledgeBaseId = "default",
-                                                                                    name = deck.name, description = deck.description ?: "",
-                                                                                    color = deck.color, icon = deck.icon,
-                                                                                    createdAt = now, updatedAt = now
-                                                                                ))
-                                                                                importedDecks++
-                                                                            }
-                                                                        }
-                                                                        val localCardIds = localCards.map { it.id }.toSet()
-                                                                        for (card in remote.cards) {
-                                                                            if (card.id !in localCardIds) {
-                                                                                cardRepository.insert(Card(
-                                                                                    id = card.id, deckId = card.deckId,
-                                                                                    type = CardType.valueOf(card.type),
-                                                                                    front = card.front, back = card.back,
-                                                                                    tags = card.tags,
-                                                                                    createdAt = Instant.parse(card.createdAt),
-                                                                                    updatedAt = Instant.parse(card.updatedAt)
-                                                                                ))
-                                                                                importedCards++
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                                webDavConfigManager.updateLastSync(config.id)
-                                                                localDecks.size
+                                                            val localDecks = deckRepository.getAll().first()
+                                                            val localCards = cardRepository.getAll().first()
+                                                            val syncResult = withContext(Dispatchers.IO) {
+                                                                syncManager.performSync(config, localDecks, localCards, exportManager)
                                                             }
-                                                            syncStatus = strings.settingsSyncSuccess(result)
-                                                            snackbarHostState.showSnackbar(strings.settingsSyncSuccess(result))
-                                                            reloadConfigs()
-                                                        } catch (e: Exception) {
-                                                            syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
-                                                            snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
-                                                        } finally { isSyncing = false }
+                                                            when (syncResult) {
+                                                                is com.lumecard.shared.data.SyncResult.Success -> {
+                                                                    webDavConfigManager.updateLastSync(config.id)
+                                                                    syncStatus = strings.settingsSyncSuccess(syncResult.decksSynced)
+                                                                    snackbarHostState.showSnackbar(strings.settingsSyncSuccess(syncResult.decksSynced))
+                                                                    reloadConfigs()
+                                                                }
+                                                                is com.lumecard.shared.data.SyncResult.RemoteImport -> {
+                                                                    val export = syncResult.export
+                                                                    val now = Clock.System.now()
+                                                                    for (deck in export.decks) {
+                                                                        deckRepository.insert(Deck(
+                                                                            id = deck.id, knowledgeBaseId = deck.knowledgeBaseId,
+                                                                            name = deck.name, description = deck.description ?: "",
+                                                                            color = deck.color, icon = deck.icon,
+                                                                            parentId = deck.parentId,
+                                                                            createdAt = try { Instant.parse(deck.createdAt) } catch (_: Exception) { now },
+                                                                            updatedAt = try { Instant.parse(deck.updatedAt) } catch (_: Exception) { now }
+                                                                        ))
+                                                                    }
+                                                                    for (card in export.cards) {
+                                                                        cardRepository.insert(Card(
+                                                                            id = card.id, deckId = card.deckId,
+                                                                            type = CardType.valueOf(card.type),
+                                                                            front = card.front, back = card.back,
+                                                                            tags = card.tags,
+                                                                            createdAt = try { Instant.parse(card.createdAt) } catch (_: Exception) { now },
+                                                                            updatedAt = try { Instant.parse(card.updatedAt) } catch (_: Exception) { now }
+                                                                        ))
+                                                                    }
+                                                                    webDavConfigManager.updateLastSync(config.id)
+                                                                    syncStatus = strings.settingsSyncSuccess(export.decks.size)
+                                                                    snackbarHostState.showSnackbar(strings.settingsSyncSuccess(export.decks.size))
+                                                                    reloadConfigs()
+                                                                }
+                                                                is com.lumecard.shared.data.SyncResult.Skipped -> {
+                                                                    syncStatus = ""
+                                                                    snackbarHostState.showSnackbar("All up to date")
+                                                                    reloadConfigs()
+                                                                }
+                                                                is com.lumecard.shared.data.SyncResult.Error -> {
+                                                                    syncStatus = strings.settingsSyncError(syncResult.message)
+                                                                    snackbarHostState.showSnackbar(strings.settingsSyncError(syncResult.message))
+                                                                }
+                                                            }
                                                     }
                                                 },
                                                 modifier = Modifier.height(32.dp),
@@ -843,6 +843,8 @@ fun SettingsSection(
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
+
+
 
 
 

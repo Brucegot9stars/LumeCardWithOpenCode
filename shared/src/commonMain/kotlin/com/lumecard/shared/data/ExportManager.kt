@@ -16,10 +16,14 @@ data class LumeCardExport(
 @Serializable
 data class ExportDeck(
     val id: String,
+    val knowledgeBaseId: String = "default",
     val name: String,
     val description: String?,
     val color: String,
-    val icon: String
+    val icon: String,
+    val parentId: String? = null,
+    val createdAt: String,
+    val updatedAt: String
 )
 
 @Serializable
@@ -49,10 +53,14 @@ class ExportManager {
             decks = decks.map { deck ->
                 ExportDeck(
                     id = deck.id,
+                    knowledgeBaseId = deck.knowledgeBaseId,
                     name = deck.name,
                     description = deck.description,
                     color = deck.color,
-                    icon = deck.icon
+                    icon = deck.icon,
+                    parentId = deck.parentId,
+                    createdAt = deck.createdAt.toString(),
+                    updatedAt = deck.updatedAt.toString()
                 )
             },
             cards = cards.map { card ->
@@ -102,3 +110,4 @@ class ExportManager {
         }
     }
 }
+

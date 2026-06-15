@@ -78,7 +78,7 @@ fun CardTypeSelector(
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = cardTypeShortName(type),
-                        style = MaterialTheme.typography.caption,
+                        style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
                             else MaterialTheme.colorScheme.onSurface,
@@ -114,3 +114,4 @@ private fun cardTypeShortName(type: CardType): String = when (type) {
     CardType.MARKDOWN -> "Markdown"
     CardType.AI_GENERATED -> "AI"
 }
+

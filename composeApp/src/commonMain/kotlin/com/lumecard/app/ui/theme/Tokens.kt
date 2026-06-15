@@ -1,6 +1,7 @@
 package com.lumecard.app.ui.theme
 
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -171,3 +172,4 @@ object LumeCardTheme {
     val typography: LumeCardTypography
         @Composable get() = LocalTypography.current
 }
+

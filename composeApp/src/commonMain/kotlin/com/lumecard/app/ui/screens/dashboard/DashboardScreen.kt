@@ -285,7 +285,7 @@ class DashboardScreen : Screen {
                 if (subtitle != null) {
                     Text(
                         subtitle,
-                        style = MaterialTheme.typography.caption,
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     )
                 }
@@ -348,7 +348,7 @@ class DashboardScreen : Screen {
                         )
                         Text(
                             strings.dashCardsCount(cardCount),
-                            style = MaterialTheme.typography.caption,
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         if (cardCount > 0) {
@@ -467,5 +467,6 @@ private fun AnimatedItem(
         content()
     }
 }
+
 
 
