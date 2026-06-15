@@ -116,7 +116,7 @@ class DashboardScreen : Screen {
                                 }
                             )
                             QuickActionCard(
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
                                 title = "管理牌组",
                                 icon = Icons.AutoMirrored.Filled.List,
                                 onClick = { navigator.push(DeckListScreen()) }
@@ -206,9 +206,10 @@ class DashboardScreen : Screen {
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxSize()
                     .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
                 Icon(
                     icon,
