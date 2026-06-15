@@ -8,6 +8,7 @@ object Versions {
     const val kotlinxCoroutines = "1.8.1"
     const val kotlinxDateTime = "0.6.1"
     const val kotlinxSerialization = "1.7.2"
+    const val commonmark = "0.21.0"
 }
 
 object Dependencies {
@@ -40,6 +41,13 @@ object Dependencies {
     const val voyagerNavigator = "cafe.adriel.voyager:voyager-navigator:${Versions.voyager}"
     const val voyagerScreen = "cafe.adriel.voyager:voyager-screenmodel:${Versions.voyager}"
     const val voyagerTabNavigator = "cafe.adriel.voyager:voyager-tab-navigator:${Versions.voyager}"
+
+    // CommonMark
+    const val commonmark = "org.commonmark:commonmark:${Versions.commonmark}"
+    const val commonmarkGfmTables = "org.commonmark:commonmark-ext-gfm-tables:${Versions.commonmark}"
+    const val commonmarkGfmStrikethrough = "org.commonmark:commonmark-ext-gfm-strikethrough:${Versions.commonmark}"
+    const val commonmarkAutolink = "org.commonmark:commonmark-ext-autolink:${Versions.commonmark}"
+    const val commonmarkTaskList = "org.commonmark:commonmark-ext-task-list-items:${Versions.commonmark}"
 
     // Kotlinx
     const val kotlinxCoroutines = "org.jetbrains.kotlinx:kotlinx-coroutines-core:${Versions.kotlinxCoroutines}"

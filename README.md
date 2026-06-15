@@ -22,6 +22,7 @@
 - ✅ **WebDAV 云同步** — 配置 WebDAV 地址/用户名/密码实现云端同步
 - ✅ **设置持久化** — 所有设置 (暗色模式、复习算法、每日目标、通知、WebDAV 等) 存入 SQLite
 - ✅ **跨平台** — Android + Desktop (Windows/Linux/macOS)
+- ✅ **Markdown 渲染** — 基于 CommonMark 的 GFM 标准渲染（标题/表格/代码高亮/任务列表/数学公式/Mermaid 流程图）
 - ✅ **单次保存** — 设置页支持 dirty-state 追踪，显示「保存」按钮按需持久化
 
 ### 待实现
@@ -37,7 +38,7 @@
 
 | 类别 | 技术 |
 |------|------|
-| UI | Compose Multiplatform 1.7.0 + Material Design 3 |
+| UI | Compose Multiplatform 1.7.3 + Material Design 3 |
 | 语言 | Kotlin 2.0.20 |
 | 数据库 | SQLDelight 2.0.2 (SQLite) |
 | 网络 | Ktor 2.3.12 |
@@ -90,7 +91,7 @@ LumeCard/
 
 ├── .github/workflows/               # CI
 │   ├── android.yml                  # Android APK 构建
-│   └── desktop.yml                  # Desktop 多平台构建
+│   └── pr-validation.yml            # PR 校验
 ```
 
 ## 快速开始
@@ -99,7 +100,7 @@ LumeCard/
 
 - JDK 17+（推荐 Android Studio JBR）
 - Android Studio (最新版)
-- Gradle 8.10.2 (已内嵌)
+- Gradle 8.12.1 (已内嵌)
 
 ### 构建 Android APK
 

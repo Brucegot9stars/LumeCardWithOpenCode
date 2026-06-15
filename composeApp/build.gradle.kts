@@ -1,3 +1,4 @@
+import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 
 plugins {
@@ -17,11 +18,7 @@ kotlin {
         }
     }
 
-    jvm("desktop") {
-        mainRun {
-            mainClass.set("com.lumecard.app.MainKt")
-        }
-    }
+    jvm("desktop")
 
     sourceSets {
         val commonMain by getting {
@@ -39,6 +36,12 @@ kotlin {
 
                 implementation(Dependencies.koinCompose)
 
+                implementation(Dependencies.commonmark)
+                implementation(Dependencies.commonmarkGfmTables)
+                implementation(Dependencies.commonmarkGfmStrikethrough)
+                implementation(Dependencies.commonmarkAutolink)
+                implementation(Dependencies.commonmarkTaskList)
+
                 implementation(Dependencies.kotlinxCoroutines)
                 implementation(Dependencies.kotlinxDateTime)
             }
@@ -54,6 +57,24 @@ kotlin {
         val desktopMain by getting {
             dependencies {
                 implementation("org.jetbrains.skiko:skiko-awt-runtime-windows-x64:0.8.15")
+            }
+        }
+    }
+}
+
+compose.desktop {
+    application {
+        mainClass = "com.lumecard.app.MainKt"
+
+        nativeDistributions {
+            targetFormats(TargetFormat.Msi)
+            packageName = "LumeCard"
+            packageVersion = "1.0.0"
+            vendor = "AiDev"
+
+            windows {
+                menuGroup = "LumeCard"
+                upgradeUuid = "229b7cca-e9d0-4ee7-9e2e-c9c8dd3d71ce"
             }
         }
     }
