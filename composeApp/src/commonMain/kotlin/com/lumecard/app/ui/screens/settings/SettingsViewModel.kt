@@ -16,6 +16,8 @@ class SettingsViewModel(
             state.isDarkMode = settingsRepository.getBoolean("isDarkMode", false)
             val modeStr = settingsRepository.get("reviewMode") ?: ReviewMode.FSRS.name
             state.reviewMode = try { ReviewMode.valueOf(modeStr) } catch (_: Exception) { ReviewMode.FSRS }
+            val displayStr = settingsRepository.get("answerDisplayMode") ?: AnswerDisplayMode.FLIP.name
+            state.answerDisplayMode = try { AnswerDisplayMode.valueOf(displayStr) } catch (_: Exception) { AnswerDisplayMode.FLIP }
             state.dailyGoal = settingsRepository.getInt("dailyGoal", 20)
             state.newCardsPerDay = settingsRepository.getInt("newCardsPerDay", 20)
             state.notificationsEnabled = settingsRepository.getBoolean("notificationsEnabled", true)
@@ -30,6 +32,7 @@ class SettingsViewModel(
             state.isSaving = true
             settingsRepository.set("isDarkMode", state.isDarkMode.toString())
             settingsRepository.set("reviewMode", state.reviewMode.name)
+            settingsRepository.set("answerDisplayMode", state.answerDisplayMode.name)
             settingsRepository.set("dailyGoal", state.dailyGoal.toString())
             settingsRepository.set("newCardsPerDay", state.newCardsPerDay.toString())
             settingsRepository.set("notificationsEnabled", state.notificationsEnabled.toString())
@@ -39,6 +42,11 @@ class SettingsViewModel(
             state.markClean()
             state.isSaving = false
         }
+    }
+
+    fun setAnswerDisplayMode(mode: AnswerDisplayMode) {
+        state.answerDisplayMode = mode
+        state.markDirty()
     }
 
     fun setReviewMode(mode: ReviewMode) {

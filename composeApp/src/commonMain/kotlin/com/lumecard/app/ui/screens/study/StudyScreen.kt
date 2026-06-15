@@ -22,7 +22,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import cafe.adriel.voyager.core.screen.Screen
@@ -30,6 +29,8 @@ import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.ui.components.MarkdownText
+import com.lumecard.app.ui.screens.settings.AnswerDisplayMode
+import com.lumecard.app.ui.screens.settings.SettingsStateHolder
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
 import com.lumecard.shared.model.Rating
@@ -50,6 +51,7 @@ class StudyScreen(
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
         val viewModel: StudyViewModel = koinInject()
+        val settingsState: SettingsStateHolder = koinInject()
         val cards by viewModel.cards.collectAsState()
         val currentIndex by viewModel.currentCardIndex.collectAsState()
         val isFlipped by viewModel.isFlipped.collectAsState()
@@ -111,9 +113,23 @@ class StudyScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        if (currentCard != null) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f)
+                            ) {
+                                Text(
+                                    text = cardTypeName(currentCard.type),
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     if (cards.isEmpty()) {
                         Card(modifier = Modifier.fillMaxWidth().weight(1f)) {
@@ -148,9 +164,6 @@ class StudyScreen(
                             }
                         }
                     } else if (currentCard != null) {
-                        val isMarkdownType = currentCard.type == CardType.MARKDOWN ||
-                                currentCard.type == CardType.AI_GENERATED
-
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -175,7 +188,7 @@ class StudyScreen(
                                         modifier = Modifier.fillMaxSize().padding(20.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        CardContent(card = nextCard, isFlipped = false)
+                                        CardContent(card = nextCard, isFlipped = false, displayMode = settingsState.answerDisplayMode)
                                     }
                                 }
                             }
@@ -256,29 +269,18 @@ class StudyScreen(
                                     }
                                 )
                             ) {
-                                if (isMarkdownType) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(horizontal = 20.dp, vertical = 12.dp)
-                                            .verticalScroll(rememberScrollState()),
-                                        contentAlignment = Alignment.TopStart
-                                    ) {
-                                        MarkdownText(
-                                            markdown = if (isFlipped) currentCard.back else currentCard.front,
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
-                                    }
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(20.dp)
-                                            .verticalScroll(rememberScrollState()),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CardContent(card = currentCard, isFlipped = isFlipped)
-                                    }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                                        .verticalScroll(rememberScrollState()),
+                                    contentAlignment = Alignment.TopStart
+                                ) {
+                                    CardContent(
+                                        card = currentCard,
+                                        isFlipped = isFlipped,
+                                        displayMode = settingsState.answerDisplayMode
+                                    )
                                 }
                             }
 
@@ -415,84 +417,148 @@ class StudyScreen(
 }
 
 @Composable
-private fun CardContent(card: Card, isFlipped: Boolean) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        Surface(
-            modifier = Modifier.align(Alignment.TopStart),
-            shape = RoundedCornerShape(4.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-        ) {
-            Text(
-                text = cardTypeName(card.type),
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            when (card.type) {
-                CardType.BASIC, CardType.REVERSED, CardType.MARKDOWN, CardType.AI_GENERATED -> {
-                    MarkdownText(
-                        markdown = if (isFlipped) card.back else card.front,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center
-                    )
-                }
-                CardType.CLOZE -> {
-                    val text = if (isFlipped) card.back else card.front
-                    val displayText = if (!isFlipped) {
-                        text.replace(Regex("\\{\\{c\\d+::([^}]+)}}"), "____")
-                            .replace(Regex("\\{\\{c\\d+::([^}]+)::([^}]+)}}"), "____")
-                    } else {
-                        text.replace(Regex("\\{\\{c\\d+::([^}]+)}}"), "$1")
-                            .replace(Regex("\\{\\{c\\d+::([^}]+)::([^}]+)}}"), "$1")
-                    }
-                    Text(
-                        displayText,
-                        style = MaterialTheme.typography.headlineSmall,
-                        textAlign = TextAlign.Center
-                    )
-                    if (!isFlipped) {
-                        Spacer(Modifier.height(8.dp))
-                        Text("点击显示答案查看填空内容", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-                CardType.MULTIPLE_CHOICE -> {
-                    val lines = (if (isFlipped) card.back else card.front).split("\n")
-                    val question = lines.firstOrNull() ?: ""
-                    val options = lines.drop(1)
-                    Text(question, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
-                    Spacer(Modifier.height(12.dp))
-                    options.forEach { opt ->
-                        val isCorrect = if (isFlipped) opt.startsWith("✓") || opt.startsWith("√") else false
-                        val displayOpt = opt.removePrefix("✓").removePrefix("√").trim()
-                        FilterChip(
-                            selected = isCorrect,
-                            onClick = {},
-                            label = { Text(displayOpt) },
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+private fun CardContent(
+    card: Card,
+    isFlipped: Boolean,
+    displayMode: AnswerDisplayMode
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        when (displayMode) {
+            AnswerDisplayMode.FLIP -> {
+                FlipCard(
+                    isFlipped = isFlipped,
+                    front = { CardFace(card, showBack = false) },
+                    back = { CardFace(card, showBack = true) }
+                )
+            }
+            AnswerDisplayMode.SPLIT -> {
+                if (isFlipped) {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f)
+                    ) {
+                        Text(
+                            "问题",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
                         )
                     }
-                }
-                CardType.IMAGE_OCCLUSION -> {
-                    Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(8.dp))
-                    Text(if (isFlipped) card.back else "点击显示答案查看图片说明", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
-                }
-                CardType.AUDIO, CardType.VIDEO -> {
-                    Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
+                    CardFace(card, showBack = false)
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                    ) {
+                        Text(
+                            "答案",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
                     Spacer(Modifier.height(8.dp))
-                    MarkdownText(
-                        markdown = if (isFlipped) card.back else card.front,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center
+                    CardFace(card, showBack = true)
+                } else {
+                    CardFace(card, showBack = false)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FlipCard(
+    isFlipped: Boolean,
+    front: @Composable () -> Unit,
+    back: @Composable () -> Unit
+) {
+    val rotation = remember { Animatable(if (isFlipped) 180f else 0f) }
+    val density = androidx.compose.ui.platform.LocalDensity.current
+
+    LaunchedEffect(isFlipped) {
+        rotation.animateTo(
+            targetValue = if (isFlipped) 180f else 0f,
+            animationSpec = tween(400)
+        )
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                rotationY = rotation.value
+                cameraDistance = 12f * density.density
+            }
+    ) {
+        if (rotation.value < 90f) {
+            front()
+        } else {
+            Box(modifier = Modifier.graphicsLayer { scaleX = -1f }) {
+                back()
+            }
+        }
+    }
+}
+
+@Composable
+private fun CardFace(card: Card, showBack: Boolean) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        when (card.type) {
+            CardType.BASIC, CardType.REVERSED, CardType.MARKDOWN, CardType.AI_GENERATED -> {
+                MarkdownText(
+                    markdown = if (showBack) card.back else card.front,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            CardType.CLOZE -> {
+                val text = if (showBack) card.back else card.front
+                val displayText = if (!showBack) {
+                    text.replace(Regex("\\{\\{c\\d+::([^}]+)}}"), "____")
+                        .replace(Regex("\\{\\{c\\d+::([^}]+)::([^}]+)}}"), "____")
+                } else {
+                    text.replace(Regex("\\{\\{c\\d+::([^}]+)}}"), "$1")
+                        .replace(Regex("\\{\\{c\\d+::([^}]+)::([^}]+)}}"), "$1")
+                }
+                Text(
+                    displayText,
+                    style = MaterialTheme.typography.headlineSmall
+                )
+                if (!showBack) {
+                    Spacer(Modifier.height(8.dp))
+                    Text("点击显示答案查看填空内容", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            CardType.MULTIPLE_CHOICE -> {
+                val lines = (if (showBack) card.back else card.front).split("\n")
+                val question = lines.firstOrNull() ?: ""
+                val options = lines.drop(1)
+                Text(question, style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(12.dp))
+                options.forEach { opt ->
+                    val isCorrect = if (showBack) opt.startsWith("✓") || opt.startsWith("√") else false
+                    val displayOpt = opt.removePrefix("✓").removePrefix("√").trim()
+                    FilterChip(
+                        selected = isCorrect,
+                        onClick = {},
+                        label = { Text(displayOpt) },
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
                     )
                 }
+            }
+            CardType.IMAGE_OCCLUSION -> {
+                Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(8.dp))
+                Text(if (showBack) card.back else "点击显示答案查看图片说明", style = MaterialTheme.typography.bodyMedium)
+            }
+            CardType.AUDIO, CardType.VIDEO -> {
+                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.height(8.dp))
+                MarkdownText(
+                    markdown = if (showBack) card.back else card.front,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }

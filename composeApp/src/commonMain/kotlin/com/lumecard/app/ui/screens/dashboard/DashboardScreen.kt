@@ -102,11 +102,11 @@ class DashboardScreen : Screen {
 
                     item {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             QuickActionCard(
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
                                 title = "开始学习",
                                 subtitle = if (firstStudyableDeck != null) "${decksWithCount.count { it.cardCount > 0 }} 个牌组可用" else "暂无可用卡片",
                                 enabled = firstStudyableDeck != null,

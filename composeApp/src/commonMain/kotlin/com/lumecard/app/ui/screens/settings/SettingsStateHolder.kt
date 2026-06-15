@@ -8,6 +8,7 @@ import com.lumecard.shared.domain.scheduler.ReviewMode
 class SettingsStateHolder {
     var isDarkMode by mutableStateOf(false)
     var reviewMode by mutableStateOf(ReviewMode.FSRS)
+    var answerDisplayMode by mutableStateOf(AnswerDisplayMode.FLIP)
     var dailyGoal by mutableStateOf(20)
     var newCardsPerDay by mutableStateOf(20)
     var notificationsEnabled by mutableStateOf(true)

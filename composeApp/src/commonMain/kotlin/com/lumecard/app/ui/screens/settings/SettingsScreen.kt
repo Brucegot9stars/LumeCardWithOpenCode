@@ -42,6 +42,7 @@ class SettingsScreen : Screen {
         var showSyncDialog by remember { mutableStateOf(false) }
         var syncStatus by remember { mutableStateOf("") }
         var showModeDropdown by remember { mutableStateOf(false) }
+        var showAnswerModeDropdown by remember { mutableStateOf(false) }
         var showGoalDialog by remember { mutableStateOf(false) }
         var goalInput by remember { mutableStateOf("") }
 
@@ -167,6 +168,49 @@ class SettingsScreen : Screen {
                                             },
                                             leadingIcon = {
                                                 if (mode == settingsState.reviewMode) {
+                                                    Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    )
+                }
+
+                SettingsSection(title = "答案展示") {
+                    ListItem(
+                        headlineContent = { Text("答案展示方式") },
+                        supportingContent = { Text(settingsState.answerDisplayMode.description) },
+                        trailingContent = {
+                            Box {
+                                TextButton(onClick = { showAnswerModeDropdown = true }) {
+                                    Text(
+                                        settingsState.answerDisplayMode.displayName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                                }
+                                DropdownMenu(
+                                    expanded = showAnswerModeDropdown,
+                                    onDismissRequest = { showAnswerModeDropdown = false }
+                                ) {
+                                    AnswerDisplayMode.entries.forEach { mode ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Column {
+                                                    Text(mode.displayName, style = MaterialTheme.typography.bodyLarge)
+                                                    Text(mode.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                }
+                                            },
+                                            onClick = {
+                                                settingsViewModel.setAnswerDisplayMode(mode)
+                                                showAnswerModeDropdown = false
+                                            },
+                                            leadingIcon = {
+                                                if (mode == settingsState.answerDisplayMode) {
                                                     Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                                                 }
                                             }
