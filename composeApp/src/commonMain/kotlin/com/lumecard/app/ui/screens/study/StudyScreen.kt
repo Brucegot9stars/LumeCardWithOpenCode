@@ -97,7 +97,7 @@ class StudyScreen(
             Scaffold(
                 topBar = {
                     LumeCardTopBar(
-                        title = "{strings.actionLearning}: deckName",
+                        title = "${strings.actionLearning}: $deckName",
                         onBack = { navigator.pop() }
                     )
                 }
@@ -427,8 +427,8 @@ class StudyScreen(
                                         label = "Reviewed",
                                     )
                                     CompletionStat(
-                                        value = "${(completedCards * 15).coerceAtMost(999)}m",
-                                        label = "Est. time",
+                                        value = formatElapsedTime(elapsedSeconds),
+                                        label = "Time spent",
                                     )
                                     CompletionStat(
                                         value = "${(completedCards * 75 + 100).coerceAtMost(999)}",
@@ -745,6 +745,8 @@ private fun formatElapsedTime(totalSeconds: Int): String {
         StringBuilder().append(seconds).append("s").toString()
     }
 }
+
+
 
 
 
