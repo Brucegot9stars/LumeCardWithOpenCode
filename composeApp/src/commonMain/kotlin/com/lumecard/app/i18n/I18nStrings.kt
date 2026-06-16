@@ -275,6 +275,18 @@ interface I18nStrings {
     val settingsAutoSyncMin120: String
     val settingsAutoSyncRunning: String
     val settingsAutoSyncStopped: String
+    val settingsSyncScope: String
+    val settingsSyncScopeAll: String
+    val settingsSyncScopeSettings: String
+    val settingsSyncScopeData: String
+    val settingsSyncNow: String
+    val settingsRestoreFromCloud: String
+    val settingsRestoreConfirm: String
+    val settingsRestoreConfirmDesc: String
+    val settingsLastSyncTime: String
+    val settingsConnectionStatus: String
+    val settingsConnected: String
+    val settingsDisconnected: String
     val settingsLanguage: String
     val settingsLanguageDesc: String
 
