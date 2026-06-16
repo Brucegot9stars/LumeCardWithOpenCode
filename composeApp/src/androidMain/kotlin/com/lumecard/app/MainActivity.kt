@@ -6,16 +6,20 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.lumecard.app.di.appModule
 import com.lumecard.shared.database.AndroidContextHolder
+import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AndroidContextHolder.context = this
-        startKoin { modules(appModule) }
+        if (GlobalContext.getOrNull() == null) {
+            startKoin { modules(appModule) }
+        }
         enableEdgeToEdge()
         setContent {
             App()
         }
     }
 }
+
