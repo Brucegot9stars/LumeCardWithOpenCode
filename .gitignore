@@ -61,3 +61,6 @@ package-lock.json
 .kotlin/
 
 # SQLDelight (generated code is under build/ which is already ignored)
+
+# AI agent config (local, not shared)
+AGENTS.md
