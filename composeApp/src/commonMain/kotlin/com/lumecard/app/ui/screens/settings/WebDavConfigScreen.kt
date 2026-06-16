@@ -27,11 +27,17 @@ import com.lumecard.shared.data.SyncManager
 import com.lumecard.shared.data.WebDavConfig
 import com.lumecard.shared.data.WebDavConfigManager
 import com.lumecard.shared.data.WebDavProviders
+import com.lumecard.shared.data.toCard
+import com.lumecard.shared.data.toDeck
+import com.lumecard.shared.data.toKnowledgeBase
+import com.lumecard.shared.data.toReviewLog
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
 import com.lumecard.shared.model.Deck
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
+import com.lumecard.shared.repository.ReviewLogRepository
+import com.lumecard.shared.repository.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -57,6 +63,8 @@ class WebDavConfigScreen : Screen {
         val deckRepository: DeckRepository = koinInject()
         val cardRepository: CardRepository = koinInject()
         val knowledgeBaseRepository: com.lumecard.shared.repository.KnowledgeBaseRepository = koinInject()
+        val reviewLogRepository: ReviewLogRepository = koinInject()
+        val settingsRepository: SettingsRepository = koinInject()
         val scope = rememberCoroutineScope()
         val snackbarHostState = remember { SnackbarHostState() }
 
@@ -628,57 +636,59 @@ class WebDavConfigScreen : Screen {
                                     syncStatus = strings.settingsSyncing
                                     try {
                                         val config = defaultConfig ?: return@launch
-                                        val result = withContext(Dispatchers.IO) {
+                                        val syncResult = withContext(Dispatchers.IO) {
                                             val localKbs = knowledgeBaseRepository.getAll().first()
                                             val localDecks = deckRepository.getAll().first()
                                             val localCards = cardRepository.getAll().first()
-                                            val json = exportManager.exportToJson(localKbs, localDecks, localCards)
-                                            syncManager.upload(config, json).getOrThrow()
-                                            val remoteResult = syncManager.download(config)
-                                            var importedDecks = 0
-                                            var importedCards = 0
-                                            if (remoteResult.isSuccess) {
-                                                val remote = exportManager.importFromJson(remoteResult.getOrThrow())
-                                                if (remote != null) {
-                                                    val localDeckIds = localDecks.map { it.id }.toSet()
-                                                    for (deck in remote.decks) {
-                                                        if (deck.id !in localDeckIds) {
-                                                            val now = Clock.System.now()
-                                                            deckRepository.insert(
-                                                                Deck(
-                                                                    id = deck.id, knowledgeBaseId = "default",
-                                                                    name = deck.name, description = deck.description ?: "",
-                                                                    color = deck.color, icon = deck.icon,
-                                                                    createdAt = now, updatedAt = now,
-                                                                )
-                                                            )
-                                                            importedDecks++
-                                                        }
+                                            val localLogs = reviewLogRepository.getAll().first()
+                                            val settings = settingsRepository.getAll()
+                                            syncManager.performSync(
+                                                config = config,
+                                                localKnowledgeBases = localKbs,
+                                                localDecks = localDecks,
+                                                localCards = localCards,
+                                                localReviewLogs = localLogs,
+                                                localSettings = settings,
+                                                exportManager = exportManager,
+                                            )
+                                        }
+                                        when (syncResult) {
+                                            is com.lumecard.shared.data.SyncResult.Success -> {
+                                                val msg = strings.settingsSyncSuccess(syncResult.decksSynced)
+                                                syncStatus = msg
+                                                snackbarHostState.showSnackbar(msg)
+                                                reloadConfigs()
+                                            }
+                                            is com.lumecard.shared.data.SyncResult.RemoteImport -> {
+                                                val export = syncResult.export
+                                                withContext(Dispatchers.IO) {
+                                                    for (kb in export.knowledgeBases) {
+                                                        knowledgeBaseRepository.insert(kb.toKnowledgeBase())
                                                     }
-                                                    val localCardIds = localCards.map { it.id }.toSet()
-                                                    for (card in remote.cards) {
-                                                        if (card.id !in localCardIds) {
-                                                            cardRepository.insert(
-                                                                Card(
-                                                                    id = card.id, deckId = card.deckId,
-                                                                    type = CardType.valueOf(card.type),
-                                                                    front = card.front, back = card.back,
-                                                                    tags = card.tags,
-                                                                    createdAt = Instant.parse(card.createdAt),
-                                                                    updatedAt = Instant.parse(card.updatedAt),
-                                                                )
-                                                            )
-                                                            importedCards++
-                                                        }
+                                                    for (deck in export.decks) {
+                                                        deckRepository.insert(deck.toDeck())
+                                                    }
+                                                    for (card in export.cards) {
+                                                        cardRepository.insert(card.toCard())
+                                                    }
+                                                    for (log in export.reviewLogs) {
+                                                        reviewLogRepository.insert(log.toReviewLog())
                                                     }
                                                 }
+                                                val msg = strings.settingsSyncSuccess(export.decks.size)
+                                                syncStatus = msg
+                                                snackbarHostState.showSnackbar(msg)
+                                                reloadConfigs()
                                             }
-                                            webDavConfigManager.updateLastSync(config.id)
-                                            localDecks.size
+                                            is com.lumecard.shared.data.SyncResult.Skipped -> {
+                                                syncStatus = syncResult.reason
+                                            }
+                                            is com.lumecard.shared.data.SyncResult.Error -> {
+                                                val msg = strings.settingsSyncError(syncResult.message)
+                                                syncStatus = msg
+                                                snackbarHostState.showSnackbar(msg)
+                                            }
                                         }
-                                        syncStatus = strings.settingsSyncSuccess(result)
-                                        snackbarHostState.showSnackbar(strings.settingsSyncSuccess(result))
-                                        reloadConfigs()
                                     } catch (e: Exception) {
                                         syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
                                         snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
