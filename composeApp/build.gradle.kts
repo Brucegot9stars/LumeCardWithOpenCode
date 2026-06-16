@@ -98,16 +98,29 @@ android {
 
     signingConfigs {
         create("release") {
+            fun readLocalProp(key: String): String? {
+                val f = rootProject.file("local.properties")
+                if (!f.exists()) return null
+                return f.readLines()
+                    .firstOrNull { it.startsWith("$key=") }
+                    ?.substringAfter("=")
+                    ?.replace("\\:", ":")
+                    ?.replace("\\\\", "\\")
+            }
             val ksFile = System.getenv("KEYSTORE_FILE")
                 ?: project.findProperty("KEYSTORE_FILE")?.toString()
+                ?: readLocalProp("KEYSTORE_FILE")
             if (ksFile != null && file(ksFile).exists()) {
                 storeFile = file(ksFile)
                 storePassword = System.getenv("KEYSTORE_PASSWORD")
                     ?: project.findProperty("KEYSTORE_PASSWORD")?.toString()
+                    ?: readLocalProp("KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("KEY_ALIAS")
                     ?: project.findProperty("KEY_ALIAS")?.toString()
+                    ?: readLocalProp("KEY_ALIAS")
                 keyPassword = System.getenv("KEY_PASSWORD")
                     ?: project.findProperty("KEY_PASSWORD")?.toString()
+                    ?: readLocalProp("KEY_PASSWORD")
             }
         }
     }
@@ -119,8 +132,18 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            fun readLocalProp(key: String): String? {
+                val f = rootProject.file("local.properties")
+                if (!f.exists()) return null
+                return f.readLines()
+                    .firstOrNull { it.startsWith("$key=") }
+                    ?.substringAfter("=")
+                    ?.replace("\\:", ":")
+                    ?.replace("\\\\", "\\")
+            }
             val ksFile = System.getenv("KEYSTORE_FILE")
                 ?: project.findProperty("KEYSTORE_FILE")?.toString()
+                ?: readLocalProp("KEYSTORE_FILE")
             if (ksFile != null && file(ksFile).exists()) {
                 signingConfig = signingConfigs.getByName("release")
             }
