@@ -3,7 +3,6 @@ package com.lumecard.app.i18n
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.lumecard.app.platform.applyAppLocale
 import com.lumecard.app.platform.detectSystemLocaleTag
 
 enum class AppLocale(val code: String, val displayName: String, val flag: String = "") {
@@ -50,9 +49,6 @@ class I18nManager {
     fun setLocale(locale: AppLocale) {
         if (locale == currentLocale) return
         currentLocale = locale
-        if (locale != AppLocale.SYSTEM) {
-            applyAppLocale(locale)
-        }
     }
 
     fun detectSystemLocale(systemCode: String) {
@@ -74,6 +70,9 @@ fun String.i18nFormat(vararg args: Any?): String {
     }
     return result
 }
+
+
+
 
 
 
