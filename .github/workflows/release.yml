@@ -53,7 +53,7 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          ./gradlew :composeApp:assembleRelease \
+          ./gradlew clean :composeApp:assembleRelease --no-daemon \
             -PVERSION_NAME=${{ steps.version.outputs.version }} \
             -PKEYSTORE_FILE=${{ env.KEYSTORE_FILE }} \
             -PKEYSTORE_PASSWORD=${{ env.KEYSTORE_PASSWORD }} \
@@ -68,7 +68,7 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          ./gradlew :composeApp:bundleRelease \
+          ./gradlew :composeApp:bundleRelease --no-daemon \
             -PVERSION_NAME=${{ steps.version.outputs.version }} \
             -PKEYSTORE_FILE=${{ env.KEYSTORE_FILE }} \
             -PKEYSTORE_PASSWORD=${{ env.KEYSTORE_PASSWORD }} \
