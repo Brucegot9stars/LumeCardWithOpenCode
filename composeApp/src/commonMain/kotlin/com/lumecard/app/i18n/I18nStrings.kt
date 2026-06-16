@@ -239,6 +239,9 @@ interface I18nStrings {
     val settingsVersion: String
     val settingsVersionNumber: String
     val settingsAboutApp: String
+    val settingsDeveloper: String
+    val settingsLicense: String
+    val settingsOpenSource: String
     val settingsGoalDialogTitle: String
     val settingsCardCount: String
     val settingsSyncDialogTitle: String

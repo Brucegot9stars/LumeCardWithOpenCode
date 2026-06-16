@@ -38,6 +38,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.lumecard.app.platform.getAppVersion
 import org.koin.compose.koinInject
 
 class SettingsScreen : Screen {
@@ -412,12 +413,22 @@ class SettingsScreen : Screen {
                 SettingsSection(title = strings.settingsAbout) {
                     ListItem(
                         headlineContent = { Text(strings.settingsVersion) },
-                        trailingContent = { Text(strings.settingsVersionNumber) }
+                        trailingContent = { Text(getAppVersion()) }
                     )
                     HorizontalDivider()
                     ListItem(
                         headlineContent = { Text(strings.settingsAboutApp) },
                         leadingContent = { Icon(Icons.Default.Info, contentDescription = null) }
+                    )
+                    HorizontalDivider()
+                    ListItem(
+                        headlineContent = { Text(strings.settingsDeveloper) },
+                        trailingContent = { Text("Brucegot9stars") }
+                    )
+                    HorizontalDivider()
+                    ListItem(
+                        headlineContent = { Text(strings.settingsLicense) },
+                        trailingContent = { Text(strings.settingsOpenSource) }
                     )
                 }
 
