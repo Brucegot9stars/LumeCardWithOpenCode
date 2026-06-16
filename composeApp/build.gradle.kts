@@ -69,7 +69,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Msi)
             packageName = "LumeCard"
-            packageVersion = "1.2.0"
+            packageVersion = "1.3.0"
             vendor = "AiDev"
 
             windows {
@@ -90,10 +90,10 @@ android {
         targetSdk = 35
         versionCode = (System.getenv("VERSION_CODE")?.toIntOrNull()
             ?: project.findProperty("VERSION_CODE")?.toString()?.toIntOrNull()
-            ?: 2)
+            ?: 3)
         versionName = System.getenv("VERSION_NAME")
             ?: project.findProperty("VERSION_NAME")?.toString()
-            ?: "1.2.0"
+            ?: "1.3.0"
     }
 
     signingConfigs {
