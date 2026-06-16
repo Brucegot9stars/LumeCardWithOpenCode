@@ -26,6 +26,7 @@ import com.lumecard.shared.data.ExportManager
 import com.lumecard.shared.data.SyncManager
 import com.lumecard.shared.data.WebDavConfig
 import com.lumecard.shared.data.WebDavConfigManager
+import com.lumecard.shared.data.WebDavProviders
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
 import com.lumecard.shared.model.Deck
@@ -46,7 +47,8 @@ class WebDavConfigScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
-        val strings = koinInject<I18nManager>().strings
+        val i18nManager = koinInject<I18nManager>()
+        val strings = i18nManager.strings
         val spacing = LumeCardTheme.spacing
         val radius = LumeCardTheme.radius
         val webDavConfigManager: WebDavConfigManager = koinInject()
@@ -77,13 +79,11 @@ class WebDavConfigScreen : Screen {
         var showScopeDropdown by remember { mutableStateOf(false) }
         var defaultConfig by remember { mutableStateOf<WebDavConfig?>(null) }
 
-        val providerPresets = listOf(
-            Triple(strings.webdavProviderCustom, "", ""),
-            Triple(strings.webdavProviderJianguoyun, "https://dav.jianguoyun.com/dav/", ""),
-            Triple(strings.webdavProviderNextcloud, "", ""),
-            Triple(strings.webdavProviderOwncloud, "", ""),
-            Triple(strings.webdavProviderSyncthing, "", ""),
-        )
+        val localeCode = i18nManager.currentLocale.code
+        val providerPresets = WebDavProviders.all.map { provider ->
+            Triple(WebDavProviders.getName(provider, localeCode), provider.urlTemplate, provider.id)
+        }
+        val customPreset = Triple(strings.webdavProviderCustom, "", "custom")
 
         fun reloadConfigs() {
             scope.launch {
@@ -186,10 +186,20 @@ class WebDavConfigScreen : Screen {
                             )
 
                             var showProviderMenu by remember { mutableStateOf(false) }
+                            val detectedProvider = remember(editUrl) {
+                                if (editUrl.isNotBlank()) WebDavProviders.detectProvider(editUrl) else null
+                            }
+                            val displayProviderName = remember(editUrl, detectedProvider) {
+                                if (detectedProvider != null) {
+                                    WebDavProviders.getName(detectedProvider, localeCode)
+                                } else {
+                                    val matched = providerPresets.firstOrNull { it.second == editUrl }
+                                    matched?.first ?: strings.webdavProviderCustom
+                                }
+                            }
                             Box {
                                 OutlinedTextField(
-                                    value = providerPresets.firstOrNull { it.second == editUrl }?.first
-                                        ?: strings.webdavProviderCustom,
+                                    value = displayProviderName,
                                     onValueChange = {},
                                     label = { Text(strings.webdavProviderLabel) },
                                     readOnly = true,
