@@ -77,8 +77,6 @@ class WebDavConfigScreen : Screen {
         var showScopeDropdown by remember { mutableStateOf(false) }
         var defaultConfig by remember { mutableStateOf<WebDavConfig?>(null) }
 
-        var showProviderDropdown by remember { mutableStateOf(false) }
-
         val providerPresets = listOf(
             Triple(strings.webdavProviderCustom, "", ""),
             Triple(strings.webdavProviderJianguoyun, "https://dav.jianguoyun.com/dav/", ""),
@@ -187,6 +185,7 @@ class WebDavConfigScreen : Screen {
                                 modifier = Modifier.fillMaxWidth(),
                             )
 
+                            var showProviderMenu by remember { mutableStateOf(false) }
                             Box {
                                 OutlinedTextField(
                                     value = providerPresets.firstOrNull { it.second == editUrl }?.first
@@ -197,11 +196,16 @@ class WebDavConfigScreen : Screen {
                                     trailingIcon = {
                                         Icon(Icons.Default.ArrowDropDown, contentDescription = null)
                                     },
-                                    modifier = Modifier.fillMaxWidth().clickable { showProviderDropdown = true },
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .clickable { showProviderMenu = true },
                                 )
                                 DropdownMenu(
-                                    expanded = showProviderDropdown,
-                                    onDismissRequest = { showProviderDropdown = false },
+                                    expanded = showProviderMenu,
+                                    onDismissRequest = { showProviderMenu = false },
                                 ) {
                                     providerPresets.forEach { (name, url, _) ->
                                         DropdownMenuItem(
@@ -211,7 +215,7 @@ class WebDavConfigScreen : Screen {
                                                     editUrl = url
                                                     if (editName.isBlank()) editName = name
                                                 }
-                                                showProviderDropdown = false
+                                                showProviderMenu = false
                                             },
                                         )
                                     }
@@ -737,6 +741,7 @@ class WebDavConfigScreen : Screen {
                                 val config = defaultConfig ?: return@launch
                                 val result = withContext(Dispatchers.IO) {
                                     val remoteResult = syncManager.download(config)
+                                    var restoredDecks = 0
                                     if (remoteResult.isSuccess) {
                                         val remote = exportManager.importFromJson(remoteResult.getOrThrow())
                                         if (remote != null) {
@@ -758,6 +763,7 @@ class WebDavConfigScreen : Screen {
                                                         createdAt = now, updatedAt = now,
                                                     )
                                                 )
+                                                restoredDecks++
                                             }
                                             for (card in remote.cards) {
                                                 cardRepository.insert(
@@ -774,10 +780,10 @@ class WebDavConfigScreen : Screen {
                                         }
                                     }
                                     webDavConfigManager.updateLastSync(config.id)
-                                    remoteResult.getOrThrow()
+                                    restoredDecks
                                 }
-                                syncStatus = strings.settingsSyncSuccess(0)
-                                snackbarHostState.showSnackbar(strings.settingsSyncSuccess(0))
+                                syncStatus = strings.settingsSyncSuccess(result)
+                                snackbarHostState.showSnackbar(strings.settingsSyncSuccess(result))
                                 reloadConfigs()
                             } catch (e: Exception) {
                                 syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
