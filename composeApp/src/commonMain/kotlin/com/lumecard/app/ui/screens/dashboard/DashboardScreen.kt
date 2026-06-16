@@ -148,7 +148,7 @@ class DashboardScreen : Screen {
                                 horizontalArrangement = Arrangement.spacedBy(spacing.sm),
                             ) {
                                 QuickActionCard(
-                                    modifier = Modifier.weight(1f).height(IntrinsicSize.Min),
+                                    modifier = Modifier.weight(1f),
                                     title = strings.dashStartLearning,
                                     subtitle = if (firstStudyableDeck != null) strings.dashDecksAvailable(studyableCount) else strings.dashNoCardsAvailable,
                                     enabled = firstStudyableDeck != null,
@@ -157,7 +157,7 @@ class DashboardScreen : Screen {
                                     onClick = { navigator.push(StudyModeScreen()) },
                                 )
                                 QuickActionCard(
-                                    modifier = Modifier.weight(1f).height(IntrinsicSize.Min),
+                                    modifier = Modifier.weight(1f),
                                     title = strings.dashManageDecks,
                                     icon = Icons.AutoMirrored.Filled.List,
                                     isPrimary = false,
@@ -246,7 +246,7 @@ class DashboardScreen : Screen {
         val radius = LumeCardTheme.radius
 
         Card(
-            modifier = modifier,
+            modifier = modifier.fillMaxHeight(),
             shape = radius.card,
             onClick = onClick,
             enabled = enabled,
