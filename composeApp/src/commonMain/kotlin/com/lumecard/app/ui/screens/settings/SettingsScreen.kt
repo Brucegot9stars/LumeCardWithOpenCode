@@ -49,6 +49,7 @@ class SettingsScreen : Screen {
         val scope = rememberCoroutineScope()
         val snackbarHostState = remember { SnackbarHostState() }
         val webDavConfigManager: WebDavConfigManager = koinInject()
+        val knowledgeBaseRepository: com.lumecard.shared.repository.KnowledgeBaseRepository = koinInject()
         val spacing = LumeCardTheme.spacing
         val radius = LumeCardTheme.radius
 
@@ -405,9 +406,10 @@ class SettingsScreen : Screen {
                             modifier = Modifier.clickable {
                                 scope.launch {
                                     try {
+                                        val knowledgeBases = knowledgeBaseRepository.getAll().first()
                                         val decks = deckRepository.getAll().first()
                                         val allCards = cardRepository.getAll().first()
-                                        val json = exportManager.exportToJson(decks, allCards)
+                                        val json = exportManager.exportToJson(knowledgeBases, decks, allCards)
                                         snackbarHostState.showSnackbar(strings.settingsExportSuccess(json.length))
                                     } catch (e: Exception) {
                                         snackbarHostState.showSnackbar(strings.settingsExportError(e.message!!))

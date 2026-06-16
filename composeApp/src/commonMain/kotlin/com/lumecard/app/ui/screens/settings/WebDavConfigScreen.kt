@@ -56,6 +56,7 @@ class WebDavConfigScreen : Screen {
         val exportManager: ExportManager = koinInject()
         val deckRepository: DeckRepository = koinInject()
         val cardRepository: CardRepository = koinInject()
+        val knowledgeBaseRepository: com.lumecard.shared.repository.KnowledgeBaseRepository = koinInject()
         val scope = rememberCoroutineScope()
         val snackbarHostState = remember { SnackbarHostState() }
 
@@ -628,9 +629,10 @@ class WebDavConfigScreen : Screen {
                                     try {
                                         val config = defaultConfig ?: return@launch
                                         val result = withContext(Dispatchers.IO) {
+                                            val localKbs = knowledgeBaseRepository.getAll().first()
                                             val localDecks = deckRepository.getAll().first()
                                             val localCards = cardRepository.getAll().first()
-                                            val json = exportManager.exportToJson(localDecks, localCards)
+                                            val json = exportManager.exportToJson(localKbs, localDecks, localCards)
                                             syncManager.upload(config, json).getOrThrow()
                                             val remoteResult = syncManager.download(config)
                                             var importedDecks = 0
