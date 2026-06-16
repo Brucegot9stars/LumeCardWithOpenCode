@@ -114,27 +114,27 @@ selectDueCards:
 SELECT * FROM Card WHERE next_review_at IS NOT NULL AND next_review_at <= ? ORDER BY next_review_at ASC;
 
 insertKnowledgeBase:
-INSERT OR REPLACE INTO KnowledgeBase(id, name, description, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO KnowledgeBase(id, name, description, created_at, updated_at, version, deleted_at, synced_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
 insertDeck:
-INSERT OR REPLACE INTO Deck(id, knowledge_base_id, name, description, color, icon, parent_id, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
-
-insertCard:
-INSERT OR REPLACE INTO Card(id, deck_id, type, front, back, tags, media, metadata, created_at, updated_at, last_reviewed_at, next_review_at)
+INSERT OR REPLACE INTO Deck(id, knowledge_base_id, name, description, color, icon, parent_id, created_at, updated_at, version, deleted_at, synced_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
+insertCard:
+INSERT OR REPLACE INTO Card(id, deck_id, type, front, back, tags, media, metadata, created_at, updated_at, last_reviewed_at, next_review_at, version, deleted_at, synced_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
 insertReviewLog:
-INSERT OR REPLACE INTO ReviewLog(id, card_id, rating, review_time, interval, ease_factor, repetitions, lapse_count, reviewed_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO ReviewLog(id, card_id, rating, review_time, interval, ease_factor, repetitions, lapse_count, reviewed_at, version, deleted_at, synced_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 insertFSRSCard:
 INSERT OR REPLACE INTO FSRSCard(id, due, stability, difficulty, elapsed_days, scheduled_days, reps, lapse_count, state)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 updateCard:
-UPDATE Card SET deck_id = ?, type = ?, front = ?, back = ?, tags = ?, media = ?, metadata = ?, updated_at = ?, last_reviewed_at = ?, next_review_at = ?
+UPDATE Card SET deck_id = ?, type = ?, front = ?, back = ?, tags = ?, media = ?, metadata = ?, updated_at = ?, last_reviewed_at = ?, next_review_at = ?, version = version + 1
 WHERE id = ?;
 
 deleteCard:
