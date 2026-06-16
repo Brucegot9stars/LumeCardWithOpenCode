@@ -27,6 +27,8 @@ class SettingsViewModel(
             state.dailyGoal = settingsRepository.getInt("dailyGoal", 20)
             state.newCardsPerDay = settingsRepository.getInt("newCardsPerDay", 20)
             state.notificationsEnabled = settingsRepository.getBoolean("notificationsEnabled", true)
+            state.autoSyncEnabled = settingsRepository.getBoolean("auto_sync_enabled", false)
+            state.autoSyncIntervalMinutes = settingsRepository.getInt("auto_sync_interval_minutes", 30)
             val langStr = settingsRepository.get("language") ?: AppLocale.SYSTEM.name
             state.language = try { AppLocale.valueOf(langStr) } catch (_: Exception) { AppLocale.SYSTEM }
         }
@@ -41,6 +43,8 @@ class SettingsViewModel(
             settingsRepository.set("dailyGoal", state.dailyGoal.toString())
             settingsRepository.set("newCardsPerDay", state.newCardsPerDay.toString())
             settingsRepository.set("notificationsEnabled", state.notificationsEnabled.toString())
+            settingsRepository.set("auto_sync_enabled", state.autoSyncEnabled.toString())
+            settingsRepository.set("auto_sync_interval_minutes", state.autoSyncIntervalMinutes.toString())
             settingsRepository.set("language", state.language.name)
             state.markClean()
             state.isSaving = false
@@ -66,9 +70,6 @@ class SettingsViewModel(
         state.language = locale
         i18nManager.setLocale(locale)
         state.markDirty()
-        screenModelScope.launch {
-            settingsRepository.set("language", locale.name)
-        }
     }
 
     fun setDailyGoal(goal: Int) {
@@ -85,4 +86,15 @@ class SettingsViewModel(
         state.notificationsEnabled = enabled
         state.markDirty()
     }
+
+    fun setAutoSyncEnabled(enabled: Boolean) {
+        state.autoSyncEnabled = enabled
+        state.markDirty()
+    }
+
+    fun setAutoSyncInterval(minutes: Int) {
+        state.autoSyncIntervalMinutes = minutes.coerceIn(5, 1440)
+        state.markDirty()
+    }
 }
+

@@ -263,6 +263,15 @@ interface I18nStrings {
     val settingsSyncDownload: String
     val settingsSyncBiDirectional: String
     val settingsSyncNotConfigured: String
+    val settingsAutoSync: String
+    val settingsAutoSyncDesc: String
+    val settingsAutoSyncInterval: String
+    val settingsAutoSyncMin15: String
+    val settingsAutoSyncMin30: String
+    val settingsAutoSyncMin60: String
+    val settingsAutoSyncMin120: String
+    val settingsAutoSyncRunning: String
+    val settingsAutoSyncStopped: String
     val settingsLanguage: String
     val settingsLanguageDesc: String
 

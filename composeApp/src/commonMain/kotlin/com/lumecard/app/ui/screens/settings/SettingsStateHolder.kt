@@ -13,6 +13,8 @@ class SettingsStateHolder {
     var dailyGoal by mutableStateOf(20)
     var newCardsPerDay by mutableStateOf(20)
     var notificationsEnabled by mutableStateOf(true)
+    var autoSyncEnabled by mutableStateOf(false)
+    var autoSyncIntervalMinutes by mutableStateOf(30)
     var language by mutableStateOf(AppLocale.SYSTEM)
     var isDirty by mutableStateOf(false)
     var isSaving by mutableStateOf(false)

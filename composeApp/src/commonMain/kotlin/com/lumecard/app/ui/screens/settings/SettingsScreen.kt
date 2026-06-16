@@ -49,6 +49,7 @@ class SettingsScreen : Screen {
         val navigator = LocalNavigator.currentOrThrow
         val settingsViewModel: SettingsViewModel = koinInject()
         val strings = koinInject<I18nManager>().strings
+        val i18nManager = koinInject<I18nManager>()
         val settingsState = settingsViewModel.state
         val exportManager: ExportManager = koinInject()
         val syncManager: SyncManager = koinInject()
@@ -261,7 +262,7 @@ class SettingsScreen : Screen {
                                 TextButton(onClick = { showLangDropdown = true }) {
                                     Text(
                                         when (settingsState.language) {
-                                            AppLocale.SYSTEM -> strings.langSystem
+                                            AppLocale.SYSTEM -> i18nManager.systemStrings.langSystem
                                             AppLocale.ZH_CN -> "🇨🇳 ${strings.langZhCn}"
                                             AppLocale.ZH_TW -> "🇹🇼 ${strings.langZhTw}"
                                             AppLocale.EN -> "🇺🇸 ${strings.langEn}"
@@ -282,7 +283,7 @@ class SettingsScreen : Screen {
                                             text = {
                                                 Text(
                                                     when (locale) {
-                                                        AppLocale.SYSTEM -> "\u2699\uFE0F ${strings.langSystem}"
+                                                        AppLocale.SYSTEM -> "\u2699\uFE0F ${i18nManager.systemStrings.langSystem}"
                                                         AppLocale.ZH_CN -> "🇨🇳 ${strings.langZhCn}"
                                                         AppLocale.ZH_TW -> "🇹🇼 ${strings.langZhTw}"
                                                         AppLocale.EN -> "🇺🇸 ${strings.langEn}"
@@ -843,6 +844,8 @@ fun SettingsSection(
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
+
+
 
 
 

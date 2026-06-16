@@ -36,8 +36,16 @@ class I18nManager {
     private var systemLocale: AppLocale = AppLocale.EN
 
     init {
-        detectSystemLocale(detectSystemLocaleTag())
+        try {
+            detectSystemLocale(detectSystemLocaleTag())
+        } catch (_: Exception) {
+            systemLocale = AppLocale.EN
+        }
     }
+
+    /** Returns strings for the detected system locale, regardless of currentLocale. */
+    val systemStrings: I18nStrings
+        get() = localeMap[systemLocale] ?: EnStrings
 
     fun setLocale(locale: AppLocale) {
         if (locale == currentLocale) return
@@ -66,4 +74,6 @@ fun String.i18nFormat(vararg args: Any?): String {
     }
     return result
 }
+
+
 

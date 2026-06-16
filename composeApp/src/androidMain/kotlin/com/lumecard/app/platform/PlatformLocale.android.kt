@@ -22,13 +22,18 @@ actual fun applyAppLocale(locale: AppLocale) {
 }
 
 actual fun detectSystemLocaleTag(): String {
-    val context = AndroidContextHolder.context
-    val config = context.resources.configuration
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-        config.locales[0].toLanguageTag()
-    } else {
-        @Suppress("DEPRECATION")
-        config.locale.toLanguageTag()
+    return try {
+        val context = AndroidContextHolder.context
+        val config = context.resources.configuration
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            config.locales[0].toLanguageTag()
+        } else {
+            @Suppress("DEPRECATION")
+            config.locale.toLanguageTag()
+        }
+    } catch (_: Exception) {
+        "en"
     }
 }
+
 
