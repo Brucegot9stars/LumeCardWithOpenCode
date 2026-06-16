@@ -4,6 +4,7 @@ import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.ReviewLogRepository
+import com.lumecard.shared.repository.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,17 +24,21 @@ data class AppStats(
     val dueCardsCount: Int = 0,
     val upcomingCardsCount: Int = 0,
     val todayReviews: Int = 0,
+    val todayNewCards: Int = 0,
     val weekReviews: Int = 0,
     val monthReviews: Int = 0,
     val totalReviews: Int = 0,
     val retentionRate: Double = 0.0,
     val studyTimeMinutes: Int = 0,
-    val streakDays: Int = 0
+    val streakDays: Int = 0,
+    val dailyGoal: Int = 20,
+    val newCardsPerDayGoal: Int = 20
 )
 
 class StatsViewModel(
     private val reviewLogRepository: ReviewLogRepository,
-    private val cardRepository: CardRepository
+    private val cardRepository: CardRepository,
+    private val settingsRepository: SettingsRepository
 ) : ScreenModel {
 
     private val _stats = MutableStateFlow(AppStats())
@@ -85,6 +90,14 @@ class StatsViewModel(
                     checkDate = checkDate.minus(1, DateTimeUnit.DAY)
                 }
 
+                val dailyGoal = settingsRepository.getInt("dailyGoal", 20)
+                val newCardsPerDayGoal = settingsRepository.getInt("newCardsPerDay", 20)
+
+                val todayNewCards = allCards.count {
+                    val next = it.nextReviewAt
+                    next == null && it.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).date == today
+                }
+
                 _stats.value = AppStats(
                     totalCards = allCards.size,
                     totalDecks = allCards.distinctBy { it.deckId }.size,
@@ -92,12 +105,15 @@ class StatsViewModel(
                     dueCardsCount = dueCards,
                     upcomingCardsCount = upcomingCards,
                     todayReviews = todayLogs.size,
+                    todayNewCards = todayNewCards,
                     weekReviews = weekLogs.size,
                     monthReviews = monthLogs.size,
                     totalReviews = allLogs.size,
                     retentionRate = reviewStats.retentionRate * 100.0,
                     studyTimeMinutes = reviewStats.studyTimeMinutes,
-                    streakDays = streak
+                    streakDays = streak,
+                    dailyGoal = dailyGoal,
+                    newCardsPerDayGoal = newCardsPerDayGoal
                 )
             } catch (e: Exception) {
                 // Keep default zeros

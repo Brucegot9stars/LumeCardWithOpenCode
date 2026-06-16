@@ -383,32 +383,6 @@ class SettingsScreen : Screen {
                     )
                 }
 
-                // === 学习进度 ===
-                SettingsSection(title = strings.settingsTodayProgress) {
-                    @Composable
-                    fun GoalProgress(label: String, current: Int, target: Int) {
-                        val progress = if (target > 0) (current.toFloat() / target).coerceIn(0f, 1f) else 0f
-                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(label, style = MaterialTheme.typography.bodyMedium)
-                                Text(strings.settingsProgressText(current, target), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            Spacer(Modifier.height(4.dp))
-                            LinearProgressIndicator(
-                                progress = { progress },
-                                modifier = Modifier.fillMaxWidth().height(8.dp),
-                                trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                            )
-                        }
-                    }
-                    GoalProgress(strings.settingsTodayCompleted, current = 0, target = settingsState.dailyGoal)
-                    HorizontalDivider()
-                    GoalProgress(strings.settingsNewCardsLearned, current = 0, target = settingsState.newCardsPerDay)
-                }
-
                 // === 关于 ===
                 SettingsSection(title = strings.settingsAbout) {
                     ListItem(
