@@ -87,25 +87,25 @@ CREATE TABLE AlgorithmState (
 );
 
 selectAllKnowledgeBases:
-SELECT * FROM KnowledgeBase ORDER BY created_at DESC;
+SELECT * FROM KnowledgeBase WHERE deleted_at IS NULL ORDER BY created_at ASC;
 
 selectKnowledgeBaseById:
 SELECT * FROM KnowledgeBase WHERE id = ?;
 
 selectAllDecks:
-SELECT * FROM Deck ORDER BY created_at DESC;
+SELECT * FROM Deck WHERE deleted_at IS NULL ORDER BY created_at ASC;
 
 selectDecksByKnowledgeBase:
-SELECT * FROM Deck WHERE knowledge_base_id = ?;
+SELECT * FROM Deck WHERE knowledge_base_id = ? AND deleted_at IS NULL ORDER BY created_at ASC;
 
 selectDeckById:
 SELECT * FROM Deck WHERE id = ?;
 
 selectAllCards:
-SELECT * FROM Card ORDER BY created_at DESC;
+SELECT * FROM Card WHERE deleted_at IS NULL ORDER BY created_at ASC;
 
 selectCardsByDeck:
-SELECT * FROM Card WHERE deck_id = ?;
+SELECT * FROM Card WHERE deck_id = ? AND deleted_at IS NULL ORDER BY created_at ASC;
 
 selectCardById:
 SELECT * FROM Card WHERE id = ?;
