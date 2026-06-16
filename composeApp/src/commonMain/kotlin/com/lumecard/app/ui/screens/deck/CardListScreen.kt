@@ -53,52 +53,57 @@ class CardListScreen(
                     title = deckName,
                     onBack = { navigator.pop() },
                     action = {
-                        Box {
-                            TextButton(onClick = { showSortMenu = true }) {
-                                Text(strings.actionSort, style = MaterialTheme.typography.labelLarge)
-                            }
-                            DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
-                                Text(strings.cardSortTitle, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-                                HorizontalDivider()
-                                SortField.entries.forEach { field ->
-                                    val label = when (field) {
-                                        SortField.NAME -> strings.cardSortName
-                                        SortField.CREATED_AT -> strings.cardSortCreated
-                                        SortField.UPDATED_AT -> strings.cardSortModified
-                                        SortField.STUDY_TIME -> strings.cardSortStudyTime
-                                    }
-                                    val isActive = sortConfig.field == field
-                                    DropdownMenuItem(
-                                        text = { Text(label) },
-                                        onClick = {
-                                            if (isActive) {
-                                                val newOrder = if (sortConfig.order == SortOrder.ASC) SortOrder.DESC else SortOrder.ASC
-                                                viewModel.setSortConfig(SortConfig(field, newOrder))
-                                            } else {
-                                                viewModel.setSortConfig(SortConfig(field, SortOrder.ASC))
-                                            }
-                                            showSortMenu = false
-                                        },
-                                        leadingIcon = {
-                                            if (isActive) {
-                                                Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                            }
-                                        },
-                                        trailingIcon = {
-                                            if (isActive) {
-                                                Text(
-                                                    if (sortConfig.order == SortOrder.ASC) "\u2191" else "\u2193",
-                                                    color = MaterialTheme.colorScheme.primary,
-                                                    style = MaterialTheme.typography.titleMedium
-                                                )
-                                            }
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box {
+                                TextButton(onClick = { showSortMenu = true }) {
+                                    Text(strings.actionSort, style = MaterialTheme.typography.labelLarge)
+                                }
+                                DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
+                                    Text(strings.cardSortTitle, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                                    HorizontalDivider()
+                                    SortField.entries.forEach { field ->
+                                        val label = when (field) {
+                                            SortField.NAME -> strings.cardSortName
+                                            SortField.CREATED_AT -> strings.cardSortCreated
+                                            SortField.UPDATED_AT -> strings.cardSortModified
+                                            SortField.STUDY_TIME -> strings.cardSortStudyTime
                                         }
-                                    )
+                                        val isActive = sortConfig.field == field
+                                        DropdownMenuItem(
+                                            text = { Text(label) },
+                                            onClick = {
+                                                if (isActive) {
+                                                    val newOrder = if (sortConfig.order == SortOrder.ASC) SortOrder.DESC else SortOrder.ASC
+                                                    viewModel.setSortConfig(SortConfig(field, newOrder))
+                                                } else {
+                                                    viewModel.setSortConfig(SortConfig(field, SortOrder.ASC))
+                                                }
+                                                showSortMenu = false
+                                            },
+                                            leadingIcon = {
+                                                if (isActive) {
+                                                    Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                                }
+                                            },
+                                            trailingIcon = {
+                                                if (isActive) {
+                                                    Text(
+                                                        if (sortConfig.order == SortOrder.ASC) "\u2191" else "\u2193",
+                                                        color = MaterialTheme.colorScheme.primary,
+                                                        style = MaterialTheme.typography.titleMedium
+                                                    )
+                                                }
+                                            }
+                                        )
+                                    }
                                 }
                             }
-                        }
-                        IconButton(onClick = { navigator.push(StudyScreen(deckId, deckName)) }) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = strings.actionLearning)
+                            FilledTonalIconButton(onClick = { navigator.push(StudyScreen(deckId, deckName)) }) {
+                                Icon(Icons.Default.PlayArrow, contentDescription = strings.actionLearning)
+                            }
                         }
                     },
                 )

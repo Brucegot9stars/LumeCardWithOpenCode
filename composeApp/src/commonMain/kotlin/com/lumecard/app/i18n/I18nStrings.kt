@@ -287,6 +287,12 @@ interface I18nStrings {
     val settingsConnectionStatus: String
     val settingsConnected: String
     val settingsDisconnected: String
+    val webdavProviderLabel: String
+    val webdavProviderCustom: String
+    val webdavProviderJianguoyun: String
+    val webdavProviderNextcloud: String
+    val webdavProviderOwncloud: String
+    val webdavProviderSyncthing: String
     val settingsLanguage: String
     val settingsLanguageDesc: String
 

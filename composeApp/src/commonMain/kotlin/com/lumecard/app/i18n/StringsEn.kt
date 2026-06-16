@@ -284,6 +284,12 @@ object EnStrings : I18nStrings {
     override val settingsConnectionStatus = "Connection Status"
     override val settingsConnected = "Connected"
     override val settingsDisconnected = "Disconnected"
+    override val webdavProviderLabel = "Provider"
+    override val webdavProviderCustom = "Custom"
+    override val webdavProviderJianguoyun = "Jianguoyun"
+    override val webdavProviderNextcloud = "Nextcloud"
+    override val webdavProviderOwncloud = "ownCloud"
+    override val webdavProviderSyncthing = "Syncthing"
     override val settingsLanguage = "Language"
     override val settingsLanguageDesc = "Choose app language"
 

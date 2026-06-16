@@ -77,6 +77,16 @@ class WebDavConfigScreen : Screen {
         var showScopeDropdown by remember { mutableStateOf(false) }
         var defaultConfig by remember { mutableStateOf<WebDavConfig?>(null) }
 
+        var showProviderDropdown by remember { mutableStateOf(false) }
+
+        val providerPresets = listOf(
+            Triple(strings.webdavProviderCustom, "", ""),
+            Triple(strings.webdavProviderJianguoyun, "https://dav.jianguoyun.com/dav/", ""),
+            Triple(strings.webdavProviderNextcloud, "", ""),
+            Triple(strings.webdavProviderOwncloud, "", ""),
+            Triple(strings.webdavProviderSyncthing, "", ""),
+        )
+
         fun reloadConfigs() {
             scope.launch {
                 try {
@@ -176,6 +186,38 @@ class WebDavConfigScreen : Screen {
                                 singleLine = true,
                                 modifier = Modifier.fillMaxWidth(),
                             )
+
+                            Box {
+                                OutlinedTextField(
+                                    value = providerPresets.firstOrNull { it.second == editUrl }?.first
+                                        ?: strings.webdavProviderCustom,
+                                    onValueChange = {},
+                                    label = { Text(strings.webdavProviderLabel) },
+                                    readOnly = true,
+                                    trailingIcon = {
+                                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                                    },
+                                    modifier = Modifier.fillMaxWidth().clickable { showProviderDropdown = true },
+                                )
+                                DropdownMenu(
+                                    expanded = showProviderDropdown,
+                                    onDismissRequest = { showProviderDropdown = false },
+                                ) {
+                                    providerPresets.forEach { (name, url, _) ->
+                                        DropdownMenuItem(
+                                            text = { Text(name) },
+                                            onClick = {
+                                                if (url.isNotEmpty()) {
+                                                    editUrl = url
+                                                    if (editName.isBlank()) editName = name
+                                                }
+                                                showProviderDropdown = false
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+
                             OutlinedTextField(
                                 value = editUrl,
                                 onValueChange = { editUrl = it },

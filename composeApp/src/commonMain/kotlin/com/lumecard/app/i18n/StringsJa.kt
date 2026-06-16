@@ -284,6 +284,12 @@ object JaStrings : I18nStrings {
     override val settingsConnectionStatus = "接続状態"
     override val settingsConnected = "接続済み"
     override val settingsDisconnected = "未接続"
+    override val webdavProviderLabel = "プロバイダー"
+    override val webdavProviderCustom = "カスタム"
+    override val webdavProviderJianguoyun = "Jianguoyun"
+    override val webdavProviderNextcloud = "Nextcloud"
+    override val webdavProviderOwncloud = "ownCloud"
+    override val webdavProviderSyncthing = "Syncthing"
     override val settingsLanguage = "言語"
     override val settingsLanguageDesc = "アプリの言語を選択"
 

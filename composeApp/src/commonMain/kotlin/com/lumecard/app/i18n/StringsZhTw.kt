@@ -284,6 +284,12 @@ object ZhTwStrings : I18nStrings {
     override val settingsConnectionStatus = "連線狀態"
     override val settingsConnected = "已連線"
     override val settingsDisconnected = "未連線"
+    override val webdavProviderLabel = "服務商"
+    override val webdavProviderCustom = "自訂"
+    override val webdavProviderJianguoyun = "堅果雲"
+    override val webdavProviderNextcloud = "Nextcloud"
+    override val webdavProviderOwncloud = "ownCloud"
+    override val webdavProviderSyncthing = "Syncthing"
     override val settingsLanguage = "語言"
     override val settingsLanguageDesc = "選擇應用語言"
 

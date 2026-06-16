@@ -148,17 +148,19 @@ class DashboardScreen : Screen {
                                 horizontalArrangement = Arrangement.spacedBy(spacing.sm),
                             ) {
                                 QuickActionCard(
-                                    modifier = Modifier.weight(1f),
+                                    modifier = Modifier.weight(1f).height(IntrinsicSize.Min),
                                     title = strings.dashStartLearning,
                                     subtitle = if (firstStudyableDeck != null) strings.dashDecksAvailable(studyableCount) else strings.dashNoCardsAvailable,
                                     enabled = firstStudyableDeck != null,
                                     icon = Icons.Default.PlayArrow,
+                                    isPrimary = true,
                                     onClick = { navigator.push(StudyModeScreen()) },
                                 )
                                 QuickActionCard(
-                                    modifier = Modifier.weight(1f),
+                                    modifier = Modifier.weight(1f).height(IntrinsicSize.Min),
                                     title = strings.dashManageDecks,
                                     icon = Icons.AutoMirrored.Filled.List,
+                                    isPrimary = false,
                                     onClick = { navigator.push(DeckListScreen()) },
                                 )
                             }
@@ -237,6 +239,7 @@ class DashboardScreen : Screen {
         subtitle: String? = null,
         enabled: Boolean = true,
         icon: ImageVector,
+        isPrimary: Boolean = false,
         onClick: () -> Unit,
     ) {
         val spacing = LumeCardTheme.spacing
@@ -248,20 +251,28 @@ class DashboardScreen : Screen {
             onClick = onClick,
             enabled = enabled,
             colors = CardDefaults.cardColors(
-                containerColor = if (enabled) MaterialTheme.colorScheme.surface
-                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                containerColor = when {
+                    !enabled -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    isPrimary -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                    else -> MaterialTheme.colorScheme.surface
+                },
             ),
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .fillMaxHeight()
                     .padding(spacing.md),
                 horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
             ) {
                 Surface(
                     shape = radius.pill,
-                    color = if (enabled) MaterialTheme.colorScheme.primaryContainer
-                        else MaterialTheme.colorScheme.surfaceVariant,
+                    color = when {
+                        !enabled -> MaterialTheme.colorScheme.surfaceVariant
+                        isPrimary -> MaterialTheme.colorScheme.primary
+                        else -> MaterialTheme.colorScheme.primaryContainer
+                    },
                     modifier = Modifier.size(40.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
@@ -269,8 +280,11 @@ class DashboardScreen : Screen {
                             icon,
                             contentDescription = null,
                             modifier = Modifier.size(20.dp),
-                            tint = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer
-                                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            tint = when {
+                                !enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                                isPrimary -> MaterialTheme.colorScheme.onPrimary
+                                else -> MaterialTheme.colorScheme.onPrimaryContainer
+                            },
                         )
                     }
                 }
