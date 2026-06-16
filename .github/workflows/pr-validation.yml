@@ -28,7 +28,7 @@ jobs:
       run: ./gradlew :composeApp:assembleDebug
 
     - name: Run unit tests
-      run: ./gradlew :shared:jvmTest
+      run: ./gradlew :shared:desktopTest
 
     - name: Upload test results
       uses: actions/upload-artifact@v6
@@ -37,3 +37,4 @@ jobs:
         name: validation-results
         path: shared/build/reports/tests/
         retention-days: 7
+

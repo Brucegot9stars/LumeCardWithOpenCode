@@ -37,7 +37,7 @@ jobs:
         retention-days: 7
 
     - name: Run unit tests
-      run: ./gradlew :shared:jvmTest
+      run: ./gradlew :shared:desktopTest
 
     - name: Upload test results
       uses: actions/upload-artifact@v6
@@ -46,3 +46,4 @@ jobs:
         name: test-results
         path: shared/build/reports/tests/
         retention-days: 7
+
