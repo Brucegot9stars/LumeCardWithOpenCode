@@ -176,14 +176,44 @@ class ExportManager {
 
     fun importFromJson(jsonString: String): LumeCardExport? {
         return try {
-            json.decodeFromString(LumeCardExport.serializer(), jsonString)
+            val export = json.decodeFromString(LumeCardExport.serializer(), jsonString)
+            when (export.schemaVersion) {
+                SCHEMA_VERSION -> export
+                1 -> migrateV1ToV2(export)
+                else -> export
+            }
         } catch (e: Exception) {
             null
         }
     }
 
-    fun migrateV1ToV2(v1Export: Any?): LumeCardExport? {
-        return null
+    private fun migrateV1ToV2(v1Export: LumeCardExport): LumeCardExport {
+        val migratedDecks = v1Export.decks.map { deck ->
+            if (deck.knowledgeBaseId.isBlank()) {
+                deck.copy(knowledgeBaseId = "default", version = 1)
+            } else {
+                deck.copy(version = maxOf(deck.version, 1))
+            }
+        }
+        val migratedCards = v1Export.cards.map { card ->
+            card.copy(version = maxOf(card.version, 1))
+        }
+        val defaultKb = ExportKnowledgeBase(
+            id = "default",
+            name = "Default",
+            description = null,
+            createdAt = v1Export.exportDate,
+            updatedAt = v1Export.exportDate,
+            version = 1
+        )
+        val kbs = v1Export.knowledgeBases.ifEmpty { listOf(defaultKb) }
+        return v1Export.copy(
+            schemaVersion = SCHEMA_VERSION,
+            version = EXPORT_VERSION,
+            knowledgeBases = kbs,
+            decks = migratedDecks,
+            cards = migratedCards
+        )
     }
 
     fun exportToCsv(cards: List<Card>): String {
