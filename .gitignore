@@ -64,3 +64,4 @@ package-lock.json
 
 # AI agent config (local, not shared)
 AGENTS.md
+.mimocode
