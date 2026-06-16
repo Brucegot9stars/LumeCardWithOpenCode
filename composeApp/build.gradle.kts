@@ -88,8 +88,28 @@ android {
         applicationId = "com.lumecard.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.2.0"
+        versionCode = (System.getenv("VERSION_CODE")?.toIntOrNull()
+            ?: project.findProperty("VERSION_CODE")?.toString()?.toIntOrNull()
+            ?: 2)
+        versionName = System.getenv("VERSION_NAME")
+            ?: project.findProperty("VERSION_NAME")?.toString()
+            ?: "1.2.0"
+    }
+
+    signingConfigs {
+        create("release") {
+            val ksFile = System.getenv("KEYSTORE_FILE")
+                ?: project.findProperty("KEYSTORE_FILE")?.toString()
+            if (ksFile != null && file(ksFile).exists()) {
+                storeFile = file(ksFile)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                    ?: project.findProperty("KEYSTORE_PASSWORD")?.toString()
+                keyAlias = System.getenv("KEY_ALIAS")
+                    ?: project.findProperty("KEY_ALIAS")?.toString()
+                keyPassword = System.getenv("KEY_PASSWORD")
+                    ?: project.findProperty("KEY_PASSWORD")?.toString()
+            }
+        }
     }
 
     buildTypes {
@@ -99,6 +119,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            val ksFile = System.getenv("KEYSTORE_FILE")
+                ?: project.findProperty("KEYSTORE_FILE")?.toString()
+            if (ksFile != null && file(ksFile).exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
