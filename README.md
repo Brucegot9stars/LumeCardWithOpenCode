@@ -3,7 +3,7 @@
 一款现代化、跨平台的闪卡学习应用（Anki 替代品），使用 Compose Multiplatform + Kotlin 构建。
 
 > 本项目全程使用 **opencode + DeepSeek + MIMO** 等 AI 工具开发，在此致以诚挚感谢！
-> 这些 AI 工具在架构设计、代码生成、Bug 修复和持续迭代中提供了巨大帮助。
+> codex 在 Bug 修复和持续迭代中提供了巨大帮助。
 
 ---
 
