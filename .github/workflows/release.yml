@@ -54,11 +54,11 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           ./gradlew clean :composeApp:assembleRelease --no-daemon \
-            -PVERSION_NAME=${{ steps.version.outputs.version }} \
-            -PKEYSTORE_FILE=${{ env.KEYSTORE_FILE }} \
-            -PKEYSTORE_PASSWORD=${{ env.KEYSTORE_PASSWORD }} \
-            -PKEY_ALIAS=${{ env.KEY_ALIAS }} \
-            -PKEY_PASSWORD=${{ env.KEY_PASSWORD }}
+            -PVERSION_NAME="${{ steps.version.outputs.version }}" \
+            -PKEYSTORE_FILE="${{ env.KEYSTORE_FILE }}" \
+            -PKEYSTORE_PASSWORD="${{ env.KEYSTORE_PASSWORD }}" \
+            -PKEY_ALIAS="${{ env.KEY_ALIAS }}" \
+            -PKEY_PASSWORD="${{ env.KEY_PASSWORD }}"
 
       - name: Build Release AAB (optional)
         if: env.KEYSTORE_BASE64 != ''
@@ -69,11 +69,11 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           ./gradlew :composeApp:bundleRelease --no-daemon \
-            -PVERSION_NAME=${{ steps.version.outputs.version }} \
-            -PKEYSTORE_FILE=${{ env.KEYSTORE_FILE }} \
-            -PKEYSTORE_PASSWORD=${{ env.KEYSTORE_PASSWORD }} \
-            -PKEY_ALIAS=${{ env.KEY_ALIAS }} \
-            -PKEY_PASSWORD=${{ env.KEY_PASSWORD }}
+            -PVERSION_NAME="${{ steps.version.outputs.version }}" \
+            -PKEYSTORE_FILE="${{ env.KEYSTORE_FILE }}" \
+            -PKEYSTORE_PASSWORD="${{ env.KEYSTORE_PASSWORD }}" \
+            -PKEY_ALIAS="${{ env.KEY_ALIAS }}" \
+            -PKEY_PASSWORD="${{ env.KEY_PASSWORD }}"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
