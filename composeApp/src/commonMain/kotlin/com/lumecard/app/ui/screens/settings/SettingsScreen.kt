@@ -23,7 +23,9 @@ import com.lumecard.shared.domain.scheduler.ReviewMode
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
 import com.lumecard.app.i18n.AppLocale
+import com.lumecard.app.ui.components.LumeCardDialog
 import com.lumecard.app.ui.components.LumeCardTopBar
+import com.lumecard.app.ui.components.LumeCardTextField
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.theme.LumeCardTheme
 import kotlinx.coroutines.Dispatchers
@@ -515,25 +517,33 @@ class SettingsScreen : Screen {
                         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                     ),
                 ) {
-                    Column {
-                        ListItem(
-                            headlineContent = { Text(strings.settingsVersion) },
-                            trailingContent = { Text(AppVersion.VERSION_NAME) },
-                        )
-                        HorizontalDivider()
-                        ListItem(
-                            headlineContent = { Text(strings.settingsAboutApp) },
-                            leadingContent = { Icon(Icons.Default.Info, contentDescription = null) },
-                        )
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Spacer(Modifier.height(spacing.lg))
+                        Surface(
+                            shape = radius.pill,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(56.dp),
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("LC", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            }
+                        }
+                        Spacer(Modifier.height(spacing.sm))
+                        Text("LumeCard", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text("v${AppVersion.VERSION_NAME}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(spacing.md))
                         HorizontalDivider()
                         ListItem(
                             headlineContent = { Text(strings.settingsDeveloper) },
-                            trailingContent = { Text("Brucegot9stars") },
+                            trailingContent = { Text("Brucegot9stars", style = MaterialTheme.typography.bodyMedium) },
                         )
                         HorizontalDivider()
                         ListItem(
                             headlineContent = { Text(strings.settingsLicense) },
-                            trailingContent = { Text(strings.settingsOpenSource) },
+                            trailingContent = { Text(strings.settingsOpenSource, style = MaterialTheme.typography.bodyMedium) },
                         )
                     }
                 }
@@ -543,32 +553,22 @@ class SettingsScreen : Screen {
         }
 
         if (showGoalDialog) {
-            AlertDialog(
-                onDismissRequest = { showGoalDialog = false },
-                title = { Text(strings.settingsGoalDialogTitle) },
-                text = {
-                    OutlinedTextField(
-                        value = goalInput,
-                        onValueChange = { goalInput = it.filter { c -> c.isDigit() } },
-                        label = { Text(strings.settingsCardCount) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+            LumeCardDialog(
+                title = strings.settingsGoalDialogTitle,
+                onDismiss = { showGoalDialog = false },
+                onConfirm = {
+                    goalInput.toIntOrNull()?.let { settingsViewModel.setDailyGoal(it) }
+                    showGoalDialog = false
                 },
-                confirmButton = {
-                    TextButton(onClick = {
-                        goalInput.toIntOrNull()?.let { settingsViewModel.setDailyGoal(it) }
-                        showGoalDialog = false
-                    }) {
-                        Text(strings.actionOk)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showGoalDialog = false }) {
-                        Text(strings.actionCancel)
-                    }
-                }
-            )
+                confirmText = strings.actionOk,
+                confirmEnabled = goalInput.toIntOrNull() != null,
+            ) {
+                LumeCardTextField(
+                    value = goalInput,
+                    onValueChange = { goalInput = it.filter { c -> c.isDigit() } },
+                    label = strings.settingsCardCount,
+                )
+            }
         }
     }
 }
