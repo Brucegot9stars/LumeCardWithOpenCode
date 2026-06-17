@@ -236,7 +236,6 @@ object EnStrings : I18nStrings {
     override val settingsNewCardsLearned = "New Cards Learned"
     override val settingsAbout = "About"
     override val settingsVersion = "Version"
-    override val settingsVersionNumber = "1.0.0"
     override val settingsAboutApp = "About LumeCard"
     override val settingsDeveloper = "Developer"
     override val settingsLicense = "License"

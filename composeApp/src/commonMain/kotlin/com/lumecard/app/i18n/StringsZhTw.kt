@@ -236,7 +236,6 @@ object ZhTwStrings : I18nStrings {
     override val settingsNewCardsLearned = "新卡片學習"
     override val settingsAbout = "關於"
     override val settingsVersion = "版本"
-    override val settingsVersionNumber = "1.0.0"
     override val settingsAboutApp = "關於靈記"
     override val settingsDeveloper = "開發者"
     override val settingsLicense = "開源協議"

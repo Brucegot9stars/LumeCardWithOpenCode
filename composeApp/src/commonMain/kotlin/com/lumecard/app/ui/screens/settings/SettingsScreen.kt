@@ -16,6 +16,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.lumecard.shared.AppVersion
 import com.lumecard.shared.data.ExportManager
 import com.lumecard.shared.data.WebDavConfigManager
 import com.lumecard.shared.domain.scheduler.ReviewMode
@@ -517,7 +518,7 @@ class SettingsScreen : Screen {
                     Column {
                         ListItem(
                             headlineContent = { Text(strings.settingsVersion) },
-                            trailingContent = { Text(getAppVersion()) },
+                            trailingContent = { Text(AppVersion.VERSION_NAME) },
                         )
                         HorizontalDivider()
                         ListItem(

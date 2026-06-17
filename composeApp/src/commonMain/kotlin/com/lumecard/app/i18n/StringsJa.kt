@@ -236,7 +236,6 @@ object JaStrings : I18nStrings {
     override val settingsNewCardsLearned = "新規カード学習"
     override val settingsAbout = "について"
     override val settingsVersion = "バージョン"
-    override val settingsVersionNumber = "1.0.0"
     override val settingsAboutApp = "LumeCard について"
     override val settingsDeveloper = "開発者"
     override val settingsLicense = "ライセンス"

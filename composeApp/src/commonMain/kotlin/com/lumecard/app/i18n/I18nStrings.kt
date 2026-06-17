@@ -239,7 +239,6 @@ interface I18nStrings {
     val settingsNewCardsLearned: String
     val settingsAbout: String
     val settingsVersion: String
-    val settingsVersionNumber: String
     val settingsAboutApp: String
     val settingsDeveloper: String
     val settingsLicense: String

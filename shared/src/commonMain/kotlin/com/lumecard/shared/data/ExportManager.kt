@@ -1,5 +1,6 @@
 package com.lumecard.shared.data
 
+import com.lumecard.shared.AppVersion
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.Deck
 import com.lumecard.shared.model.KnowledgeBase
@@ -9,13 +10,10 @@ import kotlinx.datetime.Clock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-const val EXPORT_VERSION = "3.0.0"
-const val SCHEMA_VERSION = 3
-
 @Serializable
 data class LumeCardExport(
-    val version: String = EXPORT_VERSION,
-    val schemaVersion: Int = SCHEMA_VERSION,
+    val version: String = AppVersion.EXPORT_VERSION,
+    val schemaVersion: Int = AppVersion.SCHEMA_VERSION,
     val exportDate: String,
     val deviceId: String? = null,
     val knowledgeBases: List<ExportKnowledgeBase> = emptyList(),
@@ -217,8 +215,9 @@ class ExportManager {
         return try {
             val export = json.decodeFromString(LumeCardExport.serializer(), jsonString)
             when (export.schemaVersion) {
-                SCHEMA_VERSION -> export
+                AppVersion.SCHEMA_VERSION -> export
                 1 -> migrateV1ToV2(export)
+                2 -> migrateV2ToV3(export)
                 else -> export
             }
         } catch (e: Exception) {
@@ -247,11 +246,18 @@ class ExportManager {
         )
         val kbs = v1Export.knowledgeBases.ifEmpty { listOf(defaultKb) }
         return v1Export.copy(
-            schemaVersion = SCHEMA_VERSION,
-            version = EXPORT_VERSION,
+            schemaVersion = AppVersion.SCHEMA_VERSION,
+            version = AppVersion.EXPORT_VERSION,
             knowledgeBases = kbs,
             decks = migratedDecks,
             cards = migratedCards
+        )
+    }
+
+    private fun migrateV2ToV3(v2Export: LumeCardExport): LumeCardExport {
+        return v2Export.copy(
+            schemaVersion = AppVersion.SCHEMA_VERSION,
+            version = AppVersion.EXPORT_VERSION
         )
     }
 

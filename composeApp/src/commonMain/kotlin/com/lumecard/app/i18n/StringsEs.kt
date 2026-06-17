@@ -236,7 +236,6 @@ object EsStrings : I18nStrings {
     override val settingsNewCardsLearned = "Nuevas tarjetas aprendidas"
     override val settingsAbout = "Acerca de"
     override val settingsVersion = "Versión"
-    override val settingsVersionNumber = "1.0.0"
     override val settingsAboutApp = "Acerca de LumeCard"
     override val settingsDeveloper = "Desarrollador"
     override val settingsLicense = "Licencia"

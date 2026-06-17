@@ -10,6 +10,14 @@ plugins {
 }
 
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
+
+val appVersionProps = Properties().apply {
+    val f = rootProject.file("version.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+val appVersionName = appVersionProps.getProperty("APP_VERSION_NAME", "0.0.1")
+val appVersionCode = appVersionProps.getProperty("APP_VERSION_CODE", "1").toInt()
 
 kotlin {
     androidTarget {
@@ -69,7 +77,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Msi)
             packageName = "LumeCard"
-            packageVersion = "1.3.0"
+            packageVersion = appVersionName
             vendor = "AiDev"
 
             windows {
@@ -90,10 +98,10 @@ android {
         targetSdk = 35
         versionCode = (System.getenv("VERSION_CODE")?.toIntOrNull()
             ?: project.findProperty("VERSION_CODE")?.toString()?.toIntOrNull()
-            ?: 3)
+            ?: appVersionCode)
         versionName = System.getenv("VERSION_NAME")
             ?: project.findProperty("VERSION_NAME")?.toString()
-            ?: "1.3.0"
+            ?: appVersionName
     }
 
     signingConfigs {

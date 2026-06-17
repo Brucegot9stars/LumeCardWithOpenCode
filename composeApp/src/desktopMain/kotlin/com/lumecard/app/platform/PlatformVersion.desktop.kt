@@ -1,11 +1,18 @@
 package com.lumecard.app.platform
 
+import com.lumecard.shared.AppVersion
+
 actual fun getAppVersion(): String {
     return try {
         val props = java.util.Properties()
-        props.load(object {}.javaClass.getResourceAsStream("/version.properties") ?: return "1.2.0")
-        props.getProperty("version", "1.2.0")
+        val stream = object {}.javaClass.getResourceAsStream("/version.properties")
+        if (stream != null) {
+            props.load(stream)
+            props.getProperty("version", AppVersion.VERSION_NAME)
+        } else {
+            AppVersion.VERSION_NAME
+        }
     } catch (_: Exception) {
-        "1.2.0"
+        AppVersion.VERSION_NAME
     }
 }

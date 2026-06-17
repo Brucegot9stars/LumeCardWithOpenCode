@@ -236,7 +236,6 @@ object ZhCnStrings : I18nStrings {
     override val settingsNewCardsLearned = "新卡片学习"
     override val settingsAbout = "关于"
     override val settingsVersion = "版本"
-    override val settingsVersionNumber = "1.0.0"
     override val settingsAboutApp = "关于灵记"
     override val settingsDeveloper = "开发者"
     override val settingsLicense = "开源协议"
