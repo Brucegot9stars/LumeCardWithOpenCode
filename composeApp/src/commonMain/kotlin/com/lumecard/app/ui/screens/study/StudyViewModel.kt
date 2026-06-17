@@ -61,8 +61,11 @@ class StudyViewModel(
 
     private var activePlanIds: List<String> = emptyList()
 
+    private var _hasStartedStudying = false
+
     fun loadCards(deckIds: List<String>, planIds: List<String> = emptyList()) {
         activePlanIds = planIds
+        _hasStartedStudying = false
         screenModelScope.launch {
             val allCards = mutableListOf<Card>()
             for (deckId in deckIds) {
@@ -88,19 +91,32 @@ class StudyViewModel(
                 }
             }
             shuffled.firstOrNull()?.let { _cardStartTimes[it.id] = Clock.System.now() }
+        }
+    }
 
-            // Start session timer
-            _sessionStartTime.value = Clock.System.now()
-            _elapsedSeconds.value = 0
-            timerJob?.cancel()
-            timerJob = screenModelScope.launch {
-                while (true) {
-                    kotlinx.coroutines.delay(1000)
-                    val start = _sessionStartTime.value ?: continue
-                    _elapsedSeconds.value = ((Clock.System.now().toEpochMilliseconds() - start.toEpochMilliseconds()) / 1000).toInt()
-                }
+    private fun startTimerIfNeeded() {
+        if (_hasStartedStudying) return
+        _hasStartedStudying = true
+        _sessionStartTime.value = Clock.System.now()
+        _elapsedSeconds.value = 0
+        timerJob?.cancel()
+        timerJob = screenModelScope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(1000)
+                val start = _sessionStartTime.value ?: continue
+                _elapsedSeconds.value = ((Clock.System.now().toEpochMilliseconds() - start.toEpochMilliseconds()) / 1000).toInt()
             }
         }
+    }
+
+    fun stopTimer() {
+        timerJob?.cancel()
+        timerJob = null
+    }
+
+    override fun onDispose() {
+        stopTimer()
+        super.onDispose()
     }
 
     fun flipCard() {
@@ -121,6 +137,8 @@ class StudyViewModel(
     fun rateCard(rating: Rating) {
         val currentCard = _cards.value.getOrNull(_currentCardIndex.value) ?: return
         val state = _algorithmStates.value[currentCard.id] ?: return
+
+        startTimerIfNeeded()
 
         val updatedState = algorithm.schedule(state, rating)
         _algorithmStates.value = _algorithmStates.value + (currentCard.id to updatedState)

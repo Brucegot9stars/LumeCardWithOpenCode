@@ -3,6 +3,7 @@ package com.lumecard.app.ui.screens.stats
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import com.lumecard.shared.repository.CardRepository
+import com.lumecard.shared.repository.DeckRepository
 import com.lumecard.shared.repository.ReviewLogRepository
 import com.lumecard.shared.repository.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,6 +39,7 @@ data class AppStats(
 class StatsViewModel(
     private val reviewLogRepository: ReviewLogRepository,
     private val cardRepository: CardRepository,
+    private val deckRepository: DeckRepository,
     private val settingsRepository: SettingsRepository
 ) : ScreenModel {
 
@@ -52,18 +54,19 @@ class StatsViewModel(
         screenModelScope.launch {
             try {
                 val allCards = cardRepository.getAll().first()
+                val allDecks = deckRepository.getAll().first()
                 val reviewStats = reviewLogRepository.getStats()
                 val allLogs = reviewLogRepository.getAll().first()
 
                 val now = Clock.System.now()
                 val today = now.toLocalDateTime(TimeZone.currentSystemDefault()).date
 
-                val newCards = allCards.count { it.nextReviewAt == null }
-                val dueCards = allCards.count { card ->
+                val newCards = allCards.filter { it.deletedAt == null }.count { it.nextReviewAt == null }
+                val dueCards = allCards.filter { it.deletedAt == null }.count { card ->
                     val next = card.nextReviewAt
                     next != null && next <= now
                 }
-                val upcomingCards = allCards.count { card ->
+                val upcomingCards = allCards.filter { it.deletedAt == null }.count { card ->
                     val next = card.nextReviewAt
                     next != null && next > now
                 }
@@ -93,14 +96,14 @@ class StatsViewModel(
                 val dailyGoal = settingsRepository.getInt("dailyGoal", 20)
                 val newCardsPerDayGoal = settingsRepository.getInt("newCardsPerDay", 20)
 
-                val todayNewCards = allCards.count {
+                val todayNewCards = allCards.filter { it.deletedAt == null }.count {
                     val next = it.nextReviewAt
                     next == null && it.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).date == today
                 }
 
                 _stats.value = AppStats(
-                    totalCards = allCards.size,
-                    totalDecks = allCards.distinctBy { it.deckId }.size,
+                    totalCards = allCards.count { it.deletedAt == null },
+                    totalDecks = allDecks.count { it.deletedAt == null },
                     newCardsCount = newCards,
                     dueCardsCount = dueCards,
                     upcomingCardsCount = upcomingCards,

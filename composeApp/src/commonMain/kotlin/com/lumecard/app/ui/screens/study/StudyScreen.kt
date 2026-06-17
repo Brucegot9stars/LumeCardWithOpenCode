@@ -87,6 +87,10 @@ class StudyScreen(
             isAnimatingOut = false
         }
 
+        DisposableEffect(Unit) {
+            onDispose { viewModel.stopTimer() }
+        }
+
 
         BoxWithConstraints(
         modifier = Modifier
