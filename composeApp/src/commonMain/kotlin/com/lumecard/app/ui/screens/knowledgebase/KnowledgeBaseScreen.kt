@@ -179,34 +179,35 @@ private fun KnowledgeBaseDialog(
 ) {
     var name by remember { mutableStateOf(initialName) }
     var description by remember { mutableStateOf(initialDescription ?: "") }
+    val strings = koinInject<I18nManager>().strings
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Name") },
+                    label = { Text(strings.fieldName) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Description") },
+                    label = { Text(strings.fieldDescription) },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(name, description.ifBlank { null }) }, enabled = name.isNotBlank()) {
-                Text("OK")
+            FilledTonalButton(onClick = { onConfirm(name, description.ifBlank { null }) }, enabled = name.isNotBlank()) {
+                Text(strings.actionSave)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(strings.actionCancel) }
         }
     )
 }

@@ -67,14 +67,14 @@ class LearningPlanScreen(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Name") },
+                    label = { Text(strings.fieldName) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Description") },
+                    label = { Text(strings.fieldDescription) },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Row(

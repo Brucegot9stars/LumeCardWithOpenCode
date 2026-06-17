@@ -23,6 +23,7 @@ object EnStrings : I18nStrings {
     override val actionRetry = "Retry"
     override val dashStartLearning = "Start Learning"
     override fun dashActivePlans(count: Int) = "Active plans: $count"
+    override fun dashKBCount(count: Int) = "Knowledge bases: $count"
     override val dashManageDecks = "Knowledge Bases"
     override val dashQuickActions = "Quick Actions"
     override val dashTodayStudy = "Today's Study"
@@ -315,6 +316,8 @@ object EnStrings : I18nStrings {
     override val planProgress = "Progress"
     override val planResetConfirm = "Confirm Reset"
     override val planResetConfirmDesc = "Reset will clear learning progress without affecting card data."
+    override val fieldName = "Name"
+    override val fieldDescription = "Description (optional)"
 
     override val statsTitle = "Learning Statistics"
     override val statsOverview = "Overview"

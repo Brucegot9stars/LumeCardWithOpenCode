@@ -23,6 +23,7 @@ object ZhTwStrings : I18nStrings {
     override val actionRetry = "重試"
     override val dashStartLearning = "開始學習"
     override fun dashActivePlans(count: Int) = "進行中的學習計劃：$count 個"
+    override fun dashKBCount(count: Int) = "當前知識庫數量：$count 個"
     override val dashManageDecks = "管理知識庫"
     override val dashQuickActions = "快速操作"
     override val dashTodayStudy = "今日學習"
@@ -315,6 +316,8 @@ object ZhTwStrings : I18nStrings {
     override val planProgress = "學習進度"
     override val planResetConfirm = "確認重置"
     override val planResetConfirmDesc = "重置將清除學習進度，不影響原始卡牌數據。"
+    override val fieldName = "名稱"
+    override val fieldDescription = "描述（可選）"
 
     override val statsTitle = "學習統計"
     override val statsOverview = "總覽"

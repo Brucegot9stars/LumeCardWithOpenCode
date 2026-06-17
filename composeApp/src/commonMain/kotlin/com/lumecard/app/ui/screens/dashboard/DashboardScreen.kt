@@ -163,6 +163,7 @@ class DashboardScreen : Screen {
                                 QuickActionCard(
                                     modifier = Modifier.weight(1f),
                                     title = strings.dashManageDecks,
+                                    subtitle = strings.dashKBCount(kbCount),
                                     icon = Icons.AutoMirrored.Filled.List,
                                     isPrimary = false,
                                     containerColor = MaterialTheme.colorScheme.tertiaryContainer,

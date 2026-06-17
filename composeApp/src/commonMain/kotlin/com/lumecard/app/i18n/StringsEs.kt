@@ -23,6 +23,7 @@ object EsStrings : I18nStrings {
     override val actionRetry = "Reintentar"
     override val dashStartLearning = "Empezar a aprender"
     override fun dashActivePlans(count: Int) = "Planes activos: $count"
+    override fun dashKBCount(count: Int) = "Bases de conocimiento: $count"
     override val dashManageDecks = "Bases de conocimiento"
     override val dashQuickActions = "Acciones rápidas"
     override val dashTodayStudy = "Estudio de hoy"
@@ -315,6 +316,8 @@ object EsStrings : I18nStrings {
     override val planProgress = "Progreso"
     override val planResetConfirm = "Confirmar reinicio"
     override val planResetConfirmDesc = "El reinicio borrará el progreso de aprendizaje sin afectar los datos de las tarjetas."
+    override val fieldName = "Nombre"
+    override val fieldDescription = "Descripción (opcional)"
 
     override val statsTitle = "Estadísticas de estudio"
     override val statsOverview = "Resumen"

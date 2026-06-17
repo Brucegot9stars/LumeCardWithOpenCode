@@ -23,6 +23,7 @@ object JaStrings : I18nStrings {
     override val actionRetry = "再試行"
     override val dashStartLearning = "学習を始める"
     override fun dashActivePlans(count: Int) = "進行中の学習計画：$count 件"
+    override fun dashKBCount(count: Int) = "ナレッジベース数：$count 件"
     override val dashManageDecks = "ナレッジベース"
     override val dashQuickActions = "クイックアクション"
     override val dashTodayStudy = "今日の学習"
@@ -315,6 +316,8 @@ object JaStrings : I18nStrings {
     override val planProgress = "学習進捗"
     override val planResetConfirm = "リセット確認"
     override val planResetConfirmDesc = "リセットすると学習進捗がクリアされますが、カードデータには影響しません。"
+    override val fieldName = "名前"
+    override val fieldDescription = "説明（任意）"
 
     override val statsTitle = "学習統計"
     override val statsOverview = "概要"
