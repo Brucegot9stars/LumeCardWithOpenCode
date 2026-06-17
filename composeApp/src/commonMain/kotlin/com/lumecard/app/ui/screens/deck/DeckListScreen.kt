@@ -23,8 +23,11 @@ import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.theme.LumeCardTheme
 import org.koin.compose.koinInject
 
-class DeckListScreen : Screen {
-    override val key: ScreenKey = "DeckList"
+class DeckListScreen(
+    private val knowledgeBaseId: String = "default",
+    private val knowledgeBaseName: String = "Default"
+) : Screen {
+    override val key: ScreenKey = "DeckList_$knowledgeBaseId"
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
@@ -39,6 +42,10 @@ class DeckListScreen : Screen {
         val scope = rememberCoroutineScope()
         val snackbarHostState = remember { SnackbarHostState() }
 
+        LaunchedEffect(knowledgeBaseId) {
+            viewModel.loadDecks(knowledgeBaseId)
+        }
+
         var showCreateDialog by remember { mutableStateOf(false) }
         var editingDeck by remember { mutableStateOf<Deck?>(null) }
         var deletingDeck by remember { mutableStateOf<Deck?>(null) }
@@ -47,7 +54,7 @@ class DeckListScreen : Screen {
         Scaffold(
             topBar = {
                 LumeCardTopBar(
-                    title = strings.deckListTitle,
+                    title = knowledgeBaseName,
                     onBack = { navigator.pop() },
                     action = {
                         Box {

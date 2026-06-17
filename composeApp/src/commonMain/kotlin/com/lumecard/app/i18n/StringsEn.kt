@@ -292,6 +292,12 @@ object EnStrings : I18nStrings {
     override val webdavProviderSyncthing = "Syncthing"
     override val settingsLanguage = "Language"
     override val settingsLanguageDesc = "Choose app language"
+    override val kbTitle = "Knowledge Bases"
+    override val kbCreate = "New Knowledge Base"
+    override val kbEdit = "Edit Knowledge Base"
+    override val kbEmpty = "No knowledge bases yet"
+    override val kbDeleteConfirm = "Confirm Delete"
+    override val kbDeleteConfirmDesc = "Deleting a knowledge base will remove all its decks. This cannot be undone."
 
     override val statsTitle = "Learning Statistics"
     override val statsOverview = "Overview"

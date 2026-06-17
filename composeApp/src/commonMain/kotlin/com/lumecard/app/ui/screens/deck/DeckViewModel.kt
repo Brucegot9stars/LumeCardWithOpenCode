@@ -40,9 +40,10 @@ class DeckViewModel(
     private val _deckCardCounts = MutableStateFlow<Map<String, Int>>(emptyMap())
     val deckCardCounts: StateFlow<Map<String, Int>> = _deckCardCounts.asStateFlow()
 
+    private var currentKnowledgeBaseId: String = "default"
+
     init {
         loadSortPref()
-        loadDecks()
     }
 
     private fun loadSortPref() {
@@ -64,11 +65,13 @@ class DeckViewModel(
         }
     }
 
-    fun loadDecks() {
+    fun loadDecks(knowledgeBaseId: String = "default") {
+        currentKnowledgeBaseId = knowledgeBaseId
         screenModelScope.launch {
             _isLoading.value = true
             combine(deckRepository.getAll(), _sortConfig) { deckList, sort ->
-                sortDecks(deckList, sort)
+                val filtered = deckList.filter { it.knowledgeBaseId == knowledgeBaseId && it.deletedAt == null }
+                sortDecks(filtered, sort)
             }.collect { sorted ->
                 _decks.value = sorted
                 _isLoading.value = false
@@ -92,7 +95,7 @@ class DeckViewModel(
         val existingCount = _decks.value.size
         val deck = Deck(
             id = "deck_${UUID.randomUUID().toString().take(8)}",
-            knowledgeBaseId = "default",
+            knowledgeBaseId = currentKnowledgeBaseId,
             name = name,
             description = description,
             color = deckColors[existingCount % deckColors.size],

@@ -4,6 +4,7 @@ import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.screens.card.CardViewModel
 import com.lumecard.app.ui.screens.dashboard.DashboardViewModel
 import com.lumecard.app.ui.screens.deck.DeckViewModel
+import com.lumecard.app.ui.screens.knowledgebase.KnowledgeBaseViewModel
 import com.lumecard.app.ui.screens.settings.SettingsStateHolder
 import com.lumecard.app.ui.screens.settings.SettingsViewModel
 import com.lumecard.app.ui.screens.stats.StatsViewModel
@@ -26,5 +27,6 @@ val appModule = module {
     factory { CardViewModel(get(), get()) }
     factory { StatsViewModel(get(), get(), get()) }
     factory { SettingsViewModel(get(), get()) }
+    factory { KnowledgeBaseViewModel(get()) }
 }
 

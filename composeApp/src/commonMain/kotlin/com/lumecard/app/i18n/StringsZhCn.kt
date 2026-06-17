@@ -292,6 +292,12 @@ object ZhCnStrings : I18nStrings {
     override val webdavProviderSyncthing = "Syncthing"
     override val settingsLanguage = "语言"
     override val settingsLanguageDesc = "选择应用语言"
+    override val kbTitle = "知识库管理"
+    override val kbCreate = "新建知识库"
+    override val kbEdit = "编辑知识库"
+    override val kbEmpty = "暂无知识库"
+    override val kbDeleteConfirm = "确认删除"
+    override val kbDeleteConfirmDesc = "删除知识库后，其下所有牌组将被移除。此操作不可撤销。"
 
     override val statsTitle = "学习统计"
     override val statsOverview = "总览"

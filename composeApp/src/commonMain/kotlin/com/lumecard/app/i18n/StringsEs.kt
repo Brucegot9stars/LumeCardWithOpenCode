@@ -292,6 +292,12 @@ object EsStrings : I18nStrings {
     override val webdavProviderSyncthing = "Syncthing"
     override val settingsLanguage = "Idioma"
     override val settingsLanguageDesc = "Seleccionar idioma de la aplicación"
+    override val kbTitle = "Bases de conocimiento"
+    override val kbCreate = "Nueva base de conocimiento"
+    override val kbEdit = "Editar base de conocimiento"
+    override val kbEmpty = "No hay bases de conocimiento"
+    override val kbDeleteConfirm = "Confirmar eliminación"
+    override val kbDeleteConfirmDesc = "Eliminar una base de conocimiento removerá todos sus mazos. Esta acción no se puede deshacer."
 
     override val statsTitle = "Estadísticas de estudio"
     override val statsOverview = "Resumen"

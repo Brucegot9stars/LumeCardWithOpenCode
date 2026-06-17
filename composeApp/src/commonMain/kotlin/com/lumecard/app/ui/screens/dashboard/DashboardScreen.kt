@@ -28,6 +28,7 @@ import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.components.ProgressRing
 import com.lumecard.app.ui.screens.deck.CardListScreen
 import com.lumecard.app.ui.screens.deck.DeckListScreen
+import com.lumecard.app.ui.screens.knowledgebase.KnowledgeBaseScreen
 import com.lumecard.app.ui.screens.study.StudyModeScreen
 import com.lumecard.app.ui.screens.study.StudyScreen
 import com.lumecard.app.i18n.I18nManager
@@ -161,7 +162,7 @@ class DashboardScreen : Screen {
                                     title = strings.dashManageDecks,
                                     icon = Icons.AutoMirrored.Filled.List,
                                     isPrimary = false,
-                                    onClick = { navigator.push(DeckListScreen()) },
+                                    onClick = { navigator.push(KnowledgeBaseScreen()) },
                                 )
                             }
                         }

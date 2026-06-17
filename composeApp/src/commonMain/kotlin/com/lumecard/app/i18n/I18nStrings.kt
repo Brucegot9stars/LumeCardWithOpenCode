@@ -296,6 +296,13 @@ interface I18nStrings {
     val settingsLanguage: String
     val settingsLanguageDesc: String
 
+    val kbTitle: String
+    val kbCreate: String
+    val kbEdit: String
+    val kbEmpty: String
+    val kbDeleteConfirm: String
+    val kbDeleteConfirmDesc: String
+
     val statsTitle: String
     val statsOverview: String
     val statsTotalCards: String

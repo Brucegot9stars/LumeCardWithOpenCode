@@ -292,6 +292,12 @@ object ZhTwStrings : I18nStrings {
     override val webdavProviderSyncthing = "Syncthing"
     override val settingsLanguage = "語言"
     override val settingsLanguageDesc = "選擇應用語言"
+    override val kbTitle = "知識庫管理"
+    override val kbCreate = "新建知識庫"
+    override val kbEdit = "編輯知識庫"
+    override val kbEmpty = "暫無知識庫"
+    override val kbDeleteConfirm = "確認刪除"
+    override val kbDeleteConfirmDesc = "刪除知識庫後，其下所有牌組將被移除。此操作不可撤銷。"
 
     override val statsTitle = "學習統計"
     override val statsOverview = "總覽"

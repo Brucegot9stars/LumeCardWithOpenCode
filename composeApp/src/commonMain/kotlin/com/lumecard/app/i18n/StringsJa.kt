@@ -292,6 +292,12 @@ object JaStrings : I18nStrings {
     override val webdavProviderSyncthing = "Syncthing"
     override val settingsLanguage = "言語"
     override val settingsLanguageDesc = "アプリの言語を選択"
+    override val kbTitle = "ナレッジベース管理"
+    override val kbCreate = "新規ナレッジベース"
+    override val kbEdit = "ナレッジベース編集"
+    override val kbEmpty = "ナレッジベースがありません"
+    override val kbDeleteConfirm = "削除確認"
+    override val kbDeleteConfirmDesc = "ナレッジベースを削除すると、その下のすべてのデッキが削除されます。この操作は元に戻せません。"
 
     override val statsTitle = "学習統計"
     override val statsOverview = "概要"
