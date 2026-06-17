@@ -14,6 +14,7 @@ import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.i18n.I18nManager
+import com.lumecard.app.ui.components.LumeCardTextField
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.theme.LumeCardTheme
 import kotlinx.coroutines.launch
@@ -64,18 +65,16 @@ class LearningPlanScreen(
                     .padding(spacing.md),
                 verticalArrangement = Arrangement.spacedBy(spacing.sm),
             ) {
-                OutlinedTextField(
+                LumeCardTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text(strings.fieldName) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    label = strings.fieldName,
                 )
-                OutlinedTextField(
+                LumeCardTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text(strings.fieldDescription) },
-                    modifier = Modifier.fillMaxWidth(),
+                    label = strings.fieldDescription,
+                    singleLine = false,
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),

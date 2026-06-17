@@ -16,6 +16,8 @@ import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.i18n.I18nManager
+import com.lumecard.app.ui.components.LumeCardDialog
+import com.lumecard.app.ui.components.LumeCardTextField
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.screens.deck.DeckListScreen
 import com.lumecard.app.ui.theme.LumeCardTheme
@@ -181,33 +183,23 @@ private fun KnowledgeBaseDialog(
     var description by remember { mutableStateOf(initialDescription ?: "") }
     val strings = koinInject<I18nManager>().strings
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(strings.fieldName) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text(strings.fieldDescription) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        },
-        confirmButton = {
-            FilledTonalButton(onClick = { onConfirm(name, description.ifBlank { null }) }, enabled = name.isNotBlank()) {
-                Text(strings.actionSave)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(strings.actionCancel) }
-        }
-    )
+    LumeCardDialog(
+        title = title,
+        onDismiss = onDismiss,
+        onConfirm = { onConfirm(name, description.ifBlank { null }) },
+        confirmText = strings.actionSave,
+        confirmEnabled = name.isNotBlank(),
+    ) {
+        LumeCardTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = strings.fieldName,
+        )
+        LumeCardTextField(
+            value = description,
+            onValueChange = { description = it },
+            label = strings.fieldDescription,
+            singleLine = false,
+        )
+    }
 }

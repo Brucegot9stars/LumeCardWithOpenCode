@@ -99,13 +99,19 @@ class SettingsScreen : Screen {
                 Spacer(modifier = Modifier.height(spacing.xs))
 
                 // === Learning ===
-                Text(
-                    strings.settingsLearning,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Row(
                     modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
-                )
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.List, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(spacing.sm))
+                    Text(
+                        strings.settingsLearning,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = radius.card,
@@ -201,13 +207,19 @@ class SettingsScreen : Screen {
                 }
 
                 // === Answer Display ===
-                Text(
-                    strings.settingsAnswerDisplay,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Row(
                     modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
-                )
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(spacing.sm))
+                    Text(
+                        strings.settingsAnswerDisplay,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = radius.card,
@@ -258,13 +270,19 @@ class SettingsScreen : Screen {
                 }
 
                 // === Appearance ===
-                Text(
-                    strings.settingsAppearance,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Row(
                     modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
-                )
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.Favorite, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(spacing.sm))
+                    Text(
+                        strings.settingsAppearance,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = radius.card,
@@ -286,13 +304,19 @@ class SettingsScreen : Screen {
                 }
 
                 // === Language ===
-                Text(
-                    strings.settingsLanguage,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Row(
                     modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
-                )
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(spacing.sm))
+                    Text(
+                        strings.settingsLanguage,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = radius.card,
@@ -356,13 +380,19 @@ class SettingsScreen : Screen {
                 }
 
                 // === Notifications ===
-                Text(
-                    strings.settingsNotifications,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Row(
                     modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
-                )
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.Notifications, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(spacing.sm))
+                    Text(
+                        strings.settingsNotifications,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = radius.card,
@@ -384,13 +414,19 @@ class SettingsScreen : Screen {
                 }
 
                 // === Data Management ===
-                Text(
-                    strings.settingsDataManagement,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Row(
                     modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
-                )
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(spacing.sm))
+                    Text(
+                        strings.settingsDataManagement,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = radius.card,
@@ -458,13 +494,19 @@ class SettingsScreen : Screen {
                 }
 
                 // === About ===
-                Text(
-                    strings.settingsAbout,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Row(
                     modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
-                )
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(spacing.sm))
+                    Text(
+                        strings.settingsAbout,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = radius.card,

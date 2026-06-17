@@ -17,6 +17,8 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.shared.model.Deck
 import kotlinx.coroutines.launch
+import com.lumecard.app.ui.components.LumeCardDialog
+import com.lumecard.app.ui.components.LumeCardTextField
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.i18n.I18nManager
 import org.koin.compose.koinInject
@@ -134,52 +136,40 @@ class DeckManagementScreen : Screen {
         if (showCreateDialog) {
             var name by remember { mutableStateOf("") }
             var description by remember { mutableStateOf("") }
-            AlertDialog(
-                onDismissRequest = { showCreateDialog = false },
-                title = { Text(strings.deckCreate) },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(value = name, onValueChange = { name = it },
-                            label = { Text(strings.deckName) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(value = description, onValueChange = { description = it },
-                            label = { Text(strings.deckDescPlaceholder) }, modifier = Modifier.fillMaxWidth())
+            LumeCardDialog(
+                title = strings.deckCreate,
+                onDismiss = { showCreateDialog = false },
+                onConfirm = {
+                    if (name.isNotBlank()) {
+                        scope.launch { viewModel.createDeck(name, description.ifBlank { null }); showCreateDialog = false }
                     }
                 },
-                confirmButton = {
-                    TextButton(onClick = {
-                        if (name.isNotBlank()) {
-                            scope.launch { viewModel.createDeck(name, description.ifBlank { null }); showCreateDialog = false }
-                        }
-                    }, enabled = name.isNotBlank()) { Text(strings.actionCreate) }
-                },
-                dismissButton = { TextButton(onClick = { showCreateDialog = false }) { Text(strings.actionCancel) } }
-            )
+                confirmText = strings.actionCreate,
+                confirmEnabled = name.isNotBlank(),
+            ) {
+                LumeCardTextField(value = name, onValueChange = { name = it }, label = strings.deckName)
+                LumeCardTextField(value = description, onValueChange = { description = it }, label = strings.deckDescPlaceholder, singleLine = false)
+            }
         }
 
         // Edit dialog
         if (editingDeck != null) {
             var name by remember(editingDeck) { mutableStateOf(editingDeck!!.name) }
             var description by remember(editingDeck) { mutableStateOf(editingDeck!!.description ?: "") }
-            AlertDialog(
-                onDismissRequest = { editingDeck = null },
-                title = { Text(strings.deckEdit) },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(value = name, onValueChange = { name = it },
-                            label = { Text(strings.deckName) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(value = description, onValueChange = { description = it },
-                            label = { Text(strings.deckDescPlaceholder) }, modifier = Modifier.fillMaxWidth())
+            LumeCardDialog(
+                title = strings.deckEdit,
+                onDismiss = { editingDeck = null },
+                onConfirm = {
+                    if (name.isNotBlank()) {
+                        scope.launch { viewModel.updateDeck(editingDeck!!.id, name, description.ifBlank { null }); editingDeck = null }
                     }
                 },
-                confirmButton = {
-                    TextButton(onClick = {
-                        if (name.isNotBlank()) {
-                            scope.launch { viewModel.updateDeck(editingDeck!!.id, name, description.ifBlank { null }); editingDeck = null }
-                        }
-                    }, enabled = name.isNotBlank()) { Text(strings.actionSave) }
-                },
-                dismissButton = { TextButton(onClick = { editingDeck = null }) { Text(strings.actionCancel) } }
-            )
+                confirmText = strings.actionSave,
+                confirmEnabled = name.isNotBlank(),
+            ) {
+                LumeCardTextField(value = name, onValueChange = { name = it }, label = strings.deckName)
+                LumeCardTextField(value = description, onValueChange = { description = it }, label = strings.deckDescPlaceholder, singleLine = false)
+            }
         }
 
         // Delete confirmation
