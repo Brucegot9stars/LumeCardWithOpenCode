@@ -3,7 +3,10 @@ CREATE TABLE KnowledgeBase (
     name TEXT NOT NULL,
     description TEXT,
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    version INTEGER NOT NULL DEFAULT 1,
+    deleted_at TEXT,
+    synced_at TEXT
 );
 
 CREATE TABLE Deck (
@@ -16,6 +19,9 @@ CREATE TABLE Deck (
     parent_id TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
+    version INTEGER NOT NULL DEFAULT 1,
+    deleted_at TEXT,
+    synced_at TEXT,
     FOREIGN KEY (knowledge_base_id) REFERENCES KnowledgeBase(id),
     FOREIGN KEY (parent_id) REFERENCES Deck(id)
 );
@@ -33,6 +39,9 @@ CREATE TABLE Card (
     updated_at TEXT NOT NULL,
     last_reviewed_at TEXT,
     next_review_at TEXT,
+    version INTEGER NOT NULL DEFAULT 1,
+    deleted_at TEXT,
+    synced_at TEXT,
     FOREIGN KEY (deck_id) REFERENCES Deck(id)
 );
 
@@ -46,6 +55,9 @@ CREATE TABLE ReviewLog (
     repetitions INTEGER NOT NULL,
     lapse_count INTEGER NOT NULL,
     reviewed_at TEXT NOT NULL,
+    version INTEGER NOT NULL DEFAULT 1,
+    deleted_at TEXT,
+    synced_at TEXT,
     FOREIGN KEY (card_id) REFERENCES Card(id)
 );
 
@@ -74,26 +86,44 @@ CREATE TABLE AlgorithmState (
     FOREIGN KEY (card_id) REFERENCES Card(id)
 );
 
+CREATE TABLE LearningPlan (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    status TEXT NOT NULL DEFAULT 'NOT_STARTED',
+    is_default INTEGER NOT NULL DEFAULT 0,
+    knowledge_base_ids TEXT DEFAULT '[]',
+    deck_ids TEXT DEFAULT '[]',
+    card_ids TEXT DEFAULT '[]',
+    total_cards INTEGER NOT NULL DEFAULT 0,
+    completed_cards INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    version INTEGER NOT NULL DEFAULT 1,
+    deleted_at TEXT,
+    synced_at TEXT
+);
+
 selectAllKnowledgeBases:
-SELECT * FROM KnowledgeBase ORDER BY created_at DESC;
+SELECT * FROM KnowledgeBase WHERE deleted_at IS NULL ORDER BY created_at ASC;
 
 selectKnowledgeBaseById:
 SELECT * FROM KnowledgeBase WHERE id = ?;
 
 selectAllDecks:
-SELECT * FROM Deck ORDER BY created_at DESC;
+SELECT * FROM Deck WHERE deleted_at IS NULL ORDER BY created_at ASC;
 
 selectDecksByKnowledgeBase:
-SELECT * FROM Deck WHERE knowledge_base_id = ?;
+SELECT * FROM Deck WHERE knowledge_base_id = ? AND deleted_at IS NULL ORDER BY created_at ASC;
 
 selectDeckById:
 SELECT * FROM Deck WHERE id = ?;
 
 selectAllCards:
-SELECT * FROM Card ORDER BY created_at DESC;
+SELECT * FROM Card WHERE deleted_at IS NULL ORDER BY created_at ASC;
 
 selectCardsByDeck:
-SELECT * FROM Card WHERE deck_id = ?;
+SELECT * FROM Card WHERE deck_id = ? AND deleted_at IS NULL ORDER BY created_at ASC;
 
 selectCardById:
 SELECT * FROM Card WHERE id = ?;
@@ -102,27 +132,27 @@ selectDueCards:
 SELECT * FROM Card WHERE next_review_at IS NOT NULL AND next_review_at <= ? ORDER BY next_review_at ASC;
 
 insertKnowledgeBase:
-INSERT OR REPLACE INTO KnowledgeBase(id, name, description, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO KnowledgeBase(id, name, description, created_at, updated_at, version, deleted_at, synced_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
 insertDeck:
-INSERT OR REPLACE INTO Deck(id, knowledge_base_id, name, description, color, icon, parent_id, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
-
-insertCard:
-INSERT OR REPLACE INTO Card(id, deck_id, type, front, back, tags, media, metadata, created_at, updated_at, last_reviewed_at, next_review_at)
+INSERT OR REPLACE INTO Deck(id, knowledge_base_id, name, description, color, icon, parent_id, created_at, updated_at, version, deleted_at, synced_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
+insertCard:
+INSERT OR REPLACE INTO Card(id, deck_id, type, front, back, tags, media, metadata, created_at, updated_at, last_reviewed_at, next_review_at, version, deleted_at, synced_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
 insertReviewLog:
-INSERT OR REPLACE INTO ReviewLog(id, card_id, rating, review_time, interval, ease_factor, repetitions, lapse_count, reviewed_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO ReviewLog(id, card_id, rating, review_time, interval, ease_factor, repetitions, lapse_count, reviewed_at, version, deleted_at, synced_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 insertFSRSCard:
 INSERT OR REPLACE INTO FSRSCard(id, due, stability, difficulty, elapsed_days, scheduled_days, reps, lapse_count, state)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 updateCard:
-UPDATE Card SET deck_id = ?, type = ?, front = ?, back = ?, tags = ?, media = ?, metadata = ?, updated_at = ?, last_reviewed_at = ?, next_review_at = ?
+UPDATE Card SET deck_id = ?, type = ?, front = ?, back = ?, tags = ?, media = ?, metadata = ?, updated_at = ?, last_reviewed_at = ?, next_review_at = ?, version = version + 1
 WHERE id = ?;
 
 deleteCard:
@@ -165,3 +195,16 @@ VALUES (?, ?, ?);
 
 deleteAlgorithmState:
 DELETE FROM AlgorithmState WHERE card_id = ?;
+
+selectAllLearningPlans:
+SELECT * FROM LearningPlan WHERE deleted_at IS NULL ORDER BY updated_at DESC;
+
+selectLearningPlanById:
+SELECT * FROM LearningPlan WHERE id = ?;
+
+selectDefaultLearningPlan:
+SELECT * FROM LearningPlan WHERE is_default = 1 AND deleted_at IS NULL;
+
+insertLearningPlan:
+INSERT OR REPLACE INTO LearningPlan(id, name, description, status, is_default, knowledge_base_ids, deck_ids, card_ids, total_cards, completed_cards, created_at, updated_at, version, deleted_at, synced_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);

@@ -10,7 +10,10 @@ data class KnowledgeBase(
     val name: String,
     val description: String? = null,
     val createdAt: Instant = Clock.System.now(),
-    val updatedAt: Instant = Clock.System.now()
+    val updatedAt: Instant = Clock.System.now(),
+    val version: Long = 1,
+    val deletedAt: Instant? = null,
+    val syncedAt: Instant? = null
 )
 
 @Serializable
@@ -23,7 +26,10 @@ data class Deck(
     val icon: String = "\uD83D\uDCDA",
     val parentId: String? = null,
     val createdAt: Instant = Clock.System.now(),
-    val updatedAt: Instant = Clock.System.now()
+    val updatedAt: Instant = Clock.System.now(),
+    val version: Long = 1,
+    val deletedAt: Instant? = null,
+    val syncedAt: Instant? = null
 )
 
 @Serializable
@@ -39,7 +45,10 @@ data class Card(
     val createdAt: Instant = Clock.System.now(),
     val updatedAt: Instant = Clock.System.now(),
     val lastReviewedAt: Instant? = null,
-    val nextReviewAt: Instant? = null
+    val nextReviewAt: Instant? = null,
+    val version: Long = 1,
+    val deletedAt: Instant? = null,
+    val syncedAt: Instant? = null
 )
 
 @Serializable
@@ -79,7 +88,10 @@ data class ReviewLog(
     val easeFactor: Float,
     val repetitions: Int,
     val lapseCount: Int,
-    val reviewedAt: Instant = Clock.System.now()
+    val reviewedAt: Instant = Clock.System.now(),
+    val version: Long = 1,
+    val deletedAt: Instant? = null,
+    val syncedAt: Instant? = null
 )
 
 @Serializable
@@ -110,3 +122,29 @@ enum class Rating(val value: Int) {
     GOOD(3),
     EASY(4)
 }
+
+@Serializable
+enum class PlanStatus {
+    NOT_STARTED,
+    IN_PROGRESS,
+    COMPLETED
+}
+
+@Serializable
+data class LearningPlan(
+    val id: String,
+    val name: String,
+    val description: String? = null,
+    val status: PlanStatus = PlanStatus.NOT_STARTED,
+    val isDefault: Boolean = false,
+    val knowledgeBaseIds: List<String> = emptyList(),
+    val deckIds: List<String> = emptyList(),
+    val cardIds: List<String> = emptyList(),
+    val totalCards: Int = 0,
+    val completedCards: Int = 0,
+    val createdAt: Instant = Clock.System.now(),
+    val updatedAt: Instant = Clock.System.now(),
+    val version: Long = 1,
+    val deletedAt: Instant? = null,
+    val syncedAt: Instant? = null
+)

@@ -36,7 +36,10 @@ class SqlDelightKnowledgeBaseRepository(
             name = knowledgeBase.name,
             description = knowledgeBase.description,
             created_at = knowledgeBase.createdAt.toString(),
-            updated_at = knowledgeBase.updatedAt.toString()
+            updated_at = knowledgeBase.updatedAt.toString(),
+            version = knowledgeBase.version,
+            deleted_at = knowledgeBase.deletedAt?.toString(),
+            synced_at = knowledgeBase.syncedAt?.toString()
         )
     }
 
@@ -46,12 +49,27 @@ class SqlDelightKnowledgeBaseRepository(
             name = knowledgeBase.name,
             description = knowledgeBase.description,
             created_at = knowledgeBase.createdAt.toString(),
-            updated_at = Clock.System.now().toString()
+            updated_at = Clock.System.now().toString(),
+            version = knowledgeBase.version + 1,
+            deleted_at = knowledgeBase.deletedAt?.toString(),
+            synced_at = knowledgeBase.syncedAt?.toString()
         )
     }
 
     override suspend fun delete(id: String) {
-        queries.deleteKnowledgeBase(id)
+        val kb = queries.selectKnowledgeBaseById(id).executeAsOneOrNull()
+        if (kb != null) {
+            queries.insertKnowledgeBase(
+                id = kb.id,
+                name = kb.name,
+                description = kb.description,
+                created_at = kb.created_at,
+                updated_at = Clock.System.now().toString(),
+                version = kb.version + 1,
+                deleted_at = Clock.System.now().toString(),
+                synced_at = null
+            )
+        }
     }
 }
 
@@ -87,7 +105,10 @@ class SqlDelightDeckRepository(
             icon = deck.icon,
             parent_id = deck.parentId,
             created_at = deck.createdAt.toString(),
-            updated_at = deck.updatedAt.toString()
+            updated_at = deck.updatedAt.toString(),
+            version = deck.version,
+            deleted_at = deck.deletedAt?.toString(),
+            synced_at = deck.syncedAt?.toString()
         )
     }
 
@@ -101,12 +122,31 @@ class SqlDelightDeckRepository(
             icon = deck.icon,
             parent_id = deck.parentId,
             created_at = deck.createdAt.toString(),
-            updated_at = Clock.System.now().toString()
+            updated_at = Clock.System.now().toString(),
+            version = deck.version + 1,
+            deleted_at = deck.deletedAt?.toString(),
+            synced_at = deck.syncedAt?.toString()
         )
     }
 
     override suspend fun delete(id: String) {
-        queries.deleteDeck(id)
+        val deck = queries.selectDeckById(id).executeAsOneOrNull()
+        if (deck != null) {
+            queries.insertDeck(
+                id = deck.id,
+                knowledge_base_id = deck.knowledge_base_id,
+                name = deck.name,
+                description = deck.description,
+                color = deck.color,
+                icon = deck.icon,
+                parent_id = deck.parent_id,
+                created_at = deck.created_at,
+                updated_at = Clock.System.now().toString(),
+                version = deck.version + 1,
+                deleted_at = Clock.System.now().toString(),
+                synced_at = null
+            )
+        }
     }
 }
 
@@ -152,7 +192,10 @@ class SqlDelightCardRepository(
             created_at = card.createdAt.toString(),
             updated_at = card.updatedAt.toString(),
             last_reviewed_at = card.lastReviewedAt?.toString(),
-            next_review_at = card.nextReviewAt?.toString()
+            next_review_at = card.nextReviewAt?.toString(),
+            version = card.version,
+            deleted_at = card.deletedAt?.toString(),
+            synced_at = card.syncedAt?.toString()
         )
     }
 
@@ -173,7 +216,26 @@ class SqlDelightCardRepository(
     }
 
     override suspend fun delete(id: String) {
-        queries.deleteCard(id)
+        val card = queries.selectCardById(id).executeAsOneOrNull()
+        if (card != null) {
+            queries.insertCard(
+                id = card.id,
+                deck_id = card.deck_id,
+                type = card.type,
+                front = card.front,
+                back = card.back,
+                tags = card.tags,
+                media = card.media,
+                metadata = card.metadata,
+                created_at = card.created_at,
+                updated_at = Clock.System.now().toString(),
+                last_reviewed_at = card.last_reviewed_at,
+                next_review_at = card.next_review_at,
+                version = card.version + 1,
+                deleted_at = Clock.System.now().toString(),
+                synced_at = null
+            )
+        }
     }
 
     override suspend fun search(query: String): Flow<List<Card>> {
@@ -215,7 +277,10 @@ class SqlDelightReviewLogRepository(
             ease_factor = reviewLog.easeFactor.toDouble(),
             repetitions = reviewLog.repetitions.toLong(),
             lapse_count = reviewLog.lapseCount.toLong(),
-            reviewed_at = reviewLog.reviewedAt.toString()
+            reviewed_at = reviewLog.reviewedAt.toString(),
+            version = reviewLog.version,
+            deleted_at = reviewLog.deletedAt?.toString(),
+            synced_at = reviewLog.syncedAt?.toString()
         )
     }
 
@@ -295,7 +360,10 @@ private fun com.lumecard.shared.database.KnowledgeBase.toKnowledgeBase() = Knowl
     name = name,
     description = description,
     createdAt = Instant.parse(created_at),
-    updatedAt = Instant.parse(updated_at)
+    updatedAt = Instant.parse(updated_at),
+    version = version,
+    deletedAt = deleted_at?.let { Instant.parse(it) },
+    syncedAt = synced_at?.let { Instant.parse(it) }
 )
 
 private fun com.lumecard.shared.database.Deck.toDeck() = Deck(
@@ -307,7 +375,10 @@ private fun com.lumecard.shared.database.Deck.toDeck() = Deck(
     icon = icon ?: "\uD83D\uDCDA",
     parentId = parent_id,
     createdAt = Instant.parse(created_at),
-    updatedAt = Instant.parse(updated_at)
+    updatedAt = Instant.parse(updated_at),
+    version = version,
+    deletedAt = deleted_at?.let { Instant.parse(it) },
+    syncedAt = synced_at?.let { Instant.parse(it) }
 )
 
 private fun com.lumecard.shared.database.SelectDueCards.toDomain() = Card(
@@ -333,7 +404,10 @@ private fun com.lumecard.shared.database.Card.toDomain() = Card(
     createdAt = Instant.parse(created_at),
     updatedAt = Instant.parse(updated_at),
     lastReviewedAt = last_reviewed_at?.let { Instant.parse(it) },
-    nextReviewAt = next_review_at?.let { Instant.parse(it) }
+    nextReviewAt = next_review_at?.let { Instant.parse(it) },
+    version = version,
+    deletedAt = deleted_at?.let { Instant.parse(it) },
+    syncedAt = synced_at?.let { Instant.parse(it) }
 )
 
 private fun com.lumecard.shared.database.ReviewLog.toReviewLog() = ReviewLog(
@@ -345,5 +419,110 @@ private fun com.lumecard.shared.database.ReviewLog.toReviewLog() = ReviewLog(
     easeFactor = ease_factor.toFloat(),
     repetitions = repetitions.toInt(),
     lapseCount = lapse_count.toInt(),
-    reviewedAt = Instant.parse(reviewed_at)
+    reviewedAt = Instant.parse(reviewed_at),
+    version = version,
+    deletedAt = deleted_at?.let { Instant.parse(it) },
+    syncedAt = synced_at?.let { Instant.parse(it) }
+)
+
+class SqlDelightLearningPlanRepository(
+    private val database: LumeCardDatabase
+) : LearningPlanRepository {
+
+    private val queries get() = database.lumeCardDatabaseQueries
+
+    override fun getAll(): Flow<List<com.lumecard.shared.model.LearningPlan>> {
+        return queries.selectAllLearningPlans().asFlow().mapToList(Dispatchers.Default).map { list ->
+            list.map { it.toLearningPlan() }
+        }
+    }
+
+    override suspend fun getById(id: String): com.lumecard.shared.model.LearningPlan? {
+        return queries.selectLearningPlanById(id).executeAsOneOrNull()?.toLearningPlan()
+    }
+
+    override suspend fun getDefault(): com.lumecard.shared.model.LearningPlan? {
+        return queries.selectDefaultLearningPlan().executeAsOneOrNull()?.toLearningPlan()
+    }
+
+    override suspend fun insert(plan: com.lumecard.shared.model.LearningPlan) {
+        queries.insertLearningPlan(
+            id = plan.id,
+            name = plan.name,
+            description = plan.description,
+            status = plan.status.name,
+            is_default = if (plan.isDefault) 1L else 0L,
+            knowledge_base_ids = plan.knowledgeBaseIds.joinToString(","),
+            deck_ids = plan.deckIds.joinToString(","),
+            card_ids = plan.cardIds.joinToString(","),
+            total_cards = plan.totalCards.toLong(),
+            completed_cards = plan.completedCards.toLong(),
+            created_at = plan.createdAt.toString(),
+            updated_at = plan.updatedAt.toString(),
+            version = plan.version,
+            deleted_at = plan.deletedAt?.toString(),
+            synced_at = plan.syncedAt?.toString()
+        )
+    }
+
+    override suspend fun update(plan: com.lumecard.shared.model.LearningPlan) {
+        queries.insertLearningPlan(
+            id = plan.id,
+            name = plan.name,
+            description = plan.description,
+            status = plan.status.name,
+            is_default = if (plan.isDefault) 1L else 0L,
+            knowledge_base_ids = plan.knowledgeBaseIds.joinToString(","),
+            deck_ids = plan.deckIds.joinToString(","),
+            card_ids = plan.cardIds.joinToString(","),
+            total_cards = plan.totalCards.toLong(),
+            completed_cards = plan.completedCards.toLong(),
+            created_at = plan.createdAt.toString(),
+            updated_at = Clock.System.now().toString(),
+            version = plan.version + 1,
+            deleted_at = plan.deletedAt?.toString(),
+            synced_at = plan.syncedAt?.toString()
+        )
+    }
+
+    override suspend fun delete(id: String) {
+        val plan = queries.selectLearningPlanById(id).executeAsOneOrNull()
+        if (plan != null) {
+            queries.insertLearningPlan(
+                id = plan.id,
+                name = plan.name,
+                description = plan.description,
+                status = plan.status,
+                is_default = plan.is_default,
+                knowledge_base_ids = plan.knowledge_base_ids,
+                deck_ids = plan.deck_ids,
+                card_ids = plan.card_ids,
+                total_cards = plan.total_cards,
+                completed_cards = plan.completed_cards,
+                created_at = plan.created_at,
+                updated_at = Clock.System.now().toString(),
+                version = plan.version + 1,
+                deleted_at = Clock.System.now().toString(),
+                synced_at = null
+            )
+        }
+    }
+}
+
+private fun com.lumecard.shared.database.LearningPlan.toLearningPlan() = com.lumecard.shared.model.LearningPlan(
+    id = id,
+    name = name,
+    description = description,
+    status = try { com.lumecard.shared.model.PlanStatus.valueOf(status) } catch (_: Exception) { com.lumecard.shared.model.PlanStatus.NOT_STARTED },
+    isDefault = is_default == 1L,
+    knowledgeBaseIds = (knowledge_base_ids ?: "").split(",").filter { it.isNotBlank() },
+    deckIds = (deck_ids ?: "").split(",").filter { it.isNotBlank() },
+    cardIds = (card_ids ?: "").split(",").filter { it.isNotBlank() },
+    totalCards = total_cards.toInt(),
+    completedCards = completed_cards.toInt(),
+    createdAt = Instant.parse(created_at),
+    updatedAt = Instant.parse(updated_at),
+    version = version,
+    deletedAt = deleted_at?.let { Instant.parse(it) },
+    syncedAt = synced_at?.let { Instant.parse(it) }
 )

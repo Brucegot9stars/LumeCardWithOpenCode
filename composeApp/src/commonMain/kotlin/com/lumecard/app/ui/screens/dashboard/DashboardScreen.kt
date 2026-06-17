@@ -28,6 +28,8 @@ import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.components.ProgressRing
 import com.lumecard.app.ui.screens.deck.CardListScreen
 import com.lumecard.app.ui.screens.deck.DeckListScreen
+import com.lumecard.app.ui.screens.knowledgebase.KnowledgeBaseScreen
+import com.lumecard.app.ui.screens.learningplan.LearningPlanSelectionScreen
 import com.lumecard.app.ui.screens.study.StudyModeScreen
 import com.lumecard.app.ui.screens.study.StudyScreen
 import com.lumecard.app.i18n.I18nManager
@@ -54,6 +56,8 @@ class DashboardScreen : Screen {
         val todayReviews by viewModel.todayReviews.collectAsState()
         val dailyGoal by viewModel.dailyGoal.collectAsState()
         val totalDueCards by viewModel.totalDueCards.collectAsState()
+        val kbCount by viewModel.kbCount.collectAsState()
+        val activePlanCount by viewModel.activePlanCount.collectAsState()
 
         val firstStudyableDeck = decksWithCount.firstOrNull { it.cardCount > 0 }?.deck
         val studyableCount = decksWithCount.count { it.cardCount > 0 }
@@ -66,7 +70,7 @@ class DashboardScreen : Screen {
             },
             floatingActionButton = {
                 FloatingActionButton(
-                    onClick = { navigator.push(DeckListScreen()) },
+                    onClick = { navigator.push(KnowledgeBaseScreen()) },
                     containerColor = MaterialTheme.colorScheme.primary,
                 ) {
                     Icon(Icons.Default.Add, contentDescription = strings.dashManageDecks)
@@ -150,16 +154,22 @@ class DashboardScreen : Screen {
                                 QuickActionCard(
                                     modifier = Modifier.weight(1f),
                                     title = strings.dashStartLearning,
-                                    subtitle = if (firstStudyableDeck != null) strings.dashDecksAvailable(studyableCount) else strings.dashNoCardsAvailable,
-                                    enabled = firstStudyableDeck != null,
+                                    subtitle = strings.dashActivePlans(activePlanCount),
+                                    enabled = true,
                                     icon = Icons.Default.PlayArrow,
-                                    onClick = { navigator.push(StudyModeScreen()) },
+                                    isPrimary = true,
+                                    onClick = { navigator.push(LearningPlanSelectionScreen()) },
                                 )
                                 QuickActionCard(
                                     modifier = Modifier.weight(1f),
                                     title = strings.dashManageDecks,
+                                    subtitle = strings.dashKBCount(kbCount),
                                     icon = Icons.AutoMirrored.Filled.List,
-                                    onClick = { navigator.push(DeckListScreen()) },
+                                    isPrimary = false,
+                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                    iconBackgroundColor = MaterialTheme.colorScheme.tertiary,
+                                    iconTint = MaterialTheme.colorScheme.onTertiary,
+                                    onClick = { navigator.push(KnowledgeBaseScreen()) },
                                 )
                             }
                         }
@@ -237,31 +247,49 @@ class DashboardScreen : Screen {
         subtitle: String? = null,
         enabled: Boolean = true,
         icon: ImageVector,
+        isPrimary: Boolean = false,
+        containerColor: Color = MaterialTheme.colorScheme.surface,
+        iconBackgroundColor: Color = MaterialTheme.colorScheme.primaryContainer,
+        iconTint: Color = MaterialTheme.colorScheme.onPrimaryContainer,
         onClick: () -> Unit,
     ) {
         val spacing = LumeCardTheme.spacing
         val radius = LumeCardTheme.radius
 
+        val bgColor = when {
+            !enabled -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            isPrimary -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+            else -> containerColor
+        }
+        val iconBg = when {
+            !enabled -> MaterialTheme.colorScheme.surfaceVariant
+            isPrimary -> MaterialTheme.colorScheme.primary
+            else -> iconBackgroundColor
+        }
+        val iconT = when {
+            !enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+            isPrimary -> MaterialTheme.colorScheme.onPrimary
+            else -> iconTint
+        }
+
         Card(
-            modifier = modifier,
+            modifier = modifier.fillMaxHeight(),
             shape = radius.card,
             onClick = onClick,
             enabled = enabled,
-            colors = CardDefaults.cardColors(
-                containerColor = if (enabled) MaterialTheme.colorScheme.surface
-                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-            ),
+            colors = CardDefaults.cardColors(containerColor = bgColor),
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .fillMaxHeight()
                     .padding(spacing.md),
                 horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
             ) {
                 Surface(
                     shape = radius.pill,
-                    color = if (enabled) MaterialTheme.colorScheme.primaryContainer
-                        else MaterialTheme.colorScheme.surfaceVariant,
+                    color = iconBg,
                     modifier = Modifier.size(40.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
@@ -269,8 +297,7 @@ class DashboardScreen : Screen {
                             icon,
                             contentDescription = null,
                             modifier = Modifier.size(20.dp),
-                            tint = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer
-                                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            tint = iconT,
                         )
                     }
                 }

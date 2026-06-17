@@ -25,6 +25,8 @@ interface I18nStrings {
     val actionRetry: String
 
     val dashStartLearning: String
+    fun dashActivePlans(count: Int): String
+    fun dashKBCount(count: Int): String
     val dashManageDecks: String
     val dashQuickActions: String
     val dashTodayStudy: String
@@ -237,8 +239,10 @@ interface I18nStrings {
     val settingsNewCardsLearned: String
     val settingsAbout: String
     val settingsVersion: String
-    val settingsVersionNumber: String
     val settingsAboutApp: String
+    val settingsDeveloper: String
+    val settingsLicense: String
+    val settingsOpenSource: String
     val settingsGoalDialogTitle: String
     val settingsCardCount: String
     val settingsSyncDialogTitle: String
@@ -272,8 +276,65 @@ interface I18nStrings {
     val settingsAutoSyncMin120: String
     val settingsAutoSyncRunning: String
     val settingsAutoSyncStopped: String
+    val settingsSyncScope: String
+    val settingsSyncScopeAll: String
+    val settingsSyncScopeSettings: String
+    val settingsSyncScopeData: String
+    val settingsSyncNow: String
+    val settingsRestoreFromCloud: String
+    val settingsRestoreConfirm: String
+    val settingsRestoreConfirmDesc: String
+    val settingsLastSyncTime: String
+    val settingsConnectionStatus: String
+    val settingsConnected: String
+    val settingsDisconnected: String
+    val webdavProviderLabel: String
+    val webdavProviderCustom: String
+    val webdavProviderJianguoyun: String
+    val webdavProviderNextcloud: String
+    val webdavProviderOwncloud: String
+    val webdavProviderSyncthing: String
     val settingsLanguage: String
     val settingsLanguageDesc: String
+
+    val kbTitle: String
+    val kbCreate: String
+    val kbEdit: String
+    val kbEmpty: String
+    val kbDeleteConfirm: String
+    val kbDeleteConfirmDesc: String
+
+    val planTitle: String
+    val planCreate: String
+    val planEdit: String
+    val planEmpty: String
+    val planDeleteConfirm: String
+    val planDeleteConfirmDesc: String
+    val planStatusNotStarted: String
+    val planStatusInProgress: String
+    val planStatusCompleted: String
+    val planDefault: String
+    val planRandom: String
+    val planRandomDesc: String
+    val planSelectToStart: String
+    val planProgress: String
+    val planResetConfirm: String
+    val planResetConfirmDesc: String
+
+    val fieldName: String
+    val fieldDescription: String
+
+    val warehouseTitle: String
+    val warehouseSearch: String
+    val warehouseEmpty: String
+    val warehouseAdd: String
+    val warehouseCreateKB: String
+    val warehouseCreateDeck: String
+    val warehouseCreateCard: String
+    val warehouseEdit: String
+    val warehouseCardContent: String
+    val warehouseDeleteConfirm: String
+    val warehouseDeleteDesc: String
 
     val statsTitle: String
     val statsOverview: String

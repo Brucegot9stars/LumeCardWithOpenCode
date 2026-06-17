@@ -48,11 +48,12 @@ import kotlin.math.abs
 
 class StudyScreen(
     private val deckIds: List<String>,
-    private val deckName: String
+    private val deckName: String,
+    private val planIds: List<String> = emptyList()
 ) : Screen {
     constructor(deckId: String, deckName: String) : this(listOf(deckId), deckName)
 
-    override val key: ScreenKey = "Study_${deckIds.sorted().joinToString("_")}"
+    override val key: ScreenKey = "Study_${deckIds.sorted().joinToString("_")}_${planIds.sorted().joinToString("_")}"
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
@@ -78,12 +79,16 @@ class StudyScreen(
         var velocity by remember { mutableFloatStateOf(0f) }
 
         LaunchedEffect(deckIds) {
-            viewModel.loadCards(deckIds)
+            viewModel.loadCards(deckIds, planIds)
         }
 
         LaunchedEffect(currentCard) {
             swipeOffset.snapTo(0f)
             isAnimatingOut = false
+        }
+
+        DisposableEffect(Unit) {
+            onDispose { viewModel.stopTimer() }
         }
 
 
@@ -635,7 +640,14 @@ private fun CardFace(card: Card, showBack: Boolean) {
     val strings = koinInject<I18nManager>().strings
     Column(modifier = Modifier.fillMaxWidth()) {
         when (card.type) {
-            CardType.BASIC, CardType.REVERSED, CardType.MARKDOWN, CardType.AI_GENERATED -> {
+            CardType.BASIC, CardType.REVERSED -> {
+                Text(
+                    text = if (showBack) card.back else card.front,
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            CardType.MARKDOWN, CardType.AI_GENERATED -> {
                 MarkdownText(
                     markdown = if (showBack) card.back else card.front,
                     modifier = Modifier.fillMaxWidth()

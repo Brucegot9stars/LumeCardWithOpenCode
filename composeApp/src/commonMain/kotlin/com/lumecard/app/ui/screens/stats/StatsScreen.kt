@@ -16,6 +16,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.lumecard.app.ui.components.AnimatedDonutChart
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.app.i18n.I18nManager
@@ -96,63 +97,73 @@ class StatsScreen : Screen {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Column {
-                                Text(
-                                    strings.statsTodayReviews,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    "${stats.todayReviews}",
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            Column(horizontalAlignment = Alignment.End) {
+                            val reviewProgress = if (stats.dailyGoal > 0) {
+                                stats.todayReviews.toFloat() / stats.dailyGoal
+                            } else 0f
+                            val newCardProgress = if (stats.newCardsPerDayGoal > 0) {
+                                stats.todayNewCards.toFloat() / stats.newCardsPerDayGoal
+                            } else 0f
+
+                            AnimatedDonutChart(
+                                progress = reviewProgress,
+                                completed = stats.todayReviews,
+                                target = stats.dailyGoal,
+                                label = strings.statsTodayReviews,
+                            )
+                            AnimatedDonutChart(
+                                progress = newCardProgress,
+                                completed = stats.todayNewCards,
+                                target = stats.newCardsPerDayGoal,
+                                label = strings.statsNewCards,
+                                progressColor = MaterialTheme.colorScheme.tertiary,
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     strings.statsRetentionRate,
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
                                     strings.statsRetentionValue(stats.retentionRate),
-                                    style = MaterialTheme.typography.headlineMedium,
+                                    style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.primary
                                 )
                             }
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     strings.statsStudyTime,
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
                                     strings.statsStudyTimeValue(stats.studyTimeMinutes),
-                                    style = MaterialTheme.typography.titleLarge,
+                                    style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.primary
                                 )
                             }
-                            Column(horizontalAlignment = Alignment.End) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     strings.statsStreak,
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
                                     strings.statsStreakValue(stats.streakDays),
-                                    style = MaterialTheme.typography.titleLarge,
+                                    style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.primary
                                 )
                             }

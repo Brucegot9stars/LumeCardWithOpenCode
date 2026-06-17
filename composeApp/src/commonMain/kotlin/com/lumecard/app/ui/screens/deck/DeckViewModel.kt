@@ -5,6 +5,7 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import com.lumecard.shared.model.Deck
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
+import com.lumecard.shared.repository.LearningPlanRepository
 import com.lumecard.shared.repository.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,7 +26,8 @@ data class SortConfig(
 class DeckViewModel(
     private val deckRepository: DeckRepository,
     private val cardRepository: CardRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val planRepository: LearningPlanRepository
 ) : ScreenModel {
 
     private val _decks = MutableStateFlow<List<Deck>>(emptyList())
@@ -40,9 +42,10 @@ class DeckViewModel(
     private val _deckCardCounts = MutableStateFlow<Map<String, Int>>(emptyMap())
     val deckCardCounts: StateFlow<Map<String, Int>> = _deckCardCounts.asStateFlow()
 
+    private var currentKnowledgeBaseId: String = "default"
+
     init {
         loadSortPref()
-        loadDecks()
     }
 
     private fun loadSortPref() {
@@ -64,11 +67,17 @@ class DeckViewModel(
         }
     }
 
-    fun loadDecks() {
+    fun loadDecks(knowledgeBaseId: String? = null) {
+        currentKnowledgeBaseId = knowledgeBaseId ?: "default"
         screenModelScope.launch {
             _isLoading.value = true
             combine(deckRepository.getAll(), _sortConfig) { deckList, sort ->
-                sortDecks(deckList, sort)
+                val filtered = if (knowledgeBaseId != null) {
+                    deckList.filter { it.knowledgeBaseId == knowledgeBaseId && it.deletedAt == null }
+                } else {
+                    deckList.filter { it.deletedAt == null }
+                }
+                sortDecks(filtered, sort)
             }.collect { sorted ->
                 _decks.value = sorted
                 _isLoading.value = false
@@ -92,7 +101,7 @@ class DeckViewModel(
         val existingCount = _decks.value.size
         val deck = Deck(
             id = "deck_${UUID.randomUUID().toString().take(8)}",
-            knowledgeBaseId = "default",
+            knowledgeBaseId = currentKnowledgeBaseId,
             name = name,
             description = description,
             color = deckColors[existingCount % deckColors.size],
@@ -115,6 +124,15 @@ class DeckViewModel(
 
     suspend fun deleteDeck(id: String) {
         deckRepository.delete(id)
+        val plans = planRepository.getAll().first()
+        for (plan in plans) {
+            if (id in plan.deckIds) {
+                planRepository.update(plan.copy(
+                    deckIds = plan.deckIds - id,
+                    updatedAt = kotlinx.datetime.Clock.System.now()
+                ))
+            }
+        }
     }
 
     suspend fun getDeckById(id: String): Deck? = deckRepository.getById(id)
