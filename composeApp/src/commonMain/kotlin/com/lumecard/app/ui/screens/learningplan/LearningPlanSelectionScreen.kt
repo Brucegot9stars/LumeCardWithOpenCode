@@ -16,6 +16,8 @@ import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.i18n.I18nManager
+import com.lumecard.app.ui.components.LumeCardDialog
+import com.lumecard.app.ui.components.LumeCardTextField
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.screens.study.StudyModeScreen
 import com.lumecard.app.ui.theme.LumeCardTheme
@@ -38,6 +40,11 @@ class LearningPlanSelectionScreen : Screen {
         val isLoading by viewModel.isLoading.collectAsState()
         val scope = rememberCoroutineScope()
 
+        var showCreateDialog by remember { mutableStateOf(false) }
+        var editPlanId by remember { mutableStateOf<String?>(null) }
+        var dialogName by remember { mutableStateOf("") }
+        var dialogDesc by remember { mutableStateOf("") }
+
         LaunchedEffect(Unit) {
             viewModel.loadPlans()
         }
@@ -48,7 +55,12 @@ class LearningPlanSelectionScreen : Screen {
                     title = strings.planTitle,
                     onBack = { navigator.pop() },
                     action = {
-                        IconButton(onClick = { navigator.push(LearningPlanScreen()) }) {
+                        IconButton(onClick = {
+                            dialogName = ""
+                            dialogDesc = ""
+                            editPlanId = null
+                            showCreateDialog = true
+                        }) {
                             Icon(Icons.Default.Add, contentDescription = strings.planCreate)
                         }
                     }
@@ -72,19 +84,13 @@ class LearningPlanSelectionScreen : Screen {
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f),
                             ),
-                            onClick = {
-                                navigator.push(StudyModeScreen())
-                            }
+                            onClick = { navigator.push(StudyModeScreen()) }
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(spacing.md),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Surface(
-                                    shape = radius.pill,
-                                    color = MaterialTheme.colorScheme.tertiary,
-                                    modifier = Modifier.size(44.dp),
-                                ) {
+                                Surface(shape = radius.pill, color = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(44.dp)) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Icon(Icons.Default.Favorite, contentDescription = null, modifier = Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onTertiary)
                                     }
@@ -98,7 +104,6 @@ class LearningPlanSelectionScreen : Screen {
                         }
                     }
 
-                    // Plan list
                     if (plans.isNotEmpty()) {
                         item {
                             Spacer(Modifier.height(spacing.sm))
@@ -126,9 +131,7 @@ class LearningPlanSelectionScreen : Screen {
                                 containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                             ),
                             onClick = {
-                                scope.launch {
-                                    viewModel.startPlan(plan.id)
-                                }
+                                scope.launch { viewModel.startPlan(plan.id) }
                                 navigator.push(StudyModeScreen(planIds = listOf(plan.id)))
                             }
                         ) {
@@ -154,11 +157,7 @@ class LearningPlanSelectionScreen : Screen {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text("${plan.totalCards} cards", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Spacer(Modifier.width(spacing.sm))
-                                    LinearProgressIndicator(
-                                        progress = { progress },
-                                        modifier = Modifier.weight(1f).height(4.dp),
-                                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                                    )
+                                    LinearProgressIndicator(progress = { progress }, modifier = Modifier.weight(1f).height(4.dp), trackColor = MaterialTheme.colorScheme.surfaceVariant)
                                     Spacer(Modifier.width(spacing.sm))
                                     Text("${(progress * 100).toInt()}%", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
@@ -180,6 +179,32 @@ class LearningPlanSelectionScreen : Screen {
 
                     item { Spacer(Modifier.height(spacing.xxl)) }
                 }
+            }
+        }
+
+        // Create / Edit dialog
+        if (showCreateDialog) {
+            LumeCardDialog(
+                title = if (editPlanId != null) strings.planEdit else strings.planCreate,
+                onDismiss = { showCreateDialog = false },
+                onConfirm = {
+                    scope.launch {
+                        if (editPlanId != null) {
+                            val existing = viewModel.plans.value.find { it.id == editPlanId }
+                            if (existing != null) {
+                                viewModel.updatePlan(editPlanId!!, dialogName, dialogDesc.ifBlank { null }, existing.knowledgeBaseIds, existing.deckIds, existing.cardIds, existing.isDefault)
+                            }
+                        } else {
+                            viewModel.createPlan(dialogName, dialogDesc.ifBlank { null }, emptyList(), emptyList(), emptyList())
+                        }
+                        showCreateDialog = false
+                    }
+                },
+                confirmText = strings.actionSave,
+                confirmEnabled = dialogName.isNotBlank(),
+            ) {
+                LumeCardTextField(value = dialogName, onValueChange = { dialogName = it }, label = strings.fieldName)
+                LumeCardTextField(value = dialogDesc, onValueChange = { dialogDesc = it }, label = strings.fieldDescription, singleLine = false)
             }
         }
     }
