@@ -152,6 +152,7 @@ class SyncManager(
         localDecks: List<com.lumecard.shared.model.Deck>,
         localCards: List<com.lumecard.shared.model.Card>,
         localReviewLogs: List<com.lumecard.shared.model.ReviewLog>,
+        localLearningPlans: List<com.lumecard.shared.model.LearningPlan>,
         localSettings: Map<String, String>,
         exportManager: ExportManager,
     ): SyncResult {
@@ -165,6 +166,7 @@ class SyncManager(
                 decks = localDecks,
                 cards = localCards,
                 reviewLogs = localReviewLogs,
+                learningPlans = localLearningPlans,
                 settings = localSettings
             )
             val up = upload(config, json)
@@ -182,6 +184,7 @@ class SyncManager(
                 decks = localDecks,
                 cards = localCards,
                 reviewLogs = localReviewLogs,
+                learningPlans = localLearningPlans,
                 settings = localSettings
             )
             upload(config, json)
@@ -289,11 +292,30 @@ class SyncManager(
         val mergedSettings = localSettings.toMutableMap()
         mergedSettings.putAll(remoteExport.settings)
 
+        // Merge LearningPlans
+        val localPlanMap = localLearningPlans.associateBy { it.id }
+        val remotePlanMap = remoteExport.learningPlans.associateBy { it.id }
+        val mergedPlans = mutableListOf<com.lumecard.shared.model.LearningPlan>()
+        val allPlanIds = localPlanMap.keys + remotePlanMap.keys
+        for (id in allPlanIds) {
+            val local = localPlanMap[id]
+            val remote = remotePlanMap[id]
+            when {
+                local != null && remote == null -> mergedPlans.add(local)
+                local == null && remote != null -> mergedPlans.add(remote.toLearningPlan())
+                local != null && remote != null -> {
+                    if (remote.version > local.version) mergedPlans.add(remote.toLearningPlan())
+                    else mergedPlans.add(local)
+                }
+            }
+        }
+
         // Filter out soft-deleted items from final export
         val activeDecks = mergedDecks.filter { it.deletedAt == null }
         val activeCards = mergedCards.filter { it.deletedAt == null }
         val activeLogs = mergedLogs.filter { it.deletedAt == null }
         val activeKbs = mergedKbs.filter { it.deletedAt == null }
+        val activePlans = mergedPlans.filter { it.deletedAt == null }
 
         // Upload merged result
         val mergedExport = LumeCardExport(
@@ -341,6 +363,7 @@ class SyncManager(
             decks = activeDecks,
             cards = activeCards,
             reviewLogs = activeLogs,
+            learningPlans = activePlans,
             settings = mergedSettings
         )
         upload(config, mergedJson)
@@ -401,6 +424,23 @@ fun ExportReviewLog.toReviewLog() = com.lumecard.shared.model.ReviewLog(
     repetitions = repetitions,
     lapseCount = lapseCount,
     reviewedAt = try { kotlinx.datetime.Instant.parse(reviewedAt) } catch (_: Exception) { kotlinx.datetime.Clock.System.now() },
+    version = version,
+    deletedAt = deletedAt?.let { try { kotlinx.datetime.Instant.parse(it) } catch (_: Exception) { null } }
+)
+
+fun ExportLearningPlan.toLearningPlan() = com.lumecard.shared.model.LearningPlan(
+    id = id,
+    name = name,
+    description = description,
+    status = try { com.lumecard.shared.model.PlanStatus.valueOf(status) } catch (_: Exception) { com.lumecard.shared.model.PlanStatus.NOT_STARTED },
+    isDefault = isDefault,
+    knowledgeBaseIds = knowledgeBaseIds,
+    deckIds = deckIds,
+    cardIds = cardIds,
+    totalCards = totalCards,
+    completedCards = completedCards,
+    createdAt = try { kotlinx.datetime.Instant.parse(createdAt) } catch (_: Exception) { kotlinx.datetime.Clock.System.now() },
+    updatedAt = try { kotlinx.datetime.Instant.parse(updatedAt) } catch (_: Exception) { kotlinx.datetime.Clock.System.now() },
     version = version,
     deletedAt = deletedAt?.let { try { kotlinx.datetime.Instant.parse(it) } catch (_: Exception) { null } }
 )

@@ -23,12 +23,12 @@ val appModule = module {
     single { I18nManager() }
 
     factory { DashboardViewModel(get(), get(), get(), get(), get(), get()) }
-    factory { DeckViewModel(get(), get(), get()) }
-    factory { StudyViewModel(get(), get(), get(), get()) }
+    factory { DeckViewModel(get(), get(), get(), get()) }
+    factory { StudyViewModel(get(), get(), get(), get(), get()) }
     factory { CardViewModel(get(), get()) }
     factory { StatsViewModel(get(), get(), get()) }
     factory { SettingsViewModel(get(), get()) }
-    factory { KnowledgeBaseViewModel(get()) }
+    factory { KnowledgeBaseViewModel(get(), get()) }
     factory { LearningPlanViewModel(get(), get(), get()) }
 }
 

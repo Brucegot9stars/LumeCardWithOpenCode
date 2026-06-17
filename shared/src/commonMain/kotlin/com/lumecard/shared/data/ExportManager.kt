@@ -3,13 +3,14 @@ package com.lumecard.shared.data
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.Deck
 import com.lumecard.shared.model.KnowledgeBase
+import com.lumecard.shared.model.LearningPlan
 import com.lumecard.shared.model.ReviewLog
 import kotlinx.datetime.Clock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-const val EXPORT_VERSION = "2.0.0"
-const val SCHEMA_VERSION = 2
+const val EXPORT_VERSION = "3.0.0"
+const val SCHEMA_VERSION = 3
 
 @Serializable
 data class LumeCardExport(
@@ -21,6 +22,7 @@ data class LumeCardExport(
     val decks: List<ExportDeck>,
     val cards: List<ExportCard>,
     val reviewLogs: List<ExportReviewLog> = emptyList(),
+    val learningPlans: List<ExportLearningPlan> = emptyList(),
     val settings: Map<String, String> = emptyMap()
 )
 
@@ -82,6 +84,24 @@ data class ExportReviewLog(
 )
 
 @Serializable
+data class ExportLearningPlan(
+    val id: String,
+    val name: String,
+    val description: String? = null,
+    val status: String = "NOT_STARTED",
+    val isDefault: Boolean = false,
+    val knowledgeBaseIds: List<String> = emptyList(),
+    val deckIds: List<String> = emptyList(),
+    val cardIds: List<String> = emptyList(),
+    val totalCards: Int = 0,
+    val completedCards: Int = 0,
+    val createdAt: String,
+    val updatedAt: String,
+    val version: Long = 1,
+    val deletedAt: String? = null
+)
+
+@Serializable
 data class SyncPayload(
     val deviceId: String,
     val syncId: String,
@@ -106,6 +126,7 @@ class ExportManager {
         decks: List<Deck>,
         cards: List<Card>,
         reviewLogs: List<ReviewLog> = emptyList(),
+        learningPlans: List<LearningPlan> = emptyList(),
         settings: Map<String, String> = emptyMap(),
         deviceId: String? = null
     ): String {
@@ -167,6 +188,24 @@ class ExportManager {
                     reviewedAt = log.reviewedAt.toString(),
                     version = log.version,
                     deletedAt = log.deletedAt?.toString()
+                )
+            },
+            learningPlans = learningPlans.map { plan ->
+                ExportLearningPlan(
+                    id = plan.id,
+                    name = plan.name,
+                    description = plan.description,
+                    status = plan.status.name,
+                    isDefault = plan.isDefault,
+                    knowledgeBaseIds = plan.knowledgeBaseIds,
+                    deckIds = plan.deckIds,
+                    cardIds = plan.cardIds,
+                    totalCards = plan.totalCards,
+                    completedCards = plan.completedCards,
+                    createdAt = plan.createdAt.toString(),
+                    updatedAt = plan.updatedAt.toString(),
+                    version = plan.version,
+                    deletedAt = plan.deletedAt?.toString()
                 )
             },
             settings = settings

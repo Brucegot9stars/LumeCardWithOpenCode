@@ -9,6 +9,7 @@ import com.lumecard.shared.model.Rating
 import com.lumecard.shared.model.ReviewLog
 import com.lumecard.shared.repository.AlgorithmStateRepository
 import com.lumecard.shared.repository.CardRepository
+import com.lumecard.shared.repository.LearningPlanRepository
 import com.lumecard.shared.repository.ReviewLogRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,7 +23,8 @@ class StudyViewModel(
     private val cardRepository: CardRepository,
     private val reviewLogRepository: ReviewLogRepository,
     private val algorithmStateRepository: AlgorithmStateRepository,
-    private val algorithm: ReviewAlgorithm
+    private val algorithm: ReviewAlgorithm,
+    private val planRepository: LearningPlanRepository
 ) : ScreenModel {
     private val _cards = MutableStateFlow<List<Card>>(emptyList())
     val cards: StateFlow<List<Card>> = _cards
@@ -57,7 +59,10 @@ class StudyViewModel(
 
     private val _cardStartTimes = mutableMapOf<String, kotlinx.datetime.Instant>()
 
-    fun loadCards(deckIds: List<String>) {
+    private var activePlanIds: List<String> = emptyList()
+
+    fun loadCards(deckIds: List<String>, planIds: List<String> = emptyList()) {
+        activePlanIds = planIds
         screenModelScope.launch {
             val allCards = mutableListOf<Card>()
             for (deckId in deckIds) {
@@ -162,6 +167,29 @@ class StudyViewModel(
             _cards.value.getOrNull(_currentCardIndex.value)?.let { _cardStartTimes[it.id] = Clock.System.now() }
         } else {
             _currentCardIndex.value = _cards.value.size
+            updatePlanProgress()
+        }
+    }
+
+    private fun updatePlanProgress() {
+        if (activePlanIds.isEmpty()) return
+        screenModelScope.launch {
+            for (planId in activePlanIds) {
+                val plan = planRepository.getById(planId) ?: continue
+                val newCompleted = (plan.completedCards + _completedCards.value).coerceAtMost(plan.totalCards)
+                val newStatus = if (newCompleted >= plan.totalCards) {
+                    com.lumecard.shared.model.PlanStatus.COMPLETED
+                } else if (newCompleted > 0) {
+                    com.lumecard.shared.model.PlanStatus.IN_PROGRESS
+                } else {
+                    plan.status
+                }
+                planRepository.update(plan.copy(
+                    completedCards = newCompleted,
+                    status = newStatus,
+                    updatedAt = kotlinx.datetime.Clock.System.now()
+                ))
+            }
         }
     }
 

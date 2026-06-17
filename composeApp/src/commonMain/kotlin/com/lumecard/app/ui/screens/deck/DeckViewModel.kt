@@ -5,6 +5,7 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import com.lumecard.shared.model.Deck
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
+import com.lumecard.shared.repository.LearningPlanRepository
 import com.lumecard.shared.repository.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,7 +26,8 @@ data class SortConfig(
 class DeckViewModel(
     private val deckRepository: DeckRepository,
     private val cardRepository: CardRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val planRepository: LearningPlanRepository
 ) : ScreenModel {
 
     private val _decks = MutableStateFlow<List<Deck>>(emptyList())
@@ -122,6 +124,15 @@ class DeckViewModel(
 
     suspend fun deleteDeck(id: String) {
         deckRepository.delete(id)
+        val plans = planRepository.getAll().first()
+        for (plan in plans) {
+            if (id in plan.deckIds) {
+                planRepository.update(plan.copy(
+                    deckIds = plan.deckIds - id,
+                    updatedAt = kotlinx.datetime.Clock.System.now()
+                ))
+            }
+        }
     }
 
     suspend fun getDeckById(id: String): Deck? = deckRepository.getById(id)

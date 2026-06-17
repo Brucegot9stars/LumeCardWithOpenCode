@@ -4,15 +4,18 @@ import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import com.lumecard.shared.model.KnowledgeBase
 import com.lumecard.shared.repository.KnowledgeBaseRepository
+import com.lumecard.shared.repository.LearningPlanRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import java.util.UUID
 
 class KnowledgeBaseViewModel(
-    private val knowledgeBaseRepository: KnowledgeBaseRepository
+    private val knowledgeBaseRepository: KnowledgeBaseRepository,
+    private val planRepository: LearningPlanRepository
 ) : ScreenModel {
 
     private val _knowledgeBases = MutableStateFlow<List<KnowledgeBase>>(emptyList())
@@ -59,6 +62,15 @@ class KnowledgeBaseViewModel(
 
     suspend fun deleteKnowledgeBase(id: String) {
         knowledgeBaseRepository.delete(id)
+        val plans = planRepository.getAll().first()
+        for (plan in plans) {
+            if (id in plan.knowledgeBaseIds) {
+                planRepository.update(plan.copy(
+                    knowledgeBaseIds = plan.knowledgeBaseIds - id,
+                    updatedAt = Clock.System.now()
+                ))
+            }
+        }
     }
 
     suspend fun getById(id: String): KnowledgeBase? = knowledgeBaseRepository.getById(id)

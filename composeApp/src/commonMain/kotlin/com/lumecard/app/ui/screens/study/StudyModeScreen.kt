@@ -28,8 +28,10 @@ enum class StudyMode {
     MULTI
 }
 
-class StudyModeScreen : Screen {
-    override val key: ScreenKey = "StudyMode"
+class StudyModeScreen(
+    private val planIds: List<String> = emptyList()
+) : Screen {
+    override val key: ScreenKey = "StudyMode_${planIds.sorted().joinToString("_")}"
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
@@ -96,7 +98,7 @@ class StudyModeScreen : Screen {
                                     }
                                     StudyMode.MULTI -> strings.modeStartMulti
                                 }
-                                navigator.push(StudyScreen(deckIds, name))
+                                navigator.push(StudyScreen(deckIds, name, planIds = planIds))
                             },
                             enabled = enabled
                         ) {

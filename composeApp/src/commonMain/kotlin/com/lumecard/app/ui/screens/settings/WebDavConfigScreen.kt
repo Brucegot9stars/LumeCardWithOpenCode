@@ -30,12 +30,14 @@ import com.lumecard.shared.data.WebDavProviders
 import com.lumecard.shared.data.toCard
 import com.lumecard.shared.data.toDeck
 import com.lumecard.shared.data.toKnowledgeBase
+import com.lumecard.shared.data.toLearningPlan
 import com.lumecard.shared.data.toReviewLog
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
 import com.lumecard.shared.model.Deck
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
+import com.lumecard.shared.repository.LearningPlanRepository
 import com.lumecard.shared.repository.ReviewLogRepository
 import com.lumecard.shared.repository.SettingsRepository
 import kotlinx.coroutines.Dispatchers
@@ -64,6 +66,7 @@ class WebDavConfigScreen : Screen {
         val cardRepository: CardRepository = koinInject()
         val knowledgeBaseRepository: com.lumecard.shared.repository.KnowledgeBaseRepository = koinInject()
         val reviewLogRepository: ReviewLogRepository = koinInject()
+        val planRepository: LearningPlanRepository = koinInject()
         val settingsRepository: SettingsRepository = koinInject()
         val scope = rememberCoroutineScope()
         val snackbarHostState = remember { SnackbarHostState() }
@@ -637,20 +640,22 @@ class WebDavConfigScreen : Screen {
                                     try {
                                         val config = defaultConfig ?: return@launch
                                         val syncResult = withContext(Dispatchers.IO) {
-                                            val localKbs = knowledgeBaseRepository.getAll().first()
-                                            val localDecks = deckRepository.getAll().first()
-                                            val localCards = cardRepository.getAll().first()
-                                            val localLogs = reviewLogRepository.getAll().first()
-                                            val settings = settingsRepository.getAll()
-                                            syncManager.performSync(
-                                                config = config,
-                                                localKnowledgeBases = localKbs,
-                                                localDecks = localDecks,
-                                                localCards = localCards,
-                                                localReviewLogs = localLogs,
-                                                localSettings = settings,
-                                                exportManager = exportManager,
-                                            )
+                                        val localKbs = knowledgeBaseRepository.getAll().first()
+                                        val localDecks = deckRepository.getAll().first()
+                                        val localCards = cardRepository.getAll().first()
+                                        val localLogs = reviewLogRepository.getAll().first()
+                                        val localPlans = planRepository.getAll().first()
+                                        val settings = settingsRepository.getAll()
+                                        syncManager.performSync(
+                                            config = config,
+                                            localKnowledgeBases = localKbs,
+                                            localDecks = localDecks,
+                                            localCards = localCards,
+                                            localReviewLogs = localLogs,
+                                            localLearningPlans = localPlans,
+                                            localSettings = settings,
+                                            exportManager = exportManager,
+                                        )
                                         }
                                         when (syncResult) {
                                             is com.lumecard.shared.data.SyncResult.Success -> {
@@ -668,6 +673,9 @@ class WebDavConfigScreen : Screen {
                                                         }
                                                         for (log in export.reviewLogs) {
                                                             reviewLogRepository.insert(log.toReviewLog())
+                                                        }
+                                                        for (plan in export.learningPlans) {
+                                                            planRepository.insert(plan.toLearningPlan())
                                                         }
                                                     }
                                                 }
@@ -690,6 +698,9 @@ class WebDavConfigScreen : Screen {
                                                     }
                                                     for (log in export.reviewLogs) {
                                                         reviewLogRepository.insert(log.toReviewLog())
+                                                    }
+                                                    for (plan in export.learningPlans) {
+                                                        planRepository.insert(plan.toLearningPlan())
                                                     }
                                                 }
                                                 val msg = strings.settingsSyncSuccess(export.decks.size)

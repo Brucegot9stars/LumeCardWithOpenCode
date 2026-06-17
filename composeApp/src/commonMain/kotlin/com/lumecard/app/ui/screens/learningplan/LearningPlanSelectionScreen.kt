@@ -129,7 +129,7 @@ class LearningPlanSelectionScreen : Screen {
                                 scope.launch {
                                     viewModel.startPlan(plan.id)
                                 }
-                                navigator.push(StudyModeScreen())
+                                navigator.push(StudyModeScreen(planIds = listOf(plan.id)))
                             }
                         ) {
                             Column(modifier = Modifier.fillMaxWidth().padding(spacing.md)) {
