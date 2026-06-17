@@ -424,3 +424,105 @@ private fun com.lumecard.shared.database.ReviewLog.toReviewLog() = ReviewLog(
     deletedAt = deleted_at?.let { Instant.parse(it) },
     syncedAt = synced_at?.let { Instant.parse(it) }
 )
+
+class SqlDelightLearningPlanRepository(
+    private val database: LumeCardDatabase
+) : LearningPlanRepository {
+
+    private val queries get() = database.lumeCardDatabaseQueries
+
+    override fun getAll(): Flow<List<com.lumecard.shared.model.LearningPlan>> {
+        return queries.selectAllLearningPlans().asFlow().mapToList(Dispatchers.Default).map { list ->
+            list.map { it.toLearningPlan() }
+        }
+    }
+
+    override suspend fun getById(id: String): com.lumecard.shared.model.LearningPlan? {
+        return queries.selectLearningPlanById(id).executeAsOneOrNull()?.toLearningPlan()
+    }
+
+    override suspend fun getDefault(): com.lumecard.shared.model.LearningPlan? {
+        return queries.selectDefaultLearningPlan().executeAsOneOrNull()?.toLearningPlan()
+    }
+
+    override suspend fun insert(plan: com.lumecard.shared.model.LearningPlan) {
+        queries.insertLearningPlan(
+            id = plan.id,
+            name = plan.name,
+            description = plan.description,
+            status = plan.status.name,
+            is_default = if (plan.isDefault) 1L else 0L,
+            knowledge_base_ids = plan.knowledgeBaseIds.joinToString(","),
+            deck_ids = plan.deckIds.joinToString(","),
+            card_ids = plan.cardIds.joinToString(","),
+            total_cards = plan.totalCards.toLong(),
+            completed_cards = plan.completedCards.toLong(),
+            created_at = plan.createdAt.toString(),
+            updated_at = plan.updatedAt.toString(),
+            version = plan.version,
+            deleted_at = plan.deletedAt?.toString(),
+            synced_at = plan.syncedAt?.toString()
+        )
+    }
+
+    override suspend fun update(plan: com.lumecard.shared.model.LearningPlan) {
+        queries.insertLearningPlan(
+            id = plan.id,
+            name = plan.name,
+            description = plan.description,
+            status = plan.status.name,
+            is_default = if (plan.isDefault) 1L else 0L,
+            knowledge_base_ids = plan.knowledgeBaseIds.joinToString(","),
+            deck_ids = plan.deckIds.joinToString(","),
+            card_ids = plan.cardIds.joinToString(","),
+            total_cards = plan.totalCards.toLong(),
+            completed_cards = plan.completedCards.toLong(),
+            created_at = plan.createdAt.toString(),
+            updated_at = Clock.System.now().toString(),
+            version = plan.version + 1,
+            deleted_at = plan.deletedAt?.toString(),
+            synced_at = plan.syncedAt?.toString()
+        )
+    }
+
+    override suspend fun delete(id: String) {
+        val plan = queries.selectLearningPlanById(id).executeAsOneOrNull()
+        if (plan != null) {
+            queries.insertLearningPlan(
+                id = plan.id,
+                name = plan.name,
+                description = plan.description,
+                status = plan.status,
+                is_default = plan.is_default,
+                knowledge_base_ids = plan.knowledge_base_ids,
+                deck_ids = plan.deck_ids,
+                card_ids = plan.card_ids,
+                total_cards = plan.total_cards,
+                completed_cards = plan.completed_cards,
+                created_at = plan.created_at,
+                updated_at = Clock.System.now().toString(),
+                version = plan.version + 1,
+                deleted_at = Clock.System.now().toString(),
+                synced_at = null
+            )
+        }
+    }
+}
+
+private fun com.lumecard.shared.database.LearningPlan.toLearningPlan() = com.lumecard.shared.model.LearningPlan(
+    id = id,
+    name = name,
+    description = description,
+    status = try { com.lumecard.shared.model.PlanStatus.valueOf(status) } catch (_: Exception) { com.lumecard.shared.model.PlanStatus.NOT_STARTED },
+    isDefault = is_default == 1L,
+    knowledgeBaseIds = (knowledge_base_ids ?: "").split(",").filter { it.isNotBlank() },
+    deckIds = (deck_ids ?: "").split(",").filter { it.isNotBlank() },
+    cardIds = (card_ids ?: "").split(",").filter { it.isNotBlank() },
+    totalCards = total_cards.toInt(),
+    completedCards = completed_cards.toInt(),
+    createdAt = Instant.parse(created_at),
+    updatedAt = Instant.parse(updated_at),
+    version = version,
+    deletedAt = deleted_at?.let { Instant.parse(it) },
+    syncedAt = synced_at?.let { Instant.parse(it) }
+)

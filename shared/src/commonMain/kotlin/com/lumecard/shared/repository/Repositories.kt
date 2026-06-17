@@ -63,3 +63,12 @@ interface AlgorithmStateRepository {
     suspend fun save(cardId: String, mode: String, stateJson: String)
     suspend fun delete(cardId: String)
 }
+
+interface LearningPlanRepository {
+    fun getAll(): Flow<List<com.lumecard.shared.model.LearningPlan>>
+    suspend fun getById(id: String): com.lumecard.shared.model.LearningPlan?
+    suspend fun getDefault(): com.lumecard.shared.model.LearningPlan?
+    suspend fun insert(plan: com.lumecard.shared.model.LearningPlan)
+    suspend fun update(plan: com.lumecard.shared.model.LearningPlan)
+    suspend fun delete(id: String)
+}

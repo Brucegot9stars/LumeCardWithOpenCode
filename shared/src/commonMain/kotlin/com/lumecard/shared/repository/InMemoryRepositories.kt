@@ -134,3 +134,31 @@ class InMemoryReviewLogRepository : ReviewLogRepository {
         )
     }
 }
+
+class InMemoryLearningPlanRepository : LearningPlanRepository {
+    private val plans = MutableStateFlow<List<LearningPlan>>(emptyList())
+
+    override fun getAll(): Flow<List<LearningPlan>> = plans
+
+    override suspend fun getById(id: String): LearningPlan? {
+        return plans.value.find { it.id == id }
+    }
+
+    override suspend fun getDefault(): LearningPlan? {
+        return plans.value.find { it.isDefault }
+    }
+
+    override suspend fun insert(plan: LearningPlan) {
+        plans.value = plans.value + plan
+    }
+
+    override suspend fun update(plan: LearningPlan) {
+        plans.value = plans.value.map {
+            if (it.id == plan.id) plan.copy(updatedAt = Clock.System.now()) else it
+        }
+    }
+
+    override suspend fun delete(id: String) {
+        plans.value = plans.value.filter { it.id != id }
+    }
+}

@@ -31,6 +31,7 @@ val sharedModule = module {
     single<ReviewLogRepository> { SqlDelightReviewLogRepository(get()) }
     single<SettingsRepository> { SqlDelightSettingsRepository(get()) }
     single<AlgorithmStateRepository> { SqlDelightAlgorithmStateRepository(get()) }
+    single<LearningPlanRepository> { SqlDelightLearningPlanRepository(get()) }
 
     // Data services
     single { SyncManager(get()) }

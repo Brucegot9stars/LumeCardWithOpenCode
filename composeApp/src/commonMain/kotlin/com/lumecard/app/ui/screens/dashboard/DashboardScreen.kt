@@ -29,6 +29,7 @@ import com.lumecard.app.ui.components.ProgressRing
 import com.lumecard.app.ui.screens.deck.CardListScreen
 import com.lumecard.app.ui.screens.deck.DeckListScreen
 import com.lumecard.app.ui.screens.knowledgebase.KnowledgeBaseScreen
+import com.lumecard.app.ui.screens.learningplan.LearningPlanSelectionScreen
 import com.lumecard.app.ui.screens.study.StudyModeScreen
 import com.lumecard.app.ui.screens.study.StudyScreen
 import com.lumecard.app.i18n.I18nManager
@@ -55,6 +56,8 @@ class DashboardScreen : Screen {
         val todayReviews by viewModel.todayReviews.collectAsState()
         val dailyGoal by viewModel.dailyGoal.collectAsState()
         val totalDueCards by viewModel.totalDueCards.collectAsState()
+        val kbCount by viewModel.kbCount.collectAsState()
+        val activePlanCount by viewModel.activePlanCount.collectAsState()
 
         val firstStudyableDeck = decksWithCount.firstOrNull { it.cardCount > 0 }?.deck
         val studyableCount = decksWithCount.count { it.cardCount > 0 }
@@ -67,7 +70,7 @@ class DashboardScreen : Screen {
             },
             floatingActionButton = {
                 FloatingActionButton(
-                    onClick = { navigator.push(DeckListScreen()) },
+                    onClick = { navigator.push(KnowledgeBaseScreen()) },
                     containerColor = MaterialTheme.colorScheme.primary,
                 ) {
                     Icon(Icons.Default.Add, contentDescription = strings.dashManageDecks)
@@ -151,11 +154,11 @@ class DashboardScreen : Screen {
                                 QuickActionCard(
                                     modifier = Modifier.weight(1f),
                                     title = strings.dashStartLearning,
-                                    subtitle = if (firstStudyableDeck != null) strings.dashDecksAvailable(studyableCount) else strings.dashNoCardsAvailable,
-                                    enabled = firstStudyableDeck != null,
+                                    subtitle = strings.dashActivePlans(activePlanCount),
+                                    enabled = true,
                                     icon = Icons.Default.PlayArrow,
                                     isPrimary = true,
-                                    onClick = { navigator.push(StudyModeScreen()) },
+                                    onClick = { navigator.push(LearningPlanSelectionScreen()) },
                                 )
                                 QuickActionCard(
                                     modifier = Modifier.weight(1f),

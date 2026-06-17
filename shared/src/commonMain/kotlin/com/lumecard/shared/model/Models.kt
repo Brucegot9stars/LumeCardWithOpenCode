@@ -122,3 +122,29 @@ enum class Rating(val value: Int) {
     GOOD(3),
     EASY(4)
 }
+
+@Serializable
+enum class PlanStatus {
+    NOT_STARTED,
+    IN_PROGRESS,
+    COMPLETED
+}
+
+@Serializable
+data class LearningPlan(
+    val id: String,
+    val name: String,
+    val description: String? = null,
+    val status: PlanStatus = PlanStatus.NOT_STARTED,
+    val isDefault: Boolean = false,
+    val knowledgeBaseIds: List<String> = emptyList(),
+    val deckIds: List<String> = emptyList(),
+    val cardIds: List<String> = emptyList(),
+    val totalCards: Int = 0,
+    val completedCards: Int = 0,
+    val createdAt: Instant = Clock.System.now(),
+    val updatedAt: Instant = Clock.System.now(),
+    val version: Long = 1,
+    val deletedAt: Instant? = null,
+    val syncedAt: Instant? = null
+)

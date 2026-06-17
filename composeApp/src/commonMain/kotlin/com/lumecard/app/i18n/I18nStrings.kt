@@ -25,6 +25,7 @@ interface I18nStrings {
     val actionRetry: String
 
     val dashStartLearning: String
+    fun dashActivePlans(count: Int): String
     val dashManageDecks: String
     val dashQuickActions: String
     val dashTodayStudy: String
@@ -302,6 +303,23 @@ interface I18nStrings {
     val kbEmpty: String
     val kbDeleteConfirm: String
     val kbDeleteConfirmDesc: String
+
+    val planTitle: String
+    val planCreate: String
+    val planEdit: String
+    val planEmpty: String
+    val planDeleteConfirm: String
+    val planDeleteConfirmDesc: String
+    val planStatusNotStarted: String
+    val planStatusInProgress: String
+    val planStatusCompleted: String
+    val planDefault: String
+    val planRandom: String
+    val planRandomDesc: String
+    val planSelectToStart: String
+    val planProgress: String
+    val planResetConfirm: String
+    val planResetConfirmDesc: String
 
     val statsTitle: String
     val statsOverview: String

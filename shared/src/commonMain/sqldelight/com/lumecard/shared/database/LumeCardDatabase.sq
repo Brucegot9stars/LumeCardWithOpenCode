@@ -86,6 +86,24 @@ CREATE TABLE AlgorithmState (
     FOREIGN KEY (card_id) REFERENCES Card(id)
 );
 
+CREATE TABLE LearningPlan (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    status TEXT NOT NULL DEFAULT 'NOT_STARTED',
+    is_default INTEGER NOT NULL DEFAULT 0,
+    knowledge_base_ids TEXT DEFAULT '[]',
+    deck_ids TEXT DEFAULT '[]',
+    card_ids TEXT DEFAULT '[]',
+    total_cards INTEGER NOT NULL DEFAULT 0,
+    completed_cards INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    version INTEGER NOT NULL DEFAULT 1,
+    deleted_at TEXT,
+    synced_at TEXT
+);
+
 selectAllKnowledgeBases:
 SELECT * FROM KnowledgeBase WHERE deleted_at IS NULL ORDER BY created_at ASC;
 
@@ -177,3 +195,16 @@ VALUES (?, ?, ?);
 
 deleteAlgorithmState:
 DELETE FROM AlgorithmState WHERE card_id = ?;
+
+selectAllLearningPlans:
+SELECT * FROM LearningPlan WHERE deleted_at IS NULL ORDER BY updated_at DESC;
+
+selectLearningPlanById:
+SELECT * FROM LearningPlan WHERE id = ?;
+
+selectDefaultLearningPlan:
+SELECT * FROM LearningPlan WHERE is_default = 1 AND deleted_at IS NULL;
+
+insertLearningPlan:
+INSERT OR REPLACE INTO LearningPlan(id, name, description, status, is_default, knowledge_base_ids, deck_ids, card_ids, total_cards, completed_cards, created_at, updated_at, version, deleted_at, synced_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
