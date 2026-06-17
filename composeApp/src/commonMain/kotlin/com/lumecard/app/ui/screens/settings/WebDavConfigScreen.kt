@@ -784,37 +784,32 @@ class WebDavConfigScreen : Screen {
                                     if (remoteResult.isSuccess) {
                                         val remote = exportManager.importFromJson(remoteResult.getOrThrow())
                                         if (remote != null) {
-                                            val existingDecks = deckRepository.getAll().first()
-                                            for (deck in existingDecks) {
+                                            // Clear existing data
+                                            for (kb in knowledgeBaseRepository.getAll().first()) {
+                                                knowledgeBaseRepository.delete(kb.id)
+                                            }
+                                            for (deck in deckRepository.getAll().first()) {
                                                 deckRepository.delete(deck.id)
                                             }
-                                            val existingCards = cardRepository.getAll().first()
-                                            for (card in existingCards) {
+                                            for (card in cardRepository.getAll().first()) {
                                                 cardRepository.delete(card.id)
                                             }
+                                            // Restore KnowledgeBases
+                                            for (kb in remote.knowledgeBases) {
+                                                knowledgeBaseRepository.insert(kb.toKnowledgeBase())
+                                            }
+                                            // Restore Decks
                                             for (deck in remote.decks) {
-                                                val now = Clock.System.now()
-                                                deckRepository.insert(
-                                                    Deck(
-                                                        id = deck.id, knowledgeBaseId = "default",
-                                                        name = deck.name, description = deck.description ?: "",
-                                                        color = deck.color, icon = deck.icon,
-                                                        createdAt = now, updatedAt = now,
-                                                    )
-                                                )
+                                                deckRepository.insert(deck.toDeck())
                                                 restoredDecks++
                                             }
+                                            // Restore Cards
                                             for (card in remote.cards) {
-                                                cardRepository.insert(
-                                                    Card(
-                                                        id = card.id, deckId = card.deckId,
-                                                        type = CardType.valueOf(card.type),
-                                                        front = card.front, back = card.back,
-                                                        tags = card.tags,
-                                                        createdAt = Instant.parse(card.createdAt),
-                                                        updatedAt = Instant.parse(card.updatedAt),
-                                                    )
-                                                )
+                                                cardRepository.insert(card.toCard())
+                                            }
+                                            // Restore ReviewLogs
+                                            for (log in remote.reviewLogs) {
+                                                reviewLogRepository.insert(log.toReviewLog())
                                             }
                                         }
                                     }
