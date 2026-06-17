@@ -22,7 +22,7 @@ object EsStrings : I18nStrings {
     override val actionSync = "Sincronizar"
     override val actionRetry = "Reintentar"
     override val dashStartLearning = "Empezar a aprender"
-    override val dashManageDecks = "Gestionar mazos"
+    override val dashManageDecks = "Bases de conocimiento"
     override val dashQuickActions = "Acciones rápidas"
     override val dashTodayStudy = "Estudio de hoy"
     override val dashTotalCards = "Total tarjetas"

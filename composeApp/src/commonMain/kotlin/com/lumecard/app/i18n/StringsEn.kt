@@ -22,7 +22,7 @@ object EnStrings : I18nStrings {
     override val actionSync = "Sync"
     override val actionRetry = "Retry"
     override val dashStartLearning = "Start Learning"
-    override val dashManageDecks = "Manage Decks"
+    override val dashManageDecks = "Knowledge Bases"
     override val dashQuickActions = "Quick Actions"
     override val dashTodayStudy = "Today's Study"
     override val dashTotalCards = "Total Cards"

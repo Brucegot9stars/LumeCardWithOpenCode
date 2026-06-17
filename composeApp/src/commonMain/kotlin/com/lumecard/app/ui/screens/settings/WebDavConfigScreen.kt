@@ -654,6 +654,23 @@ class WebDavConfigScreen : Screen {
                                         }
                                         when (syncResult) {
                                             is com.lumecard.shared.data.SyncResult.Success -> {
+                                                val export = syncResult.mergedExport
+                                                if (export != null) {
+                                                    withContext(Dispatchers.IO) {
+                                                        for (kb in export.knowledgeBases) {
+                                                            knowledgeBaseRepository.insert(kb.toKnowledgeBase())
+                                                        }
+                                                        for (deck in export.decks) {
+                                                            deckRepository.insert(deck.toDeck())
+                                                        }
+                                                        for (card in export.cards) {
+                                                            cardRepository.insert(card.toCard())
+                                                        }
+                                                        for (log in export.reviewLogs) {
+                                                            reviewLogRepository.insert(log.toReviewLog())
+                                                        }
+                                                    }
+                                                }
                                                 val msg = strings.settingsSyncSuccess(syncResult.decksSynced)
                                                 syncStatus = msg
                                                 snackbarHostState.showSnackbar(msg)

@@ -22,7 +22,7 @@ object JaStrings : I18nStrings {
     override val actionSync = "同期"
     override val actionRetry = "再試行"
     override val dashStartLearning = "学習を始める"
-    override val dashManageDecks = "デッキ管理"
+    override val dashManageDecks = "ナレッジベース"
     override val dashQuickActions = "クイックアクション"
     override val dashTodayStudy = "今日の学習"
     override val dashTotalCards = "総カード数"

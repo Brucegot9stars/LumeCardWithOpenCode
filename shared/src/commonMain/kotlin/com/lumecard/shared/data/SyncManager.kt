@@ -296,6 +296,46 @@ class SyncManager(
         val activeKbs = mergedKbs.filter { it.deletedAt == null }
 
         // Upload merged result
+        val mergedExport = LumeCardExport(
+            exportDate = Clock.System.now().toString(),
+            deviceId = null,
+            knowledgeBases = activeKbs.map { kb ->
+                ExportKnowledgeBase(
+                    id = kb.id, name = kb.name, description = kb.description,
+                    createdAt = kb.createdAt.toString(), updatedAt = kb.updatedAt.toString(),
+                    version = kb.version, deletedAt = kb.deletedAt?.toString()
+                )
+            },
+            decks = activeDecks.map { d ->
+                ExportDeck(
+                    id = d.id, knowledgeBaseId = d.knowledgeBaseId, name = d.name,
+                    description = d.description, color = d.color, icon = d.icon,
+                    parentId = d.parentId, createdAt = d.createdAt.toString(),
+                    updatedAt = d.updatedAt.toString(), version = d.version,
+                    deletedAt = d.deletedAt?.toString()
+                )
+            },
+            cards = activeCards.map { c ->
+                ExportCard(
+                    id = c.id, deckId = c.deckId, type = c.type.name,
+                    front = c.front, back = c.back, tags = c.tags,
+                    createdAt = c.createdAt.toString(), updatedAt = c.updatedAt.toString(),
+                    lastReviewedAt = c.lastReviewedAt?.toString(),
+                    nextReviewAt = c.nextReviewAt?.toString(),
+                    version = c.version, deletedAt = c.deletedAt?.toString()
+                )
+            },
+            reviewLogs = activeLogs.map { l ->
+                ExportReviewLog(
+                    id = l.id, cardId = l.cardId, rating = l.rating,
+                    reviewTime = l.reviewTime, interval = l.interval,
+                    easeFactor = l.easeFactor, repetitions = l.repetitions,
+                    lapseCount = l.lapseCount, reviewedAt = l.reviewedAt.toString(),
+                    version = l.version, deletedAt = l.deletedAt?.toString()
+                )
+            },
+            settings = mergedSettings
+        )
         val mergedJson = exportManager.exportToJson(
             knowledgeBases = activeKbs,
             decks = activeDecks,
@@ -306,7 +346,7 @@ class SyncManager(
         upload(config, mergedJson)
 
         val imported = mergedDecks.size > localDecks.size || mergedCards.size > localCards.size
-        return SyncResult.Success(true, imported, activeDecks.size)
+        return SyncResult.Success(true, imported, activeDecks.size, mergedExport)
     }
 }
 
@@ -366,7 +406,12 @@ fun ExportReviewLog.toReviewLog() = com.lumecard.shared.model.ReviewLog(
 )
 
 sealed class SyncResult {
-    data class Success(val backedUp: Boolean, val imported: Boolean, val decksSynced: Int) : SyncResult()
+    data class Success(
+        val backedUp: Boolean,
+        val imported: Boolean,
+        val decksSynced: Int,
+        val mergedExport: LumeCardExport? = null
+    ) : SyncResult()
     data class RemoteImport(val export: LumeCardExport) : SyncResult()
     data class Skipped(val reason: String) : SyncResult()
     data class Error(val message: String) : SyncResult()

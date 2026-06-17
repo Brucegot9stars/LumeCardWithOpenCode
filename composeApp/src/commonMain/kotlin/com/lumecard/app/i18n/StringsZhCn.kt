@@ -22,7 +22,7 @@ object ZhCnStrings : I18nStrings {
     override val actionSync = "同步"
     override val actionRetry = "重试"
     override val dashStartLearning = "开始学习"
-    override val dashManageDecks = "管理牌组"
+    override val dashManageDecks = "管理知识库"
     override val dashQuickActions = "快速操作"
     override val dashTodayStudy = "今日学习"
     override val dashTotalCards = "总卡片"
