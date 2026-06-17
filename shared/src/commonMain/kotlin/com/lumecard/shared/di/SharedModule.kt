@@ -1,6 +1,7 @@
 package com.lumecard.shared.di
 
 import com.lumecard.shared.data.SyncManager
+import com.lumecard.shared.data.UpdateManager
 import com.lumecard.shared.data.WebDavConfigManager
 import com.lumecard.shared.database.LumeCardDatabase
 import com.lumecard.shared.domain.scheduler.*
@@ -36,6 +37,7 @@ val sharedModule = module {
     // Data services
     single { SyncManager(get()) }
     single { WebDavConfigManager(get(), get()) }
+    single { UpdateManager(get()) }
 
     // Algorithm implementations
     single { FSRSAlgorithm() }

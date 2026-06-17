@@ -18,6 +18,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.shared.AppVersion
 import com.lumecard.shared.data.ExportManager
+import com.lumecard.shared.data.UpdateManager
 import com.lumecard.shared.data.WebDavConfigManager
 import com.lumecard.shared.domain.scheduler.ReviewMode
 import com.lumecard.shared.repository.CardRepository
@@ -26,6 +27,7 @@ import com.lumecard.app.i18n.AppLocale
 import com.lumecard.app.ui.components.LumeCardDialog
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.components.LumeCardTextField
+import com.lumecard.app.ui.components.UpdateCheckDialog
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.theme.LumeCardTheme
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +35,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.lumecard.app.platform.getAppVersion
+import com.lumecard.app.platform.pickSaveFile
+import com.lumecard.app.platform.pickOpenFile
+import com.lumecard.app.platform.readFileContent
+import com.lumecard.app.platform.writeFileContent
 import org.koin.compose.koinInject
 
 class SettingsScreen : Screen {
@@ -53,6 +59,7 @@ class SettingsScreen : Screen {
         val snackbarHostState = remember { SnackbarHostState() }
         val webDavConfigManager: WebDavConfigManager = koinInject()
         val knowledgeBaseRepository: com.lumecard.shared.repository.KnowledgeBaseRepository = koinInject()
+        val updateManager: UpdateManager = koinInject()
         val spacing = LumeCardTheme.spacing
         val radius = LumeCardTheme.radius
 
@@ -61,6 +68,9 @@ class SettingsScreen : Screen {
         var showAnswerModeDropdown by remember { mutableStateOf(false) }
         var showGoalDialog by remember { mutableStateOf(false) }
         var goalInput by remember { mutableStateOf("") }
+        var showUpdateDialog by remember { mutableStateOf(false) }
+        var isCheckingUpdate by remember { mutableStateOf(false) }
+        var updateInfo by remember { mutableStateOf<com.lumecard.shared.data.UpdateInfo?>(null) }
 
         LaunchedEffect(Unit) {
             settingsViewModel.loadSettings()
@@ -445,13 +455,23 @@ class SettingsScreen : Screen {
                             modifier = Modifier.clickable {
                                 scope.launch {
                                     try {
+                                        val filePath = pickSaveFile("lumecard_export.json", "application/json")
+                                        if (filePath == null) {
+                                            snackbarHostState.showSnackbar(strings.actionCancel)
+                                            return@launch
+                                        }
                                         val knowledgeBases = knowledgeBaseRepository.getAll().first()
                                         val decks = deckRepository.getAll().first()
                                         val allCards = cardRepository.getAll().first()
                                         val json = exportManager.exportToJson(knowledgeBases, decks, allCards)
-                                        snackbarHostState.showSnackbar(strings.settingsExportSuccess(json.length))
+                                        val success = writeFileContent(filePath, json)
+                                        if (success) {
+                                            snackbarHostState.showSnackbar(strings.settingsExportSuccess(json.length))
+                                        } else {
+                                            snackbarHostState.showSnackbar(strings.settingsExportError("Write failed"))
+                                        }
                                     } catch (e: Exception) {
-                                        snackbarHostState.showSnackbar(strings.settingsExportError(e.message!!))
+                                        snackbarHostState.showSnackbar(strings.settingsExportError(e.message ?: "Unknown"))
                                     }
                                 }
                             },
@@ -464,9 +484,27 @@ class SettingsScreen : Screen {
                             modifier = Modifier.clickable {
                                 scope.launch {
                                     try {
-                                        snackbarHostState.showSnackbar(strings.settingsImportHint)
+                                        val filePath = pickOpenFile("application/json")
+                                        if (filePath == null) {
+                                            snackbarHostState.showSnackbar(strings.actionCancel)
+                                            return@launch
+                                        }
+                                        val json = readFileContent(filePath)
+                                        if (json == null) {
+                                            snackbarHostState.showSnackbar(strings.settingsImportError("Cannot read file"))
+                                            return@launch
+                                        }
+                                        val export = exportManager.importFromJson(json)
+                                        if (export == null) {
+                                            snackbarHostState.showSnackbar(strings.settingsImportError("Invalid JSON format"))
+                                            return@launch
+                                        }
+                                        val importedKBs = export.knowledgeBases.size
+                                        val importedDecks = export.decks.size
+                                        val importedCards = export.cards.size
+                                        snackbarHostState.showSnackbar("Imported: $importedKBs KBs, $importedDecks decks, $importedCards cards")
                                     } catch (e: Exception) {
-                                        snackbarHostState.showSnackbar(strings.settingsImportError(e.message!!))
+                                        snackbarHostState.showSnackbar(strings.settingsImportError(e.message ?: "Unknown"))
                                     }
                                 }
                             },
@@ -537,6 +575,20 @@ class SettingsScreen : Screen {
                         Spacer(Modifier.height(spacing.md))
                         HorizontalDivider()
                         ListItem(
+                            headlineContent = { Text(strings.updateAvailable) },
+                            supportingContent = { Text(strings.updateCheckingDesc) },
+                            leadingContent = { Icon(Icons.Default.Refresh, contentDescription = null) },
+                            modifier = Modifier.clickable {
+                                isCheckingUpdate = true
+                                showUpdateDialog = true
+                                scope.launch {
+                                    updateInfo = updateManager.checkForUpdate()
+                                    isCheckingUpdate = false
+                                }
+                            },
+                        )
+                        HorizontalDivider()
+                        ListItem(
                             headlineContent = { Text(strings.settingsDeveloper) },
                             trailingContent = { Text("Brucegot9stars", style = MaterialTheme.typography.bodyMedium) },
                         )
@@ -569,6 +621,17 @@ class SettingsScreen : Screen {
                     label = strings.settingsCardCount,
                 )
             }
+        }
+
+        if (showUpdateDialog) {
+            UpdateCheckDialog(
+                updateInfo = updateInfo,
+                isChecking = isCheckingUpdate,
+                onDismiss = { showUpdateDialog = false },
+                onUpdate = {
+                    showUpdateDialog = false
+                },
+            )
         }
     }
 }

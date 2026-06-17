@@ -240,6 +240,18 @@ interface I18nStrings {
     val settingsAbout: String
     val settingsVersion: String
     val settingsAboutApp: String
+
+    val updateChecking: String
+    val updateCheckingDesc: String
+    val updateAvailable: String
+    val updateUpToDate: String
+    val updateUpToDateDesc: String
+    val updateCurrentVersion: String
+    val updateLatestVersion: String
+    val updateReleaseNotes: String
+    val updateDownload: String
+    val actionClose: String
+
     val settingsDeveloper: String
     val settingsLicense: String
     val settingsOpenSource: String
