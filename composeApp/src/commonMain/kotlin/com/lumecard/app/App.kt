@@ -2,9 +2,7 @@ package com.lumecard.app
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -16,6 +14,7 @@ import com.lumecard.app.ui.screens.dashboard.DashboardScreen
 import com.lumecard.app.ui.screens.settings.SettingsScreen
 import com.lumecard.app.ui.screens.settings.SettingsStateHolder
 import com.lumecard.app.ui.screens.stats.StatsScreen
+import com.lumecard.app.ui.screens.warehouse.WarehouseScreen
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.shared.repository.SettingsRepository
 import org.koin.compose.koinInject
@@ -23,6 +22,7 @@ import org.koin.compose.koinInject
 enum class BottomNavItem(val icon: ImageVector) {
     Dashboard(Icons.Default.Home),
     Stats(Icons.Default.DateRange),
+    Warehouse(Icons.Default.List),
     Settings(Icons.Default.Settings)
 }
 
@@ -50,6 +50,7 @@ fun App() {
                     val screen = when (currentTab) {
                         BottomNavItem.Dashboard -> DashboardScreen()
                         BottomNavItem.Stats -> StatsScreen()
+                        BottomNavItem.Warehouse -> WarehouseScreen()
                         BottomNavItem.Settings -> SettingsScreen()
                     }
                     navigator.replace(screen)
@@ -67,6 +68,7 @@ fun App() {
                         val label = when (item) {
                             BottomNavItem.Dashboard -> strings.navHome
                             BottomNavItem.Stats -> strings.navStats
+                            BottomNavItem.Warehouse -> strings.warehouseTitle
                             BottomNavItem.Settings -> strings.navSettings
                         }
                         Text(label)

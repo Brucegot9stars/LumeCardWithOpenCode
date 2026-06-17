@@ -325,6 +325,18 @@ interface I18nStrings {
     val fieldName: String
     val fieldDescription: String
 
+    val warehouseTitle: String
+    val warehouseSearch: String
+    val warehouseEmpty: String
+    val warehouseAdd: String
+    val warehouseCreateKB: String
+    val warehouseCreateDeck: String
+    val warehouseCreateCard: String
+    val warehouseEdit: String
+    val warehouseCardContent: String
+    val warehouseDeleteConfirm: String
+    val warehouseDeleteDesc: String
+
     val statsTitle: String
     val statsOverview: String
     val statsTotalCards: String

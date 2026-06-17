@@ -10,6 +10,7 @@ import com.lumecard.app.ui.screens.settings.SettingsStateHolder
 import com.lumecard.app.ui.screens.settings.SettingsViewModel
 import com.lumecard.app.ui.screens.stats.StatsViewModel
 import com.lumecard.app.ui.screens.study.StudyViewModel
+import com.lumecard.app.ui.screens.warehouse.WarehouseViewModel
 import com.lumecard.shared.data.ExportManager
 import com.lumecard.shared.di.sharedModule
 import org.koin.dsl.module
@@ -30,5 +31,6 @@ val appModule = module {
     factory { SettingsViewModel(get(), get()) }
     factory { KnowledgeBaseViewModel(get(), get()) }
     factory { LearningPlanViewModel(get(), get(), get()) }
+    factory { WarehouseViewModel(get(), get(), get()) }
 }
 
