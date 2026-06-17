@@ -269,7 +269,7 @@ class DashboardScreen : Screen {
         }
 
         Card(
-            modifier = modifier,
+            modifier = modifier.fillMaxHeight(),
             shape = radius.card,
             onClick = onClick,
             enabled = enabled,
