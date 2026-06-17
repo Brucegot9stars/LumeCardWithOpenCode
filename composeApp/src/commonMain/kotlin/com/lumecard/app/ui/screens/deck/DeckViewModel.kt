@@ -65,12 +65,16 @@ class DeckViewModel(
         }
     }
 
-    fun loadDecks(knowledgeBaseId: String = "default") {
-        currentKnowledgeBaseId = knowledgeBaseId
+    fun loadDecks(knowledgeBaseId: String? = null) {
+        currentKnowledgeBaseId = knowledgeBaseId ?: "default"
         screenModelScope.launch {
             _isLoading.value = true
             combine(deckRepository.getAll(), _sortConfig) { deckList, sort ->
-                val filtered = deckList.filter { it.knowledgeBaseId == knowledgeBaseId && it.deletedAt == null }
+                val filtered = if (knowledgeBaseId != null) {
+                    deckList.filter { it.knowledgeBaseId == knowledgeBaseId && it.deletedAt == null }
+                } else {
+                    deckList.filter { it.deletedAt == null }
+                }
                 sortDecks(filtered, sort)
             }.collect { sorted ->
                 _decks.value = sorted

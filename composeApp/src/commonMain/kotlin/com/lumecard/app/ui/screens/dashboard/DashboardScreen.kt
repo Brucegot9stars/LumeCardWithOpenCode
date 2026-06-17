@@ -162,6 +162,9 @@ class DashboardScreen : Screen {
                                     title = strings.dashManageDecks,
                                     icon = Icons.AutoMirrored.Filled.List,
                                     isPrimary = false,
+                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                    iconBackgroundColor = MaterialTheme.colorScheme.tertiary,
+                                    iconTint = MaterialTheme.colorScheme.onTertiary,
                                     onClick = { navigator.push(KnowledgeBaseScreen()) },
                                 )
                             }
@@ -241,23 +244,36 @@ class DashboardScreen : Screen {
         enabled: Boolean = true,
         icon: ImageVector,
         isPrimary: Boolean = false,
+        containerColor: Color = MaterialTheme.colorScheme.surface,
+        iconBackgroundColor: Color = MaterialTheme.colorScheme.primaryContainer,
+        iconTint: Color = MaterialTheme.colorScheme.onPrimaryContainer,
         onClick: () -> Unit,
     ) {
         val spacing = LumeCardTheme.spacing
         val radius = LumeCardTheme.radius
 
+        val bgColor = when {
+            !enabled -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            isPrimary -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+            else -> containerColor
+        }
+        val iconBg = when {
+            !enabled -> MaterialTheme.colorScheme.surfaceVariant
+            isPrimary -> MaterialTheme.colorScheme.primary
+            else -> iconBackgroundColor
+        }
+        val iconT = when {
+            !enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+            isPrimary -> MaterialTheme.colorScheme.onPrimary
+            else -> iconTint
+        }
+
         Card(
-            modifier = modifier.fillMaxHeight(),
+            modifier = modifier,
             shape = radius.card,
             onClick = onClick,
             enabled = enabled,
-            colors = CardDefaults.cardColors(
-                containerColor = when {
-                    !enabled -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                    isPrimary -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-                    else -> MaterialTheme.colorScheme.surface
-                },
-            ),
+            colors = CardDefaults.cardColors(containerColor = bgColor),
         ) {
             Column(
                 modifier = Modifier
@@ -269,11 +285,7 @@ class DashboardScreen : Screen {
             ) {
                 Surface(
                     shape = radius.pill,
-                    color = when {
-                        !enabled -> MaterialTheme.colorScheme.surfaceVariant
-                        isPrimary -> MaterialTheme.colorScheme.primary
-                        else -> MaterialTheme.colorScheme.primaryContainer
-                    },
+                    color = iconBg,
                     modifier = Modifier.size(40.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
@@ -281,11 +293,7 @@ class DashboardScreen : Screen {
                             icon,
                             contentDescription = null,
                             modifier = Modifier.size(20.dp),
-                            tint = when {
-                                !enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                                isPrimary -> MaterialTheme.colorScheme.onPrimary
-                                else -> MaterialTheme.colorScheme.onPrimaryContainer
-                            },
+                            tint = iconT,
                         )
                     }
                 }
