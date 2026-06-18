@@ -13,20 +13,21 @@ import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.shared.AppVersion
 import com.lumecard.shared.data.UpdateInfo
+import com.lumecard.shared.data.UpdateState
 import org.koin.compose.koinInject
 
 @Composable
 fun UpdateCheckDialog(
-    updateInfo: UpdateInfo?,
-    isChecking: Boolean,
+    updateState: UpdateState,
     onDismiss: () -> Unit,
+    onCheckUpdate: () -> Unit,
     onUpdate: () -> Unit,
 ) {
     val strings = koinInject<I18nManager>().strings
     val spacing = LumeCardTheme.spacing
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (updateState !is UpdateState.Downloading) onDismiss() },
         icon = {
             Icon(
                 Icons.Default.Refresh,
@@ -37,11 +38,15 @@ fun UpdateCheckDialog(
         },
         title = {
             Text(
-                when {
-                    isChecking -> strings.updateChecking
-                    updateInfo?.hasUpdate == true -> strings.updateAvailable
-                    updateInfo != null -> strings.updateUpToDate
-                    else -> strings.settingsCheckUpdate
+                when (updateState) {
+                    is UpdateState.Checking -> strings.updateChecking
+                    is UpdateState.UpdateAvailable -> strings.updateAvailable
+                    is UpdateState.UpToDate -> strings.updateUpToDate
+                    is UpdateState.Error -> strings.updateError
+                    is UpdateState.Downloading -> strings.updateDownloading
+                    is UpdateState.Installing -> strings.updateInstalling
+                    is UpdateState.Complete -> strings.updateComplete
+                    is UpdateState.Idle -> strings.settingsCheckUpdate
                 },
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
@@ -49,48 +54,107 @@ fun UpdateCheckDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                if (isChecking) {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                    Spacer(Modifier.height(spacing.sm))
-                    Text(strings.updateCheckingDesc, style = MaterialTheme.typography.bodyMedium)
-                } else if (updateInfo?.hasUpdate == true) {
-                    Text(
-                        "${strings.updateCurrentVersion}: ${AppVersion.VERSION_NAME}",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Text(
-                        "${strings.updateLatestVersion}: ${updateInfo.version}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    if (updateInfo.releaseNotes.isNotBlank()) {
+                when (updateState) {
+                    is UpdateState.Checking -> {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                         Spacer(Modifier.height(spacing.sm))
-                        Text(strings.updateReleaseNotes, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                        Text(strings.updateCheckingDesc, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    is UpdateState.UpdateAvailable -> {
                         Text(
-                            updateInfo.releaseNotes.take(500),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            "${strings.updateCurrentVersion}: ${AppVersion.VERSION_NAME}",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            "${strings.updateLatestVersion}: ${updateState.info.version}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        if (updateState.info.publishedAt.isNotBlank()) {
+                            Text(
+                                "${strings.updatePublishedAt}: ${updateState.info.publishedAt.take(10)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (updateState.info.releaseNotes.isNotBlank()) {
+                            Spacer(Modifier.height(spacing.sm))
+                            Text(strings.updateReleaseNotes, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                updateState.info.releaseNotes.take(500),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    is UpdateState.UpToDate -> {
+                        Text(strings.updateUpToDateDesc, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "${strings.updateCurrentVersion}: ${AppVersion.VERSION_NAME}",
+                            style = MaterialTheme.typography.bodyMedium,
                         )
                     }
-                } else if (updateInfo != null) {
-                    Text(strings.updateUpToDateDesc, style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        "${strings.updateCurrentVersion}: ${AppVersion.VERSION_NAME}",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+                    is UpdateState.Error -> {
+                        Text(updateState.message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+                        Spacer(Modifier.height(spacing.sm))
+                        Text(
+                            "${strings.updateCurrentVersion}: ${AppVersion.VERSION_NAME}",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                    is UpdateState.Downloading -> {
+                        LinearProgressIndicator(
+                            progress = { updateState.progress },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(Modifier.height(spacing.sm))
+                        Text(
+                            "${strings.updateDownloading} ${(updateState.progress * 100).toInt()}%",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                    is UpdateState.Installing -> {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        Spacer(Modifier.height(spacing.sm))
+                        Text(strings.updateInstalling, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    is UpdateState.Complete -> {
+                        Text(strings.updateCompleteDesc, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    is UpdateState.Idle -> {
+                        Text(
+                            "${strings.updateCurrentVersion}: ${AppVersion.VERSION_NAME}",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
                 }
             }
         },
         confirmButton = {
-            if (updateInfo?.hasUpdate == true) {
-                Button(onClick = onUpdate) {
-                    Text(strings.updateDownload)
+            when (updateState) {
+                is UpdateState.Idle, is UpdateState.UpToDate, is UpdateState.Error -> {
+                    TextButton(onClick = onCheckUpdate) {
+                        Text(strings.settingsCheckUpdate)
+                    }
                 }
+                is UpdateState.UpdateAvailable -> {
+                    Button(onClick = onUpdate) {
+                        Text(strings.updateDownload)
+                    }
+                }
+                is UpdateState.Complete -> {
+                    TextButton(onClick = onDismiss) {
+                        Text(strings.actionClose)
+                    }
+                }
+                else -> {}
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(strings.actionClose)
+            if (updateState !is UpdateState.Downloading) {
+                TextButton(onClick = onDismiss) {
+                    Text(strings.actionClose)
+                }
             }
         },
     )

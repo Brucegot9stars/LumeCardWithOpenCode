@@ -253,6 +253,11 @@ interface I18nStrings {
     val updateError: String
     val actionClose: String
     val settingsCheckUpdate: String
+    val updateDownloading: String
+    val updateInstalling: String
+    val updateComplete: String
+    val updateCompleteDesc: String
+    val updatePublishedAt: String
 
     val settingsDeveloper: String
     val settingsLicense: String

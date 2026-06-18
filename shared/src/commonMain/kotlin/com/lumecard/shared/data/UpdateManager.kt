@@ -3,23 +3,45 @@ package com.lumecard.shared.data
 import com.lumecard.shared.AppVersion
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
-import kotlinx.datetime.Clock
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
 
 data class UpdateInfo(
     val version: String,
     val downloadUrl: String,
     val releaseNotes: String,
     val publishedAt: String,
-    val hasUpdate: Boolean
+    val hasUpdate: Boolean,
+    val assets: List<UpdateAsset> = emptyList()
 )
+
+data class UpdateAsset(
+    val name: String,
+    val downloadUrl: String,
+    val size: Long
+)
+
+sealed class UpdateState {
+    data object Idle : UpdateState()
+    data object Checking : UpdateState()
+    data class UpdateAvailable(val info: UpdateInfo) : UpdateState()
+    data object UpToDate : UpdateState()
+    data class Error(val message: String) : UpdateState()
+    data class Downloading(val progress: Float) : UpdateState()
+    data object Installing : UpdateState()
+    data object Complete : UpdateState()
+}
 
 class UpdateManager(
     private val client: HttpClient
 ) {
     companion object {
         private const val RELEASES_URL = "https://api.github.com/repos/Brucegot9stars/LumeCardWithOpenCode/releases/latest"
+        private const val ALL_RELEASES_URL = "https://api.github.com/repos/Brucegot9stars/LumeCardWithOpenCode/releases"
     }
 
     suspend fun checkForUpdate(): UpdateInfo? {
@@ -39,15 +61,61 @@ class UpdateManager(
             val currentVersion = AppVersion.VERSION_NAME
             val hasUpdate = compareVersions(latestVersion, currentVersion) > 0
 
+            val assets = parseAssets(body)
+
             UpdateInfo(
                 version = latestVersion,
-                downloadUrl = htmlUrl?.replace("github.com", "api.github.com/repos")?.replace("/releases/", "/releases/download/") ?: "",
+                downloadUrl = htmlUrl ?: "",
                 releaseNotes = bodyText ?: "",
                 publishedAt = publishedAt ?: "",
-                hasUpdate = hasUpdate
+                hasUpdate = hasUpdate,
+                assets = assets
             )
         } catch (e: Exception) {
             null
+        }
+    }
+
+    suspend fun getReleaseHistory(): List<UpdateInfo> {
+        return try {
+            val response = client.get(ALL_RELEASES_URL)
+            if (!response.status.isSuccess()) return emptyList()
+
+            val body = response.bodyAsText()
+            parseReleases(body)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun downloadApk(
+        url: String,
+        destFile: File,
+        onProgress: (Float) -> Unit
+    ): Boolean {
+        return try {
+            withContext(Dispatchers.IO) {
+                val response = client.get(url)
+                if (!response.status.isSuccess()) return@withContext false
+
+                val channel = response.bodyAsChannel()
+                destFile.parentFile?.mkdirs()
+                destFile.outputStream().use { output ->
+                    val buffer = ByteArray(8192)
+                    var bytesRead: Int
+                    var totalRead = 0L
+                    while (true) {
+                        bytesRead = channel.readAvailable(buffer, 0, buffer.size)
+                        if (bytesRead == -1) break
+                        output.write(buffer, 0, bytesRead)
+                        totalRead += bytesRead
+                    }
+                    onProgress(1f)
+                }
+                true
+            }
+        } catch (e: Exception) {
+            false
         }
     }
 
@@ -67,5 +135,33 @@ class UpdateManager(
         val pattern = "\"$key\"\\s*:\\s*\"([^\"]*?)\""
         val regex = Regex(pattern)
         return regex.find(json)?.groupValues?.get(1)
+    }
+
+    private fun parseAssets(json: String): List<UpdateAsset> {
+        val assets = mutableListOf<UpdateAsset>()
+        val assetPattern = """\{[^}]*"name"\s*:\s*"([^"]*?)"[^}]*"browser_download_url"\s*:\s*"([^"]*?)"[^}]*"size"\s*:\s*(\d+)[^}]*\}""".toRegex()
+        assetPattern.findAll(json).forEach { match ->
+            assets.add(UpdateAsset(
+                name = match.groupValues[1],
+                downloadUrl = match.groupValues[2],
+                size = match.groupValues[3].toLongOrNull() ?: 0
+            ))
+        }
+        return assets
+    }
+
+    private fun parseReleases(json: String): List<UpdateInfo> {
+        val releases = mutableListOf<UpdateInfo>()
+        val releasePattern = """\{[^}]*"tag_name"\s*:\s*"([^"]*?)"[^}]*"html_url"\s*:\s*"([^"]*?)"[^}]*"body"\s*:\s*"((?:[^"\\]|\\.)*)"[^}]*"published_at"\s*:\s*"([^"]*?)"[^}]*\}""".toRegex()
+        releasePattern.findAll(json).forEach { match ->
+            releases.add(UpdateInfo(
+                version = match.groupValues[1].removePrefix("v"),
+                downloadUrl = match.groupValues[2],
+                releaseNotes = match.groupValues[3].replace("\\n", "\n").replace("\\\"", "\""),
+                publishedAt = match.groupValues[4],
+                hasUpdate = false
+            ))
+        }
+        return releases
     }
 }

@@ -19,6 +19,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.shared.AppVersion
 import com.lumecard.shared.data.ExportManager
 import com.lumecard.shared.data.UpdateManager
+import com.lumecard.shared.data.UpdateState
 import com.lumecard.shared.data.WebDavConfigManager
 import com.lumecard.shared.domain.scheduler.ReviewMode
 import com.lumecard.shared.repository.CardRepository
@@ -69,8 +70,7 @@ class SettingsScreen : Screen {
         var showGoalDialog by remember { mutableStateOf(false) }
         var goalInput by remember { mutableStateOf("") }
         var showUpdateDialog by remember { mutableStateOf(false) }
-        var isCheckingUpdate by remember { mutableStateOf(false) }
-        var updateInfo by remember { mutableStateOf<com.lumecard.shared.data.UpdateInfo?>(null) }
+        var updateState by remember { mutableStateOf<UpdateState>(UpdateState.Idle) }
 
         LaunchedEffect(Unit) {
             settingsViewModel.loadSettings()
@@ -579,12 +579,17 @@ class SettingsScreen : Screen {
                             supportingContent = { Text("v${AppVersion.VERSION_NAME}") },
                             leadingContent = { Icon(Icons.Default.Refresh, contentDescription = null) },
                             modifier = Modifier.clickable {
-                                isCheckingUpdate = true
-                                updateInfo = null
+                                updateState = UpdateState.Checking
                                 showUpdateDialog = true
                                 scope.launch {
-                                    updateInfo = updateManager.checkForUpdate()
-                                    isCheckingUpdate = false
+                                    val info = updateManager.checkForUpdate()
+                                    updateState = if (info?.hasUpdate == true) {
+                                        UpdateState.UpdateAvailable(info)
+                                    } else if (info != null) {
+                                        UpdateState.UpToDate
+                                    } else {
+                                        UpdateState.Error(strings.updateError)
+                                    }
                                 }
                             },
                         )
@@ -626,11 +631,46 @@ class SettingsScreen : Screen {
 
         if (showUpdateDialog) {
             UpdateCheckDialog(
-                updateInfo = updateInfo,
-                isChecking = isCheckingUpdate,
+                updateState = updateState,
                 onDismiss = { showUpdateDialog = false },
+                onCheckUpdate = {
+                    updateState = UpdateState.Checking
+                    scope.launch {
+                        val info = updateManager.checkForUpdate()
+                        updateState = if (info?.hasUpdate == true) {
+                            UpdateState.UpdateAvailable(info)
+                        } else if (info != null) {
+                            UpdateState.UpToDate
+                        } else {
+                            UpdateState.Error(strings.updateError)
+                        }
+                    }
+                },
                 onUpdate = {
-                    showUpdateDialog = false
+                    val info = (updateState as? UpdateState.UpdateAvailable)?.info ?: return@UpdateCheckDialog
+                    scope.launch {
+                        updateState = UpdateState.Downloading(0f)
+                        try {
+                            val apkAsset = info.assets.firstOrNull { it.name.endsWith(".apk") }
+                            if (apkAsset == null) {
+                                updateState = UpdateState.Error(strings.updateError)
+                                return@launch
+                            }
+                            val destFile = java.io.File(java.io.File(System.getProperty("java.io.tmpdir")), "lumecard_update.apk")
+                            val success = updateManager.downloadApk(apkAsset.downloadUrl, destFile) { progress ->
+                                updateState = UpdateState.Downloading(progress)
+                            }
+                            if (success) {
+                                updateState = UpdateState.Installing
+                                kotlinx.coroutines.delay(1000)
+                                updateState = UpdateState.Complete
+                            } else {
+                                updateState = UpdateState.Error(strings.updateError)
+                            }
+                        } catch (e: Exception) {
+                            updateState = UpdateState.Error(e.message ?: strings.updateError)
+                        }
+                    }
                 },
             )
         }
