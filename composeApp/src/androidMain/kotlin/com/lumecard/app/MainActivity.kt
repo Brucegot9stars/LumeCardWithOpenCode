@@ -13,7 +13,8 @@ import org.koin.core.context.startKoin
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        AndroidContextHolder.context = this
+        AndroidContextHolder.context = applicationContext
+        FilePickerState.activity = this
         if (GlobalContext.getOrNull() == null) {
             startKoin { modules(appModule) }
         }
@@ -26,11 +27,11 @@ class MainActivity : ComponentActivity() {
     @Deprecated("Use registerForActivityResult instead", ReplaceWith(""))
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (resultCode == RESULT_OK) {
-            val uri = data?.data?.toString()
-            FilePickerState.onResult(uri)
-        } else {
-            FilePickerState.onResult(null)
+        when (requestCode) {
+            1001, 1002 -> {
+                val uri = if (resultCode == RESULT_OK) data?.data?.toString() else null
+                FilePickerState.onResult(uri)
+            }
         }
     }
 }

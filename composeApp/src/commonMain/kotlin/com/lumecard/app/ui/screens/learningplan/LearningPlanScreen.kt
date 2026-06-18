@@ -41,6 +41,7 @@ class LearningPlanScreen(
         LaunchedEffect(editPlanId) {
             if (editPlanId != null) {
                 val plan = viewModel.plans.value.find { it.id == editPlanId }
+                    ?: viewModel.getPlanById(editPlanId)
                 if (plan != null) {
                     name = plan.name
                     description = plan.description ?: ""

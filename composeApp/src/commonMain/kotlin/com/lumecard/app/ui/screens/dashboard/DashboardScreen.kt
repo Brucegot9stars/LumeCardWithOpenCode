@@ -59,6 +59,8 @@ class DashboardScreen : Screen {
         val kbCount by viewModel.kbCount.collectAsState()
         val activePlanCount by viewModel.activePlanCount.collectAsState()
 
+        LaunchedEffect(Unit) { viewModel.loadStats() }
+
         val firstStudyableDeck = decksWithCount.firstOrNull { it.cardCount > 0 }?.deck
         val studyableCount = decksWithCount.count { it.cardCount > 0 }
         val totalCards = decksWithCount.sumOf { it.cardCount }
@@ -118,7 +120,7 @@ class DashboardScreen : Screen {
                                 // Stats column
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        " /  today",
+                                        "${todayReviews} / ${dailyGoal}",
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.SemiBold,
                                     )
@@ -480,7 +482,6 @@ private fun AnimatedItem(
 ) {
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(delayMs.toLong())
         visible = true
     }
     AnimatedVisibility(

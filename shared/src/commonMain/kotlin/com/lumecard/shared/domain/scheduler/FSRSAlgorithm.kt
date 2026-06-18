@@ -157,7 +157,7 @@ class FSRSAlgorithm(
             Rating.AGAIN -> 1
             Rating.HARD -> max(1, (stability * w[15]).toInt())
             Rating.GOOD -> max(1, (stability * w[16]).toInt())
-            Rating.EASY -> max(1, (stability * w[16]).toInt())
+            Rating.EASY -> max(1, (stability * w[16] * 1.3).toInt())
         }
     }
 

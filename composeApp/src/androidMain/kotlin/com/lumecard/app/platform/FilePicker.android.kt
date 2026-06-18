@@ -1,6 +1,5 @@
 package com.lumecard.app.platform
 
-import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import com.lumecard.shared.database.AndroidContextHolder
@@ -8,6 +7,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
 object FilePickerState {
+    var activity: android.app.Activity? = null
     var waitingContinuation: kotlin.coroutines.Continuation<String?>? = null
 
     fun onResult(uri: String?) {
@@ -18,9 +18,12 @@ object FilePickerState {
 
 actual suspend fun pickSaveFile(suggestedName: String, mimeType: String): String? {
     return suspendCancellableCoroutine { cont ->
+        val prev = FilePickerState.waitingContinuation
+        if (prev != null) prev.resume(null)
+        cont.invokeOnCancellation { FilePickerState.waitingContinuation = null }
         FilePickerState.waitingContinuation = cont
         try {
-            val activity = AndroidContextHolder.context as? Activity
+            val activity = FilePickerState.activity
             if (activity == null) {
                 cont.resume(null)
                 return@suspendCancellableCoroutine
@@ -39,9 +42,12 @@ actual suspend fun pickSaveFile(suggestedName: String, mimeType: String): String
 
 actual suspend fun pickOpenFile(mimeType: String): String? {
     return suspendCancellableCoroutine { cont ->
+        val prev = FilePickerState.waitingContinuation
+        if (prev != null) prev.resume(null)
+        cont.invokeOnCancellation { FilePickerState.waitingContinuation = null }
         FilePickerState.waitingContinuation = cont
         try {
-            val activity = AndroidContextHolder.context as? Activity
+            val activity = FilePickerState.activity
             if (activity == null) {
                 cont.resume(null)
                 return@suspendCancellableCoroutine
@@ -77,9 +83,9 @@ actual fun writeFileContent(path: String, content: String): Boolean {
         val context = AndroidContextHolder.context ?: return false
         val uri = Uri.parse(path)
         if (uri.scheme == "content" || uri.scheme == "file") {
-            context.contentResolver.openOutputStream(uri, "wt")?.use { os ->
-                os.write(content.toByteArray(Charsets.UTF_8))
-            }
+            val os = context.contentResolver.openOutputStream(uri, "wt")
+                ?: return false
+            os.use { it.write(content.toByteArray(Charsets.UTF_8)) }
             true
         } else {
             val file = java.io.File(path)

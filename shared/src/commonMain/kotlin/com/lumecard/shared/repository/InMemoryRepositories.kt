@@ -75,7 +75,7 @@ class InMemoryCardRepository : CardRepository {
         val now = Clock.System.now()
         return cards.map { list ->
             list.filter { card ->
-                card.nextReviewAt?.let { it <= now } ?: true
+                card.nextReviewAt != null && card.nextReviewAt!! <= now
             }
         }
     }
