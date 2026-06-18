@@ -300,6 +300,8 @@ interface I18nStrings {
     val settingsSyncScopeSettings: String
     val settingsSyncScopeData: String
     val settingsSyncNow: String
+    val settingsSyncData: String
+    val settingsSyncConfig: String
     val settingsRestoreFromCloud: String
     val settingsRestoreConfirm: String
     val settingsRestoreConfirmDesc: String

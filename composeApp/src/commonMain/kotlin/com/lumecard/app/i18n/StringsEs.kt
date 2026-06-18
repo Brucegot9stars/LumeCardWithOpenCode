@@ -295,6 +295,8 @@ object EsStrings : I18nStrings {
     override val settingsSyncScopeSettings = "Solo configuración"
     override val settingsSyncScopeData = "Solo datos"
     override val settingsSyncNow = "Sincronizar ahora"
+    override val settingsSyncData = "Sincronizar datos"
+    override val settingsSyncConfig = "Sincronizar configuración"
     override val settingsRestoreFromCloud = "Restaurar desde la nube"
     override val settingsRestoreConfirm = "Confirmar restauración"
     override val settingsRestoreConfirmDesc = "Esto sobrescribirá todos los datos locales con datos de la nube. Esta acción no se puede deshacer."

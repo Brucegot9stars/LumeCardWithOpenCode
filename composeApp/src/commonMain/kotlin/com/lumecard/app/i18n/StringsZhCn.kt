@@ -295,6 +295,8 @@ object ZhCnStrings : I18nStrings {
     override val settingsSyncScopeSettings = "仅同步配置"
     override val settingsSyncScopeData = "仅同步数据"
     override val settingsSyncNow = "立即同步"
+    override val settingsSyncData = "同步数据"
+    override val settingsSyncConfig = "同步配置"
     override val settingsRestoreFromCloud = "从云端恢复"
     override val settingsRestoreConfirm = "确认恢复"
     override val settingsRestoreConfirmDesc = "将用云端数据完全覆盖本地数据，此操作不可撤销。"

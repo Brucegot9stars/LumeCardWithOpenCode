@@ -295,6 +295,8 @@ object ZhTwStrings : I18nStrings {
     override val settingsSyncScopeSettings = "僅同步設定"
     override val settingsSyncScopeData = "僅同步資料"
     override val settingsSyncNow = "立即同步"
+    override val settingsSyncData = "同步資料"
+    override val settingsSyncConfig = "同步設定"
     override val settingsRestoreFromCloud = "從雲端恢復"
     override val settingsRestoreConfirm = "確認恢復"
     override val settingsRestoreConfirmDesc = "將用雲端資料完全覆蓋本地資料，此操作不可撤銷。"

@@ -463,7 +463,7 @@ class SettingsScreen : Screen {
                                         val knowledgeBases = knowledgeBaseRepository.getAll().first()
                                         val decks = deckRepository.getAll().first()
                                         val allCards = cardRepository.getAll().first()
-                                        val json = exportManager.exportToJson(knowledgeBases, decks, allCards)
+                                        val json = exportManager.exportData(knowledgeBases, decks, allCards)
                                         val success = writeFileContent(filePath, json)
                                         if (success) {
                                             snackbarHostState.showSnackbar(strings.settingsExportSuccess(json.length))
@@ -494,7 +494,7 @@ class SettingsScreen : Screen {
                                             snackbarHostState.showSnackbar(strings.settingsImportError("Cannot read file"))
                                             return@launch
                                         }
-                                        val export = exportManager.importFromJson(json)
+                                        val export = exportManager.importData(json)
                                         if (export == null) {
                                             snackbarHostState.showSnackbar(strings.settingsImportError("Invalid JSON format"))
                                             return@launch

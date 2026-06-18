@@ -295,6 +295,8 @@ object EnStrings : I18nStrings {
     override val settingsSyncScopeSettings = "Settings Only"
     override val settingsSyncScopeData = "Data Only"
     override val settingsSyncNow = "Sync Now"
+    override val settingsSyncData = "Sync Data"
+    override val settingsSyncConfig = "Sync Config"
     override val settingsRestoreFromCloud = "Restore from Cloud"
     override val settingsRestoreConfirm = "Confirm Restore"
     override val settingsRestoreConfirmDesc = "This will overwrite all local data with cloud data. This cannot be undone."

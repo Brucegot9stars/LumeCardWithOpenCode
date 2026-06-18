@@ -32,9 +32,6 @@ import com.lumecard.shared.data.toDeck
 import com.lumecard.shared.data.toKnowledgeBase
 import com.lumecard.shared.data.toLearningPlan
 import com.lumecard.shared.data.toReviewLog
-import com.lumecard.shared.model.Card
-import com.lumecard.shared.model.CardType
-import com.lumecard.shared.model.Deck
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
 import com.lumecard.shared.repository.LearningPlanRepository
@@ -45,7 +42,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import org.koin.compose.koinInject
 
 class WebDavConfigScreen : Screen {
@@ -84,18 +80,15 @@ class WebDavConfigScreen : Screen {
         var syncStatus by remember { mutableStateOf("") }
         var deleteConfirmId by remember { mutableStateOf<String?>(null) }
         var showRestoreConfirm by remember { mutableStateOf(false) }
-        var syncScope by remember { mutableStateOf(SyncScope.ALL) }
         var autoSyncEnabled by remember { mutableStateOf(false) }
         var autoSyncInterval by remember { mutableStateOf(30) }
         var showIntervalDropdown by remember { mutableStateOf(false) }
-        var showScopeDropdown by remember { mutableStateOf(false) }
         var defaultConfig by remember { mutableStateOf<WebDavConfig?>(null) }
 
         val localeCode = i18nManager.currentLocale.code
         val providerPresets = WebDavProviders.all.map { provider ->
             Triple(WebDavProviders.getName(provider, localeCode), provider.urlTemplate, provider.id)
         }
-        val customPreset = Triple(strings.webdavProviderCustom, "", "custom")
 
         fun reloadConfigs() {
             scope.launch {
@@ -176,7 +169,6 @@ class WebDavConfigScreen : Screen {
 
                 // Config list or editing form
                 if (isEditing) {
-                    // Editing / Adding config
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = radius.card,
@@ -353,7 +345,6 @@ class WebDavConfigScreen : Screen {
                         }
                     }
                 } else {
-                    // Config list
                     if (configs.isEmpty()) {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -478,53 +469,6 @@ class WebDavConfigScreen : Screen {
                     }
                 }
 
-                // Sync Scope
-                if (!isEditing) {
-                    Text(
-                        strings.settingsSyncScope,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
-                    )
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = radius.card,
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                        ),
-                    ) {
-                        Column {
-                            SyncScope.entries.forEach { scope ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { syncScope = scope }
-                                        .padding(horizontal = spacing.md, vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    RadioButton(
-                                        selected = syncScope == scope,
-                                        onClick = { syncScope = scope },
-                                    )
-                                    Spacer(modifier = Modifier.width(spacing.sm))
-                                    Text(
-                                        when (scope) {
-                                            SyncScope.ALL -> strings.settingsSyncScopeAll
-                                            SyncScope.SETTINGS -> strings.settingsSyncScopeSettings
-                                            SyncScope.DATA -> strings.settingsSyncScopeData
-                                        },
-                                        style = MaterialTheme.typography.bodyMedium,
-                                    )
-                                }
-                                if (scope != SyncScope.DATA) {
-                                    HorizontalDivider(modifier = Modifier.padding(horizontal = spacing.md))
-                                }
-                            }
-                        }
-                    }
-                }
-
                 // Auto Sync
                 if (!isEditing) {
                     Text(
@@ -628,95 +572,72 @@ class WebDavConfigScreen : Screen {
                         )
                     }
 
+                    // Sync Now (data + config)
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                isSyncing = true
+                                syncStatus = strings.settingsSyncing
+                                try {
+                                    val config = defaultConfig ?: return@launch
+                                    withContext(Dispatchers.IO) {
+                                        val localKbs = knowledgeBaseRepository.getAll().first()
+                                        val localDecks = deckRepository.getAll().first()
+                                        val localCards = cardRepository.getAll().first()
+                                        val localLogs = reviewLogRepository.getAll().first()
+                                        val localPlans = planRepository.getAll().first()
+                                        val dataJson = exportManager.exportData(localKbs, localDecks, localCards, localLogs, localPlans)
+                                        syncManager.uploadData(config, dataJson).getOrThrow()
+
+                                        val settings = settingsRepository.getAll()
+                                        val configJson = exportManager.exportConfig(settings)
+                                        syncManager.uploadConfig(config, configJson).getOrThrow()
+
+                                        webDavConfigManager.updateLastSync(config.id)
+                                    }
+                                    syncStatus = strings.settingsSyncSuccess(0)
+                                    snackbarHostState.showSnackbar(strings.settingsSyncSuccess(0))
+                                    reloadConfigs()
+                                } catch (e: Exception) {
+                                    syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
+                                    snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
+                                } finally {
+                                    isSyncing = false
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isSyncing,
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(spacing.sm))
+                        Text(strings.settingsSyncNow)
+                    }
+
+                    // Sync Data / Sync Config
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(spacing.sm),
                     ) {
-                        Button(
+                        OutlinedButton(
                             onClick = {
                                 scope.launch {
                                     isSyncing = true
                                     syncStatus = strings.settingsSyncing
                                     try {
                                         val config = defaultConfig ?: return@launch
-                                        val syncResult = withContext(Dispatchers.IO) {
-                                        val localKbs = knowledgeBaseRepository.getAll().first()
-                                        val localDecks = deckRepository.getAll().first()
-                                        val localCards = cardRepository.getAll().first()
-                                        val localLogs = reviewLogRepository.getAll().first()
-                                        val localPlans = planRepository.getAll().first()
-                                        val settings = settingsRepository.getAll()
-                                        syncManager.performSync(
-                                            config = config,
-                                            localKnowledgeBases = localKbs,
-                                            localDecks = localDecks,
-                                            localCards = localCards,
-                                            localReviewLogs = localLogs,
-                                            localLearningPlans = localPlans,
-                                            localSettings = settings,
-                                            exportManager = exportManager,
-                                        )
+                                        withContext(Dispatchers.IO) {
+                                            val localKbs = knowledgeBaseRepository.getAll().first()
+                                            val localDecks = deckRepository.getAll().first()
+                                            val localCards = cardRepository.getAll().first()
+                                            val localLogs = reviewLogRepository.getAll().first()
+                                            val localPlans = planRepository.getAll().first()
+                                            val dataJson = exportManager.exportData(localKbs, localDecks, localCards, localLogs, localPlans)
+                                            syncManager.uploadData(config, dataJson).getOrThrow()
+                                            webDavConfigManager.updateLastSync(config.id)
                                         }
-                                        when (syncResult) {
-                                            is com.lumecard.shared.data.SyncResult.Success -> {
-                                                val export = syncResult.mergedExport
-                                                if (export != null) {
-                                                    withContext(Dispatchers.IO) {
-                                                        for (kb in export.knowledgeBases) {
-                                                            knowledgeBaseRepository.insert(kb.toKnowledgeBase())
-                                                        }
-                                                        for (deck in export.decks) {
-                                                            deckRepository.insert(deck.toDeck())
-                                                        }
-                                                        for (card in export.cards) {
-                                                            cardRepository.insert(card.toCard())
-                                                        }
-                                                        for (log in export.reviewLogs) {
-                                                            reviewLogRepository.insert(log.toReviewLog())
-                                                        }
-                                                        for (plan in export.learningPlans) {
-                                                            planRepository.insert(plan.toLearningPlan())
-                                                        }
-                                                    }
-                                                }
-                                                val msg = strings.settingsSyncSuccess(syncResult.decksSynced)
-                                                syncStatus = msg
-                                                snackbarHostState.showSnackbar(msg)
-                                                reloadConfigs()
-                                            }
-                                            is com.lumecard.shared.data.SyncResult.RemoteImport -> {
-                                                val export = syncResult.export
-                                                withContext(Dispatchers.IO) {
-                                                    for (kb in export.knowledgeBases) {
-                                                        knowledgeBaseRepository.insert(kb.toKnowledgeBase())
-                                                    }
-                                                    for (deck in export.decks) {
-                                                        deckRepository.insert(deck.toDeck())
-                                                    }
-                                                    for (card in export.cards) {
-                                                        cardRepository.insert(card.toCard())
-                                                    }
-                                                    for (log in export.reviewLogs) {
-                                                        reviewLogRepository.insert(log.toReviewLog())
-                                                    }
-                                                    for (plan in export.learningPlans) {
-                                                        planRepository.insert(plan.toLearningPlan())
-                                                    }
-                                                }
-                                                val msg = strings.settingsSyncSuccess(export.decks.size)
-                                                syncStatus = msg
-                                                snackbarHostState.showSnackbar(msg)
-                                                reloadConfigs()
-                                            }
-                                            is com.lumecard.shared.data.SyncResult.Skipped -> {
-                                                syncStatus = syncResult.reason
-                                            }
-                                            is com.lumecard.shared.data.SyncResult.Error -> {
-                                                val msg = strings.settingsSyncError(syncResult.message)
-                                                syncStatus = msg
-                                                snackbarHostState.showSnackbar(msg)
-                                            }
-                                        }
+                                        syncStatus = strings.settingsSyncSuccess(0)
+                                        snackbarHostState.showSnackbar(strings.settingsSyncSuccess(0))
                                     } catch (e: Exception) {
                                         syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
                                         snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
@@ -728,12 +649,39 @@ class WebDavConfigScreen : Screen {
                             modifier = Modifier.weight(1f),
                             enabled = !isSyncing,
                         ) {
-                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(spacing.sm))
-                            Text(strings.settingsSyncNow)
+                            Text(strings.settingsSyncData)
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                scope.launch {
+                                    isSyncing = true
+                                    syncStatus = strings.settingsSyncing
+                                    try {
+                                        val config = defaultConfig ?: return@launch
+                                        withContext(Dispatchers.IO) {
+                                            val settings = settingsRepository.getAll()
+                                            val configJson = exportManager.exportConfig(settings)
+                                            syncManager.uploadConfig(config, configJson).getOrThrow()
+                                            webDavConfigManager.updateLastSync(config.id)
+                                        }
+                                        syncStatus = strings.settingsSyncSuccess(0)
+                                        snackbarHostState.showSnackbar(strings.settingsSyncSuccess(0))
+                                    } catch (e: Exception) {
+                                        syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
+                                        snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
+                                    } finally {
+                                        isSyncing = false
+                                    }
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = !isSyncing,
+                        ) {
+                            Text(strings.settingsSyncConfig)
                         }
                     }
 
+                    // Restore from cloud
                     OutlinedButton(
                         onClick = { showRestoreConfirm = true },
                         modifier = Modifier.fillMaxWidth(),
@@ -793,9 +741,8 @@ class WebDavConfigScreen : Screen {
                                     val remoteResult = syncManager.download(config)
                                     var restoredDecks = 0
                                     if (remoteResult.isSuccess) {
-                                        val remote = exportManager.importFromJson(remoteResult.getOrThrow())
+                                        val remote = exportManager.importData(remoteResult.getOrThrow())
                                         if (remote != null) {
-                                            // Clear existing data
                                             for (kb in knowledgeBaseRepository.getAll().first()) {
                                                 knowledgeBaseRepository.delete(kb.id)
                                             }
@@ -805,22 +752,21 @@ class WebDavConfigScreen : Screen {
                                             for (card in cardRepository.getAll().first()) {
                                                 cardRepository.delete(card.id)
                                             }
-                                            // Restore KnowledgeBases
                                             for (kb in remote.knowledgeBases) {
                                                 knowledgeBaseRepository.insert(kb.toKnowledgeBase())
                                             }
-                                            // Restore Decks
                                             for (deck in remote.decks) {
                                                 deckRepository.insert(deck.toDeck())
                                                 restoredDecks++
                                             }
-                                            // Restore Cards
                                             for (card in remote.cards) {
                                                 cardRepository.insert(card.toCard())
                                             }
-                                            // Restore ReviewLogs
                                             for (log in remote.reviewLogs) {
                                                 reviewLogRepository.insert(log.toReviewLog())
+                                            }
+                                            for (plan in remote.learningPlans) {
+                                                planRepository.insert(plan.toLearningPlan())
                                             }
                                         }
                                     }
@@ -845,8 +791,4 @@ class WebDavConfigScreen : Screen {
             )
         }
     }
-}
-
-private enum class SyncScope {
-    ALL, SETTINGS, DATA
 }

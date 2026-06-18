@@ -295,6 +295,8 @@ object JaStrings : I18nStrings {
     override val settingsSyncScopeSettings = "設定のみ"
     override val settingsSyncScopeData = "データのみ"
     override val settingsSyncNow = "今すぐ同期"
+    override val settingsSyncData = "データ同期"
+    override val settingsSyncConfig = "設定同期"
     override val settingsRestoreFromCloud = "クラウドから復元"
     override val settingsRestoreConfirm = "復元を確認"
     override val settingsRestoreConfirmDesc = "クラウドデータでローカルデータを上書きします。この操作は元に戻せません。"
