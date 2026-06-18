@@ -571,12 +571,12 @@ class SettingsScreen : Screen {
                         }
                         Spacer(Modifier.height(spacing.sm))
                         Text("LumeCard", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        Text("v${AppVersion.VERSION_NAME}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("v${getAppVersion()}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.height(spacing.md))
                         HorizontalDivider()
                         ListItem(
                             headlineContent = { Text(strings.settingsCheckUpdate) },
-                            supportingContent = { Text("v${AppVersion.VERSION_NAME}") },
+                            supportingContent = { Text("v${getAppVersion()}") },
                             leadingContent = { Icon(Icons.Default.Refresh, contentDescription = null) },
                             modifier = Modifier.clickable {
                                 updateState = UpdateState.Checking
@@ -652,23 +652,13 @@ class SettingsScreen : Screen {
                         updateState = UpdateState.Downloading(0f)
                         try {
                             val apkAsset = info.assets.firstOrNull { it.name.endsWith(".apk") }
-                            if (apkAsset == null) {
-                                val directUrl = "https://github.com/Brucegot9stars/LumeCardWithOpenCode/releases/download/v${info.version}/composeApp-release.apk"
-                                val destFile = java.io.File(java.io.File(System.getProperty("java.io.tmpdir")), "lumecard_update.apk")
-                                val success = updateManager.downloadApk(directUrl, destFile) { progress ->
-                                    updateState = UpdateState.Downloading(progress)
-                                }
-                                if (success) {
-                                    updateState = UpdateState.Installing
-                                    kotlinx.coroutines.delay(1000)
-                                    updateState = UpdateState.Complete
-                                } else {
-                                    updateState = UpdateState.Error(strings.updateError)
-                                }
-                                return@launch
+                            val downloadUrl = if (apkAsset != null) {
+                                apkAsset.downloadUrl
+                            } else {
+                                "https://github.com/Brucegot9stars/LumeCardWithOpenCode/releases/download/v${info.version}/composeApp-release.apk"
                             }
-                            val destFile = java.io.File(java.io.File(System.getProperty("java.io.tmpdir")), "lumecard_update.apk")
-                            val success = updateManager.downloadApk(apkAsset.downloadUrl, destFile) { progress ->
+                            val destFile = java.io.File(java.io.File(System.getProperty("java.io.tmpdir")), "LumeCard-v${info.version}.apk")
+                            val success = updateManager.downloadApk(downloadUrl, destFile) { progress ->
                                 updateState = UpdateState.Downloading(progress)
                             }
                             if (success) {
@@ -676,10 +666,10 @@ class SettingsScreen : Screen {
                                 kotlinx.coroutines.delay(1000)
                                 updateState = UpdateState.Complete
                             } else {
-                                updateState = UpdateState.Error(strings.updateError)
+                                updateState = UpdateState.Error("下载失败：无法从 ${downloadUrl.take(60)}... 获取文件")
                             }
                         } catch (e: Exception) {
-                            updateState = UpdateState.Error(e.message ?: strings.updateError)
+                            updateState = UpdateState.Error("更新失败：${e.message ?: "未知错误"}")
                         }
                     }
                 },

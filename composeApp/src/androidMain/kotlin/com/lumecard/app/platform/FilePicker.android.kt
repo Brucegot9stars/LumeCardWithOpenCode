@@ -3,41 +3,35 @@ package com.lumecard.app.platform
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.os.Environment
 import com.lumecard.shared.database.AndroidContextHolder
-import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
-import kotlin.coroutines.resume
-
-private var pendingResult: String? = null
 
 actual suspend fun pickSaveFile(suggestedName: String, mimeType: String): String? {
     return try {
-        val context = AndroidContextHolder.context ?: return null
-        val file = File(context.cacheDir, suggestedName)
+        val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val file = File(downloads, suggestedName)
+        file.parentFile?.mkdirs()
         file.absolutePath
     } catch (e: Exception) {
-        null
+        try {
+            val context = AndroidContextHolder.context ?: return null
+            val file = File(context.filesDir, suggestedName)
+            file.absolutePath
+        } catch (e2: Exception) {
+            null
+        }
     }
 }
 
 actual suspend fun pickOpenFile(mimeType: String): String? {
-    return suspendCancellableCoroutine { cont ->
-        try {
-            val activity = AndroidContextHolder.context as? Activity
-            if (activity == null) {
-                cont.resume(null)
-                return@suspendCancellableCoroutine
-            }
-            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                addCategory(Intent.CATEGORY_OPENABLE)
-                type = "*/*"
-                putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/json", "text/plain"))
-            }
-            activity.startActivityForResult(intent, 9999)
-            cont.resume(null)
-        } catch (e: Exception) {
-            cont.resume(null)
-        }
+    return try {
+        val context = AndroidContextHolder.context ?: return null
+        val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val file = File(downloads, "lumecard_import.json")
+        if (file.exists()) file.absolutePath else null
+    } catch (e: Exception) {
+        null
     }
 }
 

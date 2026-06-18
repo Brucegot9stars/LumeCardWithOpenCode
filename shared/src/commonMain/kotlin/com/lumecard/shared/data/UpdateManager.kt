@@ -96,26 +96,26 @@ class UpdateManager(
         return try {
             withContext(Dispatchers.IO) {
                 val response = client.get(url)
-                if (!response.status.isSuccess()) return@withContext false
+                if (!response.status.isSuccess()) {
+                    throw SyncException("HTTP ${response.status.value}: ${response.status.description}")
+                }
 
                 val channel = response.bodyAsChannel()
                 destFile.parentFile?.mkdirs()
                 destFile.outputStream().use { output ->
                     val buffer = ByteArray(8192)
                     var bytesRead: Int
-                    var totalRead = 0L
                     while (true) {
                         bytesRead = channel.readAvailable(buffer, 0, buffer.size)
                         if (bytesRead == -1) break
                         output.write(buffer, 0, bytesRead)
-                        totalRead += bytesRead
                     }
                     onProgress(1f)
                 }
                 true
             }
         } catch (e: Exception) {
-            false
+            throw SyncException("下载失败：${e.message ?: "未知错误"}")
         }
     }
 
