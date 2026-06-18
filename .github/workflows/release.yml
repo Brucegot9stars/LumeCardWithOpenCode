@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Extract version from tag
         id: version
@@ -105,68 +107,73 @@ jobs:
           TAG="${{ steps.version.outputs.tag }}"
 
           # Find previous tag
-          PREV_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -2 | tail -1)
+          PREV_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | grep -v "^${TAG}$" | head -1)
 
           if [ -n "$PREV_TAG" ]; then
             RANGE="${PREV_TAG}..${TAG}"
-            LOG_FORMAT="- %s (%h)"
           else
             RANGE="${TAG}"
-            LOG_FORMAT="- %s (%h)"
           fi
 
-          # Categorize commits
-          FEATURES=$(git log "$RANGE" --pretty=format:"$LOG_FORMAT" --no-merges | grep -iE '^[^-]*-(feat|add|new|feature)' || true)
-          FIXES=$(git log "$RANGE" --pretty=format:"$LOG_FORMAT" --no-merges | grep -iE '^[^-]*-(fix|bug|patch|resolve)' || true)
-          IMPROVE=$(git log "$RANGE" --pretty=format:"$LOG_FORMAT" --no-merges | grep -iE '^[^-]*-(improv|optim|refactor|perf|clean|style|update|bump|chore)' || true)
-          OTHER=$(git log "$RANGE" --pretty=format:"$LOG_FORMAT" --no-merges | grep -viE '^[^-]*-(feat|add|new|feature|fix|bug|patch|resolve|improv|optim|refactor|perf|clean|style|update|bump|chore)' || true)
+          LOG_FORMAT="- %s (%h)"
+          ALL_COMMITS=$(git log "$RANGE" --pretty=format:"$LOG_FORMAT" --no-merges 2>/dev/null || echo "")
 
-          cat > release_notes.md << NOTES_EOF
-          # LumeCard ${TAG}
-
-          ## What's Changed since ${PREV_TAG:-initial release}
-
-          NOTES_EOF
-
-          if [ -n "$FEATURES" ]; then
-            echo "### ✨ New Features" >> release_notes.md
-            echo "" >> release_notes.md
-            echo "$FEATURES" >> release_notes.md
-            echo "" >> release_notes.md
+          if [ -z "$ALL_COMMITS" ]; then
+            # If no commits in range, try all history
+            ALL_COMMITS=$(git log --pretty=format:"$LOG_FORMAT" --no-merges -20 2>/dev/null || echo "")
           fi
 
-          if [ -n "$FIXES" ]; then
-            echo "### 🐛 Bug Fixes" >> release_notes.md
-            echo "" >> release_notes.md
-            echo "$FIXES" >> release_notes.md
-            echo "" >> release_notes.md
-          fi
+          # Categorize commits by conventional prefix
+          FEATURES=$(echo "$ALL_COMMITS" | grep -iE 'feat|add new|feature' || true)
+          FIXES=$(echo "$ALL_COMMITS" | grep -iE 'fix|bug|patch|resolve' || true)
+          IMPROVE=$(echo "$ALL_COMMITS" | grep -iE 'improv|optim|refactor|perf|clean|style|update|bump|chore' || true)
 
-          if [ -n "$IMPROVE" ]; then
-            echo "### 🔧 Improvements" >> release_notes.md
-            echo "" >> release_notes.md
-            echo "$IMPROVE" >> release_notes.md
-            echo "" >> release_notes.md
-          fi
+          # OTHER = commits not matching any category
+          OTHER=$(echo "$ALL_COMMITS" | grep -viE 'feat|add new|feature|fix|bug|patch|resolve|improv|optim|refactor|perf|clean|style|update|bump|chore' || true)
 
-          if [ -n "$OTHER" ]; then
-            echo "### 📦 Other Changes" >> release_notes.md
-            echo "" >> release_notes.md
-            echo "$OTHER" >> release_notes.md
-            echo "" >> release_notes.md
-          fi
+          {
+            echo "# LumeCard ${TAG}"
+            echo ""
+            echo "## What Changed since ${PREV_TAG:-initial release}"
+            echo ""
 
-          # If no categorized commits found, show all
-          if [ -z "$FEATURES" ] && [ -z "$FIXES" ] && [ -z "$IMPROVE" ] && [ -z "$OTHER" ]; then
-            echo "### 📝 Commits" >> release_notes.md
-            echo "" >> release_notes.md
-            git log "$RANGE" --pretty=format:"- %s (%h)" --no-merges >> release_notes.md
-            echo "" >> release_notes.md
-          fi
+            if [ -n "$FEATURES" ]; then
+              echo "### ✨ New Features"
+              echo ""
+              echo "$FEATURES"
+              echo ""
+            fi
 
-          echo "---" >> release_notes.md
-          echo "" >> release_notes.md
-          echo "**Full Changelog**: https://github.com/Brucegot9stars/LumeCardWithOpenCode/compare/${PREV_TAG:-$(git rev-list --max-parents=0 HEAD | head -1)}...${TAG}" >> release_notes.md
+            if [ -n "$FIXES" ]; then
+              echo "### 🐛 Bug Fixes"
+              echo ""
+              echo "$FIXES"
+              echo ""
+            fi
+
+            if [ -n "$IMPROVE" ]; then
+              echo "### 🔧 Improvements"
+              echo ""
+              echo "$IMPROVE"
+              echo ""
+            fi
+
+            if [ -n "$OTHER" ]; then
+              echo "### 📦 Other Changes"
+              echo ""
+              echo "$OTHER"
+              echo ""
+            fi
+
+            echo "---"
+            echo ""
+            FIRST_COMMIT=$(git rev-list --max-parents=0 HEAD 2>/dev/null | head -1)
+            echo "**Full Changelog**: https://github.com/Brucegot9stars/LumeCardWithOpenCode/compare/${PREV_TAG:-$FIRST_COMMIT}...${TAG}"
+          } > release_notes.md
+
+          echo "=== Release Notes ==="
+          cat release_notes.md
+          echo "====================="
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
