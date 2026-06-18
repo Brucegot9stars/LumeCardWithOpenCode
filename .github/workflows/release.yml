@@ -90,14 +90,44 @@ jobs:
           path: composeApp/build/outputs/bundle/release/*.aab
           retention-days: 30
 
+      - name: Generate Release Notes
+        id: release_notes
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="${{ steps.version.outputs.tag }}"
+          cat > release_notes.md << NOTES_EOF
+          # LumeCard ${TAG}
+
+          ## ✨ 新增功能
+
+          - 数据与配置完全分离同步
+          - 独立同步按钮（数据/配置/全部）
+          - 旧格式自动迁移
+
+          ## 🐛 问题修复
+
+          - 修复自动更新功能
+          - 修复 Android 文件选择器
+          - 修复更新检查文案与状态逻辑
+          - 修复 WebDAV 同步中数据丢失
+
+          ## 🚀 优化改进
+
+          - 完善更新检查对话框
+          - 完善导入导出功能
+          - 优化设置页面 UI
+
+          **Full Changelog**: https://github.com/Brucegot9stars/LumeCardWithOpenCode/compare/v${{ github.event.before || 'HEAD' }}...${TAG}
+          NOTES_EOF
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          name: ${{ steps.version.outputs.tag }}
+          name: LumeCard ${{ steps.version.outputs.tag }}
           draft: false
           prerelease: false
-          generate_release_notes: true
+          body_path: release_notes.md
           files: |
             composeApp/build/outputs/apk/release/*.apk
             composeApp/build/outputs/bundle/release/*.aab
