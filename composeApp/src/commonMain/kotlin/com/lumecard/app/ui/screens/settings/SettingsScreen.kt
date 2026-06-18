@@ -583,7 +583,7 @@ class SettingsScreen : Screen {
                                 updateState = UpdateState.Checking
                                 showUpdateDialog = true
                                 scope.launch {
-                                    val info = updateManager.checkForUpdate()
+                                    val info = updateManager.checkForUpdate(getAppVersion())
                                     updateState = if (info?.hasUpdate == true) {
                                         UpdateState.UpdateAvailable(info)
                                     } else if (info != null) {
@@ -637,7 +637,7 @@ class SettingsScreen : Screen {
                 onCheckUpdate = {
                     updateState = UpdateState.Checking
                     scope.launch {
-                        val info = updateManager.checkForUpdate()
+                        val info = updateManager.checkForUpdate(getAppVersion())
                         updateState = if (info?.hasUpdate == true) {
                             UpdateState.UpdateAvailable(info)
                         } else if (info != null) {

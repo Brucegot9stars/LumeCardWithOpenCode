@@ -46,7 +46,7 @@ class UpdateManager(
         private const val ALL_RELEASES_URL = "https://api.github.com/repos/Brucegot9stars/LumeCardWithOpenCode/releases"
     }
 
-    suspend fun checkForUpdate(): UpdateInfo? {
+    suspend fun checkForUpdate(currentVersion: String = AppVersion.VERSION_NAME): UpdateInfo? {
         return try {
             val response = client.get(RELEASES_URL)
             if (!response.status.isSuccess()) return null
@@ -60,7 +60,6 @@ class UpdateManager(
             if (tagName == null) return null
 
             val latestVersion = tagName.removePrefix("v")
-            val currentVersion = AppVersion.VERSION_NAME
             val hasUpdate = compareVersions(latestVersion, currentVersion) > 0
 
             val assets = parseAssets(body)
