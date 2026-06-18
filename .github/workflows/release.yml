@@ -103,30 +103,70 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           TAG="${{ steps.version.outputs.tag }}"
+
+          # Find previous tag
+          PREV_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -2 | tail -1)
+
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="${PREV_TAG}..${TAG}"
+            LOG_FORMAT="- %s (%h)"
+          else
+            RANGE="${TAG}"
+            LOG_FORMAT="- %s (%h)"
+          fi
+
+          # Categorize commits
+          FEATURES=$(git log "$RANGE" --pretty=format:"$LOG_FORMAT" --no-merges | grep -iE '^[^-]*-(feat|add|new|feature)' || true)
+          FIXES=$(git log "$RANGE" --pretty=format:"$LOG_FORMAT" --no-merges | grep -iE '^[^-]*-(fix|bug|patch|resolve)' || true)
+          IMPROVE=$(git log "$RANGE" --pretty=format:"$LOG_FORMAT" --no-merges | grep -iE '^[^-]*-(improv|optim|refactor|perf|clean|style|update|bump|chore)' || true)
+          OTHER=$(git log "$RANGE" --pretty=format:"$LOG_FORMAT" --no-merges | grep -viE '^[^-]*-(feat|add|new|feature|fix|bug|patch|resolve|improv|optim|refactor|perf|clean|style|update|bump|chore)' || true)
+
           cat > release_notes.md << NOTES_EOF
           # LumeCard ${TAG}
 
-          ## ✨ 新增功能
+          ## What's Changed since ${PREV_TAG:-initial release}
 
-          - 数据与配置完全分离同步
-          - 独立同步按钮（数据/配置/全部）
-          - 旧格式自动迁移
-
-          ## 🐛 问题修复
-
-          - 修复自动更新功能
-          - 修复 Android 文件选择器
-          - 修复更新检查文案与状态逻辑
-          - 修复 WebDAV 同步中数据丢失
-
-          ## 🚀 优化改进
-
-          - 完善更新检查对话框
-          - 完善导入导出功能
-          - 优化设置页面 UI
-
-          **Full Changelog**: https://github.com/Brucegot9stars/LumeCardWithOpenCode/compare/v${{ github.event.before || 'HEAD' }}...${TAG}
           NOTES_EOF
+
+          if [ -n "$FEATURES" ]; then
+            echo "### ✨ New Features" >> release_notes.md
+            echo "" >> release_notes.md
+            echo "$FEATURES" >> release_notes.md
+            echo "" >> release_notes.md
+          fi
+
+          if [ -n "$FIXES" ]; then
+            echo "### 🐛 Bug Fixes" >> release_notes.md
+            echo "" >> release_notes.md
+            echo "$FIXES" >> release_notes.md
+            echo "" >> release_notes.md
+          fi
+
+          if [ -n "$IMPROVE" ]; then
+            echo "### 🔧 Improvements" >> release_notes.md
+            echo "" >> release_notes.md
+            echo "$IMPROVE" >> release_notes.md
+            echo "" >> release_notes.md
+          fi
+
+          if [ -n "$OTHER" ]; then
+            echo "### 📦 Other Changes" >> release_notes.md
+            echo "" >> release_notes.md
+            echo "$OTHER" >> release_notes.md
+            echo "" >> release_notes.md
+          fi
+
+          # If no categorized commits found, show all
+          if [ -z "$FEATURES" ] && [ -z "$FIXES" ] && [ -z "$IMPROVE" ] && [ -z "$OTHER" ]; then
+            echo "### 📝 Commits" >> release_notes.md
+            echo "" >> release_notes.md
+            git log "$RANGE" --pretty=format:"- %s (%h)" --no-merges >> release_notes.md
+            echo "" >> release_notes.md
+          fi
+
+          echo "---" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "**Full Changelog**: https://github.com/Brucegot9stars/LumeCardWithOpenCode/compare/${PREV_TAG:-$(git rev-list --max-parents=0 HEAD | head -1)}...${TAG}" >> release_notes.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
