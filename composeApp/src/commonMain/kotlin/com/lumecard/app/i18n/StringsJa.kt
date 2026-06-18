@@ -255,6 +255,7 @@ object JaStrings : I18nStrings {
     override val updateCompleteDesc = "更新が完了しました。アプリを再起動してください。"
     override val updatePublishedAt = "公開日"
     override val updateCopyError = "エラーをコピー"
+    override val updateCopySuccess = "エラー情報をクリップボードにコピーしました"
     override val exportErrorPermission = "書き込み権限がありません"
     override val exportErrorDiskSpace = "ディスク容量が不足しています"
     override val exportErrorWrite = "ファイルの書き込みに失敗しました"

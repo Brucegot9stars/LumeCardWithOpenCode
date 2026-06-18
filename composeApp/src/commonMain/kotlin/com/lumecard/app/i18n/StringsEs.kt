@@ -301,6 +301,7 @@ object EsStrings : I18nStrings {
     override val settingsRestoreConfirm = "Confirmar restauración"
     override val settingsRestoreConfirmDesc = "Esto sobrescribirá todos los datos locales con datos de la nube. Esta acción no se puede deshacer."
     override val updateCopyError = "Copiar error"
+    override val updateCopySuccess = "Error copiado al portapapeles"
     override val exportErrorPermission = "Sin permiso de escritura"
     override val exportErrorDiskSpace = "Espacio insuficiente"
     override val exportErrorWrite = "Error al escribir archivo"

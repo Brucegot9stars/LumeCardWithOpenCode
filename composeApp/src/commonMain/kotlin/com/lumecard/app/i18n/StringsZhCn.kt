@@ -255,6 +255,7 @@ object ZhCnStrings : I18nStrings {
     override val updateCompleteDesc = "更新已完成，请重启应用。"
     override val updatePublishedAt = "发布时间"
     override val updateCopyError = "复制错误信息"
+    override val updateCopySuccess = "错误信息已复制到剪贴板"
     override val exportErrorPermission = "写入路径无写入权限"
     override val exportErrorDiskSpace = "磁盘空间不足"
     override val exportErrorWrite = "文件写入失败"

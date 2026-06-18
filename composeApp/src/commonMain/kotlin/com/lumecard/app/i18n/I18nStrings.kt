@@ -259,6 +259,7 @@ interface I18nStrings {
     val updateCompleteDesc: String
     val updatePublishedAt: String
     val updateCopyError: String
+    val updateCopySuccess: String
     val exportErrorPermission: String
     val exportErrorDiskSpace: String
     val exportErrorWrite: String

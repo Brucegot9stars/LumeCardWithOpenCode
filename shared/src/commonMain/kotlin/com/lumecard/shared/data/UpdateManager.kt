@@ -3,6 +3,7 @@ package com.lumecard.shared.data
 import com.lumecard.shared.AppVersion
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.plugins.HttpTimeout
@@ -96,14 +97,16 @@ class UpdateManager(
     ): Boolean {
         val downloadClient = HttpClient {
             install(HttpTimeout) {
-                requestTimeoutMillis = 300_000
-                connectTimeoutMillis = 30_000
+                requestTimeoutMillis = 600_000
+                connectTimeoutMillis = 60_000
             }
             expectSuccess = false
         }
         return try {
             withContext(Dispatchers.IO) {
-                val response = downloadClient.get(url)
+                val response = downloadClient.get(url) {
+                    header("User-Agent", "LumeCard/Android")
+                }
                 if (!response.status.isSuccess()) {
                     throw SyncException("HTTP ${response.status.value}: ${response.status.description}")
                 }
@@ -111,7 +114,7 @@ class UpdateManager(
                 val channel = response.bodyAsChannel()
                 destFile.parentFile?.mkdirs()
                 destFile.outputStream().use { output ->
-                    val buffer = ByteArray(8192)
+                    val buffer = ByteArray(16384)
                     var bytesRead: Int
                     while (true) {
                         bytesRead = channel.readAvailable(buffer, 0, buffer.size)

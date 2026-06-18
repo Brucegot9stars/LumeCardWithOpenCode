@@ -21,7 +21,7 @@ import com.lumecard.shared.data.ExportManager
 import com.lumecard.shared.data.UpdateManager
 import com.lumecard.shared.data.UpdateState
 import com.lumecard.shared.data.WebDavConfigManager
-import com.lumecard.shared.database.AndroidContextHolder
+import com.lumecard.app.platform.copyToClipboard
 import com.lumecard.shared.domain.scheduler.ReviewMode
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
@@ -469,12 +469,7 @@ class SettingsScreen : Screen {
                                         if (success) {
                                             snackbarHostState.showSnackbar(strings.settingsExportSuccess(json.length))
                                         } else {
-                                            val errorDetail = when {
-                                                !java.io.File(filePath).parentFile!!.canWrite() -> "写入路径无写入权限: $filePath"
-                                                java.io.File(filePath).parentFile!!.freeSpace < json.length -> "磁盘空间不足"
-                                                else -> "文件写入失败: $filePath"
-                                            }
-                                            snackbarHostState.showSnackbar(strings.settingsExportError(errorDetail))
+                                            snackbarHostState.showSnackbar(strings.settingsExportError(strings.exportErrorWrite))
                                         }
                                     } catch (e: Exception) {
                                         snackbarHostState.showSnackbar(strings.settingsExportError(e.message ?: "未知错误"))
@@ -492,7 +487,7 @@ class SettingsScreen : Screen {
                                     try {
                                         val filePath = pickOpenFile("application/json")
                                         if (filePath == null) {
-                                            snackbarHostState.showSnackbar(strings.actionCancel)
+                                            snackbarHostState.showSnackbar(strings.settingsImportHint)
                                             return@launch
                                         }
                                         val json = readFileContent(filePath)
@@ -657,13 +652,8 @@ class SettingsScreen : Screen {
                     scope.launch {
                         updateState = UpdateState.Downloading(0f)
                         try {
-                            val apkAsset = info.assets.firstOrNull { it.name.endsWith(".apk") }
-                            val downloadUrl = if (apkAsset != null) {
-                                apkAsset.downloadUrl
-                            } else {
-                                "https://github.com/Brucegot9stars/LumeCardWithOpenCode/releases/download/v${info.version}/composeApp-release.apk"
-                            }
-                            val destFile = java.io.File(java.io.File(System.getProperty("java.io.tmpdir")), "LumeCard-v${info.version}.apk")
+                            val downloadUrl = "https://github.com/Brucegot9stars/LumeCardWithOpenCode/releases/download/v${info.version}/composeApp-release.apk"
+                            val destFile = java.io.File(java.io.File(System.getProperty("java.io.tmpdir") ?: System.getProperty("user.home") ?: "."), "LumeCard-v${info.version}.apk")
                             val success = updateManager.downloadApk(downloadUrl, destFile) { progress ->
                                 updateState = UpdateState.Downloading(progress)
                             }
@@ -672,7 +662,7 @@ class SettingsScreen : Screen {
                                 kotlinx.coroutines.delay(1000)
                                 updateState = UpdateState.Complete
                             } else {
-                                updateState = UpdateState.Error("下载失败：无法从 ${downloadUrl.take(60)}... 获取文件")
+                                updateState = UpdateState.Error("下载失败，请检查网络连接或稍后重试")
                             }
                         } catch (e: Exception) {
                             updateState = UpdateState.Error("更新失败：${e.message ?: "未知错误"}")
@@ -682,17 +672,10 @@ class SettingsScreen : Screen {
                 onCopyError = { errorMsg ->
                     scope.launch {
                         try {
-                            val context = AndroidContextHolder.context
-                            if (context != null) {
-                                val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                val clip = android.content.ClipData.newPlainText("LumeCard Error", errorMsg)
-                                clipboard.setPrimaryClip(clip)
-                                snackbarHostState.showSnackbar("错误信息已复制到剪贴板")
-                            } else {
-                                snackbarHostState.showSnackbar("复制失败：无法获取上下文")
-                            }
+                            copyToClipboard(errorMsg)
+                            snackbarHostState.showSnackbar(strings.updateCopySuccess)
                         } catch (_: Exception) {
-                            snackbarHostState.showSnackbar("复制失败")
+                            snackbarHostState.showSnackbar(strings.updateCopyError)
                         }
                     }
                 },

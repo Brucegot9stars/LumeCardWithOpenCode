@@ -255,6 +255,7 @@ object EnStrings : I18nStrings {
     override val updateCompleteDesc = "Update complete. Please restart the app."
     override val updatePublishedAt = "Published"
     override val updateCopyError = "Copy Error"
+    override val updateCopySuccess = "Error info copied to clipboard"
     override val exportErrorPermission = "No write permission"
     override val exportErrorDiskSpace = "Insufficient disk space"
     override val exportErrorWrite = "File write failed"

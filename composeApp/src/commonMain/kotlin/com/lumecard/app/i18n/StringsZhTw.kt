@@ -305,6 +305,7 @@ object ZhTwStrings : I18nStrings {
     override val settingsConnected = "已連線"
     override val settingsDisconnected = "未連線"
     override val updateCopyError = "複製錯誤資訊"
+    override val updateCopySuccess = "錯誤資訊已複製到剪貼簿"
     override val exportErrorPermission = "寫入路徑無寫入權限"
     override val exportErrorDiskSpace = "磁碟空間不足"
     override val exportErrorWrite = "檔案寫入失敗"
