@@ -653,7 +653,18 @@ class SettingsScreen : Screen {
                         try {
                             val apkAsset = info.assets.firstOrNull { it.name.endsWith(".apk") }
                             if (apkAsset == null) {
-                                updateState = UpdateState.Error(strings.updateError)
+                                val directUrl = "https://github.com/Brucegot9stars/LumeCardWithOpenCode/releases/download/v${info.version}/composeApp-release.apk"
+                                val destFile = java.io.File(java.io.File(System.getProperty("java.io.tmpdir")), "lumecard_update.apk")
+                                val success = updateManager.downloadApk(directUrl, destFile) { progress ->
+                                    updateState = UpdateState.Downloading(progress)
+                                }
+                                if (success) {
+                                    updateState = UpdateState.Installing
+                                    kotlinx.coroutines.delay(1000)
+                                    updateState = UpdateState.Complete
+                                } else {
+                                    updateState = UpdateState.Error(strings.updateError)
+                                }
                                 return@launch
                             }
                             val destFile = java.io.File(java.io.File(System.getProperty("java.io.tmpdir")), "lumecard_update.apk")
