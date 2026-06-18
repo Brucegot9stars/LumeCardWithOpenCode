@@ -5,6 +5,7 @@ object AppVersion {
         val p = java.util.Properties()
         try {
             val stream = object {}.javaClass.getResourceAsStream("/version.properties")
+                ?: object {}.javaClass.getResourceAsStream("version.properties")
             if (stream != null) {
                 p.load(stream)
             } else {
