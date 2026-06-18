@@ -53,7 +53,10 @@ fun App() {
                         BottomNavItem.Warehouse -> WarehouseScreen()
                         BottomNavItem.Settings -> SettingsScreen()
                     }
-                    navigator.replace(screen)
+                    val currentScreen = navigator.lastItemOrNull
+                    if (currentScreen?.key != screen.key) {
+                        navigator.replace(screen)
+                    }
                 }
 
                 Scaffold(

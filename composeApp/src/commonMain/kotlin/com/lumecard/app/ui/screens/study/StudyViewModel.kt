@@ -57,7 +57,7 @@ class StudyViewModel(
 
     private var timerJob: Job? = null
 
-    private val _cardStartTimes = mutableMapOf<String, kotlinx.datetime.Instant>()
+    private val _cardStartTimes = java.util.concurrent.ConcurrentHashMap<String, kotlinx.datetime.Instant>()
 
     private var activePlanIds: List<String> = emptyList()
 
