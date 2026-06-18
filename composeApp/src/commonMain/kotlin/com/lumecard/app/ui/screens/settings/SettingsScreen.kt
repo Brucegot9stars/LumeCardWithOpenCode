@@ -21,6 +21,7 @@ import com.lumecard.shared.data.ExportManager
 import com.lumecard.shared.data.UpdateManager
 import com.lumecard.shared.data.UpdateState
 import com.lumecard.shared.data.WebDavConfigManager
+import com.lumecard.shared.database.AndroidContextHolder
 import com.lumecard.shared.domain.scheduler.ReviewMode
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
@@ -468,10 +469,15 @@ class SettingsScreen : Screen {
                                         if (success) {
                                             snackbarHostState.showSnackbar(strings.settingsExportSuccess(json.length))
                                         } else {
-                                            snackbarHostState.showSnackbar(strings.settingsExportError("Write failed"))
+                                            val errorDetail = when {
+                                                !java.io.File(filePath).parentFile!!.canWrite() -> "写入路径无写入权限: $filePath"
+                                                java.io.File(filePath).parentFile!!.freeSpace < json.length -> "磁盘空间不足"
+                                                else -> "文件写入失败: $filePath"
+                                            }
+                                            snackbarHostState.showSnackbar(strings.settingsExportError(errorDetail))
                                         }
                                     } catch (e: Exception) {
-                                        snackbarHostState.showSnackbar(strings.settingsExportError(e.message ?: "Unknown"))
+                                        snackbarHostState.showSnackbar(strings.settingsExportError(e.message ?: "未知错误"))
                                     }
                                 }
                             },
@@ -670,6 +676,23 @@ class SettingsScreen : Screen {
                             }
                         } catch (e: Exception) {
                             updateState = UpdateState.Error("更新失败：${e.message ?: "未知错误"}")
+                        }
+                    }
+                },
+                onCopyError = { errorMsg ->
+                    scope.launch {
+                        try {
+                            val context = AndroidContextHolder.context
+                            if (context != null) {
+                                val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                val clip = android.content.ClipData.newPlainText("LumeCard Error", errorMsg)
+                                clipboard.setPrimaryClip(clip)
+                                snackbarHostState.showSnackbar("错误信息已复制到剪贴板")
+                            } else {
+                                snackbarHostState.showSnackbar("复制失败：无法获取上下文")
+                            }
+                        } catch (_: Exception) {
+                            snackbarHostState.showSnackbar("复制失败")
                         }
                     }
                 },

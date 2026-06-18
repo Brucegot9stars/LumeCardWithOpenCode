@@ -22,6 +22,7 @@ fun UpdateCheckDialog(
     onDismiss: () -> Unit,
     onCheckUpdate: () -> Unit,
     onUpdate: () -> Unit,
+    onCopyError: (String) -> Unit = {},
 ) {
     val strings = koinInject<I18nManager>().strings
     val spacing = LumeCardTheme.spacing
@@ -132,7 +133,20 @@ fun UpdateCheckDialog(
         },
         confirmButton = {
             when (updateState) {
-                is UpdateState.Idle, is UpdateState.UpToDate, is UpdateState.Error -> {
+                is UpdateState.Idle, is UpdateState.UpToDate -> {
+                    TextButton(onClick = onCheckUpdate) {
+                        Text(strings.settingsCheckUpdate)
+                    }
+                }
+                is UpdateState.Error -> {
+                    TextButton(onClick = {
+                        val errorMsg = "LumeCard Update Error\nVersion: ${getAppVersion()}\nError: ${updateState.message}\nTime: ${kotlinx.datetime.Clock.System.now()}"
+                        onCopyError(errorMsg)
+                        onDismiss()
+                    }) {
+                        Text(strings.updateCopyError)
+                    }
+                    Spacer(Modifier.width(8.dp))
                     TextButton(onClick = onCheckUpdate) {
                         Text(strings.settingsCheckUpdate)
                     }

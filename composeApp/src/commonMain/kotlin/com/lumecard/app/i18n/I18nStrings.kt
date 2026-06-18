@@ -258,6 +258,10 @@ interface I18nStrings {
     val updateComplete: String
     val updateCompleteDesc: String
     val updatePublishedAt: String
+    val updateCopyError: String
+    val exportErrorPermission: String
+    val exportErrorDiskSpace: String
+    val exportErrorWrite: String
 
     val settingsDeveloper: String
     val settingsLicense: String
