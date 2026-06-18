@@ -2,11 +2,11 @@ package com.lumecard.shared.data
 
 import com.lumecard.shared.AppVersion
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
-import io.ktor.client.plugins.HttpTimeout
 import io.ktor.http.contentLength
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.Dispatchers
@@ -46,6 +46,14 @@ class UpdateManager(
     companion object {
         private const val RELEASES_URL = "https://api.github.com/repos/Brucegot9stars/LumeCardWithOpenCode/releases/latest"
         private const val ALL_RELEASES_URL = "https://api.github.com/repos/Brucegot9stars/LumeCardWithOpenCode/releases"
+    }
+
+    private val downloadClient = HttpClient {
+        install(HttpTimeout) {
+            requestTimeoutMillis = 600_000
+            connectTimeoutMillis = 60_000
+        }
+        expectSuccess = false
     }
 
     suspend fun checkForUpdate(currentVersion: String = AppVersion.VERSION_NAME): UpdateInfo? {
@@ -96,13 +104,6 @@ class UpdateManager(
         destFile: File,
         onProgress: (downloaded: Long, total: Long) -> Unit
     ): Boolean {
-        val downloadClient = HttpClient {
-            install(HttpTimeout) {
-                requestTimeoutMillis = 600_000
-                connectTimeoutMillis = 60_000
-            }
-            expectSuccess = false
-        }
         return try {
             withContext(Dispatchers.IO) {
                 val response = downloadClient.get(url) {
@@ -125,6 +126,7 @@ class UpdateManager(
                         output.write(buffer, 0, bytesRead)
                         downloadedBytes += bytesRead
                         onProgress(downloadedBytes, totalBytes)
+                        ensureActive()
                     }
                 }
                 true
@@ -132,8 +134,6 @@ class UpdateManager(
         } catch (e: Exception) {
             if (destFile.exists()) destFile.delete()
             throw SyncException("下载失败：${e.message ?: "未知错误"}")
-        } finally {
-            downloadClient.close()
         }
     }
 
@@ -150,9 +150,12 @@ class UpdateManager(
     }
 
     private fun extractJsonString(json: String, key: String): String? {
-        val pattern = "\"$key\"\\s*:\\s*\"([^\"]*?)\""
+        val pattern = "\"$key\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\""
         val regex = Regex(pattern)
         return regex.find(json)?.groupValues?.get(1)
+            ?.replace("\\\"", "\"")
+            ?.replace("\\n", "\n")
+            ?.replace("\\\\", "\\")
     }
 
     private fun parseAssets(json: String): List<UpdateAsset> {
@@ -174,7 +177,7 @@ class UpdateManager(
 
     private fun parseReleases(json: String): List<UpdateInfo> {
         val releases = mutableListOf<UpdateInfo>()
-        val releasePattern = """\{[^}]*"tag_name"\s*:\s*"([^"]*?)"[^}]*"html_url"\s*:\s*"([^"]*?)"[^}]*"body"\s*:\s*"((?:[^"\\]|\\.)*)"[^}]*"published_at"\s*:\s*"([^"]*?)"[^}]*\}""".toRegex()
+        val releasePattern = """"tag_name"\s*:\s*"([^"]*?)"[\s\S]*?"html_url"\s*:\s*"([^"]*?)"[\s\S]*?"body"\s*:\s*"((?:[^"\\]|\\.)*)"[\s\S]*?"published_at"\s*:\s*"([^"]*?)" """.trimMargin().toRegex()
         releasePattern.findAll(json).forEach { match ->
             releases.add(UpdateInfo(
                 version = match.groupValues[1].removePrefix("v"),
