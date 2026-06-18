@@ -467,8 +467,8 @@ class SettingsScreen : Screen {
                                         val knowledgeBases = knowledgeBaseRepository.getAll().first()
                                         val decks = deckRepository.getAll().first()
                                         val allCards = cardRepository.getAll().first()
-                                        val json = exportManager.exportData(knowledgeBases, decks, allCards)
-                                        val success = writeFileContent(filePath, json)
+                                        val json = withContext(Dispatchers.IO) { exportManager.exportData(knowledgeBases, decks, allCards) }
+                                        val success = withContext(Dispatchers.IO) { writeFileContent(filePath, json) }
                                         if (success) {
                                             snackbarHostState.showSnackbar(strings.settingsExportSuccess(json.length))
                                         } else {
@@ -493,7 +493,7 @@ class SettingsScreen : Screen {
                                             snackbarHostState.showSnackbar(strings.settingsImportHint)
                                             return@launch
                                         }
-                                        val json = readFileContent(filePath)
+                                        val json = withContext(Dispatchers.IO) { readFileContent(filePath) }
                                         if (json == null) {
                                             snackbarHostState.showSnackbar(strings.settingsImportError("Cannot read file"))
                                             return@launch

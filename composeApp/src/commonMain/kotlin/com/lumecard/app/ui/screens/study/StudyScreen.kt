@@ -637,6 +637,9 @@ private fun FlipCard(
 
 @Composable
 private fun CardFace(card: Card, showBack: Boolean) {
+    val clozeRegex = remember { Regex("\\{\\{c\\d+::([^}]+)}}") }
+    val clozeHintRegex = remember { Regex("\\{\\{c\\d+::([^}]+)::([^}]+)}}") }
+
     val strings = koinInject<I18nManager>().strings
     Column(modifier = Modifier.fillMaxWidth()) {
         when (card.type) {
@@ -656,11 +659,11 @@ private fun CardFace(card: Card, showBack: Boolean) {
             CardType.CLOZE -> {
                 val text = if (showBack) card.back else card.front
                 val displayText = if (!showBack) {
-                    text.replace(Regex("\\{\\{c\\d+::([^}]+)}}"), "____")
-                        .replace(Regex("\\{\\{c\\d+::([^}]+)::([^}]+)}}"), "____")
+                    text.replace(clozeHintRegex, "____")
+                        .replace(clozeRegex, "____")
                 } else {
-                    text.replace(Regex("\\{\\{c\\d+::([^}]+)}}"), "$1")
-                        .replace(Regex("\\{\\{c\\d+::([^}]+)::([^}]+)}}"), "$1")
+                    text.replace(clozeHintRegex, "$1")
+                        .replace(clozeRegex, "$1")
                 }
                 Text(
                     displayText,

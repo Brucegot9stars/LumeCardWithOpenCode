@@ -56,12 +56,6 @@ class DashboardViewModel(
     private val _activePlanCount = MutableStateFlow(0)
     val activePlanCount: StateFlow<Int> = _activePlanCount.asStateFlow()
 
-    val progress: Float get() {
-        val goal = _dailyGoal.value
-        if (goal <= 0) return 0f
-        return (_todayReviews.value.toFloat() / goal).coerceIn(0f, 1f)
-    }
-
     init {
         loadGoal()
         loadDecks()

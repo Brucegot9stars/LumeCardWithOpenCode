@@ -46,16 +46,13 @@ class StudyViewModel(
 
     val canGoBack: Boolean get() = _history.value.isNotEmpty()
 
-    private val _swipeFeedback = MutableStateFlow<String?>(null)
-    val swipeFeedback: StateFlow<String?> = _swipeFeedback
+    private var timerJob: Job? = null
 
     private val _sessionStartTime = MutableStateFlow<kotlinx.datetime.Instant?>(null)
     val sessionStartTime: StateFlow<kotlinx.datetime.Instant?> = _sessionStartTime
 
     private val _elapsedSeconds = MutableStateFlow(0)
     val elapsedSeconds: StateFlow<Int> = _elapsedSeconds
-
-    private var timerJob: Job? = null
 
     private val _cardStartTimes = java.util.concurrent.ConcurrentHashMap<String, kotlinx.datetime.Instant>()
 
@@ -208,14 +205,6 @@ class StudyViewModel(
                     updatedAt = kotlinx.datetime.Clock.System.now()
                 ))
             }
-        }
-    }
-
-    fun showSwipeFeedback(text: String) {
-        _swipeFeedback.value = text
-        screenModelScope.launch {
-            kotlinx.coroutines.delay(500)
-            _swipeFeedback.value = null
         }
     }
 
