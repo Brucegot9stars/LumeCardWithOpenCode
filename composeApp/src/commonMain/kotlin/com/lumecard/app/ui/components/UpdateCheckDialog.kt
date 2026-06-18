@@ -10,8 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.lumecard.app.i18n.I18nManager
+import com.lumecard.app.platform.getAppVersion
 import com.lumecard.app.ui.theme.LumeCardTheme
-import com.lumecard.shared.AppVersion
 import com.lumecard.shared.data.UpdateInfo
 import com.lumecard.shared.data.UpdateState
 import org.koin.compose.koinInject
@@ -62,7 +62,7 @@ fun UpdateCheckDialog(
                     }
                     is UpdateState.UpdateAvailable -> {
                         Text(
-                            "${strings.updateCurrentVersion}: ${AppVersion.VERSION_NAME}",
+                            "${strings.updateCurrentVersion}: ${getAppVersion()}",
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         Text(
@@ -90,7 +90,7 @@ fun UpdateCheckDialog(
                     is UpdateState.UpToDate -> {
                         Text(strings.updateUpToDateDesc, style = MaterialTheme.typography.bodyMedium)
                         Text(
-                            "${strings.updateCurrentVersion}: ${AppVersion.VERSION_NAME}",
+                            "${strings.updateCurrentVersion}: ${getAppVersion()}",
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }
@@ -98,7 +98,7 @@ fun UpdateCheckDialog(
                         Text(updateState.message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
                         Spacer(Modifier.height(spacing.sm))
                         Text(
-                            "${strings.updateCurrentVersion}: ${AppVersion.VERSION_NAME}",
+                            "${strings.updateCurrentVersion}: ${getAppVersion()}",
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }
@@ -123,7 +123,7 @@ fun UpdateCheckDialog(
                     }
                     is UpdateState.Idle -> {
                         Text(
-                            "${strings.updateCurrentVersion}: ${AppVersion.VERSION_NAME}",
+                            "${strings.updateCurrentVersion}: ${getAppVersion()}",
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }

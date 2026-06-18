@@ -5,6 +5,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -93,9 +94,16 @@ class UpdateManager(
         destFile: File,
         onProgress: (Float) -> Unit
     ): Boolean {
+        val downloadClient = HttpClient {
+            install(HttpTimeout) {
+                requestTimeoutMillis = 300_000
+                connectTimeoutMillis = 30_000
+            }
+            expectSuccess = false
+        }
         return try {
             withContext(Dispatchers.IO) {
-                val response = client.get(url)
+                val response = downloadClient.get(url)
                 if (!response.status.isSuccess()) {
                     throw SyncException("HTTP ${response.status.value}: ${response.status.description}")
                 }
@@ -116,6 +124,8 @@ class UpdateManager(
             }
         } catch (e: Exception) {
             throw SyncException("下载失败：${e.message ?: "未知错误"}")
+        } finally {
+            downloadClient.close()
         }
     }
 
