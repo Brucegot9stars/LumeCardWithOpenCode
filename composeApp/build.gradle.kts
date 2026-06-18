@@ -104,6 +104,12 @@ android {
             ?: appVersionName
     }
 
+    sourceSets {
+        getByName("main") {
+            resources.srcDirs("../")
+        }
+    }
+
     signingConfigs {
         create("release") {
             fun readLocalProp(key: String): String? {

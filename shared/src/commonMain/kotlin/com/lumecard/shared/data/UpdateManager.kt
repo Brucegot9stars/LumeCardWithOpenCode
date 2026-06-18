@@ -139,13 +139,17 @@ class UpdateManager(
 
     private fun parseAssets(json: String): List<UpdateAsset> {
         val assets = mutableListOf<UpdateAsset>()
-        val assetPattern = """\{[^}]*"name"\s*:\s*"([^"]*?)"[^}]*"browser_download_url"\s*:\s*"([^"]*?)"[^}]*"size"\s*:\s*(\d+)[^}]*\}""".toRegex()
-        assetPattern.findAll(json).forEach { match ->
-            assets.add(UpdateAsset(
-                name = match.groupValues[1],
-                downloadUrl = match.groupValues[2],
-                size = match.groupValues[3].toLongOrNull() ?: 0
-            ))
+        val assetRegex = """"name"\s*:\s*"([^"]*?)"[^}]*?"browser_download_url"\s*:\s*"([^"]*?)" """.toRegex()
+        assetRegex.findAll(json).forEach { match ->
+            val name = match.groupValues[1]
+            val url = match.groupValues[2]
+            if (name.endsWith(".apk")) {
+                assets.add(UpdateAsset(
+                    name = name,
+                    downloadUrl = url,
+                    size = 0
+                ))
+            }
         }
         return assets
     }
