@@ -42,6 +42,7 @@ import com.lumecard.app.platform.pickOpenFile
 import com.lumecard.app.platform.readFileContent
 import com.lumecard.app.platform.writeFileContent
 import com.lumecard.app.platform.installApk
+import com.lumecard.app.platform.getApkCacheDir
 import org.koin.compose.koinInject
 
 class SettingsScreen : Screen {
@@ -657,7 +658,7 @@ class SettingsScreen : Screen {
                             val downloadUrl = apkAsset?.downloadUrl
                                 ?: "https://github.com/Brucegot9stars/LumeCardWithOpenCode/releases/download/v${info.version}/LumeCard-v${info.version}-release.apk"
                             val destFile = java.io.File(
-                                java.io.File(System.getProperty("java.io.tmpdir") ?: System.getProperty("user.home") ?: "."),
+                                getApkCacheDir(),
                                 "LumeCard-v${info.version}.apk"
                             )
                             val success = updateManager.downloadApk(downloadUrl, destFile) { progress ->

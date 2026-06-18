@@ -39,6 +39,14 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Sync version into assets
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          CODE=$(grep APP_VERSION_CODE version.properties | cut -d= -f2)
+          sed -i "s/^APP_VERSION_NAME=.*/APP_VERSION_NAME=${VERSION}/" composeApp/src/androidMain/assets/version.properties
+          sed -i "s/^APP_VERSION_CODE=.*/APP_VERSION_CODE=${CODE}/" composeApp/src/androidMain/assets/version.properties
+          echo "Synced assets/version.properties to v${VERSION} (code=${CODE})"
+
       - name: Decode keystore
         if: env.KEYSTORE_BASE64 != ''
         env:
