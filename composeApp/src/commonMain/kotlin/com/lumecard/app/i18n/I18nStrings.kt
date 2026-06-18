@@ -250,7 +250,9 @@ interface I18nStrings {
     val updateLatestVersion: String
     val updateReleaseNotes: String
     val updateDownload: String
+    val updateError: String
     val actionClose: String
+    val settingsCheckUpdate: String
 
     val settingsDeveloper: String
     val settingsLicense: String

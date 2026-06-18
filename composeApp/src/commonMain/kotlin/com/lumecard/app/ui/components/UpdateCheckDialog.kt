@@ -37,9 +37,12 @@ fun UpdateCheckDialog(
         },
         title = {
             Text(
-                if (isChecking) strings.updateChecking
-                else if (updateInfo?.hasUpdate == true) strings.updateAvailable
-                else strings.updateUpToDate,
+                when {
+                    isChecking -> strings.updateChecking
+                    updateInfo?.hasUpdate == true -> strings.updateAvailable
+                    updateInfo != null -> strings.updateUpToDate
+                    else -> strings.settingsCheckUpdate
+                },
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -69,7 +72,7 @@ fun UpdateCheckDialog(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                } else {
+                } else if (updateInfo != null) {
                     Text(strings.updateUpToDateDesc, style = MaterialTheme.typography.bodyMedium)
                     Text(
                         "${strings.updateCurrentVersion}: ${AppVersion.VERSION_NAME}",

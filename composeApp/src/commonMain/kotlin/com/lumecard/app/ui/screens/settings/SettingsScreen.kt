@@ -575,11 +575,12 @@ class SettingsScreen : Screen {
                         Spacer(Modifier.height(spacing.md))
                         HorizontalDivider()
                         ListItem(
-                            headlineContent = { Text(strings.updateAvailable) },
-                            supportingContent = { Text(strings.updateCheckingDesc) },
+                            headlineContent = { Text(strings.settingsCheckUpdate) },
+                            supportingContent = { Text("v${AppVersion.VERSION_NAME}") },
                             leadingContent = { Icon(Icons.Default.Refresh, contentDescription = null) },
                             modifier = Modifier.clickable {
                                 isCheckingUpdate = true
+                                updateInfo = null
                                 showUpdateDialog = true
                                 scope.launch {
                                     updateInfo = updateManager.checkForUpdate()
