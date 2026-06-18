@@ -652,7 +652,9 @@ class SettingsScreen : Screen {
                     scope.launch {
                         updateState = UpdateState.Downloading(0f)
                         try {
-                            val downloadUrl = "https://github.com/Brucegot9stars/LumeCardWithOpenCode/releases/download/v${info.version}/composeApp-release.apk"
+                            val apkAsset = info.assets.firstOrNull()
+                            val downloadUrl = apkAsset?.downloadUrl
+                                ?: "https://github.com/Brucegot9stars/LumeCardWithOpenCode/releases/download/v${info.version}/LumeCard-v${info.version}-release.apk"
                             val destFile = java.io.File(java.io.File(System.getProperty("java.io.tmpdir") ?: System.getProperty("user.home") ?: "."), "LumeCard-v${info.version}.apk")
                             val success = updateManager.downloadApk(downloadUrl, destFile) { progress ->
                                 updateState = UpdateState.Downloading(progress)
