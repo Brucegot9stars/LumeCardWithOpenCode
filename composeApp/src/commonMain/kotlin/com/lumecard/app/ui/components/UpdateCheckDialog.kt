@@ -22,6 +22,7 @@ fun UpdateCheckDialog(
     onDismiss: () -> Unit,
     onCheckUpdate: () -> Unit,
     onUpdate: () -> Unit,
+    onCancel: () -> Unit = {},
     onCopyError: (String) -> Unit = {},
 ) {
     val strings = koinInject<I18nManager>().strings
@@ -104,13 +105,22 @@ fun UpdateCheckDialog(
                         )
                     }
                     is UpdateState.Downloading -> {
+                        val progress = if (updateState.total > 0) {
+                            updateState.downloaded.toFloat() / updateState.total
+                        } else {
+                            0f
+                        }
                         LinearProgressIndicator(
-                            progress = { updateState.progress },
+                            progress = { progress },
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Spacer(Modifier.height(spacing.sm))
                         Text(
-                            "${strings.updateDownloading} ${(updateState.progress * 100).toInt()}%",
+                            if (updateState.total > 0) {
+                                "${strings.updateDownloading} ${(progress * 100).toInt()}% (${formatBytes(updateState.downloaded)} / ${formatBytes(updateState.total)})"
+                            } else {
+                                "${strings.updateDownloading} ${formatBytes(updateState.downloaded)}"
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }
@@ -161,7 +171,11 @@ fun UpdateCheckDialog(
         },
         dismissButton = {
             when (updateState) {
-                is UpdateState.Downloading -> {}
+                is UpdateState.Downloading -> {
+                    TextButton(onClick = onCancel) {
+                        Text(strings.actionCancel)
+                    }
+                }
                 else -> {
                     TextButton(onClick = onDismiss) {
                         Text(strings.actionClose)
@@ -170,4 +184,12 @@ fun UpdateCheckDialog(
             }
         },
     )
+}
+
+private fun formatBytes(bytes: Long): String {
+    return when {
+        bytes < 1024 -> "${bytes}B"
+        bytes < 1024 * 1024 -> "${"%.1f".format(bytes / 1024.0)}KB"
+        else -> "${"%.1f".format(bytes / (1024.0 * 1024))}MB"
+    }
 }

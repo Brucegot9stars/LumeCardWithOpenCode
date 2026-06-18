@@ -74,6 +74,7 @@ class SettingsScreen : Screen {
         var goalInput by remember { mutableStateOf("") }
         var showUpdateDialog by remember { mutableStateOf(false) }
         var updateState by remember { mutableStateOf<UpdateState>(UpdateState.Idle) }
+        var downloadJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
         LaunchedEffect(Unit) {
             settingsViewModel.loadSettings()
@@ -651,8 +652,8 @@ class SettingsScreen : Screen {
                 },
                 onUpdate = {
                     val info = (updateState as? UpdateState.UpdateAvailable)?.info ?: return@UpdateCheckDialog
-                    scope.launch {
-                        updateState = UpdateState.Downloading(0f)
+                    downloadJob = scope.launch {
+                        updateState = UpdateState.Downloading()
                         try {
                             val apkAsset = info.assets.firstOrNull()
                             val downloadUrl = apkAsset?.downloadUrl
@@ -661,8 +662,8 @@ class SettingsScreen : Screen {
                                 getApkCacheDir(),
                                 "LumeCard-v${info.version}.apk"
                             )
-                            val success = updateManager.downloadApk(downloadUrl, destFile) { progress ->
-                                updateState = UpdateState.Downloading(progress)
+                            val success = updateManager.downloadApk(downloadUrl, destFile) { downloaded, total ->
+                                updateState = UpdateState.Downloading(downloaded, total)
                             }
                             if (success) {
                                 updateState = UpdateState.Installing
@@ -679,6 +680,17 @@ class SettingsScreen : Screen {
                             updateState = UpdateState.Error("更新失败：${e.message ?: "未知错误"}")
                         }
                     }
+                },
+                onCancel = {
+                    downloadJob?.cancel()
+                    downloadJob = null
+                    val info = (updateState as? UpdateState.UpdateAvailable)?.info
+                    if (info != null) {
+                        val destFile = java.io.File(getApkCacheDir(), "LumeCard-v${info.version}.apk")
+                        if (destFile.exists()) destFile.delete()
+                    }
+                    updateState = UpdateState.Idle
+                    showUpdateDialog = false
                 },
                 onCopyError = { errorMsg ->
                     scope.launch {

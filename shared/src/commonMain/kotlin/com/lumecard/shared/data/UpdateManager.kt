@@ -7,8 +7,10 @@ import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.http.contentLength
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -33,7 +35,7 @@ sealed class UpdateState {
     data class UpdateAvailable(val info: UpdateInfo) : UpdateState()
     data object UpToDate : UpdateState()
     data class Error(val message: String) : UpdateState()
-    data class Downloading(val progress: Float) : UpdateState()
+    data class Downloading(val downloaded: Long = 0, val total: Long = 0) : UpdateState()
     data object Installing : UpdateState()
     data object Complete : UpdateState()
 }
@@ -92,7 +94,7 @@ class UpdateManager(
     suspend fun downloadApk(
         url: String,
         destFile: File,
-        onProgress: (Float) -> Unit
+        onProgress: (downloaded: Long, total: Long) -> Unit
     ): Boolean {
         val downloadClient = HttpClient {
             install(HttpTimeout) {
@@ -110,8 +112,10 @@ class UpdateManager(
                     throw SyncException("HTTP ${response.status.value}: ${response.status.description}")
                 }
 
+                val totalBytes = response.contentLength() ?: 0L
                 val channel = response.bodyAsChannel()
                 destFile.parentFile?.mkdirs()
+                var downloadedBytes = 0L
                 destFile.outputStream().use { output ->
                     val buffer = ByteArray(16384)
                     var bytesRead: Int
@@ -119,12 +123,14 @@ class UpdateManager(
                         bytesRead = channel.readAvailable(buffer, 0, buffer.size)
                         if (bytesRead == -1) break
                         output.write(buffer, 0, bytesRead)
+                        downloadedBytes += bytesRead
+                        onProgress(downloadedBytes, totalBytes)
                     }
-                    onProgress(1f)
                 }
                 true
             }
         } catch (e: Exception) {
+            if (destFile.exists()) destFile.delete()
             throw SyncException("下载失败：${e.message ?: "未知错误"}")
         } finally {
             downloadClient.close()
