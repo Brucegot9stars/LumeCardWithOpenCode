@@ -253,6 +253,8 @@ object EnStrings : I18nStrings {
     override val updateInstalling = "Installing update"
     override val updateComplete = "Update Complete"
     override val updateCompleteDesc = "Update complete. Please restart the app."
+    override val updateInstallFailed = "Installation failed. Check install permissions."
+    override val updateDownloadFailed = "Download failed. Check your connection and try again."
     override val updatePublishedAt = "Published"
     override val updateCopyError = "Copy Error"
     override val updateCopySuccess = "Error info copied to clipboard"

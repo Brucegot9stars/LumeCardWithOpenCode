@@ -253,6 +253,8 @@ object EsStrings : I18nStrings {
     override val updateInstalling = "Instalando actualización"
     override val updateComplete = "Actualización completa"
     override val updateCompleteDesc = "Actualización completa. Reinicie la aplicación."
+    override val updateInstallFailed = "Instalación fallida. Verifique los permisos de instalación."
+    override val updateDownloadFailed = "Descarga fallida. Verifique su conexión e intente de nuevo."
     override val updatePublishedAt = "Publicado"
     override val settingsDeveloper = "Desarrollador"
     override val settingsLicense = "Licencia"

@@ -253,6 +253,8 @@ object ZhCnStrings : I18nStrings {
     override val updateInstalling = "正在安装更新"
     override val updateComplete = "更新完成"
     override val updateCompleteDesc = "更新已完成，请重启应用。"
+    override val updateInstallFailed = "安装失败，请检查安装权限"
+    override val updateDownloadFailed = "下载失败，请检查网络连接或稍后重试"
     override val updatePublishedAt = "发布时间"
     override val updateCopyError = "复制错误信息"
     override val updateCopySuccess = "错误信息已复制到剪贴板"

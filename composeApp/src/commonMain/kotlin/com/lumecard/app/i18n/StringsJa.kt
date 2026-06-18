@@ -253,6 +253,8 @@ object JaStrings : I18nStrings {
     override val updateInstalling = "更新をインストール中"
     override val updateComplete = "更新完了"
     override val updateCompleteDesc = "更新が完了しました。アプリを再起動してください。"
+    override val updateInstallFailed = "インストール失敗。インストール権限を確認してください。"
+    override val updateDownloadFailed = "ダウンロード失敗。ネットワーク接続を確認してください。"
     override val updatePublishedAt = "公開日"
     override val updateCopyError = "エラーをコピー"
     override val updateCopySuccess = "エラー情報をクリップボードにコピーしました"

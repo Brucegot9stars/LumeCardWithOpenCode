@@ -257,6 +257,8 @@ interface I18nStrings {
     val updateInstalling: String
     val updateComplete: String
     val updateCompleteDesc: String
+    val updateInstallFailed: String
+    val updateDownloadFailed: String
     val updatePublishedAt: String
     val updateCopyError: String
     val updateCopySuccess: String

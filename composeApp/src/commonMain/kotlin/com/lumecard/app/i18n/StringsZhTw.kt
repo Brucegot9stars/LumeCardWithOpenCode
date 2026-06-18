@@ -253,6 +253,8 @@ object ZhTwStrings : I18nStrings {
     override val updateInstalling = "正在安裝更新"
     override val updateComplete = "更新完成"
     override val updateCompleteDesc = "更新已完成，請重啟應用。"
+    override val updateInstallFailed = "安裝失敗，請檢查安裝權限"
+    override val updateDownloadFailed = "下載失敗，請檢查網路連線或稍後重試"
     override val updatePublishedAt = "發佈時間"
     override val settingsDeveloper = "開發者"
     override val settingsLicense = "開源協議"

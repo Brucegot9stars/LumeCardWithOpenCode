@@ -156,18 +156,16 @@ fun UpdateCheckDialog(
                         Text(strings.updateDownload)
                     }
                 }
-                is UpdateState.Complete -> {
-                    TextButton(onClick = onDismiss) {
-                        Text(strings.actionClose)
-                    }
-                }
                 else -> {}
             }
         },
         dismissButton = {
-            if (updateState !is UpdateState.Downloading) {
-                TextButton(onClick = onDismiss) {
-                    Text(strings.actionClose)
+            when (updateState) {
+                is UpdateState.Downloading -> {}
+                else -> {
+                    TextButton(onClick = onDismiss) {
+                        Text(strings.actionClose)
+                    }
                 }
             }
         },
