@@ -208,7 +208,12 @@ class DashboardScreen : Screen {
                                     onClick = { navigator.push(CardListScreen(item.deck.id, item.deck.name)) },
                                     onStudy = {
                                         if (item.cardCount > 0) {
-                                            navigator.push(StudyScreen(item.deck.id, item.deck.name))
+                                            try {
+                                                navigator.push(StudyScreen(item.deck.id, item.deck.name))
+                                            } catch (e: Exception) {
+                                                println("[LumeCard ERROR] Dashboard navigate to StudyScreen: ${e.message}")
+                                                e.printStackTrace()
+                                            }
                                         }
                                     },
                                 )

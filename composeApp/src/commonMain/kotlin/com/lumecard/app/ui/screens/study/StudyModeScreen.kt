@@ -3,6 +3,10 @@ package com.lumecard.app.ui.screens.study
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -10,6 +14,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
@@ -44,11 +50,58 @@ class StudyModeScreen(
 
         var selectedMode by remember { mutableStateOf(StudyMode.MIXED) }
         var selectedDeckIds by remember { mutableStateOf(setOf<String>()) }
+        var errorMsg by remember { mutableStateOf<String?>(null) }
 
         val studyableDecks = decks.filter { (deckCardCounts[it.id] ?: 0) > 0 }
 
         LaunchedEffect(Unit) {
-            deckViewModel.loadDecks()
+            try {
+                deckViewModel.loadDecks()
+            } catch (e: Exception) {
+                println("[LumeCard ERROR] StudyModeScreen loadDecks: ${e.message}")
+                e.printStackTrace()
+                errorMsg = "loadDecks: ${e.message}\n${e.stackTraceToString()}"
+            }
+        }
+
+        if (errorMsg != null) {
+            val clipboardManager = LocalClipboardManager.current
+            AlertDialog(
+                onDismissRequest = { errorMsg = null },
+                title = { Text("Error") },
+                text = {
+                    Column {
+                        Text("An error occurred:", style = MaterialTheme.typography.bodyMedium)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 100.dp, max = 300.dp)
+                                .verticalScroll(rememberScrollState())
+                                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                                .padding(8.dp)
+                        ) {
+                            Text(
+                                text = errorMsg ?: "",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = {
+                            errorMsg?.let { clipboardManager.setText(AnnotatedString(it)) }
+                        }) {
+                            Text("Copy")
+                        }
+                        Button(onClick = { errorMsg = null }) {
+                            Text("OK")
+                        }
+                    }
+                },
+            )
         }
 
         Scaffold(
@@ -86,19 +139,25 @@ class StudyModeScreen(
                         )
                         Button(
                             onClick = {
-                                val deckIds = when (selectedMode) {
-                                    StudyMode.MIXED -> studyableDecks.map { it.id }
-                                    StudyMode.SINGLE, StudyMode.MULTI -> selectedDeckIds.toList()
-                                }
-                                val name = when (selectedMode) {
-                                    StudyMode.MIXED -> strings.modeStartMixed
-                                    StudyMode.SINGLE -> {
-                                        val deck = studyableDecks.find { it.id in selectedDeckIds }
-                                        deck?.name ?: strings.modeStartSingle
+                                try {
+                                    val deckIds = when (selectedMode) {
+                                        StudyMode.MIXED -> studyableDecks.map { it.id }
+                                        StudyMode.SINGLE, StudyMode.MULTI -> selectedDeckIds.toList()
                                     }
-                                    StudyMode.MULTI -> strings.modeStartMulti
+                                    val name = when (selectedMode) {
+                                        StudyMode.MIXED -> strings.modeStartMixed
+                                        StudyMode.SINGLE -> {
+                                            val deck = studyableDecks.find { it.id in selectedDeckIds }
+                                            deck?.name ?: strings.modeStartSingle
+                                        }
+                                        StudyMode.MULTI -> strings.modeStartMulti
+                                    }
+                                    navigator.push(StudyScreen(deckIds, name, planIds = planIds))
+                                } catch (e: Exception) {
+                                    println("[LumeCard ERROR] StudyModeScreen navigate: ${e.message}")
+                                    e.printStackTrace()
+                                    errorMsg = "navigate: ${e.message}\n${e.stackTraceToString()}"
                                 }
-                                navigator.push(StudyScreen(deckIds, name, planIds = planIds))
                             },
                             enabled = enabled
                         ) {

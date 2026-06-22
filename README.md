@@ -2,10 +2,6 @@
 
 一款现代化、跨平台的闪卡学习应用（Anki 替代品），使用 Compose Multiplatform + Kotlin 构建。
 
-> 本项目全程使用 **opencode + DeepSeek + MIMO** 等 AI 工具开发，在此致以诚挚感谢！
-> codex 在 Bug 修复和持续迭代中提供了巨大帮助。
-> 感谢 **MiMoCode** 提供的免费额度支持，让本项目得以高效迭代。
-
 ---
 
 ## 功能特性

@@ -1,14 +1,20 @@
 package com.lumecard.app.ui.screens.learningplan
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
@@ -44,9 +50,50 @@ class LearningPlanSelectionScreen : Screen {
         var editPlanId by remember { mutableStateOf<String?>(null) }
         var dialogName by remember { mutableStateOf("") }
         var dialogDesc by remember { mutableStateOf("") }
+        var errorMsg by remember { mutableStateOf<String?>(null) }
 
         LaunchedEffect(Unit) {
             viewModel.loadPlans()
+        }
+
+        if (errorMsg != null) {
+            val clipboardManager = LocalClipboardManager.current
+            AlertDialog(
+                onDismissRequest = { errorMsg = null },
+                title = { Text("Error") },
+                text = {
+                    Column {
+                        Text("An error occurred:", style = MaterialTheme.typography.bodyMedium)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 100.dp, max = 300.dp)
+                                .verticalScroll(rememberScrollState())
+                                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                                .padding(8.dp)
+                        ) {
+                            Text(
+                                text = errorMsg ?: "",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = {
+                            errorMsg?.let { clipboardManager.setText(AnnotatedString(it)) }
+                        }) {
+                            Text("Copy")
+                        }
+                        Button(onClick = { errorMsg = null }) {
+                            Text("OK")
+                        }
+                    }
+                },
+            )
         }
 
         Scaffold(
@@ -84,7 +131,15 @@ class LearningPlanSelectionScreen : Screen {
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f),
                             ),
-                            onClick = { navigator.push(StudyModeScreen()) }
+                            onClick = {
+                                try {
+                                    navigator.push(StudyModeScreen())
+                                } catch (e: Exception) {
+                                    println("[LumeCard ERROR] PlanSelection navigate random: ${e.message}")
+                                    e.printStackTrace()
+                                    errorMsg = "navigate: ${e.message}\n${e.stackTraceToString()}"
+                                }
+                            }
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(spacing.md),
@@ -131,8 +186,22 @@ class LearningPlanSelectionScreen : Screen {
                                 containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                             ),
                             onClick = {
-                                scope.launch { viewModel.startPlan(plan.id) }
-                                navigator.push(StudyModeScreen(planIds = listOf(plan.id)))
+                                scope.launch {
+                                    try {
+                                        viewModel.startPlan(plan.id)
+                                    } catch (e: Exception) {
+                                        println("[LumeCard ERROR] PlanSelection startPlan: ${e.message}")
+                                        e.printStackTrace()
+                                        errorMsg = "startPlan: ${e.message}\n${e.stackTraceToString()}"
+                                    }
+                                }
+                                try {
+                                    navigator.push(StudyModeScreen(planIds = listOf(plan.id)))
+                                } catch (e: Exception) {
+                                    println("[LumeCard ERROR] PlanSelection navigate plan: ${e.message}")
+                                    e.printStackTrace()
+                                    errorMsg = "navigate: ${e.message}\n${e.stackTraceToString()}"
+                                }
                             }
                         ) {
                             Column(modifier = Modifier.fillMaxWidth().padding(spacing.md)) {
