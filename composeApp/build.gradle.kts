@@ -84,6 +84,7 @@ compose.desktop {
             modules("java.sql")
 
             windows {
+                iconFile.set(project.file("src/desktopMain/resources/icon.ico"))
                 menuGroup = "LumeCard"
                 upgradeUuid = "229b7cca-e9d0-4ee7-9e2e-c9c8dd3d71ce"
             }
