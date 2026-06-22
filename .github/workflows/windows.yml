@@ -26,6 +26,20 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
 
+      - name: Install WiX 7.0.0
+        shell: pwsh
+        run: |
+          $wixDir = "C:\Program Files\WiX Toolset v7.0\bin"
+          if (-not (Test-Path "$wixDir\wix.exe")) {
+            $msi = "$env:TEMP\wix-cli-x64.msi"
+            Invoke-WebRequest -Uri "https://github.com/wixtoolset/wix/releases/download/v7.0.0/wix-cli-x64.msi" -OutFile $msi
+            Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /quiet /norestart" -Wait
+            Remove-Item $msi -Force
+            Write-Output "WiX 7.0.0 installed"
+          } else {
+            Write-Output "WiX 7 already present"
+          }
+
       - name: Build all distributables
         run: .\gradlew.bat :composeApp:createDistributable :composeApp:packageExe :composeApp:packageMsi
 
