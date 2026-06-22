@@ -76,10 +76,12 @@ compose.desktop {
         mainClass = "com.lumecard.app.MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.Msi)
+            targetFormats(TargetFormat.Msi, TargetFormat.Exe)
             packageName = "LumeCard"
             packageVersion = appVersionName
             vendor = "AiDev"
+
+            modules("java.sql")
 
             windows {
                 menuGroup = "LumeCard"
