@@ -43,6 +43,25 @@ jobs:
       - name: Build all distributables
         run: .\gradlew.bat :composeApp:createDistributable :composeApp:packageExe :composeApp:packageMsi
 
+      - name: Extract version
+        id: version
+        shell: pwsh
+        run: |
+          $props = @{}
+          Get-Content version.properties | ForEach-Object {
+            if ($_ -match '^([^=]+)=(.*)$') { $props[$matches[1]] = $matches[2] }
+          }
+          echo "version=$($props['APP_VERSION_NAME'])" >> $env:GITHUB_OUTPUT
+
+      - name: Package portable as ZIP
+        shell: pwsh
+        run: |
+          $ver = "${{ steps.version.outputs.version }}"
+          Push-Location "composeApp/build/compose/binaries/main/app"
+          Compress-Archive -Path "LumeCard" -DestinationPath "LumeCard-$ver-portable.zip" -Force
+          Pop-Location
+          Write-Output "Created composeApp/build/compose/binaries/main/app/LumeCard-$ver-portable.zip"
+
       - name: Upload EXE installer to Release
         uses: softprops/action-gh-release@v2
         with:
@@ -55,9 +74,8 @@ jobs:
           tag_name: ${{ github.ref_name }}
           files: composeApp/build/compose/binaries/main/msi/*.msi
 
-      - name: Upload portable app to Release
+      - name: Upload portable ZIP to Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          files: |
-            composeApp/build/compose/binaries/main/app/LumeCard/LumeCard.exe
+          files: composeApp/build/compose/binaries/main/app/LumeCard-*-portable.zip
