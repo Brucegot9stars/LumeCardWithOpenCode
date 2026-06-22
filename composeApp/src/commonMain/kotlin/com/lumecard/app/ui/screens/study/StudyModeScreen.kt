@@ -22,10 +22,12 @@ import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.ui.screens.deck.DeckViewModel
+import com.lumecard.app.ui.screens.learningplan.LearningPlanViewModel
 import com.lumecard.shared.model.Deck
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.theme.LumeCardTheme
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 enum class StudyMode {
@@ -35,7 +37,8 @@ enum class StudyMode {
 }
 
 class StudyModeScreen(
-    private val planIds: List<String> = emptyList()
+    private val planIds: List<String> = emptyList(),
+    private val preSelectedDeckIds: List<String> = emptyList()
 ) : Screen {
     override val key: ScreenKey = "StudyMode_${planIds.sorted().joinToString("_")}"
 
@@ -44,7 +47,9 @@ class StudyModeScreen(
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
         val deckViewModel: DeckViewModel = koinInject()
+        val planViewModel: LearningPlanViewModel = koinInject()
         val strings = koinInject<I18nManager>().strings
+        val scope = rememberCoroutineScope()
         val decks by deckViewModel.decks.collectAsState()
         val deckCardCounts by deckViewModel.deckCardCounts.collectAsState()
 
@@ -61,6 +66,16 @@ class StudyModeScreen(
                 println("[LumeCard ERROR] StudyModeScreen loadDecks: ${e.message}")
                 e.printStackTrace()
                 errorMsg = "loadDecks: ${e.message}\n${e.stackTraceToString()}"
+            }
+        }
+
+        LaunchedEffect(decks, planIds, preSelectedDeckIds) {
+            if (planIds.isNotEmpty() && preSelectedDeckIds.isNotEmpty() && decks.isNotEmpty()) {
+                val validIds = preSelectedDeckIds.filter { id -> decks.any { it.id == id } }
+                if (validIds.isNotEmpty()) {
+                    selectedDeckIds = validIds.toSet()
+                    selectedMode = if (validIds.size == 1) StudyMode.SINGLE else StudyMode.MULTI
+                }
             }
         }
 
@@ -137,26 +152,72 @@ class StudyModeScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f)
                         )
+                        if (planIds.isNotEmpty() && selectedMode != StudyMode.MIXED) {
+                            OutlinedButton(
+                                onClick = {
+                                    val deckIds = selectedDeckIds.toList()
+                                    scope.launch {
+                                        try {
+                                            val plan = planViewModel.getPlanById(planIds.first())
+                                            if (plan != null) {
+                                                planViewModel.updatePlan(
+                                                    id = plan.id,
+                                                    name = plan.name,
+                                                    description = plan.description,
+                                                    knowledgeBaseIds = plan.knowledgeBaseIds,
+                                                    deckIds = deckIds,
+                                                    cardIds = plan.cardIds,
+                                                    isDefault = plan.isDefault
+                                                )
+                                            }
+                                        } catch (e: Exception) {
+                                            println("[LumeCard ERROR] StudyModeScreen savePlan: ${e.message}")
+                                        }
+                                    }
+                                },
+                                enabled = enabled
+                            ) {
+                                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(strings.actionSave)
+                            }
+                        }
                         Button(
                             onClick = {
-                                try {
-                                    val deckIds = when (selectedMode) {
-                                        StudyMode.MIXED -> studyableDecks.map { it.id }
-                                        StudyMode.SINGLE, StudyMode.MULTI -> selectedDeckIds.toList()
+                                val deckIds = when (selectedMode) {
+                                    StudyMode.MIXED -> studyableDecks.map { it.id }
+                                    StudyMode.SINGLE, StudyMode.MULTI -> selectedDeckIds.toList()
+                                }
+                                val name = when (selectedMode) {
+                                    StudyMode.MIXED -> strings.modeStartMixed
+                                    StudyMode.SINGLE -> {
+                                        val deck = studyableDecks.find { it.id in selectedDeckIds }
+                                        deck?.name ?: strings.modeStartSingle
                                     }
-                                    val name = when (selectedMode) {
-                                        StudyMode.MIXED -> strings.modeStartMixed
-                                        StudyMode.SINGLE -> {
-                                            val deck = studyableDecks.find { it.id in selectedDeckIds }
-                                            deck?.name ?: strings.modeStartSingle
+                                    StudyMode.MULTI -> strings.modeStartMulti
+                                }
+                                scope.launch {
+                                    try {
+                                        if (planIds.isNotEmpty() && selectedMode != StudyMode.MIXED) {
+                                            val plan = planViewModel.getPlanById(planIds.first())
+                                            if (plan != null) {
+                                                planViewModel.updatePlan(
+                                                    id = plan.id,
+                                                    name = plan.name,
+                                                    description = plan.description,
+                                                    knowledgeBaseIds = plan.knowledgeBaseIds,
+                                                    deckIds = deckIds,
+                                                    cardIds = plan.cardIds,
+                                                    isDefault = plan.isDefault
+                                                )
+                                            }
                                         }
-                                        StudyMode.MULTI -> strings.modeStartMulti
+                                        navigator.push(StudyScreen(deckIds, name, planIds = planIds))
+                                    } catch (e: Exception) {
+                                        println("[LumeCard ERROR] StudyModeScreen navigate: ${e.message}")
+                                        e.printStackTrace()
+                                        errorMsg = "navigate: ${e.message}\n${e.stackTraceToString()}"
                                     }
-                                    navigator.push(StudyScreen(deckIds, name, planIds = planIds))
-                                } catch (e: Exception) {
-                                    println("[LumeCard ERROR] StudyModeScreen navigate: ${e.message}")
-                                    e.printStackTrace()
-                                    errorMsg = "navigate: ${e.message}\n${e.stackTraceToString()}"
                                 }
                             },
                             enabled = enabled

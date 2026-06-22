@@ -69,51 +69,34 @@ class WarehouseViewModel(
 
     private fun rebuildTree() {
         val query = _searchQuery.value.lowercase()
-        val kbs = cachedKBs
-        val decks = cachedDecks
-        val cards = cachedCards
+        val hasQuery = query.isNotEmpty()
+        val kbs = cachedKBs.filter { it.deletedAt == null }
+        val decks = cachedDecks.filter { it.deletedAt == null }
+        val cards = cachedCards.filter { it.deletedAt == null }
 
-        val tree = kbs.filter { kb ->
-            kb.deletedAt == null && (query.isEmpty() || kb.name.lowercase().contains(query))
-        }.map { kb ->
-            val kbDecks = decks.filter { d ->
-                d.knowledgeBaseId == kb.id && d.deletedAt == null &&
-                (query.isEmpty() || d.name.lowercase().contains(query))
-            }
-            val kbCards = cards.filter { c ->
-                c.deckId !in kbDecks.map { it.id } && c.deletedAt == null &&
-                query.isNotEmpty() && (c.front.lowercase().contains(query) || c.back.lowercase().contains(query))
-            }
-            TreeNode(
-                id = kb.id,
-                name = kb.name,
-                type = NodeType.KNOWLEDGE_BASE,
-                isExpanded = kb.id in _expandedIds.value,
-                children = kbDecks.map { deck ->
-                    val deckCards = cards.filter { it.deckId == deck.id && it.deletedAt == null }
-                    val filteredCards = if (query.isNotEmpty()) {
-                        deckCards.filter { it.front.lowercase().contains(query) || it.back.lowercase().contains(query) }
-                    } else {
-                        deckCards
-                    }
-                    TreeNode(
-                        id = deck.id,
-                        name = deck.name,
-                        type = NodeType.DECK,
-                        isExpanded = deck.id in _expandedIds.value,
-                        children = filteredCards.map { card ->
-                            TreeNode(
-                                id = card.id,
-                                name = card.front.take(50),
-                                type = NodeType.CARD,
-                                data = card
-                            )
-                        }
-                    )
-                } + kbCards.map { card ->
+        val tree = kbs.mapNotNull { kb ->
+            val kbNameMatch = !hasQuery || kb.name.lowercase().contains(query)
+            val kbDecks = decks.filter { it.knowledgeBaseId == kb.id }
+
+            val deckNodes = kbDecks.mapNotNull { deck ->
+                val deckNameMatch = !hasQuery || deck.name.lowercase().contains(query)
+                val deckCards = cards.filter { it.deckId == deck.id }
+                val matchedCards = if (hasQuery) {
+                    deckCards.filter { it.front.lowercase().contains(query) || it.back.lowercase().contains(query) }
+                } else deckCards
+
+                val showDeck = !hasQuery || deckNameMatch || matchedCards.isNotEmpty()
+                if (!showDeck) return@mapNotNull null
+
+                val cardNodes = (if (hasQuery && !deckNameMatch && !kbNameMatch) matchedCards else deckCards).map { card ->
                     TreeNode(id = card.id, name = card.front.take(50), type = NodeType.CARD, data = card)
                 }
-            )
+                TreeNode(id = deck.id, name = deck.name, type = NodeType.DECK, isExpanded = deck.id in _expandedIds.value, children = cardNodes)
+            }
+
+            if (!hasQuery || kbNameMatch || deckNodes.isNotEmpty()) {
+                TreeNode(id = kb.id, name = kb.name, type = NodeType.KNOWLEDGE_BASE, isExpanded = kb.id in _expandedIds.value, children = deckNodes)
+            } else null
         }
         _treeNodes.value = tree
     }

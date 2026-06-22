@@ -85,6 +85,11 @@ object ZhTwStrings : I18nStrings {
     override val studyCardTypeVideo = "視訊"
     override val studyCardTypeMarkdown = "Markdown"
     override val studyCardTypeAi = "AI"
+    override val studyModeTitle = "選擇學習模式"
+    override val studyModeDesc = "已完成當前卡片，選擇接下來的學習方式"
+    override val studyContinueAll = "繼續學一遍"
+    override fun studyNewCards(count: Int) = "學習新卡（${count}張）"
+    override fun studyRandom(count: Int) = "隨機學習（${count}張）"
 
     override val deckCreate = "建立牌組"
     override val deckEdit = "編輯牌組"

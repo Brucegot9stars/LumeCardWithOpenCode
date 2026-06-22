@@ -88,6 +88,11 @@ interface I18nStrings {
     val studyCardTypeVideo: String
     val studyCardTypeMarkdown: String
     val studyCardTypeAi: String
+    val studyModeTitle: String
+    val studyModeDesc: String
+    val studyContinueAll: String
+    fun studyNewCards(count: Int): String
+    fun studyRandom(count: Int): String
 
     val deckCreate: String
     val deckEdit: String

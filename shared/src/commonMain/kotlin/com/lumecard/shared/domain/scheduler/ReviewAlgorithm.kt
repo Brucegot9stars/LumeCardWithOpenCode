@@ -2,6 +2,7 @@ package com.lumecard.shared.domain.scheduler
 
 import com.lumecard.shared.model.Rating
 import kotlinx.datetime.Instant
+import kotlinx.serialization.Serializable
 
 enum class ReviewMode {
     FSRS,
@@ -10,6 +11,7 @@ enum class ReviewMode {
     SIMPLE
 }
 
+@Serializable
 data class AlgorithmState(
     val intervalDays: Int = 0,
     val nextReviewAt: Instant = Instant.DISTANT_FUTURE,

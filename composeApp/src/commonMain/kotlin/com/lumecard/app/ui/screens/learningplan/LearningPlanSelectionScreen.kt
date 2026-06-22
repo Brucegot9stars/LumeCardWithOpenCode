@@ -196,7 +196,7 @@ class LearningPlanSelectionScreen : Screen {
                                     }
                                 }
                                 try {
-                                    navigator.push(StudyModeScreen(planIds = listOf(plan.id)))
+                                    navigator.push(StudyModeScreen(planIds = listOf(plan.id), preSelectedDeckIds = plan.deckIds))
                                 } catch (e: Exception) {
                                     println("[LumeCard ERROR] PlanSelection navigate plan: ${e.message}")
                                     e.printStackTrace()

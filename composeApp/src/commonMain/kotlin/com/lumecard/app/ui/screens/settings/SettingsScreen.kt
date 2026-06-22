@@ -43,6 +43,7 @@ import com.lumecard.app.platform.readFileContent
 import com.lumecard.app.platform.writeFileContent
 import com.lumecard.app.platform.installApk
 import com.lumecard.app.platform.getApkCacheDir
+import com.lumecard.app.platform.isDesktopPlatform
 import org.koin.compose.koinInject
 
 class SettingsScreen : Screen {
@@ -75,6 +76,7 @@ class SettingsScreen : Screen {
         var showUpdateDialog by remember { mutableStateOf(false) }
         var updateState by remember { mutableStateOf<UpdateState>(UpdateState.Idle) }
         var downloadJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+        var currentDestFile by remember { mutableStateOf<java.io.File?>(null) }
 
         LaunchedEffect(Unit) {
             settingsViewModel.loadSettings()
@@ -467,7 +469,7 @@ class SettingsScreen : Screen {
                                         val knowledgeBases = knowledgeBaseRepository.getAll().first()
                                         val decks = deckRepository.getAll().first()
                                         val allCards = cardRepository.getAll().first()
-                                        val json = withContext(Dispatchers.IO) { exportManager.exportData(knowledgeBases, decks, allCards) }
+                                        val json = withContext(Dispatchers.IO) { exportManager.exportShareData(knowledgeBases, decks, allCards) }
                                         val success = withContext(Dispatchers.IO) { writeFileContent(filePath, json) }
                                         if (success) {
                                             snackbarHostState.showSnackbar(strings.settingsExportSuccess(json.length))
@@ -650,48 +652,58 @@ class SettingsScreen : Screen {
                         }
                     }
                 },
-                onUpdate = {
-                    val info = (updateState as? UpdateState.UpdateAvailable)?.info ?: return@UpdateCheckDialog
-                    downloadJob = scope.launch {
-                        updateState = UpdateState.Downloading()
-                        try {
-                            val apkAsset = info.assets.firstOrNull()
-                            val downloadUrl = apkAsset?.downloadUrl
-                                ?: "https://github.com/Brucegot9stars/LumeCardWithOpenCode/releases/download/v${info.version}/LumeCard-v${info.version}-release.apk"
-                            val destFile = java.io.File(
-                                getApkCacheDir(),
-                                "LumeCard-v${info.version}.apk"
-                            )
-                            val success = updateManager.downloadApk(downloadUrl, destFile) { downloaded, total ->
-                                updateState = UpdateState.Downloading(downloaded, total)
-                            }
-                            if (success) {
-                                updateState = UpdateState.Installing
-                                val installed = installApk(destFile.absolutePath)
-                                if (installed) {
-                                    updateState = UpdateState.Complete
+                    onUpdate = {
+                        val info = (updateState as? UpdateState.UpdateAvailable)?.info ?: return@UpdateCheckDialog
+                        downloadJob = scope.launch {
+                            updateState = UpdateState.Downloading()
+                            try {
+                                val isDesktop = isDesktopPlatform()
+                                val platformAsset = if (isDesktop) {
+                                    info.assets.firstOrNull { it.name.endsWith(".exe") }
+                                        ?: info.assets.firstOrNull { it.name.endsWith(".msi") }
+                                        ?: info.assets.firstOrNull { it.name.endsWith(".zip") }
                                 } else {
-                                    updateState = UpdateState.Error(strings.updateInstallFailed)
+                                    info.assets.firstOrNull { it.name.endsWith(".apk") }
                                 }
-                            } else {
-                                updateState = UpdateState.Error(strings.updateDownloadFailed)
+                                val downloadUrl = platformAsset?.downloadUrl
+                                    ?: if (isDesktop) {
+                                        "https://github.com/Brucegot9stars/LumeCardWithOpenCode/releases/download/v${info.version}/LumeCard-${info.version}.exe"
+                                    } else {
+                                        "https://github.com/Brucegot9stars/LumeCardWithOpenCode/releases/download/v${info.version}/LumeCard-v${info.version}-release.apk"
+                                    }
+                                val extension = platformAsset?.name?.substringAfterLast('.')
+                                    ?: if (isDesktop) "exe" else "apk"
+                                val filename = "LumeCard-v${info.version}.$extension"
+                                currentDestFile = java.io.File(getApkCacheDir(), filename)
+                                val success = updateManager.downloadApk(downloadUrl, currentDestFile!!) { downloaded, total ->
+                                    updateState = UpdateState.Downloading(downloaded, total)
+                                }
+                                if (success) {
+                                    updateState = UpdateState.Installing
+                                    val installed = installApk(currentDestFile!!.absolutePath)
+                                    if (installed) {
+                                        updateState = UpdateState.Complete
+                                    } else {
+                                        updateState = UpdateState.Error(strings.updateInstallFailed)
+                                    }
+                                } else {
+                                    updateState = UpdateState.Error(strings.updateDownloadFailed)
+                                }
+                            } catch (e: Exception) {
+                                updateState = UpdateState.Error("更新失败：${e.message ?: "未知错误"}")
                             }
-                        } catch (e: Exception) {
-                            updateState = UpdateState.Error("更新失败：${e.message ?: "未知错误"}")
                         }
-                    }
-                },
-                onCancel = {
-                    downloadJob?.cancel()
-                    downloadJob = null
-                    val info = (updateState as? UpdateState.UpdateAvailable)?.info
-                    if (info != null) {
-                        val destFile = java.io.File(getApkCacheDir(), "LumeCard-v${info.version}.apk")
-                        if (destFile.exists()) destFile.delete()
-                    }
-                    updateState = UpdateState.Idle
-                    showUpdateDialog = false
-                },
+                    },
+                    onCancel = {
+                        downloadJob?.cancel()
+                        downloadJob = null
+                        if (currentDestFile != null && currentDestFile!!.exists()) {
+                            currentDestFile!!.delete()
+                        }
+                        currentDestFile = null
+                        updateState = UpdateState.Idle
+                        showUpdateDialog = false
+                    },
                 onCopyError = { errorMsg ->
                     scope.launch {
                         try {

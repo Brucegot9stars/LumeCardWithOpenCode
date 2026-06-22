@@ -10,8 +10,10 @@ import kotlinx.datetime.Clock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
+/** Full backup: includes private data (review logs, learning plans). For sync/restore only. */
 @Serializable
 data class DataExport(
+    val exportType: String = "backup",
     val version: String = AppVersion.EXPORT_VERSION,
     val schemaVersion: Int = AppVersion.SCHEMA_VERSION,
     val exportDate: String,
@@ -21,6 +23,19 @@ data class DataExport(
     val cards: List<ExportCard>,
     val reviewLogs: List<ExportReviewLog> = emptyList(),
     val learningPlans: List<ExportLearningPlan> = emptyList()
+)
+
+/** Share-friendly: only knowledge-base content. No private learning plans or progress. */
+@Serializable
+data class ShareExport(
+    val exportType: String = "share",
+    val version: String = AppVersion.EXPORT_VERSION,
+    val schemaVersion: Int = AppVersion.SCHEMA_VERSION,
+    val exportDate: String,
+    val deviceId: String? = null,
+    val knowledgeBases: List<ExportKnowledgeBase> = emptyList(),
+    val decks: List<ExportDeck>,
+    val cards: List<ExportCard>
 )
 
 @Serializable
@@ -174,6 +189,55 @@ class ExportManager {
         return json.encodeToString(DataExport.serializer(), export)
     }
 
+    /** Export knowledge base content only — no private learning plans or review logs. */
+    fun exportShareData(
+        knowledgeBases: List<KnowledgeBase>,
+        decks: List<Deck>,
+        cards: List<Card>,
+        deviceId: String? = null
+    ): String {
+        val export = ShareExport(
+            exportDate = Clock.System.now().toString(),
+            deviceId = deviceId,
+            knowledgeBases = knowledgeBases.map { kb ->
+                ExportKnowledgeBase(
+                    id = kb.id, name = kb.name, description = kb.description,
+                    createdAt = kb.createdAt.toString(), updatedAt = kb.updatedAt.toString(),
+                    version = kb.version, deletedAt = kb.deletedAt?.toString()
+                )
+            },
+            decks = decks.map { d ->
+                ExportDeck(
+                    id = d.id, knowledgeBaseId = d.knowledgeBaseId, name = d.name,
+                    description = d.description, color = d.color, icon = d.icon,
+                    parentId = d.parentId, createdAt = d.createdAt.toString(),
+                    updatedAt = d.updatedAt.toString(), version = d.version,
+                    deletedAt = d.deletedAt?.toString()
+                )
+            },
+            cards = cards.map { c ->
+                ExportCard(
+                    id = c.id, deckId = c.deckId, type = c.type.name,
+                    front = c.front, back = c.back, tags = c.tags,
+                    createdAt = c.createdAt.toString(), updatedAt = c.updatedAt.toString(),
+                    lastReviewedAt = c.lastReviewedAt?.toString(),
+                    nextReviewAt = c.nextReviewAt?.toString(),
+                    version = c.version, deletedAt = c.deletedAt?.toString()
+                )
+            }
+        )
+        return json.encodeToString(ShareExport.serializer(), export)
+    }
+
+    /** Import knowledge base content from a share file. */
+    fun importShareData(jsonString: String): ShareExport? {
+        return try {
+            json.decodeFromString(ShareExport.serializer(), jsonString)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     fun exportConfig(
         settings: Map<String, String>,
         deviceId: String? = null
@@ -186,17 +250,29 @@ class ExportManager {
         return json.encodeToString(ConfigExport.serializer(), export)
     }
 
+    /** Full backup import. Also accepts share-format files (converts to DataExport). */
     fun importData(jsonString: String): DataExport? {
-        return try {
+        val direct = try {
             val export = json.decodeFromString(DataExport.serializer(), jsonString)
             when (export.schemaVersion) {
                 AppVersion.SCHEMA_VERSION -> export
                 1 -> migrateV1DataToV2(export)
                 else -> export
             }
-        } catch (e: Exception) {
-            null
-        }
+        } catch (_: Exception) { null }
+        if (direct != null) return direct
+
+        return try {
+            val share = json.decodeFromString(ShareExport.serializer(), jsonString)
+            DataExport(
+                exportType = "backup",
+                exportDate = share.exportDate,
+                deviceId = share.deviceId,
+                knowledgeBases = share.knowledgeBases,
+                decks = share.decks,
+                cards = share.cards
+            )
+        } catch (_: Exception) { null }
     }
 
     fun importConfig(jsonString: String): ConfigExport? {

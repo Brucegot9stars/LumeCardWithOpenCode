@@ -60,6 +60,7 @@ kotlin {
 
                 implementation(Dependencies.kotlinxCoroutines)
                 implementation(Dependencies.kotlinxDateTime)
+                implementation(Dependencies.kotlinxSerialization)
             }
         }
 

@@ -160,16 +160,19 @@ class UpdateManager(
 
     private fun parseAssets(json: String): List<UpdateAsset> {
         val assets = mutableListOf<UpdateAsset>()
-        val assetBlockRegex = """"browser_download_url"\s*:\s*"([^"]*\.apk[^"]*)"""".toRegex()
+        val seen = mutableSetOf<String>()
+        val assetBlockRegex = """"browser_download_url"\s*:\s*"([^"]*\.(?:apk|exe|msi|zip)[^"]*)"""".toRegex()
         assetBlockRegex.findAll(json).forEach { match ->
             val url = match.groupValues[1]
             val name = url.substringAfterLast('/')
-            if (name.endsWith(".apk")) {
-                assets.add(UpdateAsset(
-                    name = name,
-                    downloadUrl = url,
-                    size = 0
-                ))
+            if (name.endsWith(".apk") || name.endsWith(".exe") || name.endsWith(".msi") || name.endsWith(".zip")) {
+                if (seen.add(name)) {
+                    assets.add(UpdateAsset(
+                        name = name,
+                        downloadUrl = url,
+                        size = 0
+                    ))
+                }
             }
         }
         return assets

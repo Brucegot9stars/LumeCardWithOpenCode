@@ -85,6 +85,11 @@ object EnStrings : I18nStrings {
     override val studyCardTypeVideo = "Video"
     override val studyCardTypeMarkdown = "Markdown"
     override val studyCardTypeAi = "AI"
+    override val studyModeTitle = "Study Mode"
+    override val studyModeDesc = "Cards complete, choose how to continue"
+    override val studyContinueAll = "Study All Cards"
+    override fun studyNewCards(count: Int) = "Learn New Cards ($count)"
+    override fun studyRandom(count: Int) = "Random Study ($count)"
 
     override val deckCreate = "Create Deck"
     override val deckEdit = "Edit Deck"

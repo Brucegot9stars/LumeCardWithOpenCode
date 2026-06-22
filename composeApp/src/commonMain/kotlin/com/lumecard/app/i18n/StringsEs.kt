@@ -85,6 +85,11 @@ object EsStrings : I18nStrings {
     override val studyCardTypeVideo = "Video"
     override val studyCardTypeMarkdown = "Markdown"
     override val studyCardTypeAi = "IA"
+    override val studyModeTitle = "Modo de estudio"
+    override val studyModeDesc = "Tarjetas completadas, elige cómo continuar"
+    override val studyContinueAll = "Estudiar todas"
+    override fun studyNewCards(count: Int) = "Nuevas tarjetas ($count)"
+    override fun studyRandom(count: Int) = "Aleatorio ($count)"
 
     override val deckCreate = "Crear mazo"
     override val deckEdit = "Editar mazo"

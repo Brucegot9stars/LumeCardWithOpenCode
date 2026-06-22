@@ -85,6 +85,11 @@ object JaStrings : I18nStrings {
     override val studyCardTypeVideo = "動画"
     override val studyCardTypeMarkdown = "Markdown"
     override val studyCardTypeAi = "AI"
+    override val studyModeTitle = "学習モード"
+    override val studyModeDesc = "カード完了、続行方法を選択"
+    override val studyContinueAll = "すべてを復習"
+    override fun studyNewCards(count: Int) = "新規カード（${count}枚）"
+    override fun studyRandom(count: Int) = "ランダム（${count}枚）"
 
     override val deckCreate = "デッキを作成"
     override val deckEdit = "デッキを編集"

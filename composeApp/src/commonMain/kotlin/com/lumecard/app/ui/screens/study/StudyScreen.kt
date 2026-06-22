@@ -122,6 +122,22 @@ class StudyScreen(
         var lastDragX by remember { mutableFloatStateOf(0f) }
         var velocity by remember { mutableFloatStateOf(0f) }
 
+        var showStudyModeDialog by remember { mutableStateOf(false) }
+        var hasChosenMode by remember { mutableStateOf(false) }
+        val allDone = cards.isNotEmpty() && currentIndex >= cards.size
+        LaunchedEffect(allDone, cards.isEmpty()) {
+            if (!hasChosenMode && (allDone || (cards.isEmpty() && viewModel.totalCardCount > 0))) {
+                showStudyModeDialog = true
+            }
+        }
+        LaunchedEffect(cards) {
+            if (cards.isNotEmpty()) hasChosenMode = false
+        }
+
+        val dailyLimit = settingsState.newCardsPerDay
+        val totalAvail = viewModel.totalCardCount
+        val unlearnedAvail = viewModel.unlearnedCardCount
+
         if (error != null) {
             val clipboardManager = LocalClipboardManager.current
             AlertDialog(
@@ -169,6 +185,56 @@ class StudyScreen(
         LaunchedEffect(currentCard) {
             swipeOffset.snapTo(0f)
             isAnimatingOut = false
+        }
+
+        if (showStudyModeDialog) {
+            val newCardLabel = if (unlearnedAvail > 0) {
+                val actual = unlearnedAvail.coerceAtMost(dailyLimit)
+                strings.studyNewCards(actual)
+            } else null
+            val randomLabel = {
+                val actual = totalAvail.coerceAtMost(dailyLimit)
+                strings.studyRandom(actual)
+            }
+            AlertDialog(
+                onDismissRequest = { navigator.pop() },
+                title = { Text(strings.studyModeTitle) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(strings.studyModeDesc, style = MaterialTheme.typography.bodyMedium)
+                        Spacer(Modifier.height(8.dp))
+                        Button(
+                            onClick = {
+                                hasChosenMode = true
+                                showStudyModeDialog = false
+                                viewModel.reloadWithMode(CardsStudyMode.ALL_CARDS)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(strings.studyContinueAll) }
+                        Spacer(Modifier.height(4.dp))
+                        if (newCardLabel != null) {
+                            OutlinedButton(
+                                onClick = {
+                                    hasChosenMode = true
+                                    showStudyModeDialog = false
+                                    viewModel.reloadWithMode(CardsStudyMode.NEW_CARDS, dailyLimit)
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) { Text(newCardLabel) }
+                            Spacer(Modifier.height(4.dp))
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                hasChosenMode = true
+                                showStudyModeDialog = false
+                                viewModel.reloadWithMode(CardsStudyMode.RANDOM, dailyLimit)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(randomLabel()) }
+                    }
+                },
+                confirmButton = { TextButton(onClick = { navigator.pop() }) { Text(strings.actionDone) } }
+            )
         }
 
         DisposableEffect(Unit) {

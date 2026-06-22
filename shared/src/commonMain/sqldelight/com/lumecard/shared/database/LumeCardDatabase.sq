@@ -155,14 +155,23 @@ updateCard:
 UPDATE Card SET deck_id = ?, type = ?, front = ?, back = ?, tags = ?, media = ?, metadata = ?, updated_at = ?, last_reviewed_at = ?, next_review_at = ?, version = version + 1
 WHERE id = ?;
 
-deleteCard:
-DELETE FROM Card WHERE id = ?;
+softDeleteCard:
+UPDATE Card SET deleted_at = ?, updated_at = ?, version = version + 1, synced_at = NULL WHERE id = ?;
 
-deleteDeck:
-DELETE FROM Deck WHERE id = ?;
+softDeleteDeck:
+UPDATE Deck SET deleted_at = ?, updated_at = ?, version = version + 1, synced_at = NULL WHERE id = ?;
 
-deleteKnowledgeBase:
-DELETE FROM KnowledgeBase WHERE id = ?;
+softDeleteKnowledgeBase:
+UPDATE KnowledgeBase SET deleted_at = ?, updated_at = ?, version = version + 1, synced_at = NULL WHERE id = ?;
+
+softDeleteReviewLog:
+UPDATE ReviewLog SET deleted_at = ?, version = version + 1, synced_at = NULL WHERE id = ?;
+
+softDeleteLearningPlan:
+UPDATE LearningPlan SET deleted_at = ?, updated_at = ?, version = version + 1, synced_at = NULL WHERE id = ?;
+
+searchCards:
+SELECT * FROM Card WHERE deleted_at IS NULL AND (front LIKE '%' || ? || '%' OR back LIKE '%' || ? || '%' OR tags LIKE '%' || ? || '%');
 
 selectAllReviewLogs:
 SELECT * FROM ReviewLog WHERE deleted_at IS NULL ORDER BY reviewed_at DESC;
