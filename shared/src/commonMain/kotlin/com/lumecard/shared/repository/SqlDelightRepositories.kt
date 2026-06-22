@@ -62,6 +62,15 @@ class SqlDelightKnowledgeBaseRepository(
         val now = Clock.System.now().toString()
         queries.softDeleteKnowledgeBase(now, now, id)
     }
+
+    override suspend fun getUpdatedSince(since: Instant): List<KnowledgeBase> {
+        return queries.selectKnowledgeBasesUpdatedSince(since.toString()).executeAsList().map { it.toKnowledgeBase() }
+    }
+
+    override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
+        val ts = syncedAt.toString()
+        ids.forEach { queries.updateKnowledgeBaseSyncedAt(ts, it) }
+    }
 }
 
 class SqlDelightDeckRepository(
@@ -124,6 +133,15 @@ class SqlDelightDeckRepository(
         val now = Clock.System.now().toString()
         queries.softDeleteDeck(now, now, id)
     }
+
+    override suspend fun getUpdatedSince(since: Instant): List<Deck> {
+        return queries.selectDecksUpdatedSince(since.toString()).executeAsList().map { it.toDeck() }
+    }
+
+    override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
+        val ts = syncedAt.toString()
+        ids.forEach { queries.updateDeckSyncedAt(ts, it) }
+    }
 }
 
 class SqlDelightCardRepository(
@@ -173,6 +191,7 @@ class SqlDelightCardRepository(
             deleted_at = card.deletedAt?.toString(),
             synced_at = card.syncedAt?.toString()
         )
+        queries.insertCardFts(card.id, card.front, card.back, card.tags.joinToString(" "))
     }
 
     override suspend fun update(card: Card) {
@@ -181,7 +200,7 @@ class SqlDelightCardRepository(
             type = card.type.name,
             front = card.front,
             back = card.back,
-            tags = card.tags.joinToString(","),
+            tags = Json.encodeToString(card.tags),
             media = Json.encodeToString(card.media),
             metadata = Json.encodeToString(card.metadata),
             updated_at = Clock.System.now().toString(),
@@ -189,11 +208,14 @@ class SqlDelightCardRepository(
             next_review_at = card.nextReviewAt?.toString(),
             id = card.id
         )
+        queries.deleteCardFts(card.id)
+        queries.insertCardFts(card.id, card.front, card.back, card.tags.joinToString(" "))
     }
 
     override suspend fun delete(id: String) {
         val now = Clock.System.now().toString()
         queries.softDeleteCard(now, now, id)
+        queries.deleteCardFts(id)
     }
 
     override suspend fun search(query: String): Flow<List<Card>> {
@@ -201,6 +223,20 @@ class SqlDelightCardRepository(
         return queries.searchCards(likeQuery, likeQuery, likeQuery).asFlow().mapToList(Dispatchers.Default).map { list ->
             list.map { it.toDomain() }
         }
+    }
+
+    override suspend fun getUpdatedSince(since: Instant): List<Card> {
+        return queries.selectCardsUpdatedSince(since.toString()).executeAsList().map { it.toDomain() }
+    }
+
+    override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
+        val ts = syncedAt.toString()
+        ids.forEach { queries.updateCardSyncedAt(ts, it) }
+    }
+
+    override suspend fun rebuildFtsIndex() {
+        queries.deleteAllCardFts()
+        queries.rebuildCardFts()
     }
 }
 
@@ -253,6 +289,15 @@ class SqlDelightReviewLogRepository(
             retentionRate = retentionRate,
             studyTimeMinutes = studyTimeMinutes.toInt()
         )
+    }
+
+    override suspend fun getUpdatedSince(since: Instant): List<ReviewLog> {
+        return queries.selectReviewLogsUpdatedSince(since.toString()).executeAsList().map { it.toReviewLog() }
+    }
+
+    override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
+        val ts = syncedAt.toString()
+        ids.forEach { queries.updateReviewLogSyncedAt(ts, it) }
     }
 }
 
@@ -445,6 +490,15 @@ class SqlDelightLearningPlanRepository(
     override suspend fun delete(id: String) {
         val now = Clock.System.now().toString()
         queries.softDeleteLearningPlan(now, now, id)
+    }
+
+    override suspend fun getUpdatedSince(since: Instant): List<com.lumecard.shared.model.LearningPlan> {
+        return queries.selectLearningPlansUpdatedSince(since.toString()).executeAsList().map { it.toLearningPlan() }
+    }
+
+    override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
+        val ts = syncedAt.toString()
+        ids.forEach { queries.updateLearningPlanSyncedAt(ts, it) }
     }
 }
 

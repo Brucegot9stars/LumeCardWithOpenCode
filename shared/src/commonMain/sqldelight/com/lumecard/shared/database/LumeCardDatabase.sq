@@ -170,6 +170,26 @@ UPDATE ReviewLog SET deleted_at = ?, version = version + 1, synced_at = NULL WHE
 softDeleteLearningPlan:
 UPDATE LearningPlan SET deleted_at = ?, updated_at = ?, version = version + 1, synced_at = NULL WHERE id = ?;
 
+-- Compiled-time stub: replaced with FTS5 virtual table at runtime (see DatabaseDriverFactory).
+CREATE TABLE IF NOT EXISTS CardFTS(
+    card_id TEXT NOT NULL,
+    front TEXT NOT NULL,
+    back TEXT NOT NULL,
+    tags TEXT NOT NULL
+);
+
+insertCardFts:
+INSERT INTO CardFTS(card_id, front, back, tags) VALUES (?, ?, ?, ?);
+
+deleteCardFts:
+DELETE FROM CardFTS WHERE card_id = ?;
+
+deleteAllCardFts:
+DELETE FROM CardFTS;
+
+rebuildCardFts:
+INSERT INTO CardFTS(card_id, front, back, tags) SELECT id, front, back, tags FROM Card WHERE deleted_at IS NULL;
+
 searchCards:
 SELECT * FROM Card WHERE deleted_at IS NULL AND (front LIKE '%' || ? || '%' OR back LIKE '%' || ? || '%' OR tags LIKE '%' || ? || '%');
 
@@ -217,3 +237,34 @@ SELECT * FROM LearningPlan WHERE is_default = 1 AND deleted_at IS NULL;
 insertLearningPlan:
 INSERT OR REPLACE INTO LearningPlan(id, name, description, status, is_default, knowledge_base_ids, deck_ids, card_ids, total_cards, completed_cards, created_at, updated_at, version, deleted_at, synced_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- Incremental sync queries
+selectKnowledgeBasesUpdatedSince:
+SELECT * FROM KnowledgeBase WHERE (synced_at IS NULL OR updated_at > ?) AND deleted_at IS NULL;
+
+selectDecksUpdatedSince:
+SELECT * FROM Deck WHERE (synced_at IS NULL OR updated_at > ?) AND deleted_at IS NULL;
+
+selectCardsUpdatedSince:
+SELECT * FROM Card WHERE (synced_at IS NULL OR updated_at > ?) AND deleted_at IS NULL;
+
+selectReviewLogsUpdatedSince:
+SELECT * FROM ReviewLog WHERE (synced_at IS NULL OR reviewed_at > ?) AND deleted_at IS NULL;
+
+selectLearningPlansUpdatedSince:
+SELECT * FROM LearningPlan WHERE (synced_at IS NULL OR updated_at > ?) AND deleted_at IS NULL;
+
+updateKnowledgeBaseSyncedAt:
+UPDATE KnowledgeBase SET synced_at = ? WHERE id = ?;
+
+updateDeckSyncedAt:
+UPDATE Deck SET synced_at = ? WHERE id = ?;
+
+updateCardSyncedAt:
+UPDATE Card SET synced_at = ? WHERE id = ?;
+
+updateReviewLogSyncedAt:
+UPDATE ReviewLog SET synced_at = ? WHERE id = ?;
+
+updateLearningPlanSyncedAt:
+UPDATE LearningPlan SET synced_at = ? WHERE id = ?;

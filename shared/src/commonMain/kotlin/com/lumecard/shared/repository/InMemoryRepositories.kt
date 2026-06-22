@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 
 class InMemoryKnowledgeBaseRepository : KnowledgeBaseRepository {
     private val knowledgeBases = MutableStateFlow<List<KnowledgeBase>>(emptyList())
@@ -27,6 +28,14 @@ class InMemoryKnowledgeBaseRepository : KnowledgeBaseRepository {
 
     override suspend fun delete(id: String) {
         knowledgeBases.value = knowledgeBases.value.filter { it.id != id }
+    }
+
+    override suspend fun getUpdatedSince(since: Instant): List<KnowledgeBase> {
+        return knowledgeBases.value.filter { it.deletedAt == null && it.updatedAt > since }
+    }
+
+    override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
+        // no-op for in-memory
     }
 }
 
@@ -55,6 +64,13 @@ class InMemoryDeckRepository : DeckRepository {
 
     override suspend fun delete(id: String) {
         decks.value = decks.value.filter { it.id != id }
+    }
+
+    override suspend fun getUpdatedSince(since: Instant): List<Deck> {
+        return decks.value.filter { it.deletedAt == null && it.updatedAt > since }
+    }
+
+    override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
     }
 }
 
@@ -103,6 +119,16 @@ class InMemoryCardRepository : CardRepository {
             }
         }
     }
+
+    override suspend fun getUpdatedSince(since: Instant): List<Card> {
+        return cards.value.filter { it.deletedAt == null && it.updatedAt > since }
+    }
+
+    override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
+    }
+
+    override suspend fun rebuildFtsIndex() {
+    }
 }
 
 class InMemoryReviewLogRepository : ReviewLogRepository {
@@ -133,6 +159,13 @@ class InMemoryReviewLogRepository : ReviewLogRepository {
             studyTimeMinutes = studyTimeMinutes
         )
     }
+
+    override suspend fun getUpdatedSince(since: Instant): List<ReviewLog> {
+        return reviewLogs.value.filter { it.deletedAt == null && it.reviewedAt > since }
+    }
+
+    override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
+    }
 }
 
 class InMemoryLearningPlanRepository : LearningPlanRepository {
@@ -160,5 +193,12 @@ class InMemoryLearningPlanRepository : LearningPlanRepository {
 
     override suspend fun delete(id: String) {
         plans.value = plans.value.filter { it.id != id }
+    }
+
+    override suspend fun getUpdatedSince(since: Instant): List<LearningPlan> {
+        return plans.value.filter { it.deletedAt == null && it.updatedAt > since }
+    }
+
+    override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
     }
 }

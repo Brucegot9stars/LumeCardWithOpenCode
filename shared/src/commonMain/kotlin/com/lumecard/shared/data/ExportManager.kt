@@ -38,6 +38,22 @@ data class ShareExport(
     val cards: List<ExportCard>
 )
 
+/** Incremental sync payload — only records changed since a given timestamp. */
+@Serializable
+data class IncrementalExport(
+    val exportType: String = "incremental",
+    val version: String = AppVersion.EXPORT_VERSION,
+    val schemaVersion: Int = AppVersion.SCHEMA_VERSION,
+    val exportDate: String,
+    val deviceId: String? = null,
+    val since: String? = null,
+    val knowledgeBases: List<ExportKnowledgeBase> = emptyList(),
+    val decks: List<ExportDeck> = emptyList(),
+    val cards: List<ExportCard> = emptyList(),
+    val reviewLogs: List<ExportReviewLog> = emptyList(),
+    val learningPlans: List<ExportLearningPlan> = emptyList()
+)
+
 @Serializable
 data class ConfigExport(
     val version: String = AppVersion.EXPORT_VERSION,
@@ -236,6 +252,70 @@ class ExportManager {
         } catch (_: Exception) {
             null
         }
+    }
+
+    /** Export only records changed since [since]. Returns full snapshot if [since] is null. */
+    fun exportIncrementalData(
+        knowledgeBases: List<KnowledgeBase>,
+        decks: List<Deck>,
+        cards: List<Card>,
+        reviewLogs: List<ReviewLog> = emptyList(),
+        learningPlans: List<LearningPlan> = emptyList(),
+        since: String? = null,
+        deviceId: String? = null
+    ): String {
+        val export = IncrementalExport(
+            exportDate = Clock.System.now().toString(),
+            since = since,
+            deviceId = deviceId,
+            knowledgeBases = knowledgeBases.map { kb ->
+                ExportKnowledgeBase(
+                    id = kb.id, name = kb.name, description = kb.description,
+                    createdAt = kb.createdAt.toString(), updatedAt = kb.updatedAt.toString(),
+                    version = kb.version, deletedAt = kb.deletedAt?.toString()
+                )
+            },
+            decks = decks.map { d ->
+                ExportDeck(
+                    id = d.id, knowledgeBaseId = d.knowledgeBaseId, name = d.name,
+                    description = d.description, color = d.color, icon = d.icon,
+                    parentId = d.parentId, createdAt = d.createdAt.toString(),
+                    updatedAt = d.updatedAt.toString(), version = d.version,
+                    deletedAt = d.deletedAt?.toString()
+                )
+            },
+            cards = cards.map { c ->
+                ExportCard(
+                    id = c.id, deckId = c.deckId, type = c.type.name,
+                    front = c.front, back = c.back, tags = c.tags,
+                    createdAt = c.createdAt.toString(), updatedAt = c.updatedAt.toString(),
+                    lastReviewedAt = c.lastReviewedAt?.toString(),
+                    nextReviewAt = c.nextReviewAt?.toString(),
+                    version = c.version, deletedAt = c.deletedAt?.toString()
+                )
+            },
+            reviewLogs = reviewLogs.map { l ->
+                ExportReviewLog(
+                    id = l.id, cardId = l.cardId, rating = l.rating,
+                    reviewTime = l.reviewTime, interval = l.interval,
+                    easeFactor = l.easeFactor, repetitions = l.repetitions,
+                    lapseCount = l.lapseCount, reviewedAt = l.reviewedAt.toString(),
+                    version = l.version, deletedAt = l.deletedAt?.toString()
+                )
+            },
+            learningPlans = learningPlans.map { p ->
+                ExportLearningPlan(
+                    id = p.id, name = p.name, description = p.description,
+                    status = p.status.name, isDefault = p.isDefault,
+                    knowledgeBaseIds = p.knowledgeBaseIds, deckIds = p.deckIds,
+                    cardIds = p.cardIds, totalCards = p.totalCards,
+                    completedCards = p.completedCards,
+                    createdAt = p.createdAt.toString(), updatedAt = p.updatedAt.toString(),
+                    version = p.version, deletedAt = p.deletedAt?.toString()
+                )
+            }
+        )
+        return json.encodeToString(IncrementalExport.serializer(), export)
     }
 
     fun exportConfig(

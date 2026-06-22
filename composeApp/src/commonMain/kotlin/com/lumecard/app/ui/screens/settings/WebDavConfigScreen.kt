@@ -20,9 +20,14 @@ import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.i18n.I18nManager
+import com.lumecard.app.platform.MediaFileEntry
+import com.lumecard.app.platform.scanMediaDirectory
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.shared.data.ExportManager
+import com.lumecard.shared.data.MediaManager
+import com.lumecard.shared.data.MediaManifest
+import com.lumecard.shared.data.MediaManifestEntry
 import com.lumecard.shared.data.SyncManager
 import com.lumecard.shared.data.WebDavConfig
 import com.lumecard.shared.data.WebDavConfigManager
@@ -34,6 +39,7 @@ import com.lumecard.shared.data.toLearningPlan
 import com.lumecard.shared.data.toReviewLog
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
+import com.lumecard.shared.repository.KnowledgeBaseRepository
 import com.lumecard.shared.repository.LearningPlanRepository
 import com.lumecard.shared.repository.ReviewLogRepository
 import com.lumecard.shared.repository.SettingsRepository
@@ -42,6 +48,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import org.koin.compose.koinInject
 
 class WebDavConfigScreen : Screen {
@@ -58,9 +65,10 @@ class WebDavConfigScreen : Screen {
         val webDavConfigManager: WebDavConfigManager = koinInject()
         val syncManager: SyncManager = koinInject()
         val exportManager: ExportManager = koinInject()
+        val mediaManager: MediaManager = koinInject()
         val deckRepository: DeckRepository = koinInject()
         val cardRepository: CardRepository = koinInject()
-        val knowledgeBaseRepository: com.lumecard.shared.repository.KnowledgeBaseRepository = koinInject()
+        val knowledgeBaseRepository: KnowledgeBaseRepository = koinInject()
         val reviewLogRepository: ReviewLogRepository = koinInject()
         val planRepository: LearningPlanRepository = koinInject()
         val settingsRepository: SettingsRepository = koinInject()
@@ -581,18 +589,10 @@ class WebDavConfigScreen : Screen {
                                 try {
                                     val config = defaultConfig ?: return@launch
                                     withContext(Dispatchers.IO) {
-                                        val localKbs = knowledgeBaseRepository.getAll().first()
-                                        val localDecks = deckRepository.getAll().first()
-                                        val localCards = cardRepository.getAll().first()
-                                        val localLogs = reviewLogRepository.getAll().first()
-                                        val localPlans = planRepository.getAll().first()
-                                        val dataJson = exportManager.exportData(localKbs, localDecks, localCards, localLogs, localPlans)
-                                        syncManager.uploadData(config, dataJson).getOrThrow()
-
+                                        syncIncrementalData(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager)
                                         val settings = settingsRepository.getAll()
                                         val configJson = exportManager.exportConfig(settings)
                                         syncManager.uploadConfig(config, configJson).getOrThrow()
-
                                         webDavConfigManager.updateLastSync(config.id)
                                     }
                                     syncStatus = strings.settingsSyncSuccess(0)
@@ -614,7 +614,7 @@ class WebDavConfigScreen : Screen {
                         Text(strings.settingsSyncNow)
                     }
 
-                    // Sync Data / Sync Config
+                    // Sync Data / Sync Config / Sync Media
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(spacing.sm),
@@ -627,13 +627,7 @@ class WebDavConfigScreen : Screen {
                                     try {
                                         val config = defaultConfig ?: return@launch
                                         withContext(Dispatchers.IO) {
-                                            val localKbs = knowledgeBaseRepository.getAll().first()
-                                            val localDecks = deckRepository.getAll().first()
-                                            val localCards = cardRepository.getAll().first()
-                                            val localLogs = reviewLogRepository.getAll().first()
-                                            val localPlans = planRepository.getAll().first()
-                                            val dataJson = exportManager.exportData(localKbs, localDecks, localCards, localLogs, localPlans)
-                                            syncManager.uploadData(config, dataJson).getOrThrow()
+                                            syncIncrementalData(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager)
                                             webDavConfigManager.updateLastSync(config.id)
                                         }
                                         syncStatus = strings.settingsSyncSuccess(0)
@@ -679,6 +673,59 @@ class WebDavConfigScreen : Screen {
                         ) {
                             Text(strings.settingsSyncConfig)
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(spacing.sm))
+
+                    // Sync Media
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                isSyncing = true
+                                syncStatus = strings.settingsSyncing
+                                try {
+                                    val config = defaultConfig ?: return@launch
+                                    withContext(Dispatchers.IO) {
+                                        val mediaBase = System.getProperty("lumecard.media.dir") ?: "${System.getProperty("user.home")}/.lumecard/media"
+                                        val localFiles = scanMediaDirectory(mediaBase)
+                                        val localManifest = MediaManifest(
+                                            version = 1,
+                                            entries = localFiles.map { MediaManifestEntry(it.relativePath, it.size, it.hash) }
+                                        )
+                                        syncManager.uploadManifest(config, mediaManager.manifestToJson(localManifest))
+
+                                        val remoteResult = syncManager.downloadManifest(config)
+                                        val remoteManifest = if (remoteResult.isSuccess) mediaManager.manifestFromJson(remoteResult.getOrThrow()) else null
+
+                                        val needUpload = if (remoteManifest != null) {
+                                            mediaManager.diffLocalVsRemote(localManifest, remoteManifest)
+                                        } else {
+                                            localFiles.map { it.relativePath }
+                                        }
+
+                                        var uploaded = 0
+                                        for (path in needUpload) {
+                                            val entry = localFiles.find { it.relativePath == path } ?: continue
+                                            val absPath = "$mediaBase/$path"
+                                            try {
+                                                val data = java.io.File(absPath).readBytes()
+                                                syncManager.uploadMedia(config, path, data).getOrThrow()
+                                                uploaded++
+                                            } catch (_: Exception) { }
+                                        }
+                                        syncStatus = "Media synced: $uploaded files"
+                                    }
+                                } catch (e: Exception) {
+                                    syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
+                                } finally {
+                                    isSyncing = false
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isSyncing,
+                    ) {
+                        Text("Sync Media")
                     }
 
                     // Restore from cloud
@@ -791,4 +838,60 @@ class WebDavConfigScreen : Screen {
             )
         }
     }
+}
+
+private suspend fun syncIncrementalData(
+    config: WebDavConfig,
+    kbRepository: KnowledgeBaseRepository,
+    deckRepository: DeckRepository,
+    cardRepository: CardRepository,
+    reviewLogRepository: ReviewLogRepository,
+    planRepository: LearningPlanRepository,
+    exportManager: ExportManager,
+    syncManager: SyncManager
+) {
+    val now = Clock.System.now()
+    val since = config.lastSyncAt?.let { try { Instant.parse(it) } catch (_: Exception) { null } }
+
+    if (since == null) {
+        val kbs = kbRepository.getAll().first()
+        val decks = deckRepository.getAll().first()
+        val cards = cardRepository.getAll().first()
+        val logs = reviewLogRepository.getAll().first()
+        val plans = planRepository.getAll().first()
+        val json = exportManager.exportData(kbs, decks, cards, logs, plans)
+        syncManager.uploadData(config, json).getOrThrow()
+        kbRepository.markSynced(kbs.map { it.id }, now)
+        deckRepository.markSynced(decks.map { it.id }, now)
+        cardRepository.markSynced(cards.map { it.id }, now)
+        reviewLogRepository.markSynced(logs.map { it.id }, now)
+        planRepository.markSynced(plans.map { it.id }, now)
+        return
+    }
+
+    val dirtyKbs = kbRepository.getUpdatedSince(since)
+    val dirtyDecks = deckRepository.getUpdatedSince(since)
+    val dirtyCards = cardRepository.getUpdatedSince(since)
+    val dirtyLogs = reviewLogRepository.getUpdatedSince(since)
+    val dirtyPlans = planRepository.getUpdatedSince(since)
+
+    if (dirtyKbs.isEmpty() && dirtyDecks.isEmpty() && dirtyCards.isEmpty() && dirtyLogs.isEmpty() && dirtyPlans.isEmpty()) {
+        return
+    }
+
+    val json = exportManager.exportIncrementalData(
+        knowledgeBases = dirtyKbs,
+        decks = dirtyDecks,
+        cards = dirtyCards,
+        reviewLogs = dirtyLogs,
+        learningPlans = dirtyPlans,
+        since = since.toString()
+    )
+    syncManager.uploadData(config, json).getOrThrow()
+
+    kbRepository.markSynced(dirtyKbs.map { it.id }, now)
+    deckRepository.markSynced(dirtyDecks.map { it.id }, now)
+    cardRepository.markSynced(dirtyCards.map { it.id }, now)
+    reviewLogRepository.markSynced(dirtyLogs.map { it.id }, now)
+    planRepository.markSynced(dirtyPlans.map { it.id }, now)
 }

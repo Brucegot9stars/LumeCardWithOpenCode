@@ -1,5 +1,6 @@
 package com.lumecard.shared.di
 
+import com.lumecard.shared.data.MediaManager
 import com.lumecard.shared.data.SyncManager
 import com.lumecard.shared.data.UpdateManager
 import com.lumecard.shared.data.WebDavConfigManager
@@ -35,6 +36,7 @@ val sharedModule = module {
     single<LearningPlanRepository> { SqlDelightLearningPlanRepository(get()) }
 
     // Data services
+    single { MediaManager() }
     single { SyncManager(get()) }
     single { WebDavConfigManager(get(), get()) }
     single { UpdateManager(get()) }
