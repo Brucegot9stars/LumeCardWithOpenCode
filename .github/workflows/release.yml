@@ -186,3 +186,38 @@ jobs:
           files: |
             composeApp/build/outputs/apk/release/*.apk
             composeApp/build/outputs/bundle/release/*.aab
+
+  windows:
+    name: Build Windows packages
+    needs: release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Build Windows distributables
+        run: .\gradlew.bat :composeApp:createDistributable :composeApp:packageExe :composeApp:packageMsi
+
+      - name: Upload EXE to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: composeApp/build/compose/binaries/main/exe/*.exe
+
+      - name: Upload MSI to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: composeApp/build/compose/binaries/main/msi/*.msi
