@@ -1,12 +1,20 @@
 package com.lumecard.app
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.navigator.Navigator
 import com.lumecard.app.i18n.AppLocale
 import com.lumecard.app.i18n.I18nManager
@@ -26,6 +34,8 @@ enum class BottomNavItem(val icon: ImageVector) {
     Settings(Icons.Default.Settings)
 }
 
+var savedCrashLog: String? = null
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun App() {
@@ -34,12 +44,64 @@ fun App() {
     val settingsRepository: SettingsRepository = koinInject()
     val strings = i18nManager.strings
 
+    var crashLog by remember {
+        val fromHolder = CrashLogHolder.lastCrashLog
+        CrashLogHolder.lastCrashLog = null
+        mutableStateOf(fromHolder)
+    }
+
     LaunchedEffect(Unit) {
         settingsStateHolder.isDarkMode = settingsRepository.getBoolean("isDarkMode", false)
         val langStr = settingsRepository.get("language") ?: AppLocale.SYSTEM.name
         val savedLang = try { AppLocale.valueOf(langStr) } catch (_: Exception) { AppLocale.SYSTEM }
         settingsStateHolder.language = savedLang
         i18nManager.setLocale(savedLang)
+    }
+
+    if (crashLog != null) {
+        val clipboardManager = LocalClipboardManager.current
+        AlertDialog(
+            onDismissRequest = {
+                crashLog = null
+                savedCrashLog = null
+            },
+            title = { Text("App Error") },
+            text = {
+                Column {
+                    Text("The app encountered an error:", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 100.dp, max = 300.dp)
+                            .verticalScroll(rememberScrollState())
+                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                            .padding(8.dp)
+                    ) {
+                        Text(
+                            text = crashLog ?: "",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = {
+                        crashLog?.let { clipboardManager.setText(AnnotatedString(it)) }
+                    }) {
+                        Text("Copy")
+                    }
+                    Button(onClick = {
+                        crashLog = null
+                        savedCrashLog = null
+                    }) {
+                        Text("OK")
+                    }
+                }
+            },
+        )
     }
 
     LumeCardTheme(darkTheme = settingsStateHolder.isDarkMode) {
@@ -53,7 +115,10 @@ fun App() {
                         BottomNavItem.Warehouse -> WarehouseScreen()
                         BottomNavItem.Settings -> SettingsScreen()
                     }
-                    navigator.replace(screen)
+                    val currentScreen = navigator.lastItemOrNull
+                    if (currentScreen?.key != screen.key) {
+                        navigator.replace(screen)
+                    }
                 }
 
                 Scaffold(

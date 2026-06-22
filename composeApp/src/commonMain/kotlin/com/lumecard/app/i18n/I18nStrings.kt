@@ -240,6 +240,32 @@ interface I18nStrings {
     val settingsAbout: String
     val settingsVersion: String
     val settingsAboutApp: String
+
+    val updateChecking: String
+    val updateCheckingDesc: String
+    val updateAvailable: String
+    val updateUpToDate: String
+    val updateUpToDateDesc: String
+    val updateCurrentVersion: String
+    val updateLatestVersion: String
+    val updateReleaseNotes: String
+    val updateDownload: String
+    val updateError: String
+    val actionClose: String
+    val settingsCheckUpdate: String
+    val updateDownloading: String
+    val updateInstalling: String
+    val updateComplete: String
+    val updateCompleteDesc: String
+    val updateInstallFailed: String
+    val updateDownloadFailed: String
+    val updatePublishedAt: String
+    val updateCopyError: String
+    val updateCopySuccess: String
+    val exportErrorPermission: String
+    val exportErrorDiskSpace: String
+    val exportErrorWrite: String
+
     val settingsDeveloper: String
     val settingsLicense: String
     val settingsOpenSource: String
@@ -281,6 +307,8 @@ interface I18nStrings {
     val settingsSyncScopeSettings: String
     val settingsSyncScopeData: String
     val settingsSyncNow: String
+    val settingsSyncData: String
+    val settingsSyncConfig: String
     val settingsRestoreFromCloud: String
     val settingsRestoreConfirm: String
     val settingsRestoreConfirmDesc: String

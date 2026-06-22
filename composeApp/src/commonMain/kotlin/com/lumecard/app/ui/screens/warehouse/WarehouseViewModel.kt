@@ -47,6 +47,11 @@ class WarehouseViewModel(
     private val _expandedIds = MutableStateFlow<Set<String>>(emptySet())
     val expandedIds: StateFlow<Set<String>> = _expandedIds.asStateFlow()
 
+    private var cachedKBs: List<KnowledgeBase> = emptyList()
+    private var cachedDecks: List<Deck> = emptyList()
+    private var cachedCards: List<Card> = emptyList()
+    private var searchJob: kotlinx.coroutines.Job? = null
+
     init {
         loadData()
     }
@@ -54,61 +59,68 @@ class WarehouseViewModel(
     fun loadData() {
         screenModelScope.launch {
             _isLoading.value = true
-            val kbs = kbRepository.getAll().first()
-            val decks = deckRepository.getAll().first()
-            val cards = cardRepository.getAll().first()
-            val query = _searchQuery.value.lowercase()
-
-            val tree = kbs.filter { kb ->
-                kb.deletedAt == null && (query.isEmpty() || kb.name.lowercase().contains(query))
-            }.map { kb ->
-                val kbDecks = decks.filter { d ->
-                    d.knowledgeBaseId == kb.id && d.deletedAt == null &&
-                    (query.isEmpty() || d.name.lowercase().contains(query))
-                }
-                val kbCards = cards.filter { c ->
-                    c.deckId !in kbDecks.map { it.id } && c.deletedAt == null &&
-                    query.isNotEmpty() && (c.front.lowercase().contains(query) || c.back.lowercase().contains(query))
-                }
-                TreeNode(
-                    id = kb.id,
-                    name = kb.name,
-                    type = NodeType.KNOWLEDGE_BASE,
-                    isExpanded = kb.id in _expandedIds.value,
-                    children = kbDecks.map { deck ->
-                        val deckCards = cards.filter { it.deckId == deck.id && it.deletedAt == null }
-                        val filteredCards = if (query.isNotEmpty()) {
-                            deckCards.filter { it.front.lowercase().contains(query) || it.back.lowercase().contains(query) }
-                        } else {
-                            deckCards
-                        }
-                        TreeNode(
-                            id = deck.id,
-                            name = deck.name,
-                            type = NodeType.DECK,
-                            isExpanded = deck.id in _expandedIds.value,
-                            children = filteredCards.map { card ->
-                                TreeNode(
-                                    id = card.id,
-                                    name = card.front.take(50),
-                                    type = NodeType.CARD,
-                                    data = card
-                                )
-                            }
-                        )
-                    } + kbCards.map { card ->
-                        TreeNode(id = card.id, name = card.front.take(50), type = NodeType.CARD, data = card)
-                    }
-                )
-            }
-            _treeNodes.value = tree
+            cachedKBs = kbRepository.getAll().first()
+            cachedDecks = deckRepository.getAll().first()
+            cachedCards = cardRepository.getAll().first()
+            rebuildTree()
             _isLoading.value = false
         }
     }
 
+    private fun rebuildTree() {
+        val query = _searchQuery.value.lowercase()
+        val kbs = cachedKBs
+        val decks = cachedDecks
+        val cards = cachedCards
+
+        val tree = kbs.filter { kb ->
+            kb.deletedAt == null && (query.isEmpty() || kb.name.lowercase().contains(query))
+        }.map { kb ->
+            val kbDecks = decks.filter { d ->
+                d.knowledgeBaseId == kb.id && d.deletedAt == null &&
+                (query.isEmpty() || d.name.lowercase().contains(query))
+            }
+            val kbCards = cards.filter { c ->
+                c.deckId !in kbDecks.map { it.id } && c.deletedAt == null &&
+                query.isNotEmpty() && (c.front.lowercase().contains(query) || c.back.lowercase().contains(query))
+            }
+            TreeNode(
+                id = kb.id,
+                name = kb.name,
+                type = NodeType.KNOWLEDGE_BASE,
+                isExpanded = kb.id in _expandedIds.value,
+                children = kbDecks.map { deck ->
+                    val deckCards = cards.filter { it.deckId == deck.id && it.deletedAt == null }
+                    val filteredCards = if (query.isNotEmpty()) {
+                        deckCards.filter { it.front.lowercase().contains(query) || it.back.lowercase().contains(query) }
+                    } else {
+                        deckCards
+                    }
+                    TreeNode(
+                        id = deck.id,
+                        name = deck.name,
+                        type = NodeType.DECK,
+                        isExpanded = deck.id in _expandedIds.value,
+                        children = filteredCards.map { card ->
+                            TreeNode(
+                                id = card.id,
+                                name = card.front.take(50),
+                                type = NodeType.CARD,
+                                data = card
+                            )
+                        }
+                    )
+                } + kbCards.map { card ->
+                    TreeNode(id = card.id, name = card.front.take(50), type = NodeType.CARD, data = card)
+                }
+            )
+        }
+        _treeNodes.value = tree
+    }
+
     fun toggleExpand(id: String) {
         _expandedIds.value = if (id in _expandedIds.value) _expandedIds.value - id else _expandedIds.value + id
-        loadData()
+        rebuildTree()
     }
 
     fun toggleSelect(id: String) {
@@ -128,7 +140,11 @@ class WarehouseViewModel(
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
-        loadData()
+        searchJob?.cancel()
+        searchJob = screenModelScope.launch {
+            kotlinx.coroutines.delay(300)
+            loadData()
+        }
     }
 
     suspend fun createKnowledgeBase(name: String, description: String?) {

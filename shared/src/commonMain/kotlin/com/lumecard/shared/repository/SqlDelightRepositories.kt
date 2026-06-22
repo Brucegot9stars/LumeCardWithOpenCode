@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 class SqlDelightKnowledgeBaseRepository(
     private val database: LumeCardDatabase
@@ -187,8 +189,8 @@ class SqlDelightCardRepository(
             front = card.front,
             back = card.back,
             tags = card.tags.joinToString(","),
-            media = "",
-            metadata = "",
+            media = Json.encodeToString(card.media),
+            metadata = Json.encodeToString(card.metadata),
             created_at = card.createdAt.toString(),
             updated_at = card.updatedAt.toString(),
             last_reviewed_at = card.lastReviewedAt?.toString(),
@@ -206,8 +208,8 @@ class SqlDelightCardRepository(
             front = card.front,
             back = card.back,
             tags = card.tags.joinToString(","),
-            media = "",
-            metadata = "",
+            media = Json.encodeToString(card.media),
+            metadata = Json.encodeToString(card.metadata),
             updated_at = Clock.System.now().toString(),
             last_reviewed_at = card.lastReviewedAt?.toString(),
             next_review_at = card.nextReviewAt?.toString(),
@@ -401,6 +403,8 @@ private fun com.lumecard.shared.database.Card.toDomain() = Card(
     front = front,
     back = back,
     tags = (tags ?: "").split(",").filter { it.isNotBlank() },
+    media = try { if (media.isNullOrBlank()) emptyList() else Json.decodeFromString(media) } catch (_: Exception) { emptyList() },
+    metadata = try { if (metadata.isNullOrBlank()) emptyMap() else Json.decodeFromString(metadata) } catch (_: Exception) { emptyMap() },
     createdAt = Instant.parse(created_at),
     updatedAt = Instant.parse(updated_at),
     lastReviewedAt = last_reviewed_at?.let { Instant.parse(it) },

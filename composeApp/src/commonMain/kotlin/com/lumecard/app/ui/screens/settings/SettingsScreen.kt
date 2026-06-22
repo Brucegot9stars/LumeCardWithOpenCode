@@ -18,7 +18,10 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.shared.AppVersion
 import com.lumecard.shared.data.ExportManager
+import com.lumecard.shared.data.UpdateManager
+import com.lumecard.shared.data.UpdateState
 import com.lumecard.shared.data.WebDavConfigManager
+import com.lumecard.app.platform.copyToClipboard
 import com.lumecard.shared.domain.scheduler.ReviewMode
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
@@ -26,6 +29,7 @@ import com.lumecard.app.i18n.AppLocale
 import com.lumecard.app.ui.components.LumeCardDialog
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.components.LumeCardTextField
+import com.lumecard.app.ui.components.UpdateCheckDialog
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.theme.LumeCardTheme
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +37,12 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.lumecard.app.platform.getAppVersion
+import com.lumecard.app.platform.pickSaveFile
+import com.lumecard.app.platform.pickOpenFile
+import com.lumecard.app.platform.readFileContent
+import com.lumecard.app.platform.writeFileContent
+import com.lumecard.app.platform.installApk
+import com.lumecard.app.platform.getApkCacheDir
 import org.koin.compose.koinInject
 
 class SettingsScreen : Screen {
@@ -53,6 +63,7 @@ class SettingsScreen : Screen {
         val snackbarHostState = remember { SnackbarHostState() }
         val webDavConfigManager: WebDavConfigManager = koinInject()
         val knowledgeBaseRepository: com.lumecard.shared.repository.KnowledgeBaseRepository = koinInject()
+        val updateManager: UpdateManager = koinInject()
         val spacing = LumeCardTheme.spacing
         val radius = LumeCardTheme.radius
 
@@ -61,6 +72,9 @@ class SettingsScreen : Screen {
         var showAnswerModeDropdown by remember { mutableStateOf(false) }
         var showGoalDialog by remember { mutableStateOf(false) }
         var goalInput by remember { mutableStateOf("") }
+        var showUpdateDialog by remember { mutableStateOf(false) }
+        var updateState by remember { mutableStateOf<UpdateState>(UpdateState.Idle) }
+        var downloadJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
         LaunchedEffect(Unit) {
             settingsViewModel.loadSettings()
@@ -445,13 +459,23 @@ class SettingsScreen : Screen {
                             modifier = Modifier.clickable {
                                 scope.launch {
                                     try {
+                                        val filePath = pickSaveFile("lumecard_export.json", "application/json")
+                                        if (filePath == null) {
+                                            snackbarHostState.showSnackbar(strings.actionCancel)
+                                            return@launch
+                                        }
                                         val knowledgeBases = knowledgeBaseRepository.getAll().first()
                                         val decks = deckRepository.getAll().first()
                                         val allCards = cardRepository.getAll().first()
-                                        val json = exportManager.exportToJson(knowledgeBases, decks, allCards)
-                                        snackbarHostState.showSnackbar(strings.settingsExportSuccess(json.length))
+                                        val json = withContext(Dispatchers.IO) { exportManager.exportData(knowledgeBases, decks, allCards) }
+                                        val success = withContext(Dispatchers.IO) { writeFileContent(filePath, json) }
+                                        if (success) {
+                                            snackbarHostState.showSnackbar(strings.settingsExportSuccess(json.length))
+                                        } else {
+                                            snackbarHostState.showSnackbar(strings.settingsExportError(strings.exportErrorWrite))
+                                        }
                                     } catch (e: Exception) {
-                                        snackbarHostState.showSnackbar(strings.settingsExportError(e.message!!))
+                                        snackbarHostState.showSnackbar(strings.settingsExportError(e.message ?: "未知错误"))
                                     }
                                 }
                             },
@@ -464,9 +488,27 @@ class SettingsScreen : Screen {
                             modifier = Modifier.clickable {
                                 scope.launch {
                                     try {
-                                        snackbarHostState.showSnackbar(strings.settingsImportHint)
+                                        val filePath = pickOpenFile("application/json")
+                                        if (filePath == null) {
+                                            snackbarHostState.showSnackbar(strings.settingsImportHint)
+                                            return@launch
+                                        }
+                                        val json = withContext(Dispatchers.IO) { readFileContent(filePath) }
+                                        if (json == null) {
+                                            snackbarHostState.showSnackbar(strings.settingsImportError("Cannot read file"))
+                                            return@launch
+                                        }
+                                        val export = exportManager.importData(json)
+                                        if (export == null) {
+                                            snackbarHostState.showSnackbar(strings.settingsImportError("Invalid JSON format"))
+                                            return@launch
+                                        }
+                                        val importedKBs = export.knowledgeBases.size
+                                        val importedDecks = export.decks.size
+                                        val importedCards = export.cards.size
+                                        snackbarHostState.showSnackbar("Imported: $importedKBs KBs, $importedDecks decks, $importedCards cards")
                                     } catch (e: Exception) {
-                                        snackbarHostState.showSnackbar(strings.settingsImportError(e.message!!))
+                                        snackbarHostState.showSnackbar(strings.settingsImportError(e.message ?: "Unknown"))
                                     }
                                 }
                             },
@@ -533,8 +575,28 @@ class SettingsScreen : Screen {
                         }
                         Spacer(Modifier.height(spacing.sm))
                         Text("LumeCard", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        Text("v${AppVersion.VERSION_NAME}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("v${getAppVersion()}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.height(spacing.md))
+                        HorizontalDivider()
+                        ListItem(
+                            headlineContent = { Text(strings.settingsCheckUpdate) },
+                            supportingContent = { Text("v${getAppVersion()}") },
+                            leadingContent = { Icon(Icons.Default.Refresh, contentDescription = null) },
+                            modifier = Modifier.clickable {
+                                updateState = UpdateState.Checking
+                                showUpdateDialog = true
+                                scope.launch {
+                                    val info = updateManager.checkForUpdate(getAppVersion())
+                                    updateState = if (info?.hasUpdate == true) {
+                                        UpdateState.UpdateAvailable(info)
+                                    } else if (info != null) {
+                                        UpdateState.UpToDate
+                                    } else {
+                                        UpdateState.Error(strings.updateError)
+                                    }
+                                }
+                            },
+                        )
                         HorizontalDivider()
                         ListItem(
                             headlineContent = { Text(strings.settingsDeveloper) },
@@ -569,6 +631,78 @@ class SettingsScreen : Screen {
                     label = strings.settingsCardCount,
                 )
             }
+        }
+
+        if (showUpdateDialog) {
+            UpdateCheckDialog(
+                updateState = updateState,
+                onDismiss = { showUpdateDialog = false },
+                onCheckUpdate = {
+                    updateState = UpdateState.Checking
+                    scope.launch {
+                        val info = updateManager.checkForUpdate(getAppVersion())
+                        updateState = if (info?.hasUpdate == true) {
+                            UpdateState.UpdateAvailable(info)
+                        } else if (info != null) {
+                            UpdateState.UpToDate
+                        } else {
+                            UpdateState.Error(strings.updateError)
+                        }
+                    }
+                },
+                onUpdate = {
+                    val info = (updateState as? UpdateState.UpdateAvailable)?.info ?: return@UpdateCheckDialog
+                    downloadJob = scope.launch {
+                        updateState = UpdateState.Downloading()
+                        try {
+                            val apkAsset = info.assets.firstOrNull()
+                            val downloadUrl = apkAsset?.downloadUrl
+                                ?: "https://github.com/Brucegot9stars/LumeCardWithOpenCode/releases/download/v${info.version}/LumeCard-v${info.version}-release.apk"
+                            val destFile = java.io.File(
+                                getApkCacheDir(),
+                                "LumeCard-v${info.version}.apk"
+                            )
+                            val success = updateManager.downloadApk(downloadUrl, destFile) { downloaded, total ->
+                                updateState = UpdateState.Downloading(downloaded, total)
+                            }
+                            if (success) {
+                                updateState = UpdateState.Installing
+                                val installed = installApk(destFile.absolutePath)
+                                if (installed) {
+                                    updateState = UpdateState.Complete
+                                } else {
+                                    updateState = UpdateState.Error(strings.updateInstallFailed)
+                                }
+                            } else {
+                                updateState = UpdateState.Error(strings.updateDownloadFailed)
+                            }
+                        } catch (e: Exception) {
+                            updateState = UpdateState.Error("更新失败：${e.message ?: "未知错误"}")
+                        }
+                    }
+                },
+                onCancel = {
+                    downloadJob?.cancel()
+                    downloadJob = null
+                    val info = (updateState as? UpdateState.UpdateAvailable)?.info
+                    if (info != null) {
+                        val destFile = java.io.File(getApkCacheDir(), "LumeCard-v${info.version}.apk")
+                        if (destFile.exists()) destFile.delete()
+                    }
+                    updateState = UpdateState.Idle
+                    showUpdateDialog = false
+                },
+                onCopyError = { errorMsg ->
+                    scope.launch {
+                        try {
+                            copyToClipboard(errorMsg)
+                            snackbarHostState.showSnackbar(strings.updateCopySuccess)
+                        } catch (_: Exception) {
+                            snackbarHostState.showSnackbar(strings.updateCopyError)
+                        }
+                    }
+                },
+            )
         }
     }
 }

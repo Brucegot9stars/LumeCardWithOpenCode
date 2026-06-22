@@ -56,12 +56,6 @@ class DashboardViewModel(
     private val _activePlanCount = MutableStateFlow(0)
     val activePlanCount: StateFlow<Int> = _activePlanCount.asStateFlow()
 
-    val progress: Float get() {
-        val goal = _dailyGoal.value
-        if (goal <= 0) return 0f
-        return (_todayReviews.value.toFloat() / goal).coerceIn(0f, 1f)
-    }
-
     init {
         loadGoal()
         loadDecks()
@@ -88,22 +82,6 @@ class DashboardViewModel(
                     DeckWithCount(deck, cards.size)
                 }
                 _decksWithCount.value = withCount
-
-                val allLogs = reviewLogRepository.getAll().first()
-                val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-                val todayCount = allLogs.count { log ->
-                    log.reviewedAt.toLocalDateTime(TimeZone.currentSystemDefault()).date == today
-                }
-                _todayReviews.value = todayCount
-
-                val allCards = cardRepository.getAll().first()
-                val now = Clock.System.now()
-                val dueCount = allCards.count { card ->
-                    val next = card.nextReviewAt
-                    next != null && next <= now
-                }
-                _totalDueCards.value = dueCount
-
                 _isLoading.value = false
             }
         }
@@ -116,6 +94,25 @@ class DashboardViewModel(
             planRepository.getAll().collect { list ->
                 _activePlanCount.value = list.count { it.status == PlanStatus.IN_PROGRESS }
             }
+        }
+    }
+
+    fun loadStats() {
+        screenModelScope.launch {
+            val allLogs = reviewLogRepository.getAll().first()
+            val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+            val todayCount = allLogs.count { log ->
+                log.reviewedAt.toLocalDateTime(TimeZone.currentSystemDefault()).date == today
+            }
+            _todayReviews.value = todayCount
+
+            val allCards = cardRepository.getAll().first()
+            val now = Clock.System.now()
+            val dueCount = allCards.count { card ->
+                val next = card.nextReviewAt
+                next != null && next <= now
+            }
+            _totalDueCards.value = dueCount
         }
     }
 }

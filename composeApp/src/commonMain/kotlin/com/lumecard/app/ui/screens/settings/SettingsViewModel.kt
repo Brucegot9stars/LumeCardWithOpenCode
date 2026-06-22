@@ -7,15 +7,12 @@ import com.lumecard.app.i18n.I18nManager
 import com.lumecard.shared.domain.scheduler.ReviewMode
 import com.lumecard.shared.repository.SettingsRepository
 import kotlinx.coroutines.launch
-import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
-    val state: SettingsStateHolder
-) : ScreenModel, KoinComponent {
-
-    private val i18nManager: I18nManager by inject()
+    val state: SettingsStateHolder,
+    private val i18nManager: I18nManager
+) : ScreenModel {
 
     fun loadSettings() {
         screenModelScope.launch {

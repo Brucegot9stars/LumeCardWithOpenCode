@@ -88,21 +88,28 @@ compose.desktop {
     }
 }
 
-android {
-    namespace = "com.lumecard.app"
-    compileSdk = 35
+    android {
+        namespace = "com.lumecard.app"
+        compileSdk = 35
 
-    defaultConfig {
-        applicationId = "com.lumecard.app"
-        minSdk = 26
-        targetSdk = 35
-        versionCode = (System.getenv("VERSION_CODE")?.toIntOrNull()
-            ?: project.findProperty("VERSION_CODE")?.toString()?.toIntOrNull()
-            ?: appVersionCode)
-        versionName = System.getenv("VERSION_NAME")
-            ?: project.findProperty("VERSION_NAME")?.toString()
-            ?: appVersionName
-    }
+        defaultConfig {
+            applicationId = "com.lumecard.app"
+            minSdk = 26
+            targetSdk = 35
+            versionCode = (System.getenv("VERSION_CODE")?.toIntOrNull()
+                ?: project.findProperty("VERSION_CODE")?.toString()?.toIntOrNull()
+                ?: appVersionCode)
+            versionName = System.getenv("VERSION_NAME")
+                ?: project.findProperty("VERSION_NAME")?.toString()
+                ?: appVersionName
+        }
+
+        applicationVariants.configureEach {
+            outputs.configureEach {
+                val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+                output.outputFileName = "LumeCard-v${versionName}-${name}.apk"
+            }
+        }
 
     signingConfigs {
         create("release") {

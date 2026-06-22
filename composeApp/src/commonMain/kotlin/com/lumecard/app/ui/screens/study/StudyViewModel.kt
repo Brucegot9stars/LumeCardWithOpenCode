@@ -26,6 +26,18 @@ class StudyViewModel(
     private val algorithm: ReviewAlgorithm,
     private val planRepository: LearningPlanRepository
 ) : ScreenModel {
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error
+
+    fun clearError() { _error.value = null }
+
+    private fun reportError(e: Throwable, context: String) {
+        val stackTrace = e.stackTraceToString()
+        val msg = "[$context] ${e.message ?: e::class.simpleName}\n$stackTrace"
+        println("[LumeCard ERROR] $msg")
+        _error.value = msg
+    }
     private val _cards = MutableStateFlow<List<Card>>(emptyList())
     val cards: StateFlow<List<Card>> = _cards
 
@@ -46,8 +58,7 @@ class StudyViewModel(
 
     val canGoBack: Boolean get() = _history.value.isNotEmpty()
 
-    private val _swipeFeedback = MutableStateFlow<String?>(null)
-    val swipeFeedback: StateFlow<String?> = _swipeFeedback
+    private var timerJob: Job? = null
 
     private val _sessionStartTime = MutableStateFlow<kotlinx.datetime.Instant?>(null)
     val sessionStartTime: StateFlow<kotlinx.datetime.Instant?> = _sessionStartTime
@@ -55,9 +66,7 @@ class StudyViewModel(
     private val _elapsedSeconds = MutableStateFlow(0)
     val elapsedSeconds: StateFlow<Int> = _elapsedSeconds
 
-    private var timerJob: Job? = null
-
-    private val _cardStartTimes = mutableMapOf<String, kotlinx.datetime.Instant>()
+    private val _cardStartTimes = java.util.concurrent.ConcurrentHashMap<String, kotlinx.datetime.Instant>()
 
     private var activePlanIds: List<String> = emptyList()
 
@@ -67,30 +76,39 @@ class StudyViewModel(
         activePlanIds = planIds
         _hasStartedStudying = false
         screenModelScope.launch {
-            val allCards = mutableListOf<Card>()
-            for (deckId in deckIds) {
-                val deckCards = cardRepository.getByDeck(deckId).first()
-                allCards.addAll(deckCards)
-            }
-            val now = Clock.System.now()
-            val dueCards = allCards.filter { card ->
-                val next = card.nextReviewAt
-                next == null || next <= now
-            }
-            val shuffled = dueCards.shuffled()
-            _cards.value = shuffled
-            shuffled.forEach { card ->
-                if (!_algorithmStates.value.containsKey(card.id)) {
-                    val existing = algorithmStateRepository.get(card.id)
-                    val state = if (existing != null) {
-                        deserializeState(existing)
-                    } else {
-                        algorithm.initCard()
-                    }
-                    _algorithmStates.value = _algorithmStates.value + (card.id to state)
+            try {
+                println("[LumeCard] loadCards called with deckIds=$deckIds, planIds=$planIds")
+                val allCards = mutableListOf<Card>()
+                for (deckId in deckIds) {
+                    println("[LumeCard] Loading cards for deck: $deckId")
+                    val deckCards = cardRepository.getByDeck(deckId).first()
+                    println("[LumeCard] Found ${deckCards.size} cards for deck $deckId")
+                    allCards.addAll(deckCards)
                 }
+                val now = Clock.System.now()
+                val dueCards = allCards.filter { card ->
+                    val next = card.nextReviewAt
+                    next == null || next <= now
+                }
+                println("[LumeCard] Total cards: ${allCards.size}, due cards: ${dueCards.size}")
+                val shuffled = dueCards.shuffled()
+                _cards.value = shuffled
+                shuffled.forEach { card ->
+                    if (!_algorithmStates.value.containsKey(card.id)) {
+                        val existing = algorithmStateRepository.get(card.id)
+                        val state = if (existing != null) {
+                            deserializeState(existing)
+                        } else {
+                            algorithm.initCard()
+                        }
+                        _algorithmStates.value = _algorithmStates.value + (card.id to state)
+                    }
+                }
+                shuffled.firstOrNull()?.let { _cardStartTimes[it.id] = Clock.System.now() }
+                println("[LumeCard] loadCards completed successfully, ${shuffled.size} cards ready")
+            } catch (e: Exception) {
+                reportError(e, "loadCards")
             }
-            shuffled.firstOrNull()?.let { _cardStartTimes[it.id] = Clock.System.now() }
         }
     }
 
@@ -150,31 +168,35 @@ class StudyViewModel(
         _history.value = _history.value + (_currentCardIndex.value to _isFlipped.value)
 
         screenModelScope.launch {
-            val reviewLog = ReviewLog(
-                id = UUID.randomUUID().toString(),
-                cardId = currentCard.id,
-                rating = rating.value,
-                reviewTime = reviewTimeMs,
-                interval = updatedState.intervalDays,
-                easeFactor = updatedState.easeFactor,
-                repetitions = updatedState.repetitions,
-                lapseCount = updatedState.lapses,
-                reviewedAt = now
-            )
-            reviewLogRepository.insert(reviewLog)
+            try {
+                val reviewLog = ReviewLog(
+                    id = UUID.randomUUID().toString(),
+                    cardId = currentCard.id,
+                    rating = rating.value,
+                    reviewTime = reviewTimeMs,
+                    interval = updatedState.intervalDays,
+                    easeFactor = updatedState.easeFactor,
+                    repetitions = updatedState.repetitions,
+                    lapseCount = updatedState.lapses,
+                    reviewedAt = now
+                )
+                reviewLogRepository.insert(reviewLog)
 
-            val updatedCard = currentCard.copy(
-                lastReviewedAt = now,
-                nextReviewAt = updatedState.nextReviewAt,
-                updatedAt = now
-            )
-            cardRepository.update(updatedCard)
+                val updatedCard = currentCard.copy(
+                    lastReviewedAt = now,
+                    nextReviewAt = updatedState.nextReviewAt,
+                    updatedAt = now
+                )
+                cardRepository.update(updatedCard)
 
-            algorithmStateRepository.save(
-                cardId = currentCard.id,
-                mode = algorithm.mode.name,
-                stateJson = serializeState(updatedState)
-            )
+                algorithmStateRepository.save(
+                    cardId = currentCard.id,
+                    mode = algorithm.mode.name,
+                    stateJson = serializeState(updatedState)
+                )
+            } catch (e: Exception) {
+                reportError(e, "rateCard-persist")
+            }
         }
 
         _isFlipped.value = false
@@ -192,30 +214,26 @@ class StudyViewModel(
     private fun updatePlanProgress() {
         if (activePlanIds.isEmpty()) return
         screenModelScope.launch {
-            for (planId in activePlanIds) {
-                val plan = planRepository.getById(planId) ?: continue
-                val newCompleted = (plan.completedCards + _completedCards.value).coerceAtMost(plan.totalCards)
-                val newStatus = if (newCompleted >= plan.totalCards) {
-                    com.lumecard.shared.model.PlanStatus.COMPLETED
-                } else if (newCompleted > 0) {
-                    com.lumecard.shared.model.PlanStatus.IN_PROGRESS
-                } else {
-                    plan.status
+            try {
+                for (planId in activePlanIds) {
+                    val plan = planRepository.getById(planId) ?: continue
+                    val newCompleted = (plan.completedCards + _completedCards.value).coerceAtMost(plan.totalCards)
+                    val newStatus = if (newCompleted >= plan.totalCards) {
+                        com.lumecard.shared.model.PlanStatus.COMPLETED
+                    } else if (newCompleted > 0) {
+                        com.lumecard.shared.model.PlanStatus.IN_PROGRESS
+                    } else {
+                        plan.status
+                    }
+                    planRepository.update(plan.copy(
+                        completedCards = newCompleted,
+                        status = newStatus,
+                        updatedAt = kotlinx.datetime.Clock.System.now()
+                    ))
                 }
-                planRepository.update(plan.copy(
-                    completedCards = newCompleted,
-                    status = newStatus,
-                    updatedAt = kotlinx.datetime.Clock.System.now()
-                ))
+            } catch (e: Exception) {
+                reportError(e, "updatePlanProgress")
             }
-        }
-    }
-
-    fun showSwipeFeedback(text: String) {
-        _swipeFeedback.value = text
-        screenModelScope.launch {
-            kotlinx.coroutines.delay(500)
-            _swipeFeedback.value = null
         }
     }
 

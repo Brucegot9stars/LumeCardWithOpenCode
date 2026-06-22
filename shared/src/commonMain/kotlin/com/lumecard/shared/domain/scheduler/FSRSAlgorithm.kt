@@ -129,7 +129,7 @@ class FSRSAlgorithm(
             difficulty = newDifficulty,
             scheduledDays = scheduledDays,
             lapses = card.lapses + if (rating == Rating.AGAIN) 1 else 0,
-            state = if (rating == Rating.EASY) CardState.REVIEW else CardState.LEARNING
+            state = if (rating == Rating.EASY) CardState.REVIEW else CardState.RELEARNING
         )
     }
 
@@ -157,7 +157,7 @@ class FSRSAlgorithm(
             Rating.AGAIN -> 1
             Rating.HARD -> max(1, (stability * w[15]).toInt())
             Rating.GOOD -> max(1, (stability * w[16]).toInt())
-            Rating.EASY -> max(1, (stability * w[16]).toInt())
+            Rating.EASY -> max(1, (stability * w[16] * 1.3).toInt())
         }
     }
 

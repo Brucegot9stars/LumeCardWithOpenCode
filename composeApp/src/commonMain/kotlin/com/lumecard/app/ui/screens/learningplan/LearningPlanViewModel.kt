@@ -30,6 +30,10 @@ class LearningPlanViewModel(
         loadPlans()
     }
 
+    suspend fun getPlanById(id: String): com.lumecard.shared.model.LearningPlan? {
+        return try { planRepository.getById(id) } catch (_: Exception) { null }
+    }
+
     fun loadPlans() {
         screenModelScope.launch {
             _isLoading.value = true

@@ -44,6 +44,10 @@ import com.lumecard.shared.model.Rating
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import kotlin.math.abs
 
 class StudyScreen(
@@ -58,6 +62,45 @@ class StudyScreen(
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     override fun Content() {
+        var crashError by remember { mutableStateOf<String?>(null) }
+
+        if (crashError != null) {
+            val clipboardManager = LocalClipboardManager.current
+            AlertDialog(
+                onDismissRequest = { crashError = null },
+                title = { Text("Composition Error") },
+                text = {
+                    Column {
+                        Text("An error occurred during rendering:", style = MaterialTheme.typography.bodyMedium)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 100.dp, max = 300.dp)
+                                .verticalScroll(rememberScrollState())
+                                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                                .padding(8.dp)
+                        ) {
+                            Text(
+                                text = crashError ?: "",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = {
+                            crashError?.let { clipboardManager.setText(AnnotatedString(it)) }
+                        }) { Text("Copy") }
+                        Button(onClick = { crashError = null }) { Text("OK") }
+                    }
+                },
+            )
+            return
+        }
+
         val navigator = LocalNavigator.currentOrThrow
         val viewModel: StudyViewModel = koinInject()
         val settingsState: SettingsStateHolder = koinInject()
@@ -67,6 +110,7 @@ class StudyScreen(
         val isFlipped by viewModel.isFlipped.collectAsState()
         val completedCards by viewModel.completedCards.collectAsState()
         val elapsedSeconds by viewModel.elapsedSeconds.collectAsState()
+        val error by viewModel.error.collectAsState()
 
         val currentCard = cards.getOrNull(currentIndex)
         val nextCard = cards.getOrNull(currentIndex + 1)
@@ -77,6 +121,46 @@ class StudyScreen(
         var lastDragTime by remember { mutableLongStateOf(0L) }
         var lastDragX by remember { mutableFloatStateOf(0f) }
         var velocity by remember { mutableFloatStateOf(0f) }
+
+        if (error != null) {
+            val clipboardManager = LocalClipboardManager.current
+            AlertDialog(
+                onDismissRequest = { viewModel.clearError() },
+                title = { Text("Error") },
+                text = {
+                    Column {
+                        Text("An error occurred:", style = MaterialTheme.typography.bodyMedium)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 100.dp, max = 300.dp)
+                                .verticalScroll(rememberScrollState())
+                                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                                .padding(8.dp)
+                        ) {
+                            Text(
+                                text = error ?: "",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = {
+                            error?.let { clipboardManager.setText(AnnotatedString(it)) }
+                        }) {
+                            Text("Copy")
+                        }
+                        Button(onClick = { viewModel.clearError() }) {
+                            Text("OK")
+                        }
+                    }
+                },
+            )
+        }
 
         LaunchedEffect(deckIds) {
             viewModel.loadCards(deckIds, planIds)
@@ -637,6 +721,9 @@ private fun FlipCard(
 
 @Composable
 private fun CardFace(card: Card, showBack: Boolean) {
+    val clozeRegex = remember { Regex("\\{\\{c\\d+::([^}]+)\\}\\}") }
+    val clozeHintRegex = remember { Regex("\\{\\{c\\d+::([^}]+)::([^}]+)\\}\\}") }
+
     val strings = koinInject<I18nManager>().strings
     Column(modifier = Modifier.fillMaxWidth()) {
         when (card.type) {
@@ -656,11 +743,11 @@ private fun CardFace(card: Card, showBack: Boolean) {
             CardType.CLOZE -> {
                 val text = if (showBack) card.back else card.front
                 val displayText = if (!showBack) {
-                    text.replace(Regex("\\{\\{c\\d+::([^}]+)}}"), "____")
-                        .replace(Regex("\\{\\{c\\d+::([^}]+)::([^}]+)}}"), "____")
+                    text.replace(clozeHintRegex, "____")
+                        .replace(clozeRegex, "____")
                 } else {
-                    text.replace(Regex("\\{\\{c\\d+::([^}]+)}}"), "$1")
-                        .replace(Regex("\\{\\{c\\d+::([^}]+)::([^}]+)}}"), "$1")
+                    text.replace(clozeHintRegex, "$1")
+                        .replace(clozeRegex, "$1")
                 }
                 Text(
                     displayText,

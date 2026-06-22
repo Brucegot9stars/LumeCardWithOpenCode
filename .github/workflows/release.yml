@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Extract version from tag
         id: version
@@ -38,6 +40,14 @@ jobs:
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
+
+      - name: Sync version into assets
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          CODE=$(grep APP_VERSION_CODE version.properties | cut -d= -f2)
+          sed -i "s/^APP_VERSION_NAME=.*/APP_VERSION_NAME=${VERSION}/" composeApp/src/androidMain/assets/version.properties
+          sed -i "s/^APP_VERSION_CODE=.*/APP_VERSION_CODE=${CODE}/" composeApp/src/androidMain/assets/version.properties
+          echo "Synced assets/version.properties to v${VERSION} (code=${CODE})"
 
       - name: Decode keystore
         if: env.KEYSTORE_BASE64 != ''
@@ -90,14 +100,89 @@ jobs:
           path: composeApp/build/outputs/bundle/release/*.aab
           retention-days: 30
 
+      - name: Generate Release Notes
+        id: release_notes
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="${{ steps.version.outputs.tag }}"
+
+          # Find previous tag
+          PREV_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | grep -v "^${TAG}$" | head -1)
+
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="${PREV_TAG}..${TAG}"
+          else
+            RANGE="${TAG}"
+          fi
+
+          LOG_FORMAT="- %s (%h)"
+          ALL_COMMITS=$(git log "$RANGE" --pretty=format:"$LOG_FORMAT" --no-merges 2>/dev/null || echo "")
+
+          if [ -z "$ALL_COMMITS" ]; then
+            # If no commits in range, try all history
+            ALL_COMMITS=$(git log --pretty=format:"$LOG_FORMAT" --no-merges -20 2>/dev/null || echo "")
+          fi
+
+          # Categorize commits by conventional prefix
+          FEATURES=$(echo "$ALL_COMMITS" | grep -iE 'feat|add new|feature' || true)
+          FIXES=$(echo "$ALL_COMMITS" | grep -iE 'fix|bug|patch|resolve' || true)
+          IMPROVE=$(echo "$ALL_COMMITS" | grep -iE 'improv|optim|refactor|perf|clean|style|update|bump|chore' || true)
+
+          # OTHER = commits not matching any category
+          OTHER=$(echo "$ALL_COMMITS" | grep -viE 'feat|add new|feature|fix|bug|patch|resolve|improv|optim|refactor|perf|clean|style|update|bump|chore' || true)
+
+          {
+            echo "# LumeCard ${TAG}"
+            echo ""
+            echo "## What Changed since ${PREV_TAG:-initial release}"
+            echo ""
+
+            if [ -n "$FEATURES" ]; then
+              echo "### ✨ New Features"
+              echo ""
+              echo "$FEATURES"
+              echo ""
+            fi
+
+            if [ -n "$FIXES" ]; then
+              echo "### 🐛 Bug Fixes"
+              echo ""
+              echo "$FIXES"
+              echo ""
+            fi
+
+            if [ -n "$IMPROVE" ]; then
+              echo "### 🔧 Improvements"
+              echo ""
+              echo "$IMPROVE"
+              echo ""
+            fi
+
+            if [ -n "$OTHER" ]; then
+              echo "### 📦 Other Changes"
+              echo ""
+              echo "$OTHER"
+              echo ""
+            fi
+
+            echo "---"
+            echo ""
+            FIRST_COMMIT=$(git rev-list --max-parents=0 HEAD 2>/dev/null | head -1)
+            echo "**Full Changelog**: https://github.com/Brucegot9stars/LumeCardWithOpenCode/compare/${PREV_TAG:-$FIRST_COMMIT}...${TAG}"
+          } > release_notes.md
+
+          echo "=== Release Notes ==="
+          cat release_notes.md
+          echo "====================="
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          name: ${{ steps.version.outputs.tag }}
+          name: LumeCard ${{ steps.version.outputs.tag }}
           draft: false
           prerelease: false
-          generate_release_notes: true
+          body_path: release_notes.md
           files: |
             composeApp/build/outputs/apk/release/*.apk
             composeApp/build/outputs/bundle/release/*.aab

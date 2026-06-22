@@ -11,7 +11,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 @Serializable
-data class LumeCardExport(
+data class DataExport(
     val version: String = AppVersion.EXPORT_VERSION,
     val schemaVersion: Int = AppVersion.SCHEMA_VERSION,
     val exportDate: String,
@@ -20,7 +20,15 @@ data class LumeCardExport(
     val decks: List<ExportDeck>,
     val cards: List<ExportCard>,
     val reviewLogs: List<ExportReviewLog> = emptyList(),
-    val learningPlans: List<ExportLearningPlan> = emptyList(),
+    val learningPlans: List<ExportLearningPlan> = emptyList()
+)
+
+@Serializable
+data class ConfigExport(
+    val version: String = AppVersion.EXPORT_VERSION,
+    val schemaVersion: Int = AppVersion.SCHEMA_VERSION,
+    val exportDate: String,
+    val deviceId: String? = null,
     val settings: Map<String, String> = emptyMap()
 )
 
@@ -99,125 +107,91 @@ data class ExportLearningPlan(
     val deletedAt: String? = null
 )
 
-@Serializable
-data class SyncPayload(
-    val deviceId: String,
-    val syncId: String,
-    val timestamp: String,
-    val sinceVersion: Map<String, Long> = emptyMap(),
-    val knowledgeBases: List<ExportKnowledgeBase> = emptyList(),
-    val decks: List<ExportDeck> = emptyList(),
-    val cards: List<ExportCard> = emptyList(),
-    val reviewLogs: List<ExportReviewLog> = emptyList(),
-    val settings: Map<String, String> = emptyMap(),
-    val deletedIds: List<String> = emptyList()
-)
-
 class ExportManager {
     private val json = Json {
         prettyPrint = true
         ignoreUnknownKeys = true
     }
 
-    fun exportToJson(
+    fun exportData(
         knowledgeBases: List<KnowledgeBase>,
         decks: List<Deck>,
         cards: List<Card>,
         reviewLogs: List<ReviewLog> = emptyList(),
         learningPlans: List<LearningPlan> = emptyList(),
-        settings: Map<String, String> = emptyMap(),
         deviceId: String? = null
     ): String {
-        val export = LumeCardExport(
+        val export = DataExport(
             exportDate = Clock.System.now().toString(),
             deviceId = deviceId,
             knowledgeBases = knowledgeBases.map { kb ->
                 ExportKnowledgeBase(
-                    id = kb.id,
-                    name = kb.name,
-                    description = kb.description,
-                    createdAt = kb.createdAt.toString(),
-                    updatedAt = kb.updatedAt.toString(),
-                    version = kb.version,
-                    deletedAt = kb.deletedAt?.toString()
+                    id = kb.id, name = kb.name, description = kb.description,
+                    createdAt = kb.createdAt.toString(), updatedAt = kb.updatedAt.toString(),
+                    version = kb.version, deletedAt = kb.deletedAt?.toString()
                 )
             },
-            decks = decks.map { deck ->
+            decks = decks.map { d ->
                 ExportDeck(
-                    id = deck.id,
-                    knowledgeBaseId = deck.knowledgeBaseId,
-                    name = deck.name,
-                    description = deck.description,
-                    color = deck.color,
-                    icon = deck.icon,
-                    parentId = deck.parentId,
-                    createdAt = deck.createdAt.toString(),
-                    updatedAt = deck.updatedAt.toString(),
-                    version = deck.version,
-                    deletedAt = deck.deletedAt?.toString()
+                    id = d.id, knowledgeBaseId = d.knowledgeBaseId, name = d.name,
+                    description = d.description, color = d.color, icon = d.icon,
+                    parentId = d.parentId, createdAt = d.createdAt.toString(),
+                    updatedAt = d.updatedAt.toString(), version = d.version,
+                    deletedAt = d.deletedAt?.toString()
                 )
             },
-            cards = cards.map { card ->
+            cards = cards.map { c ->
                 ExportCard(
-                    id = card.id,
-                    deckId = card.deckId,
-                    type = card.type.name,
-                    front = card.front,
-                    back = card.back,
-                    tags = card.tags,
-                    createdAt = card.createdAt.toString(),
-                    updatedAt = card.updatedAt.toString(),
-                    lastReviewedAt = card.lastReviewedAt?.toString(),
-                    nextReviewAt = card.nextReviewAt?.toString(),
-                    version = card.version,
-                    deletedAt = card.deletedAt?.toString()
+                    id = c.id, deckId = c.deckId, type = c.type.name,
+                    front = c.front, back = c.back, tags = c.tags,
+                    createdAt = c.createdAt.toString(), updatedAt = c.updatedAt.toString(),
+                    lastReviewedAt = c.lastReviewedAt?.toString(),
+                    nextReviewAt = c.nextReviewAt?.toString(),
+                    version = c.version, deletedAt = c.deletedAt?.toString()
                 )
             },
-            reviewLogs = reviewLogs.map { log ->
+            reviewLogs = reviewLogs.map { l ->
                 ExportReviewLog(
-                    id = log.id,
-                    cardId = log.cardId,
-                    rating = log.rating,
-                    reviewTime = log.reviewTime,
-                    interval = log.interval,
-                    easeFactor = log.easeFactor,
-                    repetitions = log.repetitions,
-                    lapseCount = log.lapseCount,
-                    reviewedAt = log.reviewedAt.toString(),
-                    version = log.version,
-                    deletedAt = log.deletedAt?.toString()
+                    id = l.id, cardId = l.cardId, rating = l.rating,
+                    reviewTime = l.reviewTime, interval = l.interval,
+                    easeFactor = l.easeFactor, repetitions = l.repetitions,
+                    lapseCount = l.lapseCount, reviewedAt = l.reviewedAt.toString(),
+                    version = l.version, deletedAt = l.deletedAt?.toString()
                 )
             },
-            learningPlans = learningPlans.map { plan ->
+            learningPlans = learningPlans.map { p ->
                 ExportLearningPlan(
-                    id = plan.id,
-                    name = plan.name,
-                    description = plan.description,
-                    status = plan.status.name,
-                    isDefault = plan.isDefault,
-                    knowledgeBaseIds = plan.knowledgeBaseIds,
-                    deckIds = plan.deckIds,
-                    cardIds = plan.cardIds,
-                    totalCards = plan.totalCards,
-                    completedCards = plan.completedCards,
-                    createdAt = plan.createdAt.toString(),
-                    updatedAt = plan.updatedAt.toString(),
-                    version = plan.version,
-                    deletedAt = plan.deletedAt?.toString()
+                    id = p.id, name = p.name, description = p.description,
+                    status = p.status.name, isDefault = p.isDefault,
+                    knowledgeBaseIds = p.knowledgeBaseIds, deckIds = p.deckIds,
+                    cardIds = p.cardIds, totalCards = p.totalCards,
+                    completedCards = p.completedCards,
+                    createdAt = p.createdAt.toString(), updatedAt = p.updatedAt.toString(),
+                    version = p.version, deletedAt = p.deletedAt?.toString()
                 )
-            },
-            settings = settings
+            }
         )
-        return json.encodeToString(LumeCardExport.serializer(), export)
+        return json.encodeToString(DataExport.serializer(), export)
     }
 
-    fun importFromJson(jsonString: String): LumeCardExport? {
+    fun exportConfig(
+        settings: Map<String, String>,
+        deviceId: String? = null
+    ): String {
+        val export = ConfigExport(
+            exportDate = Clock.System.now().toString(),
+            deviceId = deviceId,
+            settings = settings
+        )
+        return json.encodeToString(ConfigExport.serializer(), export)
+    }
+
+    fun importData(jsonString: String): DataExport? {
         return try {
-            val export = json.decodeFromString(LumeCardExport.serializer(), jsonString)
+            val export = json.decodeFromString(DataExport.serializer(), jsonString)
             when (export.schemaVersion) {
                 AppVersion.SCHEMA_VERSION -> export
-                1 -> migrateV1ToV2(export)
-                2 -> migrateV2ToV3(export)
+                1 -> migrateV1DataToV2(export)
                 else -> export
             }
         } catch (e: Exception) {
@@ -225,7 +199,30 @@ class ExportManager {
         }
     }
 
-    private fun migrateV1ToV2(v1Export: LumeCardExport): LumeCardExport {
+    fun importConfig(jsonString: String): ConfigExport? {
+        return try {
+            json.decodeFromString(ConfigExport.serializer(), jsonString)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun importLegacy(jsonString: String): Pair<DataExport?, ConfigExport?> {
+        return try {
+            val export = json.decodeFromString(DataExport.serializer(), jsonString)
+            val data = export.copy(schemaVersion = AppVersion.SCHEMA_VERSION)
+            val config = ConfigExport(
+                exportDate = data.exportDate,
+                deviceId = data.deviceId,
+                settings = emptyMap()
+            )
+            Pair(data, config)
+        } catch (e: Exception) {
+            Pair(null, null)
+        }
+    }
+
+    private fun migrateV1DataToV2(v1Export: DataExport): DataExport {
         val migratedDecks = v1Export.decks.map { deck ->
             if (deck.knowledgeBaseId.isBlank()) {
                 deck.copy(knowledgeBaseId = "default", version = 1)
@@ -237,27 +234,14 @@ class ExportManager {
             card.copy(version = maxOf(card.version, 1))
         }
         val defaultKb = ExportKnowledgeBase(
-            id = "default",
-            name = "Default",
-            description = null,
-            createdAt = v1Export.exportDate,
-            updatedAt = v1Export.exportDate,
-            version = 1
+            id = "default", name = "Default", description = null,
+            createdAt = v1Export.exportDate, updatedAt = v1Export.exportDate, version = 1
         )
         val kbs = v1Export.knowledgeBases.ifEmpty { listOf(defaultKb) }
         return v1Export.copy(
             schemaVersion = AppVersion.SCHEMA_VERSION,
             version = AppVersion.EXPORT_VERSION,
-            knowledgeBases = kbs,
-            decks = migratedDecks,
-            cards = migratedCards
-        )
-    }
-
-    private fun migrateV2ToV3(v2Export: LumeCardExport): LumeCardExport {
-        return v2Export.copy(
-            schemaVersion = AppVersion.SCHEMA_VERSION,
-            version = AppVersion.EXPORT_VERSION
+            knowledgeBases = kbs, decks = migratedDecks, cards = migratedCards
         )
     }
 
@@ -276,11 +260,7 @@ class ExportManager {
         val lines = csvString.lines().drop(1)
         return lines.mapNotNull { line ->
             val parts = line.split(",")
-            if (parts.size >= 2) {
-                Pair(parts[0].trim(), parts[1].trim())
-            } else {
-                null
-            }
+            if (parts.size >= 2) Pair(parts[0].trim(), parts[1].trim()) else null
         }
     }
 }
