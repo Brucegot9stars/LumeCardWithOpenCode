@@ -1,10 +1,9 @@
-name: Windows Desktop CI
+name: Windows Desktop Release
 
 on:
   push:
-    branches: [ main, develop, feature/* ]
-  pull_request:
-    branches: [ main, develop ]
+    tags:
+      - "v*"
   workflow_dispatch:
 
 permissions:
@@ -30,23 +29,21 @@ jobs:
       - name: Build all distributables
         run: .\gradlew.bat :composeApp:createDistributable :composeApp:packageExe :composeApp:packageMsi
 
-      - name: Upload portable app
-        uses: actions/upload-artifact@v6
+      - name: Upload EXE installer to Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: LumeCard-windows-portable
-          path: composeApp/build/compose/binaries/main/app/
-          retention-days: 7
+          tag_name: ${{ github.ref_name }}
+          files: composeApp/build/compose/binaries/main/exe/*.exe
 
-      - name: Upload EXE installer
-        uses: actions/upload-artifact@v6
+      - name: Upload MSI installer to Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: LumeCard-windows-exe
-          path: composeApp/build/compose/binaries/main/exe/*.exe
-          retention-days: 7
+          tag_name: ${{ github.ref_name }}
+          files: composeApp/build/compose/binaries/main/msi/*.msi
 
-      - name: Upload MSI installer
-        uses: actions/upload-artifact@v6
+      - name: Upload portable app to Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: LumeCard-windows-msi
-          path: composeApp/build/compose/binaries/main/msi/*.msi
-          retention-days: 7
+          tag_name: ${{ github.ref_name }}
+          files: |
+            composeApp/build/compose/binaries/main/app/LumeCard/LumeCard.exe
