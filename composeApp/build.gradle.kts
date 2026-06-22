@@ -65,6 +65,7 @@ kotlin {
         val desktopMain by getting {
             dependencies {
                 implementation("org.jetbrains.skiko:skiko-awt-runtime-windows-x64:0.8.15")
+                implementation(Dependencies.kotlinxCoroutinesSwing)
             }
         }
     }

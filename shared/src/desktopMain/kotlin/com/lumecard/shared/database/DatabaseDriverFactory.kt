@@ -12,7 +12,9 @@ actual class DatabaseDriverFactory {
         }
         val dbFile = File(appDir, "lumecard.db")
         val driver = JdbcSqliteDriver("jdbc:sqlite:${dbFile.absolutePath}")
-        LumeCardDatabase.Schema.create(driver)
+        if (!dbFile.exists()) {
+            LumeCardDatabase.Schema.create(driver)
+        }
         return driver
     }
 }
