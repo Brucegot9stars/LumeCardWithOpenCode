@@ -6,6 +6,8 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.utils.io.core.readBytes
 import kotlinx.datetime.Clock
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 
 class SyncManager(
     private val client: HttpClient
@@ -19,7 +21,14 @@ class SyncManager(
         private const val LEGACY_PATH = "lumecard_backup.json"
         private const val MEDIA_DIR = "$BACKUP_DIR/media"
         private const val MANIFEST_PATH = "$BACKUP_DIR/media_manifest.json"
+
+        private const val HISTORY_DIR = "$BACKUP_DIR/history"
+        private const val HISTORY_INDEX_FILENAME = "history_index.json"
+        private const val HISTORY_INDEX_PATH = "$BACKUP_DIR/$HISTORY_INDEX_FILENAME"
+        private const val MAX_HISTORY = 15
     }
+
+    private val json = Json { ignoreUnknownKeys = true }
 
     private suspend fun ensureDir(baseUrl: String, username: String, password: String, dir: String) {
         val dirUrl = baseUrl.trimEnd('/') + "/" + dir.trim('/') + "/"
@@ -178,6 +187,109 @@ class SyncManager(
         return downloadData(config)
     }
 
+    /** Download the current remote data.json, archive it to history/ with timestamp + deviceId. */
+    suspend fun archiveCurrentSnapshot(config: WebDavConfig): Result<SyncHistoryEntry?> {
+        return try {
+            val currentResult = downloadData(config)
+            if (currentResult.isFailure) return Result.success(null)
+
+            val currentJson = currentResult.getOrThrow()
+            val deviceId = try {
+                json.decodeFromString(DataExport.serializer(), currentJson).deviceId ?: "unknown"
+            } catch (_: Exception) { "unknown" }
+
+            val timestamp = Clock.System.now().toString().replace("T", "_").replace(":", "-").substringBefore("Z")
+            val safeDeviceId = deviceId.replace(Regex("[^a-zA-Z0-9_-]"), "_").take(16)
+            val filename = "${HISTORY_DIR}/${timestamp}_${safeDeviceId}.json"
+
+            ensureDir(config.url, config.username, config.password, HISTORY_DIR)
+            val url = config.url.trimEnd('/') + "/" + filename
+            val response = client.put(url) {
+                basicAuth(config.username, config.password)
+                contentType(ContentType.Application.Json)
+                setBody(currentJson)
+            }
+            if (response.status.isSuccess()) {
+                val entry = SyncHistoryEntry(
+                    timestamp = Clock.System.now().toString(),
+                    deviceId = deviceId,
+                    filename = filename
+                )
+                updateHistoryIndex(config, entry)
+                Result.success(entry)
+            } else {
+                Result.failure(SyncException("Archive failed: ${response.status}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /** Append an entry to the remote history_index.json, keeping at most MAX_HISTORY entries. */
+    private suspend fun updateHistoryIndex(config: WebDavConfig, newEntry: SyncHistoryEntry): Result<Unit> {
+        return try {
+            val existingResult = downloadHistoryIndex(config)
+            val existing = existingResult.getOrNull() ?: SyncHistoryIndex()
+            val allEntries = existing.entries + newEntry
+            val pruned = if (allEntries.size > MAX_HISTORY) {
+                val toRemove = allEntries.take(allEntries.size - MAX_HISTORY)
+                for (old in toRemove) {
+                    try {
+                        val delUrl = config.url.trimEnd('/') + "/" + old.filename
+                        client.delete(delUrl) { basicAuth(config.username, config.password) }
+                    } catch (_: Exception) { }
+                }
+                allEntries.takeLast(MAX_HISTORY)
+            } else {
+                allEntries
+            }
+            val updated = SyncHistoryIndex(pruned)
+            val indexBody = json.encodeToString(updated)
+            val url = config.url.trimEnd('/') + "/" + HISTORY_INDEX_PATH
+            val response = client.put(url) {
+                basicAuth(config.username, config.password)
+                contentType(ContentType.Application.Json)
+                setBody(indexBody)
+            }
+            if (response.status.isSuccess()) Result.success(Unit)
+            else Result.failure(SyncException("Update history index failed: ${response.status}"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /** Download the history_index.json from remote. */
+    suspend fun downloadHistoryIndex(config: WebDavConfig): Result<SyncHistoryIndex> {
+        return try {
+            val url = config.url.trimEnd('/') + "/" + HISTORY_INDEX_PATH
+            val response = client.get(url) {
+                basicAuth(config.username, config.password)
+            }
+            if (response.status == HttpStatusCode.OK) {
+                val index = json.decodeFromString<SyncHistoryIndex>(response.bodyAsText())
+                Result.success(index)
+            } else {
+                Result.success(SyncHistoryIndex())
+            }
+        } catch (_: Exception) {
+            Result.success(SyncHistoryIndex())
+        }
+    }
+
+    /** Download the content of a specific history snapshot by filename. */
+    suspend fun downloadSnapshot(config: WebDavConfig, filename: String): Result<String> {
+        return try {
+            val url = config.url.trimEnd('/') + "/" + filename
+            val response = client.get(url) {
+                basicAuth(config.username, config.password)
+            }
+            if (response.status == HttpStatusCode.OK) Result.success(response.bodyAsText())
+            else Result.failure(SyncException("Snapshot not found"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     /**
      * Full bidirectional data sync with version-based conflict resolution.
      */
@@ -204,6 +316,7 @@ class SyncManager(
         val remoteExport = exportManager.importData(remoteJson)
 
         if (remoteExport == null) {
+            archiveCurrentSnapshot(config)
             val json = exportManager.exportData(localKnowledgeBases, localDecks, localCards, localReviewLogs, localLearningPlans)
             uploadData(config, json)
             return SyncResult.Success(true, false, localDecks.size)
@@ -299,6 +412,7 @@ class SyncManager(
         val activeLogs = mergedLogs.filter { it.deletedAt == null }
         val activePlans = mergedPlans.filter { it.deletedAt == null }
 
+        archiveCurrentSnapshot(config)
         val mergedJson = exportManager.exportData(
             knowledgeBases = activeKbs, decks = activeDecks, cards = activeCards,
             reviewLogs = activeLogs, learningPlans = activePlans

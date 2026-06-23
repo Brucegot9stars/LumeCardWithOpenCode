@@ -120,6 +120,20 @@ data class ExportReviewLog(
     val deletedAt: String? = null
 )
 
+/** A snapshot entry in the sync history archive. */
+@Serializable
+data class SyncHistoryEntry(
+    val timestamp: String,
+    val deviceId: String,
+    val filename: String
+)
+
+/** Index of all sync snapshots on the remote. */
+@Serializable
+data class SyncHistoryIndex(
+    val entries: List<SyncHistoryEntry> = emptyList()
+)
+
 @Serializable
 data class ExportLearningPlan(
     val id: String,
@@ -351,6 +365,20 @@ class ExportManager {
                 knowledgeBases = share.knowledgeBases,
                 decks = share.decks,
                 cards = share.cards
+            )
+        } catch (_: Exception) { null }
+
+        return try {
+            val inc = json.decodeFromString(IncrementalExport.serializer(), jsonString)
+            DataExport(
+                exportType = "backup",
+                exportDate = inc.exportDate,
+                deviceId = inc.deviceId,
+                knowledgeBases = inc.knowledgeBases,
+                decks = inc.decks,
+                cards = inc.cards,
+                reviewLogs = inc.reviewLogs,
+                learningPlans = inc.learningPlans
             )
         } catch (_: Exception) { null }
     }
