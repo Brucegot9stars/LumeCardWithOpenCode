@@ -5,11 +5,10 @@ import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -18,23 +17,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import com.lumecard.app.ui.components.MarkdownText
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.components.LumeCardRatingBar
-import com.mohamedrejeb.richeditor.model.rememberRichTextState
-import com.mohamedrejeb.richeditor.ui.material3.RichText
 import com.lumecard.app.ui.components.ProgressRing
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.app.ui.screens.settings.AnswerDisplayMode
@@ -46,14 +39,8 @@ import com.lumecard.shared.model.CardType
 import com.lumecard.shared.model.Rating
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import kotlin.math.abs
 
 class StudyScreen(
@@ -528,7 +515,6 @@ class StudyScreen(
                             }
                         }
                     } else {
-                        // ── Study Complete ─────────────────────────────
                         Card(
                             modifier = Modifier.fillMaxWidth().weight(1f),
                             shape = LumeCardTheme.radius.card,
@@ -541,7 +527,6 @@ class StudyScreen(
                             ) {
                                 Spacer(modifier = Modifier.height(8.dp))
 
-                                // Celebration ring
                                 ProgressRing(
                                     progress = 1f,
                                     size = 88.dp,
@@ -552,7 +537,6 @@ class StudyScreen(
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
 
-                                // Large checkmark overlay
                                 Surface(
                                     shape = LumeCardTheme.radius.pill,
                                     color = LumeCardTheme.semanticColors.progressFill.copy(alpha = 0.15f),
@@ -584,7 +568,6 @@ class StudyScreen(
 
                                 Spacer(modifier = Modifier.height(24.dp))
 
-                                // Stats row
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceEvenly,
@@ -677,296 +660,3 @@ class StudyScreen(
         }
     }
 }
-
-@Composable
-private fun CardContent(
-    card: Card,
-    isFlipped: Boolean,
-    displayMode: AnswerDisplayMode,
-    onMultipleChoiceSelected: ((isCorrect: Boolean) -> Unit)? = null,
-) {
-    val strings = koinInject<I18nManager>().strings
-    Column(modifier = Modifier.fillMaxWidth()) {
-        when (displayMode) {
-            AnswerDisplayMode.FLIP -> {
-                FlipCard(
-                    isFlipped = isFlipped,
-                    front = { CardFace(card, showBack = false, onMultipleChoiceSelected = onMultipleChoiceSelected) },
-                    back = { CardFace(card, showBack = true) }
-                )
-            }
-            AnswerDisplayMode.SPLIT -> {
-                if (isFlipped) {
-                    // Question section
-                    Surface(
-                        shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
-                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                    strings.studyQuestion,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer
-                                )
-                            Spacer(Modifier.weight(1f))
-                            Text(
-                                cardTypeName(card.type),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.6f)
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    Surface(
-                        shape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
-                    ) {
-                        CardFace(card, showBack = false, onMultipleChoiceSelected = onMultipleChoiceSelected).let { it }
-                    }
-                    Spacer(Modifier.height(16.dp))
-                    // Answer section
-                    Surface(
-                        shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                    strings.studyAnswer,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            Spacer(Modifier.weight(1f))
-                            Text(
-                                    strings.studyRevealed,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
-                                )
-                        }
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    Surface(
-                        shape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.2f)
-                    ) {
-                        CardFace(card, showBack = true).let { it }
-                    }
-                } else {
-                    CardFace(card, showBack = false, onMultipleChoiceSelected = onMultipleChoiceSelected)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun FlipCard(
-    isFlipped: Boolean,
-    front: @Composable () -> Unit,
-    back: @Composable () -> Unit
-) {
-    val rotation = remember { Animatable(if (isFlipped) 180f else 0f) }
-    var cardWidth by remember { mutableFloatStateOf(1f) }
-
-    LaunchedEffect(isFlipped) {
-        rotation.animateTo(
-            targetValue = if (isFlipped) 180f else 0f,
-            animationSpec = tween(500)
-        )
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .onSizeChanged { cardWidth = it.width.coerceAtLeast(1).toFloat() }
-            .graphicsLayer {
-                rotationY = rotation.value
-                cameraDistance = cardWidth * 8f
-            }
-    ) {
-        if (rotation.value < 90f) {
-            front()
-        } else {
-            Box(modifier = Modifier.graphicsLayer { scaleX = -1f }) {
-                back()
-            }
-        }
-    }
-}
-
-@Composable
-private fun CardFace(
-    card: Card,
-    showBack: Boolean,
-    onMultipleChoiceSelected: ((isCorrect: Boolean) -> Unit)? = null,
-) {
-    val clozeRegex = remember { Regex("\\{\\{c\\d+::([^}]+)\\}\\}") }
-    val clozeHintRegex = remember { Regex("\\{\\{c\\d+::([^}]+)::([^}]+)\\}\\}") }
-    val clozeAnswerRegex = remember { Regex("\\{\\{c\\d+::([^:}]+)(?:::([^}]+))?\\}\\}") }
-
-    val strings = koinInject<I18nManager>().strings
-    Column(modifier = Modifier.fillMaxWidth()) {
-        when (card.type) {
-            CardType.BASIC -> {
-                RichTextCardFace(html = if (showBack) card.back else card.front)
-            }
-            CardType.REVERSED, CardType.MARKDOWN, CardType.AI_GENERATED -> {
-                MarkdownText(
-                    markdown = if (showBack) card.back else card.front,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            CardType.CLOZE -> {
-                if (!showBack) {
-                    val displayText = card.front.replace(clozeHintRegex, "____").replace(clozeRegex, "____")
-                    Text(displayText, style = MaterialTheme.typography.headlineSmall)
-                    Spacer(Modifier.height(8.dp))
-                    Text(strings.studyClozeHint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else {
-                    val annotated = buildAnnotatedString {
-                        var pos = 0
-                        for (match in clozeAnswerRegex.findAll(card.front)) {
-                            if (pos < match.range.first) {
-                                append(card.front.substring(pos, match.range.first))
-                            }
-                            withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold, color = Color.Red)) {
-                                append(match.groupValues[1])
-                            }
-                            pos = match.range.last + 1
-                        }
-                        if (pos < card.front.length) {
-                            append(card.front.substring(pos))
-                        }
-                    }
-                    Text(annotated, style = MaterialTheme.typography.headlineSmall)
-                }
-            }
-            CardType.MULTIPLE_CHOICE -> {
-                val question = card.front
-                val options = card.back.split("\n").filter { it.isNotBlank() }
-                Text(question, style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(12.dp))
-                options.forEach { opt ->
-                    val isCorrect = opt.startsWith("+")
-                    val displayOpt = opt.removePrefix("+").trim()
-                    if (showBack && isCorrect) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                "✓",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Red,
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            FilterChip(
-                                selected = true,
-                                onClick = {},
-                                label = {
-                                    Text(displayOpt, fontWeight = FontWeight.Bold, color = Color.Red)
-                                },
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                    } else {
-                        FilterChip(
-                            selected = showBack && isCorrect,
-                            onClick = {
-                                onMultipleChoiceSelected?.invoke(isCorrect)
-                            },
-                            label = { Text(displayOpt) },
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun cardTypeName(type: CardType): String {
-    val strings = koinInject<I18nManager>().strings
-    return when (type) {
-        CardType.BASIC -> strings.studyCardTypeBasic
-        CardType.REVERSED -> strings.studyCardTypeReversed
-        CardType.CLOZE -> strings.studyCardTypeCloze
-        CardType.MULTIPLE_CHOICE -> strings.studyCardTypeChoice
-        CardType.MARKDOWN -> strings.studyCardTypeMarkdown
-        CardType.AI_GENERATED -> strings.studyCardTypeAi
-    }
-}
-
-@Composable
-private fun RichTextCardFace(html: String) {
-    key(html) {
-        val state = rememberRichTextState()
-        val displayHtml = remember(html) {
-            if (html.contains("<") && html.contains(">")) html
-            else "<p>${html.replace("\n", "<br>")}</p>"
-        }
-        LaunchedEffect(Unit) {
-            if (displayHtml.isNotBlank()) state.setHtml(displayHtml)
-        }
-        RichText(
-            state = state,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-}
-@Composable
-private fun CompletionStat(
-    value: String,
-    label: String,
-) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            value,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-
-
-private fun formatElapsedTime(totalSeconds: Int, strings: I18nStrings): String {
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return if (minutes > 0) {
-        if (minutes >= 60) {
-            val hours = minutes / 60
-            val mins = minutes % 60
-            StringBuilder().append(hours).append(strings.timeHours).append(mins).append(strings.timeMinutes).toString()
-        } else {
-            StringBuilder().append(minutes).append(strings.timeMinutes).append(seconds).append(strings.timeSeconds).toString()
-        }
-    } else {
-        StringBuilder().append(seconds).append(strings.timeSeconds).toString()
-    }
-}
-
-
-
-
-
-
-
-
-
-
-
-
