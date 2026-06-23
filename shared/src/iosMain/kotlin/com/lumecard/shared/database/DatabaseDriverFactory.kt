@@ -22,5 +22,7 @@ actual fun upgradeToFts5(driver: SqlDriver) {
         driver.execute(null, "INSERT INTO CardFTS(card_id, front, back, tags) SELECT id, front, back, tags FROM Card WHERE deleted_at IS NULL", 0, null)
     } catch (e: Exception) {
         println("[LumeCard] WARNING: FTS5 not available, falling back to LIKE search: ${e.message}")
+        driver.execute(null, "CREATE TABLE IF NOT EXISTS CardFTS(card_id TEXT NOT NULL, front TEXT NOT NULL, back TEXT NOT NULL, tags TEXT NOT NULL)", 0, null)
+        driver.execute(null, "INSERT OR IGNORE INTO CardFTS(card_id, front, back, tags) SELECT id, front, back, tags FROM Card WHERE deleted_at IS NULL", 0, null)
     }
 }
