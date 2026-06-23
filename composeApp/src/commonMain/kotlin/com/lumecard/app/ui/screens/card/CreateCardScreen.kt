@@ -210,6 +210,16 @@ private fun CardTypeInput(
     val strings = koinInject<I18nManager>().strings
     when (type) {
         CardType.BASIC -> {
+            BasicCardFields(
+                front = front, onFrontChange = onFrontChange,
+                back = back, onBackChange = onBackChange,
+                frontLabel = strings.cardFrontLabel,
+                backLabel = strings.cardBackLabel,
+                frontPlaceholder = strings.cardFrontPlaceholder,
+                backPlaceholder = strings.cardBackPlaceholder
+            )
+        }
+        CardType.RICH_TEXT -> {
             RichTextCardEditor(
                 front = front, onFrontChange = onFrontChange,
                 back = back, onBackChange = onBackChange,
@@ -350,6 +360,7 @@ private fun cardTypeLabel(type: CardType, strings: I18nStrings): String = when (
     CardType.MULTIPLE_CHOICE -> strings.cardTypeChoice
     CardType.MARKDOWN -> strings.cardTypeMarkdown
     CardType.AI_GENERATED -> strings.cardTypeAi
+    CardType.RICH_TEXT -> strings.cardTypeRichText
 }
 
 private fun cardTypeDesc(type: CardType, strings: I18nStrings): String = when (type) {
@@ -359,6 +370,7 @@ private fun cardTypeDesc(type: CardType, strings: I18nStrings): String = when (t
     CardType.MULTIPLE_CHOICE -> strings.cardTypeChoiceDesc
     CardType.MARKDOWN -> strings.cardTypeMarkdownDesc
     CardType.AI_GENERATED -> strings.cardTypeAiDesc
+    CardType.RICH_TEXT -> strings.cardTypeRichTextDesc
 }
 
 private fun typeHelpText(type: CardType, strings: I18nStrings): String = when (type) {
@@ -368,6 +380,7 @@ private fun typeHelpText(type: CardType, strings: I18nStrings): String = when (t
     CardType.MULTIPLE_CHOICE -> strings.cardTypeChoiceHelp
     CardType.MARKDOWN -> strings.cardTypeMarkdownHelp
     CardType.AI_GENERATED -> strings.cardTypeAiHelp
+    CardType.RICH_TEXT -> strings.cardTypeRichTextHelp
 }
 
 private fun typeExampleText(type: CardType, strings: I18nStrings): String = when (type) {
@@ -377,6 +390,7 @@ private fun typeExampleText(type: CardType, strings: I18nStrings): String = when
     CardType.MULTIPLE_CHOICE -> strings.cardTypeChoiceExample
     CardType.MARKDOWN -> strings.cardTypeMarkdownExample
     CardType.AI_GENERATED -> strings.cardTypeAiExample
+    CardType.RICH_TEXT -> strings.cardTypeRichTextExample
 }
 
 

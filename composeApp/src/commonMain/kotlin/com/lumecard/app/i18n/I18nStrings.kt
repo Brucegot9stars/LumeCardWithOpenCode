@@ -99,6 +99,7 @@ interface I18nStrings {
     val studyCardTypeChoice: String
     val studyCardTypeMarkdown: String
     val studyCardTypeAi: String
+    val studyCardTypeRichText: String
     val studyModeTitle: String
     val studyModeDesc: String
     val studyContinueAll: String
@@ -167,24 +168,28 @@ interface I18nStrings {
     val cardTypeChoice: String
     val cardTypeMarkdown: String
     val cardTypeAi: String
+    val cardTypeRichText: String
     val cardTypeBasicDesc: String
     val cardTypeReversedDesc: String
     val cardTypeClozeDesc: String
     val cardTypeChoiceDesc: String
     val cardTypeMarkdownDesc: String
     val cardTypeAiDesc: String
+    val cardTypeRichTextDesc: String
     val cardTypeBasicHelp: String
     val cardTypeReversedHelp: String
     val cardTypeClozeHelp: String
     val cardTypeChoiceHelp: String
     val cardTypeMarkdownHelp: String
     val cardTypeAiHelp: String
+    val cardTypeRichTextHelp: String
     val cardTypeBasicExample: String
     val cardTypeReversedExample: String
     val cardTypeClozeExample: String
     val cardTypeChoiceExample: String
     val cardTypeMarkdownExample: String
     val cardTypeAiExample: String
+    val cardTypeRichTextExample: String
     val cardClozeContent: String
     val cardClozeFormatHint: String
     val cardClozePlaceholder: String

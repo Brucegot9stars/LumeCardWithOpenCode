@@ -159,6 +159,12 @@ internal fun CardFace(
     Column(modifier = Modifier.fillMaxWidth()) {
         when (card.type) {
             CardType.BASIC -> {
+                MarkdownText(
+                    markdown = if (showBack) card.back else card.front,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            CardType.RICH_TEXT -> {
                 val html = if (showBack) card.back else card.front
                 RichTextCardFace(html = html)
             }
@@ -248,6 +254,7 @@ internal fun cardTypeName(type: CardType): String {
         CardType.MULTIPLE_CHOICE -> strings.studyCardTypeChoice
         CardType.MARKDOWN -> strings.studyCardTypeMarkdown
         CardType.AI_GENERATED -> strings.studyCardTypeAi
+        CardType.RICH_TEXT -> strings.studyCardTypeRichText
     }
 }
 

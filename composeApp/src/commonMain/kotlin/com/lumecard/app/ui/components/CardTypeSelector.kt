@@ -99,6 +99,7 @@ private fun cardTypeEmoji(type: CardType): String = when (type) {
     CardType.MULTIPLE_CHOICE -> "\u2705"
     CardType.MARKDOWN -> "\uD83D\uDCC4"
     CardType.AI_GENERATED -> "\uD83E\uDD16"
+    CardType.RICH_TEXT -> "\uD83C\uDFA8"
 }
 
 private fun cardTypeShortName(type: CardType, strings: I18nStrings): String = when (type) {
@@ -108,5 +109,6 @@ private fun cardTypeShortName(type: CardType, strings: I18nStrings): String = wh
     CardType.MULTIPLE_CHOICE -> strings.cardTypeChoice
     CardType.MARKDOWN -> "Markdown"
     CardType.AI_GENERATED -> "AI"
+    CardType.RICH_TEXT -> strings.cardTypeRichText
 }
 

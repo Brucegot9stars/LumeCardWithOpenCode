@@ -63,7 +63,8 @@ enum class CardType {
     CLOZE,
     MULTIPLE_CHOICE,
     MARKDOWN,
-    AI_GENERATED
+    AI_GENERATED,
+    RICH_TEXT
 }
 
 @Serializable
