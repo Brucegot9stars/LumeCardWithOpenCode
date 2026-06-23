@@ -206,55 +206,64 @@ internal fun CardFace(
                 val correctIndices = remember {
                     options.mapIndexedNotNull { i, opt -> if (opt.startsWith("+")) i else null }.toSet()
                 }
-                Text(question, style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(12.dp))
-                if (!showBack) {
-                    var selectedOptions by remember { mutableStateOf(setOf<Int>()) }
-                    cleanOptions.forEachIndexed { idx, displayOpt ->
-                        val isSelected = idx in selectedOptions
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = {
-                                selectedOptions = if (isSelected) selectedOptions - idx
-                                else selectedOptions + idx
-                            },
-                            label = { Text(displayOpt) },
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            ),
-                        )
-                    }
-                    Spacer(Modifier.height(16.dp))
-                    Button(
-                        onClick = { onConfirmChoice?.invoke() },
-                        modifier = Modifier.align(Alignment.CenterHorizontally),
-                        enabled = selectedOptions.isNotEmpty(),
-                    ) {
-                        Text(strings.studyShowAnswer)
-                    }
-                } else {
-                    cleanOptions.forEachIndexed { idx, displayOpt ->
-                        val isCorrect = idx in correctIndices
-                        val indicator = if (isCorrect) "\u2713 " else ""
-                        val color = if (isCorrect) Color(0xFF2E7D32) else MaterialTheme.colorScheme.onSurface
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(indicator, fontWeight = FontWeight.Bold, color = color)
-                            Spacer(Modifier.width(4.dp))
-                            FilterChip(
-                                selected = isCorrect,
-                                onClick = {},
-                                label = {
-                                    Text(displayOpt, fontWeight = if (isCorrect) FontWeight.Bold else FontWeight.Normal, color = color)
-                                },
-                                modifier = Modifier.weight(1f),
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = Color(0xFFE8F5E9),
-                                ),
-                            )
+                Surface(
+                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(12.dp),
+                    tonalElevation = 1.dp,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(question, style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(12.dp))
+                        if (!showBack) {
+                            var selectedOptions by remember { mutableStateOf(setOf<Int>()) }
+                            cleanOptions.forEachIndexed { idx, displayOpt ->
+                                val isSelected = idx in selectedOptions
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = {
+                                        selectedOptions = if (isSelected) selectedOptions - idx
+                                        else selectedOptions + idx
+                                    },
+                                    label = { Text(displayOpt) },
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    ),
+                                )
+                            }
+                            Spacer(Modifier.height(16.dp))
+                            Button(
+                                onClick = { onConfirmChoice?.invoke() },
+                                modifier = Modifier.align(Alignment.CenterHorizontally),
+                                enabled = selectedOptions.isNotEmpty(),
+                            ) {
+                                Text(strings.studyShowAnswer)
+                            }
+                        } else {
+                            cleanOptions.forEachIndexed { idx, displayOpt ->
+                                val isCorrect = idx in correctIndices
+                                val indicator = if (isCorrect) "\u2713 " else ""
+                                val color = if (isCorrect) Color(0xFF2E7D32) else MaterialTheme.colorScheme.onSurface
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(indicator, fontWeight = FontWeight.Bold, color = color)
+                                    Spacer(Modifier.width(4.dp))
+                                    FilterChip(
+                                        selected = isCorrect,
+                                        onClick = {},
+                                        label = {
+                                            Text(displayOpt, fontWeight = FontWeight.Bold, color = color)
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = Color(0xFFE8F5E9),
+                                        ),
+                                    )
+                                }
+                            }
                         }
                     }
                 }
