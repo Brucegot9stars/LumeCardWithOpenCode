@@ -21,13 +21,9 @@ import com.lumecard.app.ui.components.MarkdownText
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
 import com.lumecard.app.ui.screens.settings.AnswerDisplayMode
-import com.mohamedrejeb.richeditor.model.rememberRichTextState
-import com.mohamedrejeb.richeditor.ui.material3.RichText
 import org.koin.compose.koinInject
 
 private const val FLIP_DURATION_MS = 500
-private const val CAMERA_DISTANCE_FACTOR = 8f
-
 @Composable
 internal fun CardContent(
     card: Card,
@@ -160,10 +156,7 @@ internal fun CardFace(
     val strings = koinInject<I18nManager>().strings
     Column(modifier = Modifier.fillMaxWidth()) {
         when (card.type) {
-            CardType.BASIC -> {
-                RichTextCardFace(html = if (showBack) card.back else card.front)
-            }
-            CardType.REVERSED, CardType.MARKDOWN, CardType.AI_GENERATED -> {
+            CardType.BASIC, CardType.REVERSED, CardType.MARKDOWN, CardType.AI_GENERATED -> {
                 MarkdownText(
                     markdown = if (showBack) card.back else card.front,
                     modifier = Modifier.fillMaxWidth()
@@ -249,24 +242,6 @@ internal fun cardTypeName(type: CardType): String {
         CardType.MULTIPLE_CHOICE -> strings.studyCardTypeChoice
         CardType.MARKDOWN -> strings.studyCardTypeMarkdown
         CardType.AI_GENERATED -> strings.studyCardTypeAi
-    }
-}
-
-@Composable
-internal fun RichTextCardFace(html: String) {
-    key(html) {
-        val state = rememberRichTextState()
-        val displayHtml = remember(html) {
-            if (html.contains("<") && html.contains(">")) html
-            else "<p>${html.replace("\n", "<br>")}</p>"
-        }
-        LaunchedEffect(Unit) {
-            if (displayHtml.isNotBlank()) state.setHtml(displayHtml)
-        }
-        RichText(
-            state = state,
-            modifier = Modifier.fillMaxWidth(),
-        )
     }
 }
 
