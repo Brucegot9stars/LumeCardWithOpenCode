@@ -270,7 +270,7 @@ updateLearningPlanSyncedAt:
 UPDATE LearningPlan SET synced_at = ? WHERE id = ?;
 
 -- Media sync cache (Anki-style: track mtime + sha1 to avoid re-hashing)
-CREATE TABLE MediaCache (
+CREATE TABLE IF NOT EXISTS MediaCache (
     path TEXT PRIMARY KEY NOT NULL,
     mtime INTEGER NOT NULL,
     sha1 TEXT NOT NULL,

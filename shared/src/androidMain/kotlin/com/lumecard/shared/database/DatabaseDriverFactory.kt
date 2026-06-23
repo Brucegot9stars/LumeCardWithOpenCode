@@ -17,8 +17,14 @@ actual class DatabaseDriverFactory {
             name = "lumecard.db"
         )
         upgradeToFts5(driver)
+        ensureMediaCacheTable(driver)
         return driver
     }
+}
+
+/** CREATE TABLE IF NOT EXISTS for the MediaCache table — safe to call every launch. */
+private fun ensureMediaCacheTable(driver: SqlDriver) {
+    driver.execute(null, "CREATE TABLE IF NOT EXISTS MediaCache(path TEXT PRIMARY KEY NOT NULL, mtime INTEGER NOT NULL, sha1 TEXT NOT NULL, synced_at TEXT)", 0, null)
 }
 
 actual fun upgradeToFts5(driver: SqlDriver) {

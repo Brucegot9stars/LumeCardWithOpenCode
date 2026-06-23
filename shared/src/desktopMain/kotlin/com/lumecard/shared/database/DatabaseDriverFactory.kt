@@ -16,6 +16,7 @@ actual class DatabaseDriverFactory {
             LumeCardDatabase.Schema.create(driver)
         }
         upgradeToFts5(driver)
+        driver.execute(null, "CREATE TABLE IF NOT EXISTS MediaCache(path TEXT PRIMARY KEY NOT NULL, mtime INTEGER NOT NULL, sha1 TEXT NOT NULL, synced_at TEXT)", 0, null)
         return driver
     }
 }
