@@ -60,6 +60,8 @@ class SqlDelightKnowledgeBaseRepository(
 
     override suspend fun delete(id: String) {
         val now = Clock.System.now().toString()
+        queries.softDeleteCardsByKnowledgeBase(now, now, id)
+        queries.softDeleteDecksByKnowledgeBase(now, now, id)
         queries.softDeleteKnowledgeBase(now, now, id)
     }
 
@@ -131,6 +133,7 @@ class SqlDelightDeckRepository(
 
     override suspend fun delete(id: String) {
         val now = Clock.System.now().toString()
+        queries.softDeleteCardsByDeck(now, now, id)
         queries.softDeleteDeck(now, now, id)
     }
 
