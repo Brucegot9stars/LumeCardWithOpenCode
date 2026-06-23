@@ -16,6 +16,8 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.lumecard.app.platform.getMediaBasePath
+import com.lumecard.app.platform.readClipboardImageAndSave
 import com.lumecard.app.ui.components.MarkdownText
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
@@ -24,6 +26,7 @@ import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.components.CardTypeSelector
 import com.lumecard.app.i18n.I18nStrings
 import com.lumecard.app.ui.theme.LumeCardTheme
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 class CreateCardScreen(
@@ -302,13 +305,24 @@ private fun BasicCardFields(
     frontPlaceholder: String, backPlaceholder: String
 ) {
     val strings = koinInject<I18nManager>().strings
+    val scope = rememberCoroutineScope()
     Text(frontLabel, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
     OutlinedTextField(
         value = front,
         onValueChange = onFrontChange,
         modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
         placeholder = { Text(frontPlaceholder) },
-        supportingText = { Text(strings.noteMarkdownSupport) }
+        supportingText = { Text(strings.noteMarkdownSupport) },
+        trailingIcon = {
+            IconButton(onClick = {
+                scope.launch {
+                    val fileName = readClipboardImageAndSave(getMediaBasePath())
+                    if (fileName != null) onFrontChange(front + "\n![image]($fileName)")
+                }
+            }) {
+                Icon(Icons.Default.Add, contentDescription = strings.pasteMedia)
+            }
+        }
     )
     Text(backLabel, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
     OutlinedTextField(
@@ -316,7 +330,17 @@ private fun BasicCardFields(
         onValueChange = onBackChange,
         modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
         placeholder = { Text(backPlaceholder) },
-        supportingText = { Text(strings.noteMarkdownSupport) }
+        supportingText = { Text(strings.noteMarkdownSupport) },
+        trailingIcon = {
+            IconButton(onClick = {
+                scope.launch {
+                    val fileName = readClipboardImageAndSave(getMediaBasePath())
+                    if (fileName != null) onBackChange(back + "\n![image]($fileName)")
+                }
+            }) {
+                Icon(Icons.Default.Add, contentDescription = strings.pasteMedia)
+            }
+        }
     )
 }
 

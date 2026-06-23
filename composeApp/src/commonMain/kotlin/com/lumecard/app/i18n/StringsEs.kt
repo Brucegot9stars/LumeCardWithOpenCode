@@ -417,4 +417,6 @@ object EsStrings : I18nStrings {
 
     override val noteMarkdownSupport = "Soporta formato Markdown"
     override val noteOptional = "(Opcional)"
+
+    override val pasteMedia = "Pegar imagen"
 }

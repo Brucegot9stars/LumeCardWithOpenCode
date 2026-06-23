@@ -1,10 +1,15 @@
 package com.lumecard.app.platform
 
+import java.awt.Toolkit
+import java.awt.datatransfer.DataFlavor
+import java.awt.image.BufferedImage
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.security.MessageDigest
 import java.util.zip.ZipOutputStream
+import javax.imageio.ImageIO
 
 actual fun isDesktopPlatform(): Boolean = true
 
@@ -50,6 +55,29 @@ actual fun createZipPackage(outputPath: String, entries: List<ZipEntry>) {
             zos.closeEntry()
         }
     }
+}
+
+actual fun getMediaBasePath(): String {
+    return System.getProperty("lumecard.media.dir") ?: "${System.getProperty("user.home")}/.lumecard/media"
+}
+
+actual fun readClipboardImageAndSave(mediaDir: String): String? {
+    return try {
+        val toolkit = Toolkit.getDefaultToolkit()
+        val clipboard = toolkit.systemClipboard
+        if (!clipboard.isDataFlavorAvailable(DataFlavor.imageFlavor)) return null
+        val image = clipboard.getData(DataFlavor.imageFlavor) as? BufferedImage ?: return null
+        val baos = ByteArrayOutputStream()
+        ImageIO.write(image, "png", baos)
+        val bytes = baos.toByteArray()
+        val digest = MessageDigest.getInstance("SHA-1")
+        val hash = digest.digest(bytes).joinToString("") { "%02x".format(it) }
+        val fileName = "$hash.png"
+        val dir = File(mediaDir)
+        if (!dir.exists()) dir.mkdirs()
+        File(dir, fileName).outputStream().use { it.write(bytes) }
+        fileName
+    } catch (_: Exception) { null }
 }
 
 private fun File.sha1(): String {

@@ -417,4 +417,6 @@ object JaStrings : I18nStrings {
 
     override val noteMarkdownSupport = "Markdown 形式に対応"
     override val noteOptional = "（任意）"
+
+    override val pasteMedia = "画像を貼り付け"
 }

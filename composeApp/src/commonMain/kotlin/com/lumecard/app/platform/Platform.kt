@@ -20,6 +20,12 @@ expect fun hashFileSha1(absPath: String): String
 
 expect fun createZipPackage(outputPath: String, entries: List<ZipEntry>)
 
+/** Path to the local media directory for storing card media files. */
+expect fun getMediaBasePath(): String
+
+/** Read an image from the system clipboard, save as PNG with SHA-1 filename, return relative filename or null. */
+expect fun readClipboardImageAndSave(mediaDir: String): String?
+
 data class ZipEntry(
     val path: String,
     val sourceFile: String

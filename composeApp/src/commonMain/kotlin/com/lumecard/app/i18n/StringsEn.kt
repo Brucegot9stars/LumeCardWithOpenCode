@@ -417,4 +417,6 @@ object EnStrings : I18nStrings {
 
     override val noteMarkdownSupport = "Supports Markdown formatting"
     override val noteOptional = "(optional)"
+
+    override val pasteMedia = "Paste Media"
 }

@@ -1,5 +1,8 @@
 package com.lumecard.app.platform
 
+import android.content.ClipboardManager
+import android.content.Context
+import com.lumecard.shared.database.AndroidContextHolder
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -50,6 +53,30 @@ actual fun createZipPackage(outputPath: String, entries: List<ZipEntry>) {
             zos.closeEntry()
         }
     }
+}
+
+actual fun getMediaBasePath(): String {
+    return "${AndroidContextHolder.context.filesDir.absolutePath}/media"
+}
+
+actual fun readClipboardImageAndSave(mediaDir: String): String? {
+    return try {
+        val context = AndroidContextHolder.context ?: return null
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = clipboard.primaryClip ?: return null
+        val desc = clip.description ?: return null
+        val hasImage = (0 until desc.mimeTypeCount).any { i -> desc.getMimeType(i)?.startsWith("image/") == true }
+        if (!hasImage) return null
+        val item = clip.getItemAt(0) ?: return null
+        val bytes = item.uri?.let { uri -> context.contentResolver.openInputStream(uri)?.use { it.readBytes() } } ?: return null
+        val digest = MessageDigest.getInstance("SHA-1")
+        val hash = digest.digest(bytes).joinToString("") { "%02x".format(it) }
+        val fileName = "$hash.png"
+        val dir = File(mediaDir)
+        if (!dir.exists()) dir.mkdirs()
+        File(dir, fileName).outputStream().use { it.write(bytes) }
+        fileName
+    } catch (_: Exception) { null }
 }
 
 private fun File.sha1(): String {

@@ -426,4 +426,6 @@ interface I18nStrings {
 
     val noteMarkdownSupport: String
     val noteOptional: String
+
+    val pasteMedia: String
 }

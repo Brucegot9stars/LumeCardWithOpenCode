@@ -417,4 +417,6 @@ object ZhCnStrings : I18nStrings {
 
     override val noteMarkdownSupport = "支持 Markdown 格式"
     override val noteOptional = "（可选）"
+
+    override val pasteMedia = "粘贴图片"
 }
