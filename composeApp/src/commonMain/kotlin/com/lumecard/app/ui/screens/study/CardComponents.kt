@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.mohamedrejeb.richeditor.model.rememberRichTextState
+import com.mohamedrejeb.richeditor.ui.material3.RichText
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -157,13 +159,8 @@ internal fun CardFace(
     Column(modifier = Modifier.fillMaxWidth()) {
         when (card.type) {
             CardType.BASIC -> {
-                val content = if (showBack) card.back else card.front
-                val clean = remember(content) {
-                    if (content.contains("<") && content.contains(">"))
-                        content.replace(Regex("<[^>]+>"), "").trim()
-                    else content
-                }
-                MarkdownText(markdown = clean, modifier = Modifier.fillMaxWidth())
+                val html = if (showBack) card.back else card.front
+                RichTextCardFace(html = html)
             }
             CardType.REVERSED, CardType.MARKDOWN, CardType.AI_GENERATED -> {
                 MarkdownText(
@@ -252,6 +249,23 @@ internal fun cardTypeName(type: CardType): String {
         CardType.MARKDOWN -> strings.studyCardTypeMarkdown
         CardType.AI_GENERATED -> strings.studyCardTypeAi
     }
+}
+
+@Composable
+internal fun RichTextCardFace(html: String) {
+    if (html.isBlank()) return
+    val displayHtml = remember(html) {
+        if (html.contains("<") && html.contains(">")) html
+        else "<p>${html.replace("\n", "<br>")}</p>"
+    }
+    val state = rememberRichTextState()
+    LaunchedEffect(displayHtml) {
+        if (displayHtml.isNotBlank()) state.setHtml(displayHtml)
+    }
+    RichText(
+        state = state,
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable
