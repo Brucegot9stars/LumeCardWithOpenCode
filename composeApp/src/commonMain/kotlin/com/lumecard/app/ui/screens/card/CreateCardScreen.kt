@@ -115,6 +115,7 @@ class CreateCardScreen(
                 CardTypeSelector(
                     selectedType = cardType,
                     onTypeSelected = { cardType = it },
+                    strings = strings,
                 )
 
                 // 类型专用输入区
@@ -191,6 +192,12 @@ class CreateCardScreen(
     }
 }
 
+private fun clozeAutoBack(front: String): String {
+    val clozeRegex = Regex("\\{\\{c\\d+::([^}]+)\\}\\}")
+    val clozeHintRegex = Regex("\\{\\{c\\d+::([^}]+)::([^}]+)\\}\\}")
+    return front.replace(clozeHintRegex, "$1").replace(clozeRegex, "$1")
+}
+
 @Composable
 private fun CardTypeInput(
     type: CardType,
@@ -216,16 +223,12 @@ private fun CardTypeInput(
             Text(strings.cardClozeFormatHint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(
                 value = front,
-                onValueChange = onFrontChange,
+                onValueChange = {
+                    onFrontChange(it)
+                    onBackChange(clozeAutoBack(it))
+                },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
                 placeholder = { Text(strings.cardClozePlaceholder) }
-            )
-            Text(strings.cardClozeFullText, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-            OutlinedTextField(
-                value = back,
-                onValueChange = onBackChange,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
-                placeholder = { Text(strings.cardClozeBackPlaceholder) }
             )
         }
         CardType.MULTIPLE_CHOICE -> {

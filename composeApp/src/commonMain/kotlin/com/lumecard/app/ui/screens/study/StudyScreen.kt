@@ -43,9 +43,12 @@ import com.lumecard.shared.model.CardType
 import com.lumecard.shared.model.Rating
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlin.math.abs
@@ -448,10 +451,16 @@ class StudyScreen(
                                         .verticalScroll(rememberScrollState()),
                                     contentAlignment = Alignment.TopStart
                                 ) {
+                                    val onMultipleChoiceSelected: ((isCorrect: Boolean) -> Unit)? = remember(currentCard) {
+                                        if (currentCard?.type == CardType.MULTIPLE_CHOICE) {
+                                            { viewModel.flipCard() }
+                                        } else null
+                                    }
                                     CardContent(
                                         card = currentCard,
                                         isFlipped = isFlipped,
-                                        displayMode = settingsState.answerDisplayMode
+                                        displayMode = settingsState.answerDisplayMode,
+                                        onMultipleChoiceSelected = onMultipleChoiceSelected,
                                     )
                                 }
                             }
@@ -632,7 +641,7 @@ class StudyScreen(
                                 Text(strings.studyPreviousCard)
                             }
 
-                            if (!isFlipped) {
+                            if (!isFlipped && currentCard?.type != CardType.MULTIPLE_CHOICE) {
                                 Button(
                                     onClick = { viewModel.flipCard() },
                                     modifier = Modifier.weight(2f),
@@ -656,6 +665,7 @@ class StudyScreen(
                                 onHard = { viewModel.rateCard(Rating.HARD) },
                                 onGood = { viewModel.rateCard(Rating.GOOD) },
                                 onEasy = { viewModel.rateCard(Rating.EASY) },
+                                strings = strings,
                             )
                         }
                     }
@@ -669,7 +679,8 @@ class StudyScreen(
 private fun CardContent(
     card: Card,
     isFlipped: Boolean,
-    displayMode: AnswerDisplayMode
+    displayMode: AnswerDisplayMode,
+    onMultipleChoiceSelected: ((isCorrect: Boolean) -> Unit)? = null,
 ) {
     val strings = koinInject<I18nManager>().strings
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -677,7 +688,7 @@ private fun CardContent(
             AnswerDisplayMode.FLIP -> {
                 FlipCard(
                     isFlipped = isFlipped,
-                    front = { CardFace(card, showBack = false) },
+                    front = { CardFace(card, showBack = false, onMultipleChoiceSelected = onMultipleChoiceSelected) },
                     back = { CardFace(card, showBack = true) }
                 )
             }
@@ -710,7 +721,7 @@ private fun CardContent(
                         shape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
                     ) {
-                        CardFace(card, showBack = false).let { it }
+                        CardFace(card, showBack = false, onMultipleChoiceSelected = onMultipleChoiceSelected).let { it }
                     }
                     Spacer(Modifier.height(16.dp))
                     // Answer section
@@ -743,7 +754,7 @@ private fun CardContent(
                         CardFace(card, showBack = true).let { it }
                     }
                 } else {
-                    CardFace(card, showBack = false)
+                    CardFace(card, showBack = false, onMultipleChoiceSelected = onMultipleChoiceSelected)
                 }
             }
         }
@@ -786,9 +797,14 @@ private fun FlipCard(
 }
 
 @Composable
-private fun CardFace(card: Card, showBack: Boolean) {
+private fun CardFace(
+    card: Card,
+    showBack: Boolean,
+    onMultipleChoiceSelected: ((isCorrect: Boolean) -> Unit)? = null,
+) {
     val clozeRegex = remember { Regex("\\{\\{c\\d+::([^}]+)\\}\\}") }
     val clozeHintRegex = remember { Regex("\\{\\{c\\d+::([^}]+)::([^}]+)\\}\\}") }
+    val clozeAnswerRegex = remember { Regex("\\{\\{c\\d+::([^:}]+)(?:::([^}]+))?\\}\\}") }
 
     val strings = koinInject<I18nManager>().strings
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -807,38 +823,69 @@ private fun CardFace(card: Card, showBack: Boolean) {
                 )
             }
             CardType.CLOZE -> {
-                val text = if (showBack) card.back else card.front
-                val displayText = if (!showBack) {
-                    text.replace(clozeHintRegex, "____")
-                        .replace(clozeRegex, "____")
-                } else {
-                    text.replace(clozeHintRegex, "$1")
-                        .replace(clozeRegex, "$1")
-                }
-                Text(
-                    displayText,
-                    style = MaterialTheme.typography.headlineSmall
-                )
                 if (!showBack) {
+                    val displayText = card.front.replace(clozeHintRegex, "____").replace(clozeRegex, "____")
+                    Text(displayText, style = MaterialTheme.typography.headlineSmall)
                     Spacer(Modifier.height(8.dp))
                     Text(strings.studyClozeHint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    val annotated = buildAnnotatedString {
+                        var pos = 0
+                        for (match in clozeAnswerRegex.findAll(card.front)) {
+                            if (pos < match.range.first) {
+                                append(card.front.substring(pos, match.range.first))
+                            }
+                            withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold, color = Color.Red)) {
+                                append(match.groupValues[1])
+                            }
+                            pos = match.range.last + 1
+                        }
+                        if (pos < card.front.length) {
+                            append(card.front.substring(pos))
+                        }
+                    }
+                    Text(annotated, style = MaterialTheme.typography.headlineSmall)
                 }
             }
             CardType.MULTIPLE_CHOICE -> {
-                val lines = (if (showBack) card.back else card.front).split("\n")
-                val question = lines.firstOrNull() ?: ""
-                val options = lines.drop(1)
+                val question = card.front
+                val options = card.back.split("\n").filter { it.isNotBlank() }
                 Text(question, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(12.dp))
                 options.forEach { opt ->
-                    val isCorrect = if (showBack) opt.startsWith("✓") || opt.startsWith("√") else false
-                    val displayOpt = opt.removePrefix("✓").removePrefix("√").trim()
-                    FilterChip(
-                        selected = isCorrect,
-                        onClick = {},
-                        label = { Text(displayOpt) },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
-                    )
+                    val isCorrect = opt.startsWith("+")
+                    val displayOpt = opt.removePrefix("+").trim()
+                    if (showBack && isCorrect) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                "✓",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Red,
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            FilterChip(
+                                selected = true,
+                                onClick = {},
+                                label = {
+                                    Text(displayOpt, fontWeight = FontWeight.Bold, color = Color.Red)
+                                },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    } else {
+                        FilterChip(
+                            selected = showBack && isCorrect,
+                            onClick = {
+                                onMultipleChoiceSelected?.invoke(isCorrect)
+                            },
+                            label = { Text(displayOpt) },
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                        )
+                    }
                 }
             }
             CardType.IMAGE_OCCLUSION -> {

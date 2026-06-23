@@ -30,6 +30,7 @@ import com.lumecard.app.i18n.AppLocale
 import com.lumecard.app.ui.components.LumeCardDialog
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.components.LumeCardTextField
+import com.lumecard.app.ui.screens.dashboard.DashboardScreen
 import com.lumecard.app.ui.components.UpdateCheckDialog
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.theme.LumeCardTheme
@@ -88,7 +89,7 @@ class SettingsScreen : Screen {
             topBar = {
                 LumeCardTopBar(
                     title = strings.settingsTitle,
-                    onBack = { navigator.pop() },
+                    onBack = { navigator.replace(DashboardScreen()) },
                     action = {
                         if (settingsState.isDirty) {
                             FilledTonalButton(

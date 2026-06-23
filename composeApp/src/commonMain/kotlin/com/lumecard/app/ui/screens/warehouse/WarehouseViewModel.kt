@@ -91,11 +91,11 @@ class WarehouseViewModel(
                 val cardNodes = (if (hasQuery && !deckNameMatch && !kbNameMatch) matchedCards else deckCards).map { card ->
                     TreeNode(id = card.id, name = card.front.take(50), type = NodeType.CARD, data = card)
                 }
-                TreeNode(id = deck.id, name = deck.name, type = NodeType.DECK, isExpanded = deck.id in _expandedIds.value, children = cardNodes)
+                TreeNode(id = deck.id, name = deck.name, type = NodeType.DECK, isExpanded = if (hasQuery) cardNodes.isNotEmpty() else deck.id in _expandedIds.value, children = cardNodes)
             }
 
             if (!hasQuery || kbNameMatch || deckNodes.isNotEmpty()) {
-                TreeNode(id = kb.id, name = kb.name, type = NodeType.KNOWLEDGE_BASE, isExpanded = kb.id in _expandedIds.value, children = deckNodes)
+                TreeNode(id = kb.id, name = kb.name, type = NodeType.KNOWLEDGE_BASE, isExpanded = if (hasQuery) deckNodes.isNotEmpty() else kb.id in _expandedIds.value, children = deckNodes)
             } else null
         }
         _treeNodes.value = tree
@@ -103,6 +103,18 @@ class WarehouseViewModel(
 
     fun toggleExpand(id: String) {
         _expandedIds.value = if (id in _expandedIds.value) _expandedIds.value - id else _expandedIds.value + id
+        rebuildTree()
+    }
+
+    fun expandAll() {
+        _expandedIds.value = _treeNodes.value.flatMap { node ->
+            listOf(node.id) + node.children.map { it.id }
+        }.toSet()
+        rebuildTree()
+    }
+
+    fun collapseAll() {
+        _expandedIds.value = emptySet()
         rebuildTree()
     }
 

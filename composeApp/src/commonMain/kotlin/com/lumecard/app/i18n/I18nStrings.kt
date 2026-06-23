@@ -368,6 +368,8 @@ interface I18nStrings {
     val warehouseCardContent: String
     val warehouseDeleteConfirm: String
     val warehouseDeleteDesc: String
+    val warehouseExpandAll: String
+    val warehouseCollapseAll: String
 
     val statsTitle: String
     val statsOverview: String
