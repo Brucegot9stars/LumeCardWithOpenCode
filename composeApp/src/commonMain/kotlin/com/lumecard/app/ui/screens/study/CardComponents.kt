@@ -25,6 +25,9 @@ import com.mohamedrejeb.richeditor.model.rememberRichTextState
 import com.mohamedrejeb.richeditor.ui.material3.RichText
 import org.koin.compose.koinInject
 
+private const val FLIP_DURATION_MS = 500
+private const val CAMERA_DISTANCE_FACTOR = 8f
+
 @Composable
 internal fun CardContent(
     card: Card,
@@ -121,7 +124,7 @@ internal fun FlipCard(
     LaunchedEffect(isFlipped) {
         rotation.animateTo(
             targetValue = if (isFlipped) 180f else 0f,
-            animationSpec = tween(500)
+            animationSpec = tween(FLIP_DURATION_MS)
         )
     }
 

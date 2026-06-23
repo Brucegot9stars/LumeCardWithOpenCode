@@ -43,6 +43,10 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.platform.LocalClipboardManager
 import kotlin.math.abs
 
+private const val SWIPE_ANIM_DURATION_MS = 200
+private const val SWIPE_VELOCITY_THRESHOLD = 800f
+private const val SWIPE_THRESHOLD_RATIO = 0.2f
+
 class StudyScreen(
     private val deckIds: List<String>,
     private val deckName: String,
@@ -240,7 +244,7 @@ class StudyScreen(
             .fillMaxSize()
     ) {
             val screenWidth = maxWidth.value
-            val threshold = screenWidth * 0.2f
+            val threshold = screenWidth * SWIPE_THRESHOLD_RATIO
 
             Scaffold(
                 topBar = {
@@ -380,7 +384,7 @@ class StudyScreen(
                                             onDragEnd = {
                                                 if (isAnimatingOut) return@detectHorizontalDragGestures
                                                 val offset = swipeOffset.value
-                                                val velocityTrigger = abs(velocity) > 800f
+                                                val velocityTrigger = abs(velocity) > SWIPE_VELOCITY_THRESHOLD
                                                 val distanceTrigger = abs(offset) > threshold
                                                 if (distanceTrigger || velocityTrigger) {
                                                     isAnimatingOut = true
@@ -388,7 +392,7 @@ class StudyScreen(
                                                     scope.launch {
                                                         swipeOffset.animateTo(
                                                             targetValue = target,
-                                                            animationSpec = tween(200, easing = FastOutLinearInEasing)
+                                                            animationSpec = tween(SWIPE_ANIM_DURATION_MS, easing = FastOutLinearInEasing)
                                                         )
                                                         swipeOffset.snapTo(0f)
                                                         isAnimatingOut = false
