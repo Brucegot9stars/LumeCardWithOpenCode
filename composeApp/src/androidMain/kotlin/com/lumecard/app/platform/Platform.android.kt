@@ -2,6 +2,7 @@ package com.lumecard.app.platform
 
 import android.content.ClipboardManager
 import android.content.Context
+import android.net.Uri
 import com.lumecard.shared.database.AndroidContextHolder
 import java.io.File
 import java.io.FileInputStream
@@ -59,24 +60,75 @@ actual fun getMediaBasePath(): String {
     return "${AndroidContextHolder.context.filesDir.absolutePath}/media"
 }
 
-actual fun readClipboardImageAndSave(mediaDir: String): String? {
+actual fun pasteClipboardMedia(mediaDir: String): List<String> {
+    val refs = mutableListOf<String>()
+    try {
+        val context = AndroidContextHolder.context ?: return refs
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = clipboard.primaryClip ?: return refs
+        val desc = clip.description ?: return refs
+        for (i in 0 until clip.itemCount) {
+            val item = clip.getItemAt(i) ?: continue
+            val mime = if (i < desc.mimeTypeCount) desc.getMimeType(i) else null
+            val bytes = item.uri?.let { uri -> context.contentResolver.openInputStream(uri)?.use { it.readBytes() } }
+                ?: continue
+            val ext = when {
+                mime?.startsWith("image/") == true -> "png"
+                mime?.startsWith("audio/") == true -> "mp3"
+                mime?.startsWith("video/") == true -> "mp4"
+                else -> "bin"
+            }
+            val digest = MessageDigest.getInstance("SHA-1")
+            val hash = digest.digest(bytes).joinToString("") { "%02x".format(it) }
+            val fileName = "$hash.$ext"
+            val dir = File(mediaDir)
+            if (!dir.exists()) dir.mkdirs()
+            File(dir, fileName).outputStream().use { it.write(bytes) }
+            val ref = when {
+                mime?.startsWith("image/") == true -> "![image]($fileName)"
+                mime?.startsWith("audio/") == true -> "[sound:$fileName]"
+                mime?.startsWith("video/") == true -> "[sound:$fileName]"
+                else -> "[$fileName]($fileName)"
+            }
+            refs.add(ref)
+        }
+    } catch (_: Exception) { }
+    return refs
+}
+
+actual fun saveMediaFile(mediaDir: String, sourcePath: String): String? {
     return try {
         val context = AndroidContextHolder.context ?: return null
-        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val clip = clipboard.primaryClip ?: return null
-        val desc = clip.description ?: return null
-        val hasImage = (0 until desc.mimeTypeCount).any { i -> desc.getMimeType(i)?.startsWith("image/") == true }
-        if (!hasImage) return null
-        val item = clip.getItemAt(0) ?: return null
-        val bytes = item.uri?.let { uri -> context.contentResolver.openInputStream(uri)?.use { it.readBytes() } } ?: return null
+        val uri = Uri.parse(sourcePath)
+        val bytes = if (uri.scheme == "content" || uri.scheme == "file") {
+            context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        } else {
+            File(sourcePath).takeIf { it.isFile }?.readBytes()
+        } ?: return null
+        val ext = sourcePath.substringAfterLast('.', "").lowercase().takeIf { it.isNotBlank() } ?: "bin"
+        val mimeGroup = mimeGroupForAndroid(ext) ?: "other"
         val digest = MessageDigest.getInstance("SHA-1")
         val hash = digest.digest(bytes).joinToString("") { "%02x".format(it) }
-        val fileName = "$hash.png"
+        val fileName = "$hash.$ext"
         val dir = File(mediaDir)
         if (!dir.exists()) dir.mkdirs()
         File(dir, fileName).outputStream().use { it.write(bytes) }
-        fileName
+        markdownRefAndroid(mimeGroup, fileName)
     } catch (_: Exception) { null }
+}
+
+private fun mimeGroupForAndroid(ext: String): String? = when (ext) {
+    "png", "jpg", "jpeg", "gif", "webp", "bmp", "svg" -> "image"
+    "mp3", "wav", "ogg", "m4a", "wma", "flac", "aac" -> "audio"
+    "mp4", "mov", "avi", "mkv", "wmv", "webm" -> "video"
+    else -> null
+}
+
+private fun markdownRefAndroid(mimeGroup: String, fileName: String): String = when (mimeGroup) {
+    "image" -> "![image]($fileName)"
+    "audio" -> "[sound:$fileName]"
+    "video" -> "[sound:$fileName]"
+    else -> "[$fileName]($fileName)"
 }
 
 private fun File.sha1(): String {

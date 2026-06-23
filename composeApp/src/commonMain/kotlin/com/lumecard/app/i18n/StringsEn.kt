@@ -419,4 +419,5 @@ object EnStrings : I18nStrings {
     override val noteOptional = "(optional)"
 
     override val pasteMedia = "Paste Media"
+    override val browseMedia = "Browse..."
 }

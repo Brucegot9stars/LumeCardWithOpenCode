@@ -23,8 +23,11 @@ expect fun createZipPackage(outputPath: String, entries: List<ZipEntry>)
 /** Path to the local media directory for storing card media files. */
 expect fun getMediaBasePath(): String
 
-/** Read an image from the system clipboard, save as PNG with SHA-1 filename, return relative filename or null. */
-expect fun readClipboardImageAndSave(mediaDir: String): String?
+/** Read media (images, audio/video files) from the system clipboard, save with SHA-1 filename, return markdown references. */
+expect fun pasteClipboardMedia(mediaDir: String): List<String>
+
+/** Save a media file to [mediaDir] with SHA-1 dedup, return markdown reference or null. */
+expect fun saveMediaFile(mediaDir: String, sourcePath: String): String?
 
 data class ZipEntry(
     val path: String,

@@ -53,6 +53,27 @@ actual fun readFileContent(path: String): String? {
     }
 }
 
+actual suspend fun pickMediaFile(): String? {
+    return withContext(Dispatchers.IO) {
+        try {
+            val chooser = JFileChooser().apply {
+                dialogTitle = "Select Media File"
+                fileFilter = FileNameExtensionFilter(
+                    "Media Files (images, audio, video)",
+                    "png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "ico",
+                    "mp3", "wav", "ogg", "m4a", "wma", "flac", "aac", "opus",
+                    "mp4", "mov", "avi", "mkv", "wmv", "webm", "flv", "3gp"
+                )
+                isAcceptAllFileFilterUsed = true
+            }
+            val result = chooser.showOpenDialog(null)
+            if (result == JFileChooser.APPROVE_OPTION) {
+                chooser.selectedFile.absolutePath
+            } else null
+        } catch (_: Exception) { null }
+    }
+}
+
 actual fun writeFileContent(path: String, content: String): Boolean {
     return try {
         File(path).writeText(content)

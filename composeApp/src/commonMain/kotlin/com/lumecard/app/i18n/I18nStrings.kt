@@ -428,4 +428,5 @@ interface I18nStrings {
     val noteOptional: String
 
     val pasteMedia: String
+    val browseMedia: String
 }
