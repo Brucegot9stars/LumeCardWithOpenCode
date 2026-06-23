@@ -9,6 +9,7 @@ object Versions {
     const val kotlinxDateTime = "0.6.1"
     const val kotlinxSerialization = "1.7.2"
     const val commonmark = "0.21.0"
+    const val composeRichEditor = "1.0.0-rc10"
 }
 
 object Dependencies {
@@ -49,6 +50,9 @@ object Dependencies {
     const val commonmarkGfmStrikethrough = "org.commonmark:commonmark-ext-gfm-strikethrough:${Versions.commonmark}"
     const val commonmarkAutolink = "org.commonmark:commonmark-ext-autolink:${Versions.commonmark}"
     const val commonmarkTaskList = "org.commonmark:commonmark-ext-task-list-items:${Versions.commonmark}"
+
+    // RichText Editor
+    const val composeRichEditor = "com.mohamedrejeb.richeditor:richeditor-compose:${Versions.composeRichEditor}"
 
     // Kotlinx
     const val kotlinxCoroutines = "org.jetbrains.kotlinx:kotlinx-coroutines-core:${Versions.kotlinxCoroutines}"

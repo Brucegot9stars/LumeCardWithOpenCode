@@ -21,6 +21,7 @@ import com.lumecard.app.platform.pasteClipboardMedia
 import com.lumecard.app.platform.pickMediaFile
 import com.lumecard.app.platform.saveMediaFile
 import com.lumecard.app.ui.components.MarkdownText
+import com.lumecard.app.ui.components.RichTextCardEditor
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
 import com.lumecard.app.i18n.I18nManager
@@ -208,7 +209,15 @@ private fun CardTypeInput(
 ) {
     val strings = koinInject<I18nManager>().strings
     when (type) {
-        CardType.BASIC, CardType.REVERSED, CardType.MARKDOWN, CardType.AI_GENERATED -> {
+        CardType.BASIC -> {
+            RichTextCardEditor(
+                front = front, onFrontChange = onFrontChange,
+                back = back, onBackChange = onBackChange,
+                frontLabel = strings.cardFrontLabel,
+                backLabel = strings.cardBackLabel,
+            )
+        }
+        CardType.REVERSED, CardType.MARKDOWN, CardType.AI_GENERATED -> {
             BasicCardFields(
                 front = front, onFrontChange = onFrontChange,
                 back = back, onBackChange = onBackChange,
@@ -246,57 +255,6 @@ private fun CardTypeInput(
                 onValueChange = onBackChange,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
                 placeholder = { Text(strings.cardChoicePlaceholder) }
-            )
-        }
-        CardType.IMAGE_OCCLUSION -> {
-            Text(strings.cardOcclusionImage, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-            OutlinedTextField(
-                value = front,
-                onValueChange = onFrontChange,
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text(strings.cardOcclusionImagePlaceholder) },
-                supportingText = { Text(strings.cardOcclusionImageHint) }
-            )
-            Text(strings.cardOcclusionContent, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-            OutlinedTextField(
-                value = back,
-                onValueChange = onBackChange,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
-                placeholder = { Text(strings.cardOcclusionContentPlaceholder) }
-            )
-        }
-        CardType.AUDIO -> {
-            Text(strings.cardAudioRef, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-            OutlinedTextField(
-                value = front,
-                onValueChange = onFrontChange,
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text(strings.cardAudioPlaceholder) },
-                supportingText = { Text(strings.cardAudioHint) }
-            )
-            Text(strings.cardAudioContent, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-            OutlinedTextField(
-                value = back,
-                onValueChange = onBackChange,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
-                placeholder = { Text(strings.cardAudioContentPlaceholder) }
-            )
-        }
-        CardType.VIDEO -> {
-            Text(strings.cardVideoRef, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-            OutlinedTextField(
-                value = front,
-                onValueChange = onFrontChange,
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text(strings.cardVideoPlaceholder) },
-                supportingText = { Text(strings.cardVideoHint) }
-            )
-            Text(strings.cardVideoContent, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-            OutlinedTextField(
-                value = back,
-                onValueChange = onBackChange,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
-                placeholder = { Text(strings.cardVideoContentPlaceholder) }
             )
         }
     }
@@ -390,9 +348,6 @@ private fun cardTypeLabel(type: CardType, strings: I18nStrings): String = when (
     CardType.REVERSED -> strings.cardTypeReversed
     CardType.CLOZE -> strings.cardTypeCloze
     CardType.MULTIPLE_CHOICE -> strings.cardTypeChoice
-    CardType.IMAGE_OCCLUSION -> strings.cardTypeOcclusion
-    CardType.AUDIO -> strings.cardTypeAudio
-    CardType.VIDEO -> strings.cardTypeVideo
     CardType.MARKDOWN -> strings.cardTypeMarkdown
     CardType.AI_GENERATED -> strings.cardTypeAi
 }
@@ -402,9 +357,6 @@ private fun cardTypeDesc(type: CardType, strings: I18nStrings): String = when (t
     CardType.REVERSED -> strings.cardTypeReversedDesc
     CardType.CLOZE -> strings.cardTypeClozeDesc
     CardType.MULTIPLE_CHOICE -> strings.cardTypeChoiceDesc
-    CardType.IMAGE_OCCLUSION -> strings.cardTypeOcclusionDesc
-    CardType.AUDIO -> strings.cardTypeAudioDesc
-    CardType.VIDEO -> strings.cardTypeVideoDesc
     CardType.MARKDOWN -> strings.cardTypeMarkdownDesc
     CardType.AI_GENERATED -> strings.cardTypeAiDesc
 }
@@ -414,9 +366,6 @@ private fun typeHelpText(type: CardType, strings: I18nStrings): String = when (t
     CardType.REVERSED -> strings.cardTypeReversedHelp
     CardType.CLOZE -> strings.cardTypeClozeHelp
     CardType.MULTIPLE_CHOICE -> strings.cardTypeChoiceHelp
-    CardType.IMAGE_OCCLUSION -> strings.cardTypeOcclusionHelp
-    CardType.AUDIO -> strings.cardTypeAudioHelp
-    CardType.VIDEO -> strings.cardTypeVideoHelp
     CardType.MARKDOWN -> strings.cardTypeMarkdownHelp
     CardType.AI_GENERATED -> strings.cardTypeAiHelp
 }
@@ -426,9 +375,6 @@ private fun typeExampleText(type: CardType, strings: I18nStrings): String = when
     CardType.REVERSED -> strings.cardTypeReversedExample
     CardType.CLOZE -> strings.cardTypeClozeExample
     CardType.MULTIPLE_CHOICE -> strings.cardTypeChoiceExample
-    CardType.IMAGE_OCCLUSION -> strings.cardTypeOcclusionExample
-    CardType.AUDIO -> strings.cardTypeAudioExample
-    CardType.VIDEO -> strings.cardTypeVideoExample
     CardType.MARKDOWN -> strings.cardTypeMarkdownExample
     CardType.AI_GENERATED -> strings.cardTypeAiExample
 }

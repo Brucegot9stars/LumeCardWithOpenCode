@@ -57,9 +57,6 @@ enum class CardType {
     REVERSED,
     CLOZE,
     MULTIPLE_CHOICE,
-    IMAGE_OCCLUSION,
-    AUDIO,
-    VIDEO,
     MARKDOWN,
     AI_GENERATED
 }

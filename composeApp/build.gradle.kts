@@ -58,6 +58,8 @@ kotlin {
                 implementation(Dependencies.commonmarkAutolink)
                 implementation(Dependencies.commonmarkTaskList)
 
+                implementation(Dependencies.composeRichEditor)
+
                 implementation(Dependencies.kotlinxCoroutines)
                 implementation(Dependencies.kotlinxDateTime)
                 implementation(Dependencies.kotlinxSerialization)

@@ -33,6 +33,8 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.ui.components.MarkdownText
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.components.LumeCardRatingBar
+import com.mohamedrejeb.richeditor.model.rememberRichTextState
+import com.mohamedrejeb.richeditor.ui.material3.RichText
 import com.lumecard.app.ui.components.ProgressRing
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.app.ui.screens.settings.AnswerDisplayMode
@@ -810,11 +812,7 @@ private fun CardFace(
     Column(modifier = Modifier.fillMaxWidth()) {
         when (card.type) {
             CardType.BASIC, CardType.REVERSED -> {
-                Text(
-                    text = if (showBack) card.back else card.front,
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                RichTextCardFace(html = if (showBack) card.back else card.front)
             }
             CardType.MARKDOWN, CardType.AI_GENERATED -> {
                 MarkdownText(
@@ -888,19 +886,6 @@ private fun CardFace(
                     }
                 }
             }
-            CardType.IMAGE_OCCLUSION -> {
-                Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(8.dp))
-                Text(if (showBack) card.back else strings.studyImageHint, style = MaterialTheme.typography.bodyMedium)
-            }
-            CardType.AUDIO, CardType.VIDEO -> {
-                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.height(8.dp))
-                MarkdownText(
-                    markdown = if (showBack) card.back else card.front,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
         }
     }
 }
@@ -913,12 +898,21 @@ private fun cardTypeName(type: CardType): String {
         CardType.REVERSED -> strings.studyCardTypeReversed
         CardType.CLOZE -> strings.studyCardTypeCloze
         CardType.MULTIPLE_CHOICE -> strings.studyCardTypeChoice
-        CardType.IMAGE_OCCLUSION -> strings.studyCardTypeOcclusion
-        CardType.AUDIO -> strings.studyCardTypeAudio
-        CardType.VIDEO -> strings.studyCardTypeVideo
         CardType.MARKDOWN -> strings.studyCardTypeMarkdown
         CardType.AI_GENERATED -> strings.studyCardTypeAi
     }
+}
+
+@Composable
+private fun RichTextCardFace(html: String) {
+    val state = rememberRichTextState()
+    LaunchedEffect(html) {
+        if (html.isNotBlank()) state.setHtml(html)
+    }
+    RichText(
+        state = state,
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 @Composable
 private fun CompletionStat(

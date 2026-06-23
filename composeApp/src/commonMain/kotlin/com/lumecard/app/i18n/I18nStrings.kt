@@ -78,14 +78,11 @@ interface I18nStrings {
     val studyAnswer: String
     val studyRevealed: String
     val studyClozeHint: String
-    val studyImageHint: String
+
     val studyCardTypeBasic: String
     val studyCardTypeReversed: String
     val studyCardTypeCloze: String
     val studyCardTypeChoice: String
-    val studyCardTypeOcclusion: String
-    val studyCardTypeAudio: String
-    val studyCardTypeVideo: String
     val studyCardTypeMarkdown: String
     val studyCardTypeAi: String
     val studyModeTitle: String
@@ -152,36 +149,24 @@ interface I18nStrings {
     val cardTypeReversed: String
     val cardTypeCloze: String
     val cardTypeChoice: String
-    val cardTypeOcclusion: String
-    val cardTypeAudio: String
-    val cardTypeVideo: String
     val cardTypeMarkdown: String
     val cardTypeAi: String
     val cardTypeBasicDesc: String
     val cardTypeReversedDesc: String
     val cardTypeClozeDesc: String
     val cardTypeChoiceDesc: String
-    val cardTypeOcclusionDesc: String
-    val cardTypeAudioDesc: String
-    val cardTypeVideoDesc: String
     val cardTypeMarkdownDesc: String
     val cardTypeAiDesc: String
     val cardTypeBasicHelp: String
     val cardTypeReversedHelp: String
     val cardTypeClozeHelp: String
     val cardTypeChoiceHelp: String
-    val cardTypeOcclusionHelp: String
-    val cardTypeAudioHelp: String
-    val cardTypeVideoHelp: String
     val cardTypeMarkdownHelp: String
     val cardTypeAiHelp: String
     val cardTypeBasicExample: String
     val cardTypeReversedExample: String
     val cardTypeClozeExample: String
     val cardTypeChoiceExample: String
-    val cardTypeOcclusionExample: String
-    val cardTypeAudioExample: String
-    val cardTypeVideoExample: String
     val cardTypeMarkdownExample: String
     val cardTypeAiExample: String
     val cardClozeContent: String
@@ -194,21 +179,6 @@ interface I18nStrings {
     val cardChoiceOptions: String
     val cardChoiceFormatHint: String
     val cardChoicePlaceholder: String
-    val cardOcclusionImage: String
-    val cardOcclusionImagePlaceholder: String
-    val cardOcclusionImageHint: String
-    val cardOcclusionContent: String
-    val cardOcclusionContentPlaceholder: String
-    val cardAudioRef: String
-    val cardAudioPlaceholder: String
-    val cardAudioHint: String
-    val cardAudioContent: String
-    val cardAudioContentPlaceholder: String
-    val cardVideoRef: String
-    val cardVideoPlaceholder: String
-    val cardVideoHint: String
-    val cardVideoContent: String
-    val cardVideoContentPlaceholder: String
     val cardMarkdownHint: String
 
     val settingsTitle: String
