@@ -156,7 +156,16 @@ internal fun CardFace(
     val strings = koinInject<I18nManager>().strings
     Column(modifier = Modifier.fillMaxWidth()) {
         when (card.type) {
-            CardType.BASIC, CardType.REVERSED, CardType.MARKDOWN, CardType.AI_GENERATED -> {
+            CardType.BASIC -> {
+                val content = if (showBack) card.back else card.front
+                val clean = remember(content) {
+                    if (content.contains("<") && content.contains(">"))
+                        content.replace(Regex("<[^>]+>"), "").trim()
+                    else content
+                }
+                MarkdownText(markdown = clean, modifier = Modifier.fillMaxWidth())
+            }
+            CardType.REVERSED, CardType.MARKDOWN, CardType.AI_GENERATED -> {
                 MarkdownText(
                     markdown = if (showBack) card.back else card.front,
                     modifier = Modifier.fillMaxWidth()
