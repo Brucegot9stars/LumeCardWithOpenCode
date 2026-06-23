@@ -207,13 +207,17 @@ internal fun CardFace(
                     options.mapIndexedNotNull { i, opt -> if (opt.startsWith("+")) i else null }.toSet()
                 }
                 Surface(
-                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.12f),
+                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f),
                     shape = RoundedCornerShape(12.dp),
                     tonalElevation = 1.dp,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(question, style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            question,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        )
                         Spacer(Modifier.height(12.dp))
                         if (!showBack) {
                             var selectedOptions by remember { mutableStateOf(setOf<Int>()) }
@@ -228,7 +232,7 @@ internal fun CardFace(
                                     label = { Text(displayOpt) },
                                     modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
                                     ),
                                 )
                             }
