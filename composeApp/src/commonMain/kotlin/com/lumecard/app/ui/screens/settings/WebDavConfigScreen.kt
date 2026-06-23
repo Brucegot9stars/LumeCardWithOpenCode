@@ -589,7 +589,7 @@ class WebDavConfigScreen : Screen {
                                 try {
                                     val config = defaultConfig ?: return@launch
                                     withContext(Dispatchers.IO) {
-                                        syncIncrementalData(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager)
+                                        syncIncrementalData(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager)
                                         val settings = settingsRepository.getAll()
                                         val configJson = exportManager.exportConfig(settings)
                                         syncManager.uploadConfig(config, configJson).getOrThrow()
@@ -627,7 +627,7 @@ class WebDavConfigScreen : Screen {
                                     try {
                                         val config = defaultConfig ?: return@launch
                                         withContext(Dispatchers.IO) {
-                                            syncIncrementalData(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager)
+                                            syncIncrementalData(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager)
                                             webDavConfigManager.updateLastSync(config.id)
                                         }
                                         syncStatus = strings.settingsSyncSuccess(0)
@@ -673,59 +673,6 @@ class WebDavConfigScreen : Screen {
                         ) {
                             Text(strings.settingsSyncConfig)
                         }
-                    }
-
-                    Spacer(modifier = Modifier.height(spacing.sm))
-
-                    // Sync Media
-                    OutlinedButton(
-                        onClick = {
-                            scope.launch {
-                                isSyncing = true
-                                syncStatus = strings.settingsSyncing
-                                try {
-                                    val config = defaultConfig ?: return@launch
-                                    withContext(Dispatchers.IO) {
-                                        val mediaBase = System.getProperty("lumecard.media.dir") ?: "${System.getProperty("user.home")}/.lumecard/media"
-                                        val localFiles = scanMediaDirectory(mediaBase)
-                                        val localManifest = MediaManifest(
-                                            version = 1,
-                                            entries = localFiles.map { MediaManifestEntry(it.relativePath, it.size, it.hash) }
-                                        )
-                                        syncManager.uploadManifest(config, mediaManager.manifestToJson(localManifest))
-
-                                        val remoteResult = syncManager.downloadManifest(config)
-                                        val remoteManifest = if (remoteResult.isSuccess) mediaManager.manifestFromJson(remoteResult.getOrThrow()) else null
-
-                                        val needUpload = if (remoteManifest != null) {
-                                            mediaManager.diffLocalVsRemote(localManifest, remoteManifest)
-                                        } else {
-                                            localFiles.map { it.relativePath }
-                                        }
-
-                                        var uploaded = 0
-                                        for (path in needUpload) {
-                                            val entry = localFiles.find { it.relativePath == path } ?: continue
-                                            val absPath = "$mediaBase/$path"
-                                            try {
-                                                val data = java.io.File(absPath).readBytes()
-                                                syncManager.uploadMedia(config, path, data).getOrThrow()
-                                                uploaded++
-                                            } catch (_: Exception) { }
-                                        }
-                                        syncStatus = "Media synced: $uploaded files"
-                                    }
-                                } catch (e: Exception) {
-                                    syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
-                                } finally {
-                                    isSyncing = false
-                                }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isSyncing,
-                    ) {
-                        Text("Sync Media")
                     }
 
                     // Restore from cloud
@@ -848,7 +795,8 @@ private suspend fun syncIncrementalData(
     reviewLogRepository: ReviewLogRepository,
     planRepository: LearningPlanRepository,
     exportManager: ExportManager,
-    syncManager: SyncManager
+    syncManager: SyncManager,
+    mediaManager: MediaManager
 ) {
     val now = Clock.System.now()
     val since = config.lastSyncAt?.let { try { Instant.parse(it) } catch (_: Exception) { null } }
@@ -866,32 +814,58 @@ private suspend fun syncIncrementalData(
         cardRepository.markSynced(cards.map { it.id }, now)
         reviewLogRepository.markSynced(logs.map { it.id }, now)
         planRepository.markSynced(plans.map { it.id }, now)
-        return
+    } else {
+        val dirtyKbs = kbRepository.getUpdatedSince(since)
+        val dirtyDecks = deckRepository.getUpdatedSince(since)
+        val dirtyCards = cardRepository.getUpdatedSince(since)
+        val dirtyLogs = reviewLogRepository.getUpdatedSince(since)
+        val dirtyPlans = planRepository.getUpdatedSince(since)
+
+        if (dirtyKbs.isNotEmpty() || dirtyDecks.isNotEmpty() || dirtyCards.isNotEmpty() || dirtyLogs.isNotEmpty() || dirtyPlans.isNotEmpty()) {
+            val json = exportManager.exportIncrementalData(
+                knowledgeBases = dirtyKbs,
+                decks = dirtyDecks,
+                cards = dirtyCards,
+                reviewLogs = dirtyLogs,
+                learningPlans = dirtyPlans,
+                since = since.toString()
+            )
+            syncManager.uploadData(config, json).getOrThrow()
+
+            kbRepository.markSynced(dirtyKbs.map { it.id }, now)
+            deckRepository.markSynced(dirtyDecks.map { it.id }, now)
+            cardRepository.markSynced(dirtyCards.map { it.id }, now)
+            reviewLogRepository.markSynced(dirtyLogs.map { it.id }, now)
+            planRepository.markSynced(dirtyPlans.map { it.id }, now)
+        }
     }
 
-    val dirtyKbs = kbRepository.getUpdatedSince(since)
-    val dirtyDecks = deckRepository.getUpdatedSince(since)
-    val dirtyCards = cardRepository.getUpdatedSince(since)
-    val dirtyLogs = reviewLogRepository.getUpdatedSince(since)
-    val dirtyPlans = planRepository.getUpdatedSince(since)
+    // Always sync media after data sync
+    val mediaBase = System.getProperty("lumecard.media.dir") ?: "${System.getProperty("user.home")}/.lumecard/media"
+    val localFiles = scanMediaDirectory(mediaBase)
+    if (localFiles.isNotEmpty()) {
+        val localManifest = MediaManifest(
+            version = 1,
+            entries = localFiles.map { MediaManifestEntry(it.relativePath, it.size, it.hash) }
+        )
+        syncManager.uploadManifest(config, mediaManager.manifestToJson(localManifest))
 
-    if (dirtyKbs.isEmpty() && dirtyDecks.isEmpty() && dirtyCards.isEmpty() && dirtyLogs.isEmpty() && dirtyPlans.isEmpty()) {
-        return
+        val remoteResult = syncManager.downloadManifest(config)
+        val remoteManifest = if (remoteResult.isSuccess) mediaManager.manifestFromJson(remoteResult.getOrThrow()) else null
+
+        val needUpload = if (remoteManifest != null) {
+            mediaManager.diffLocalVsRemote(localManifest, remoteManifest)
+        } else {
+            localFiles.map { it.relativePath }
+        }
+
+        for (path in needUpload) {
+            val entry = localFiles.find { it.relativePath == path } ?: continue
+            val absPath = "$mediaBase/$path"
+            try {
+                val data = java.io.File(absPath).readBytes()
+                syncManager.uploadMedia(config, path, data).getOrThrow()
+            } catch (_: Exception) { }
+        }
     }
-
-    val json = exportManager.exportIncrementalData(
-        knowledgeBases = dirtyKbs,
-        decks = dirtyDecks,
-        cards = dirtyCards,
-        reviewLogs = dirtyLogs,
-        learningPlans = dirtyPlans,
-        since = since.toString()
-    )
-    syncManager.uploadData(config, json).getOrThrow()
-
-    kbRepository.markSynced(dirtyKbs.map { it.id }, now)
-    deckRepository.markSynced(dirtyDecks.map { it.id }, now)
-    cardRepository.markSynced(dirtyCards.map { it.id }, now)
-    reviewLogRepository.markSynced(dirtyLogs.map { it.id }, now)
-    planRepository.markSynced(dirtyPlans.map { it.id }, now)
 }
