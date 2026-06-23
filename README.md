@@ -19,19 +19,22 @@
 - ✅ **上一张功能** — 学习过程中可返回上一张卡片重新评分
 - ✅ **复习日志** — 每条评分记录持久化，支持学习统计
 - ✅ **统计分析** — 总卡片数、总牌组数、总复习数、今日/本周/本月复习数、记忆保持率、学习时长、连续学习天数、新卡片/待复习/未到期卡片分布
-- ✅ **数据导入导出** — JSON 格式完整导出/导入（v2 格式含知识库、学习计划、复习日志）
+- ✅ **数据导入导出** — JSON 格式完整导出/导入，支持分享导出（不含学习进度）与完整备份导出分离
+- ✅ **全文搜索** — SQL LIKE 搜索 + FTS5 虚拟表全文索引（FTS5 不可用时自动降级 LIKE）
 - ✅ **排序功能** — 牌组与卡片列表支持按名称、创建时间、更新时间排序（升序/降序）
-- ✅ **WebDAV 云同步** — 增量同步、版本冲突解决、多配置管理、连接测试、双向同步
+- ✅ **WebDAV 云同步** — 增量数据同步 + 版本冲突解决 + Anki 风格媒体同步（SHA-1 + mtime 缓存，仅哈希变更文件）+ 多配置管理
+- ✅ **级联软删除** — 删除知识库级联软删除下属牌组与卡片，删除牌组级联软删除下属卡片
+- ✅ **媒体贴入** — 粘贴图片到卡片编辑器字段（Desktop: AWT / Android: ClipboardManager），自动 SHA-1 去重保存，插入 Markdown 图片引用
 - ✅ **设置持久化** — 所有设置存入 SQLite，dirty-state 追踪按需保存
-- ✅ **跨平台** — Android + Desktop (Windows/Linux/macOS)
+- ✅ **跨平台** — Android + Desktop (Windows/Linux/macOS)，支持 Windows EXE/MSI 打包 & macOS DMG
 - ✅ **Markdown 渲染** — 基于 CommonMark 的 GFM 标准渲染，支持标题/表格/代码高亮/任务列表/删除线/自动链接/数学公式
 - ✅ **国际化** — 简体中文、繁體中文、English、日本語、Español 五国语言，支持跟随系统语言
-- ✅ **CI/CD** — GitHub Actions 自动构建 Android APK + Tag 触发 Release
+- ✅ **CI/CD** — GitHub Actions 自动构建 Android APK + Windows 打包 + Tag 触发 Release
 - ✅ **版本管理** — 统一版本管理（version.properties），支持 V0.x.y 开发阶段版本规范
+- ✅ **平台文件对话框** — Android SAF 与 Desktop JFileChooser 完整实现，用于导出/导入/媒体操作
 
 ### 待实现
 
-- ❌ 平台文件对话框（SAF / JFileChooser）— 需要 expect/actual 平台抽象实现
 - ❌ AI 制卡助手 — 接口已定义（`AIApi`），后端尚未对接
 - ❌ 知识图谱
 - ❌ 学习热力图 / 日历贡献图
@@ -100,11 +103,12 @@ LumeCard/
 │       │   ├── data/
 │       │   │   ├── ExportManager.kt       # 导入导出（v2 格式）
 │       │   │   ├── SyncManager.kt         # WebDAV 增量同步
+│       │   │   ├── MediaManager.kt        # 媒体 Manifest & 缓存管理
 │       │   │   ├── WebDavConfigManager.kt # 多配置管理
 │       │   │   └── WebDavProviders.kt     # 服务商配置
 │       │   └── di/SharedModule.kt         # Koin 共享模块
 │       └── sqldelight/
-│           └── LumeCardDatabase.sq        # 8 张表
+│           └── LumeCardDatabase.sq        # 10 张表
 │
 ├── buildSrc/src/main/kotlin/
 │   └── Dependencies.kt                    # 统一版本管理
@@ -156,7 +160,7 @@ set GRADLE_USER_HOME=C:\gradle-home
 
 ## 数据库
 
-SQLDelight 管理 8 张表，全部查询在 `LumeCardDatabase.sq` 中定义：
+SQLDelight 管理 10 张表，全部查询在 `LumeCardDatabase.sq` 中定义：
 
 | 表 | 用途 |
 |------|---------|
@@ -168,6 +172,8 @@ SQLDelight 管理 8 张表，全部查询在 `LumeCardDatabase.sq` 中定义：
 | `AlgorithmState` | 通用算法调度状态 |
 | `AppSettings` | 键值设置存储 |
 | `LearningPlan` | 学习计划（含进度、状态、关联关系） |
+| `CardFTS` | FTS5 全文搜索虚拟表（运行时升级，不可用时降级为普通表） |
+| `MediaCache` | 媒体同步缓存（path、mtime、sha1、synced_at）— 仅哈希变更文件 |
 
 ## 数据模型
 
