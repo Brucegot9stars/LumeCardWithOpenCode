@@ -31,7 +31,7 @@ internal fun CardContent(
     card: Card,
     isFlipped: Boolean,
     displayMode: AnswerDisplayMode,
-    onMultipleChoiceSelected: ((isCorrect: Boolean) -> Unit)? = null,
+    onConfirmChoice: (() -> Unit)? = null,
 ) {
     val strings = koinInject<I18nManager>().strings
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -39,7 +39,7 @@ internal fun CardContent(
             AnswerDisplayMode.FLIP -> {
                 FlipCard(
                     isFlipped = isFlipped,
-                    front = { CardFace(card, showBack = false, onMultipleChoiceSelected = onMultipleChoiceSelected) },
+                    front = { CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice) },
                     back = { CardFace(card, showBack = true) }
                 )
             }
@@ -71,7 +71,7 @@ internal fun CardContent(
                         shape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
                     ) {
-                        CardFace(card, showBack = false, onMultipleChoiceSelected = onMultipleChoiceSelected).let { it }
+                        CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice).let { it }
                     }
                     Spacer(Modifier.height(16.dp))
                     Surface(
@@ -103,7 +103,7 @@ internal fun CardContent(
                         CardFace(card, showBack = true).let { it }
                     }
                 } else {
-                    CardFace(card, showBack = false, onMultipleChoiceSelected = onMultipleChoiceSelected)
+                    CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice)
                 }
             }
         }
@@ -149,7 +149,7 @@ internal fun FlipCard(
 internal fun CardFace(
     card: Card,
     showBack: Boolean,
-    onMultipleChoiceSelected: ((isCorrect: Boolean) -> Unit)? = null,
+    onConfirmChoice: (() -> Unit)? = null,
 ) {
     val clozeRegex = remember { Regex("\\{\\{c\\d+::([^}]+)\\}\\}") }
     val clozeHintRegex = remember { Regex("\\{\\{c\\d+::([^}]+)::([^}]+)\\}\\}") }
@@ -201,42 +201,61 @@ internal fun CardFace(
             }
             CardType.MULTIPLE_CHOICE -> {
                 val question = card.front
-                val options = card.back.split("\n").filter { it.isNotBlank() }
+                val options = remember { card.back.split("\n").filter { it.isNotBlank() } }
+                val cleanOptions = remember { options.map { it.removePrefix("+").trim() } }
+                val correctIndices = remember {
+                    options.mapIndexedNotNull { i, opt -> if (opt.startsWith("+")) i else null }.toSet()
+                }
                 Text(question, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(12.dp))
-                options.forEach { opt ->
-                    val isCorrect = opt.startsWith("+")
-                    val displayOpt = opt.removePrefix("+").trim()
-                    if (showBack && isCorrect) {
+                if (!showBack) {
+                    var selectedOptions by remember { mutableStateOf(setOf<Int>()) }
+                    cleanOptions.forEachIndexed { idx, displayOpt ->
+                        val isSelected = idx in selectedOptions
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = {
+                                selectedOptions = if (isSelected) selectedOptions - idx
+                                else selectedOptions + idx
+                            },
+                            label = { Text(displayOpt) },
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            ),
+                        )
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Button(
+                        onClick = { onConfirmChoice?.invoke() },
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                        enabled = selectedOptions.isNotEmpty(),
+                    ) {
+                        Text(strings.studyShowAnswer)
+                    }
+                } else {
+                    cleanOptions.forEachIndexed { idx, displayOpt ->
+                        val isCorrect = idx in correctIndices
+                        val indicator = if (isCorrect) "\u2713 " else ""
+                        val color = if (isCorrect) Color(0xFF2E7D32) else MaterialTheme.colorScheme.onSurface
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(
-                                "\u2713",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Red,
-                            )
+                            Text(indicator, fontWeight = FontWeight.Bold, color = color)
                             Spacer(Modifier.width(4.dp))
                             FilterChip(
-                                selected = true,
+                                selected = isCorrect,
                                 onClick = {},
                                 label = {
-                                    Text(displayOpt, fontWeight = FontWeight.Bold, color = Color.Red)
+                                    Text(displayOpt, fontWeight = if (isCorrect) FontWeight.Bold else FontWeight.Normal, color = color)
                                 },
                                 modifier = Modifier.weight(1f),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Color(0xFFE8F5E9),
+                                ),
                             )
                         }
-                    } else {
-                        FilterChip(
-                            selected = showBack && isCorrect,
-                            onClick = {
-                                onMultipleChoiceSelected?.invoke(isCorrect)
-                            },
-                            label = { Text(displayOpt) },
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                        )
                     }
                 }
             }

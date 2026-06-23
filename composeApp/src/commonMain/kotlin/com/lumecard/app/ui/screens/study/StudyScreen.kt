@@ -445,7 +445,7 @@ class StudyScreen(
                                         .verticalScroll(rememberScrollState()),
                                     contentAlignment = Alignment.TopStart
                                 ) {
-                                    val onMultipleChoiceSelected: ((isCorrect: Boolean) -> Unit)? = remember(currentCard) {
+                                    val onConfirmChoice: (() -> Unit)? = remember(currentCard) {
                                         if (currentCard?.type == CardType.MULTIPLE_CHOICE) {
                                             { viewModel.flipCard() }
                                         } else null
@@ -454,7 +454,7 @@ class StudyScreen(
                                         card = currentCard,
                                         isFlipped = isFlipped,
                                         displayMode = settingsState.answerDisplayMode,
-                                        onMultipleChoiceSelected = onMultipleChoiceSelected,
+                                        onConfirmChoice = onConfirmChoice,
                                     )
                                 }
                             }
