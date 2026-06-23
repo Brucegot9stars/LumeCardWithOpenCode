@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.coroutines.flow.update
 
 class InMemoryKnowledgeBaseRepository : KnowledgeBaseRepository {
     private val knowledgeBases = MutableStateFlow<List<KnowledgeBase>>(emptyList())
@@ -17,17 +18,17 @@ class InMemoryKnowledgeBaseRepository : KnowledgeBaseRepository {
     }
 
     override suspend fun insert(knowledgeBase: KnowledgeBase) {
-        knowledgeBases.value = knowledgeBases.value + knowledgeBase
+        knowledgeBases.update { it + knowledgeBase }
     }
 
     override suspend fun update(knowledgeBase: KnowledgeBase) {
-        knowledgeBases.value = knowledgeBases.value.map {
-            if (it.id == knowledgeBase.id) knowledgeBase.copy(updatedAt = Clock.System.now()) else it
+        knowledgeBases.update { list ->
+            list.map { if (it.id == knowledgeBase.id) knowledgeBase.copy(updatedAt = Clock.System.now()) else it }
         }
     }
 
     override suspend fun delete(id: String) {
-        knowledgeBases.value = knowledgeBases.value.filter { it.id != id }
+        knowledgeBases.update { it.filter { kb -> kb.id != id } }
     }
 
     override suspend fun getUpdatedSince(since: Instant): List<KnowledgeBase> {
@@ -35,7 +36,7 @@ class InMemoryKnowledgeBaseRepository : KnowledgeBaseRepository {
     }
 
     override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
-        // no-op for in-memory
+        println("[InMemory] markSynced no-op: ${ids.size} items")
     }
 }
 
@@ -53,17 +54,17 @@ class InMemoryDeckRepository : DeckRepository {
     }
 
     override suspend fun insert(deck: Deck) {
-        decks.value = decks.value + deck
+        decks.update { it + deck }
     }
 
     override suspend fun update(deck: Deck) {
-        decks.value = decks.value.map {
-            if (it.id == deck.id) deck.copy(updatedAt = Clock.System.now()) else it
+        decks.update { list ->
+            list.map { if (it.id == deck.id) deck.copy(updatedAt = Clock.System.now()) else it }
         }
     }
 
     override suspend fun delete(id: String) {
-        decks.value = decks.value.filter { it.id != id }
+        decks.update { it.filter { d -> d.id != id } }
     }
 
     override suspend fun getUpdatedSince(since: Instant): List<Deck> {
@@ -71,6 +72,7 @@ class InMemoryDeckRepository : DeckRepository {
     }
 
     override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
+        println("[InMemory] markSynced no-op: ${ids.size} items")
     }
 }
 
@@ -97,17 +99,17 @@ class InMemoryCardRepository : CardRepository {
     }
 
     override suspend fun insert(card: Card) {
-        cards.value = cards.value + card
+        cards.update { it + card }
     }
 
     override suspend fun update(card: Card) {
-        cards.value = cards.value.map {
-            if (it.id == card.id) card.copy(updatedAt = Clock.System.now()) else it
+        cards.update { list ->
+            list.map { if (it.id == card.id) card.copy(updatedAt = Clock.System.now()) else it }
         }
     }
 
     override suspend fun delete(id: String) {
-        cards.value = cards.value.filter { it.id != id }
+        cards.update { it.filter { c -> c.id != id } }
     }
 
     override suspend fun search(query: String): Flow<List<Card>> {
@@ -125,6 +127,7 @@ class InMemoryCardRepository : CardRepository {
     }
 
     override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
+        println("[InMemory] markSynced no-op: ${ids.size} items")
     }
 
     override suspend fun rebuildFtsIndex() {
@@ -141,7 +144,7 @@ class InMemoryReviewLogRepository : ReviewLogRepository {
     }
 
     override suspend fun insert(reviewLog: ReviewLog) {
-        reviewLogs.value = reviewLogs.value + reviewLog
+        reviewLogs.update { it + reviewLog }
     }
 
     override suspend fun getStats(): ReviewStats {
@@ -150,7 +153,7 @@ class InMemoryReviewLogRepository : ReviewLogRepository {
         val averageRating = if (totalReviews > 0) logs.map { it.rating }.average() else 0.0
         val goodReviews = logs.count { it.rating >= 3 }
         val retentionRate = if (totalReviews > 0) goodReviews.toDouble() / totalReviews else 0.0
-        val studyTimeMinutes = logs.sumOf { it.reviewTime } / 60000
+        val studyTimeMinutes = (logs.sumOf { it.reviewTime.toLong() } / 60000).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
 
         return ReviewStats(
             totalReviews = totalReviews,
@@ -165,6 +168,7 @@ class InMemoryReviewLogRepository : ReviewLogRepository {
     }
 
     override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
+        println("[InMemory] markSynced no-op: ${ids.size} items")
     }
 }
 
@@ -198,17 +202,17 @@ class InMemoryLearningPlanRepository : LearningPlanRepository {
     }
 
     override suspend fun insert(plan: LearningPlan) {
-        plans.value = plans.value + plan
+        plans.update { it + plan }
     }
 
     override suspend fun update(plan: LearningPlan) {
-        plans.value = plans.value.map {
-            if (it.id == plan.id) plan.copy(updatedAt = Clock.System.now()) else it
+        plans.update { list ->
+            list.map { if (it.id == plan.id) plan.copy(updatedAt = Clock.System.now()) else it }
         }
     }
 
     override suspend fun delete(id: String) {
-        plans.value = plans.value.filter { it.id != id }
+        plans.update { it.filter { p -> p.id != id } }
     }
 
     override suspend fun getUpdatedSince(since: Instant): List<LearningPlan> {
@@ -216,5 +220,6 @@ class InMemoryLearningPlanRepository : LearningPlanRepository {
     }
 
     override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
+        println("[InMemory] markSynced no-op: ${ids.size} items")
     }
 }

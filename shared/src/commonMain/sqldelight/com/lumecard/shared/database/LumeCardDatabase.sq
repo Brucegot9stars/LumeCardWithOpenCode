@@ -135,9 +135,15 @@ insertKnowledgeBase:
 INSERT OR REPLACE INTO KnowledgeBase(id, name, description, created_at, updated_at, version, deleted_at, synced_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
+updateKnowledgeBase:
+UPDATE KnowledgeBase SET name = ?, description = ?, updated_at = ?, version = version + 1, deleted_at = ?, synced_at = ? WHERE id = ?;
+
 insertDeck:
 INSERT OR REPLACE INTO Deck(id, knowledge_base_id, name, description, color, icon, parent_id, created_at, updated_at, version, deleted_at, synced_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateDeck:
+UPDATE Deck SET name = ?, description = ?, color = ?, icon = ?, parent_id = ?, updated_at = ?, version = version + 1, deleted_at = ?, synced_at = ? WHERE id = ?;
 
 insertCard:
 INSERT OR REPLACE INTO Card(id, deck_id, type, front, back, tags, media, metadata, created_at, updated_at, last_reviewed_at, next_review_at, version, deleted_at, synced_at)
@@ -246,6 +252,9 @@ SELECT * FROM LearningPlan WHERE is_default = 1 AND deleted_at IS NULL;
 insertLearningPlan:
 INSERT OR REPLACE INTO LearningPlan(id, name, description, status, is_default, knowledge_base_ids, deck_ids, card_ids, total_cards, completed_cards, created_at, updated_at, version, deleted_at, synced_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateLearningPlan:
+UPDATE LearningPlan SET name = ?, description = ?, status = ?, is_default = ?, knowledge_base_ids = ?, deck_ids = ?, card_ids = ?, total_cards = ?, completed_cards = ?, updated_at = ?, version = version + 1, deleted_at = ?, synced_at = ? WHERE id = ?;
 
 -- Incremental sync queries
 selectKnowledgeBasesUpdatedSince:

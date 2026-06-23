@@ -61,10 +61,10 @@ class LearningPlanSelectionScreen : Screen {
             val clipboardManager = LocalClipboardManager.current
             AlertDialog(
                 onDismissRequest = { errorMsg = null },
-                title = { Text("Error") },
+                title = { Text(strings.errorTitle) },
                 text = {
                     Column {
-                        Text("An error occurred:", style = MaterialTheme.typography.bodyMedium)
+                        Text(strings.errorDesc, style = MaterialTheme.typography.bodyMedium)
                         Spacer(modifier = Modifier.height(8.dp))
                         Box(
                             modifier = Modifier
@@ -87,10 +87,10 @@ class LearningPlanSelectionScreen : Screen {
                         OutlinedButton(onClick = {
                             errorMsg?.let { clipboardManager.setText(AnnotatedString(it)) }
                         }) {
-                            Text("Copy")
+                            Text(strings.actionCopy)
                         }
                         Button(onClick = { errorMsg = null }) {
-                            Text("OK")
+                            Text(strings.actionOk)
                         }
                     }
                 },
@@ -225,7 +225,7 @@ class LearningPlanSelectionScreen : Screen {
                                 }
                                 Spacer(Modifier.height(spacing.sm))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("${plan.totalCards} cards", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(strings.planCardsCount(plan.totalCards), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Spacer(Modifier.width(spacing.sm))
                                     LinearProgressIndicator(progress = { progress }, modifier = Modifier.weight(1f).height(4.dp), trackColor = MaterialTheme.colorScheme.surfaceVariant)
                                     Spacer(Modifier.width(spacing.sm))

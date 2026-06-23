@@ -39,6 +39,7 @@ import com.lumecard.app.ui.components.ProgressRing
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.app.ui.screens.settings.AnswerDisplayMode
 import com.lumecard.app.i18n.I18nManager
+import com.lumecard.app.i18n.I18nStrings
 import com.lumecard.app.ui.screens.settings.SettingsStateHolder
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
@@ -68,15 +69,16 @@ class StudyScreen(
     @Composable
     override fun Content() {
         var crashError by remember { mutableStateOf<String?>(null) }
+        val strings = koinInject<I18nManager>().strings
 
         if (crashError != null) {
             val clipboardManager = LocalClipboardManager.current
             AlertDialog(
                 onDismissRequest = { crashError = null },
-                title = { Text("Composition Error") },
+                title = { Text(strings.crashCompositionError) },
                 text = {
                     Column {
-                        Text("An error occurred during rendering:", style = MaterialTheme.typography.bodyMedium)
+                        Text(strings.crashRenderErrorDesc, style = MaterialTheme.typography.bodyMedium)
                         Spacer(modifier = Modifier.height(8.dp))
                         Box(
                             modifier = Modifier
@@ -98,8 +100,8 @@ class StudyScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = {
                             crashError?.let { clipboardManager.setText(AnnotatedString(it)) }
-                        }) { Text("Copy") }
-                        Button(onClick = { crashError = null }) { Text("OK") }
+                        }) { Text(strings.actionCopy) }
+                        Button(onClick = { crashError = null }) { Text(strings.actionOk) }
                     }
                 },
             )
@@ -109,7 +111,6 @@ class StudyScreen(
         val navigator = LocalNavigator.currentOrThrow
         val viewModel: StudyViewModel = koinInject()
         val settingsState: SettingsStateHolder = koinInject()
-        val strings = koinInject<I18nManager>().strings
         val cards by viewModel.cards.collectAsState()
         val currentIndex by viewModel.currentCardIndex.collectAsState()
         val isFlipped by viewModel.isFlipped.collectAsState()
@@ -147,10 +148,10 @@ class StudyScreen(
             val clipboardManager = LocalClipboardManager.current
             AlertDialog(
                 onDismissRequest = { viewModel.clearError() },
-                title = { Text("Error") },
+                title = { Text(strings.errorTitle) },
                 text = {
                     Column {
-                        Text("An error occurred:", style = MaterialTheme.typography.bodyMedium)
+                        Text(strings.errorDesc, style = MaterialTheme.typography.bodyMedium)
                         Spacer(modifier = Modifier.height(8.dp))
                         Box(
                             modifier = Modifier
@@ -173,10 +174,10 @@ class StudyScreen(
                         OutlinedButton(onClick = {
                             error?.let { clipboardManager.setText(AnnotatedString(it)) }
                         }) {
-                            Text("Copy")
+                            Text(strings.actionCopy)
                         }
                         Button(onClick = { viewModel.clearError() }) {
-                            Text("OK")
+                            Text(strings.actionOk)
                         }
                     }
                 },
@@ -285,7 +286,7 @@ class StudyScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text(
-                                formatElapsedTime(elapsedSeconds),
+                                formatElapsedTime(elapsedSeconds, strings),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                             )
@@ -590,15 +591,15 @@ class StudyScreen(
                                 ) {
                                     CompletionStat(
                                         value = "$completedCards",
-                                        label = "Reviewed",
+                                        label = strings.studyCompleteReviewed,
                                     )
                                     CompletionStat(
-                                        value = formatElapsedTime(elapsedSeconds),
-                                        label = "Time spent",
+                                        value = formatElapsedTime(elapsedSeconds, strings),
+                                        label = strings.studyCompleteTimeSpent,
                                     )
                                     CompletionStat(
                                         value = "${(completedCards * 75 + 100).coerceAtMost(999)}",
-                                        label = "XP earned",
+                                        label = strings.studyCompleteXpEarned,
                                     )
                                 }
 
@@ -811,10 +812,10 @@ private fun CardFace(
     val strings = koinInject<I18nManager>().strings
     Column(modifier = Modifier.fillMaxWidth()) {
         when (card.type) {
-            CardType.BASIC, CardType.REVERSED -> {
+            CardType.BASIC -> {
                 RichTextCardFace(html = if (showBack) card.back else card.front)
             }
-            CardType.MARKDOWN, CardType.AI_GENERATED -> {
+            CardType.REVERSED, CardType.MARKDOWN, CardType.AI_GENERATED -> {
                 MarkdownText(
                     markdown = if (showBack) card.back else card.front,
                     modifier = Modifier.fillMaxWidth()
@@ -905,14 +906,20 @@ private fun cardTypeName(type: CardType): String {
 
 @Composable
 private fun RichTextCardFace(html: String) {
-    val state = rememberRichTextState()
-    LaunchedEffect(html) {
-        if (html.isNotBlank()) state.setHtml(html)
+    key(html) {
+        val state = rememberRichTextState()
+        val displayHtml = remember(html) {
+            if (html.contains("<") && html.contains(">")) html
+            else "<p>${html.replace("\n", "<br>")}</p>"
+        }
+        LaunchedEffect(Unit) {
+            if (displayHtml.isNotBlank()) state.setHtml(displayHtml)
+        }
+        RichText(
+            state = state,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
-    RichText(
-        state = state,
-        modifier = Modifier.fillMaxWidth(),
-    )
 }
 @Composable
 private fun CompletionStat(
@@ -936,19 +943,19 @@ private fun CompletionStat(
 
 
 
-private fun formatElapsedTime(totalSeconds: Int): String {
+private fun formatElapsedTime(totalSeconds: Int, strings: I18nStrings): String {
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
     return if (minutes > 0) {
         if (minutes >= 60) {
             val hours = minutes / 60
             val mins = minutes % 60
-            StringBuilder().append(hours).append("h ").append(mins).append("m").toString()
+            StringBuilder().append(hours).append(strings.timeHours).append(mins).append(strings.timeMinutes).toString()
         } else {
-            StringBuilder().append(minutes).append("m ").append(seconds).append("s").toString()
+            StringBuilder().append(minutes).append(strings.timeMinutes).append(seconds).append(strings.timeSeconds).toString()
         }
     } else {
-        StringBuilder().append(seconds).append("s").toString()
+        StringBuilder().append(seconds).append(strings.timeSeconds).toString()
     }
 }
 

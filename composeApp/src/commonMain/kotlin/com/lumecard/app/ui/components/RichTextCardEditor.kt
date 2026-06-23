@@ -55,9 +55,17 @@ fun RichTextCardEditor(
     val frontState = rememberRichTextState()
     val backState = rememberRichTextState()
 
+    val frontHtml = remember(front) {
+        if (front.contains("<") && front.contains(">")) front
+        else "<p>${front.replace("\n", "<br>")}</p>"
+    }
+    val backHtml = remember(back) {
+        if (back.contains("<") && back.contains(">")) back
+        else "<p>${back.replace("\n", "<br>")}</p>"
+    }
     LaunchedEffect(Unit) {
-        if (front.isNotBlank()) frontState.setHtml(front)
-        if (back.isNotBlank()) backState.setHtml(back)
+        if (frontHtml.isNotBlank()) frontState.setHtml(frontHtml)
+        if (backHtml.isNotBlank()) backState.setHtml(backHtml)
     }
 
     LaunchedEffect(frontState) {
@@ -107,6 +115,7 @@ fun RichTextCardEditor(
 private fun RichTextToolbar(
     state: RichTextState,
 ) {
+    val strings = koinInject<I18nManager>().strings
     val currentStyle = state.currentSpanStyle
     val isBold = currentStyle.fontWeight == FontWeight.Bold
     val isItalic = currentStyle.fontStyle == FontStyle.Italic
@@ -163,7 +172,7 @@ private fun RichTextToolbar(
                 expanded = showColorPicker,
                 onDismissRequest = { showColorPicker = false },
             ) {
-                Text("Color", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp))
+                Text(strings.editorColorTitle, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp))
                 presetColors.forEach { color ->
                     val c = color
                     DropdownMenuItem(
@@ -186,16 +195,16 @@ private fun RichTextToolbar(
                                 Spacer(Modifier.width(8.dp))
                                 Text(
                                     when (c) {
-                                        null -> "None"
-                                        Color(0xFFD32F2F) -> "Red"
-                                        Color(0xFF1976D2) -> "Blue"
-                                        Color(0xFF388E3C) -> "Green"
-                                        Color(0xFFF57C00) -> "Orange"
-                                        Color(0xFF7B1FA2) -> "Purple"
-                                        Color(0xFF00796B) -> "Teal"
-                                        Color(0xFF5D4037) -> "Brown"
-                                        Color(0xFF455A64) -> "Gray"
-                                        else -> "Custom"
+                                        null -> strings.editorColorNone
+                                        Color(0xFFD32F2F) -> strings.editorColorRed
+                                        Color(0xFF1976D2) -> strings.editorColorBlue
+                                        Color(0xFF388E3C) -> strings.editorColorGreen
+                                        Color(0xFFF57C00) -> strings.editorColorOrange
+                                        Color(0xFF7B1FA2) -> strings.editorColorPurple
+                                        Color(0xFF00796B) -> strings.editorColorTeal
+                                        Color(0xFF5D4037) -> strings.editorColorBrown
+                                        Color(0xFF455A64) -> strings.editorColorGray
+                                        else -> strings.editorColorCustom
                                     },
                                     fontSize = 13.sp,
                                 )
@@ -232,7 +241,7 @@ private fun RichTextToolbar(
             ) {
                 presetFontSizes.forEach { size ->
                     DropdownMenuItem(
-                        text = { Text("${size}px", fontSize = 13.sp) },
+                        text = { Text(strings.editorFontSizePx(size), fontSize = 13.sp) },
                         onClick = {
                             state.toggleSpanStyle(SpanStyle(fontSize = size.sp))
                             showFontSizeMenu = false

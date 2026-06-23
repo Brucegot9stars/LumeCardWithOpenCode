@@ -29,9 +29,11 @@ private fun ensureMediaCacheTable(driver: SqlDriver) {
 
 actual fun upgradeToFts5(driver: SqlDriver) {
     try {
-        driver.execute(null, "DROP TABLE IF EXISTS CardFTS", 0, null)
-        driver.execute(null, "CREATE VIRTUAL TABLE IF NOT EXISTS CardFTS USING fts5(card_id UNINDEXED, front, back, tags, tokenize='unicode61')", 0, null)
-        driver.execute(null, "INSERT INTO CardFTS(card_id, front, back, tags) SELECT id, front, back, tags FROM Card WHERE deleted_at IS NULL", 0, null)
+        val tableExists = driver.execute(null, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='CardFTS'", 0, null)
+        if (tableExists.value == 0L) {
+            driver.execute(null, "CREATE VIRTUAL TABLE IF NOT EXISTS CardFTS USING fts5(card_id UNINDEXED, front, back, tags, tokenize='unicode61')", 0, null)
+            driver.execute(null, "INSERT INTO CardFTS(card_id, front, back, tags) SELECT id, front, back, tags FROM Card WHERE deleted_at IS NULL", 0, null)
+        }
     } catch (e: Exception) {
         Log.w("LumeCard", "FTS5 not available, falling back to LIKE search", e)
         // Recreate plain stub table so compiled insertCardFts/deleteCardFts queries don't fail

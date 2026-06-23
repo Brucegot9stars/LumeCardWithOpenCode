@@ -314,7 +314,7 @@ class WebDavConfigScreen : Screen {
                                             val result = withContext(Dispatchers.IO) { webDavConfigManager.testConnection(config) }
                                             testResult = result.fold(
                                                 onSuccess = { strings.settingsSyncTestSuccess },
-                                                onFailure = { strings.settingsSyncTestError(it.message ?: "Unknown") }
+                                                onFailure = { strings.settingsSyncTestError(it.message ?: strings.errorUnknown) }
                                             )
                                             val msg = testResult ?: return@launch
                                             snackbarHostState.showSnackbar(msg)
@@ -342,7 +342,7 @@ class WebDavConfigScreen : Screen {
                                                 testResult = null
                                                 reloadConfigs()
                                             } catch (e: Exception) {
-                                                snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
+                                                snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: strings.errorUnknown))
                                             }
                                         }
                                     },
@@ -456,7 +456,7 @@ class WebDavConfigScreen : Screen {
                                                             withContext(Dispatchers.IO) { webDavConfigManager.setDefault(config.id) }
                                                             reloadConfigs()
                                                         } catch (e: Exception) {
-                                                            snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
+                                                            snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: strings.errorUnknown))
                                                         }
                                                     }
                                                 },
@@ -610,8 +610,8 @@ class WebDavConfigScreen : Screen {
                                     snackbarHostState.showSnackbar(strings.settingsSyncSuccess(0))
                                     reloadConfigs()
                                 } catch (e: Exception) {
-                                    syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
-                                    snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
+                                    syncStatus = strings.settingsSyncError(e.message ?: strings.errorUnknown)
+                                    snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: strings.errorUnknown))
                                 } finally {
                                     isSyncing = false
                                 }
@@ -722,7 +722,7 @@ class WebDavConfigScreen : Screen {
                     ) {
                         Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(spacing.sm))
-                        Text("Restore History")
+                        Text(strings.syncRestoreHistory)
                     }
                 }
 
@@ -745,7 +745,7 @@ class WebDavConfigScreen : Screen {
                                 reloadConfigs()
                             } catch (e: Exception) {
                                 deleteConfirmId = null
-                                snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
+                                snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: strings.errorUnknown))
                             }
                         }
                     }) { Text(strings.actionConfirm) }
@@ -760,10 +760,10 @@ class WebDavConfigScreen : Screen {
         if (showRestoreHistory) {
             AlertDialog(
                 onDismissRequest = { showRestoreHistory = false },
-                title = { Text("Restore History") },
+                title = { Text(strings.syncRestoreHistory) },
                 text = {
                     if (historyEntries.isEmpty()) {
-                        Text("No history available")
+                        Text(strings.syncNoHistoryAvailable)
                     } else {
                         Column {
                             historyEntries.forEach { entry ->
@@ -817,7 +817,7 @@ class WebDavConfigScreen : Screen {
                                                 reloadConfigs()
                                             } catch (e: Exception) {
                                                 syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
-                                                snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
+                                                snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: strings.errorUnknown))
                                             } finally {
                                                 isSyncing = false
                                             }
@@ -826,7 +826,7 @@ class WebDavConfigScreen : Screen {
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Text(
-                                        "${entry.timestamp.substringBefore("T")} ${entry.timestamp.substringAfter("T").substringBeforeLast("Z")}  -  ${entry.deviceId}",
+                                        strings.syncHistoryEntryFormat(entry.timestamp, entry.deviceId),
                                         style = MaterialTheme.typography.bodySmall,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis

@@ -16,6 +16,10 @@ import kotlinx.datetime.Instant
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+private fun safeInstant(value: String): Instant = try { Instant.parse(value) } catch (_: Exception) { Clock.System.now() }
+private fun safeInstantOrNull(value: String?): Instant? = value?.let { try { Instant.parse(it) } catch (_: Exception) { null } }
+private fun safeCardType(value: String): CardType = try { CardType.valueOf(value) } catch (_: Exception) { CardType.BASIC }
+
 class SqlDelightKnowledgeBaseRepository(
     private val database: LumeCardDatabase
 ) : KnowledgeBaseRepository {
@@ -46,15 +50,13 @@ class SqlDelightKnowledgeBaseRepository(
     }
 
     override suspend fun update(knowledgeBase: KnowledgeBase) {
-        queries.insertKnowledgeBase(
-            id = knowledgeBase.id,
+        queries.updateKnowledgeBase(
             name = knowledgeBase.name,
             description = knowledgeBase.description,
-            created_at = knowledgeBase.createdAt.toString(),
             updated_at = Clock.System.now().toString(),
-            version = knowledgeBase.version + 1,
             deleted_at = knowledgeBase.deletedAt?.toString(),
-            synced_at = knowledgeBase.syncedAt?.toString()
+            synced_at = knowledgeBase.syncedAt?.toString(),
+            id = knowledgeBase.id
         )
     }
 
@@ -115,19 +117,16 @@ class SqlDelightDeckRepository(
     }
 
     override suspend fun update(deck: Deck) {
-        queries.insertDeck(
-            id = deck.id,
-            knowledge_base_id = deck.knowledgeBaseId,
+        queries.updateDeck(
             name = deck.name,
             description = deck.description,
             color = deck.color,
             icon = deck.icon,
             parent_id = deck.parentId,
-            created_at = deck.createdAt.toString(),
             updated_at = Clock.System.now().toString(),
-            version = deck.version + 1,
             deleted_at = deck.deletedAt?.toString(),
-            synced_at = deck.syncedAt?.toString()
+            synced_at = deck.syncedAt?.toString(),
+            id = deck.id
         )
     }
 
@@ -284,13 +283,13 @@ class SqlDelightReviewLogRepository(
         val averageRating = if (totalReviews > 0) allLogs.map { it.rating }.average() else 0.0
         val goodReviews = allLogs.count { it.rating >= 3 }
         val retentionRate = if (totalReviews > 0) goodReviews.toDouble() / totalReviews else 0.0
-        val studyTimeMinutes = allLogs.sumOf { it.review_time } / 60000
+        val studyTimeMinutes = (allLogs.sumOf { it.review_time } / 60000).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
 
         return ReviewStats(
             totalReviews = totalReviews,
             averageRating = averageRating,
             retentionRate = retentionRate,
-            studyTimeMinutes = studyTimeMinutes.toInt()
+            studyTimeMinutes = studyTimeMinutes
         )
     }
 
@@ -362,11 +361,11 @@ private fun com.lumecard.shared.database.KnowledgeBase.toKnowledgeBase() = Knowl
     id = id,
     name = name,
     description = description,
-    createdAt = Instant.parse(created_at),
-    updatedAt = Instant.parse(updated_at),
+    createdAt = safeInstant(created_at),
+    updatedAt = safeInstant(updated_at),
     version = version,
-    deletedAt = deleted_at?.let { Instant.parse(it) },
-    syncedAt = synced_at?.let { Instant.parse(it) }
+    deletedAt = safeInstantOrNull(deleted_at),
+    syncedAt = safeInstantOrNull(synced_at)
 )
 
 private fun com.lumecard.shared.database.Deck.toDeck() = Deck(
@@ -377,42 +376,42 @@ private fun com.lumecard.shared.database.Deck.toDeck() = Deck(
     color = color ?: "#4CAF50",
     icon = icon ?: "\uD83D\uDCDA",
     parentId = parent_id,
-    createdAt = Instant.parse(created_at),
-    updatedAt = Instant.parse(updated_at),
+    createdAt = safeInstant(created_at),
+    updatedAt = safeInstant(updated_at),
     version = version,
-    deletedAt = deleted_at?.let { Instant.parse(it) },
-    syncedAt = synced_at?.let { Instant.parse(it) }
+    deletedAt = safeInstantOrNull(deleted_at),
+    syncedAt = safeInstantOrNull(synced_at)
 )
 
 private fun com.lumecard.shared.database.SelectDueCards.toDomain() = Card(
     id = id,
     deckId = deck_id,
-    type = CardType.valueOf(type),
+    type = safeCardType(type),
     front = front,
     back = back,
     tags = parseStringList(tags),
-    createdAt = Instant.parse(created_at),
-    updatedAt = Instant.parse(updated_at),
-    lastReviewedAt = last_reviewed_at?.let { Instant.parse(it) },
-    nextReviewAt = Instant.parse(next_review_at)
+    createdAt = safeInstant(created_at),
+    updatedAt = safeInstant(updated_at),
+    lastReviewedAt = safeInstantOrNull(last_reviewed_at),
+    nextReviewAt = safeInstant(next_review_at)
 )
 
 private fun com.lumecard.shared.database.Card.toDomain() = Card(
     id = id,
     deckId = deck_id,
-    type = CardType.valueOf(type),
+    type = safeCardType(type),
     front = front,
     back = back,
     tags = parseStringList(tags),
     media = try { if (media.isNullOrBlank()) emptyList() else Json.decodeFromString(media) } catch (_: Exception) { emptyList() },
     metadata = try { if (metadata.isNullOrBlank()) emptyMap() else Json.decodeFromString(metadata) } catch (_: Exception) { emptyMap() },
-    createdAt = Instant.parse(created_at),
-    updatedAt = Instant.parse(updated_at),
-    lastReviewedAt = last_reviewed_at?.let { Instant.parse(it) },
-    nextReviewAt = next_review_at?.let { Instant.parse(it) },
+    createdAt = safeInstant(created_at),
+    updatedAt = safeInstant(updated_at),
+    lastReviewedAt = safeInstantOrNull(last_reviewed_at),
+    nextReviewAt = safeInstantOrNull(next_review_at),
     version = version,
-    deletedAt = deleted_at?.let { Instant.parse(it) },
-    syncedAt = synced_at?.let { Instant.parse(it) }
+    deletedAt = safeInstantOrNull(deleted_at),
+    syncedAt = safeInstantOrNull(synced_at)
 )
 
 private fun com.lumecard.shared.database.ReviewLog.toReviewLog() = ReviewLog(
@@ -424,10 +423,10 @@ private fun com.lumecard.shared.database.ReviewLog.toReviewLog() = ReviewLog(
     easeFactor = ease_factor.toFloat(),
     repetitions = repetitions.toInt(),
     lapseCount = lapse_count.toInt(),
-    reviewedAt = Instant.parse(reviewed_at),
+    reviewedAt = safeInstant(reviewed_at),
     version = version,
-    deletedAt = deleted_at?.let { Instant.parse(it) },
-    syncedAt = synced_at?.let { Instant.parse(it) }
+    deletedAt = safeInstantOrNull(deleted_at),
+    syncedAt = safeInstantOrNull(synced_at)
 )
 
 class SqlDelightMediaCacheRepository(
@@ -498,8 +497,7 @@ class SqlDelightLearningPlanRepository(
     }
 
     override suspend fun update(plan: com.lumecard.shared.model.LearningPlan) {
-        queries.insertLearningPlan(
-            id = plan.id,
+        queries.updateLearningPlan(
             name = plan.name,
             description = plan.description,
             status = plan.status.name,
@@ -509,11 +507,10 @@ class SqlDelightLearningPlanRepository(
             card_ids = Json.encodeToString(plan.cardIds),
             total_cards = plan.totalCards.toLong(),
             completed_cards = plan.completedCards.toLong(),
-            created_at = plan.createdAt.toString(),
             updated_at = Clock.System.now().toString(),
-            version = plan.version + 1,
             deleted_at = plan.deletedAt?.toString(),
-            synced_at = plan.syncedAt?.toString()
+            synced_at = plan.syncedAt?.toString(),
+            id = plan.id
         )
     }
 
@@ -543,11 +540,11 @@ private fun com.lumecard.shared.database.LearningPlan.toLearningPlan() = com.lum
     cardIds = parseStringList(card_ids),
     totalCards = total_cards.toInt(),
     completedCards = completed_cards.toInt(),
-    createdAt = Instant.parse(created_at),
-    updatedAt = Instant.parse(updated_at),
+    createdAt = safeInstant(created_at),
+    updatedAt = safeInstant(updated_at),
     version = version,
-    deletedAt = deleted_at?.let { Instant.parse(it) },
-    syncedAt = synced_at?.let { Instant.parse(it) }
+    deletedAt = safeInstantOrNull(deleted_at),
+    syncedAt = safeInstantOrNull(synced_at)
 )
 
 private fun com.lumecard.shared.database.MediaCache.toMediaCacheEntry() = MediaCacheEntry(

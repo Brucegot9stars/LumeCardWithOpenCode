@@ -15,7 +15,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
 import java.util.UUID
@@ -78,6 +81,8 @@ class StudyViewModel(
 
     private var activePlanIds: List<String> = emptyList()
     private var activeDeckIds: List<String> = emptyList()
+    private var loadCardsJob: kotlinx.coroutines.Job? = null
+    private val rateMutex = Mutex()
 
     private var _hasStartedStudying = false
 
@@ -89,7 +94,8 @@ class StudyViewModel(
         activePlanIds = planIds
         activeDeckIds = deckIds
         _hasStartedStudying = false
-        screenModelScope.launch {
+        loadCardsJob?.cancel()
+        loadCardsJob = screenModelScope.launch {
             try {
                 println("[LumeCard] loadCards called mode=$mode limit=$limit deckIds=$deckIds")
                 val allCards = mutableListOf<Card>()
@@ -136,7 +142,7 @@ class StudyViewModel(
                         } else {
                             algorithm.initCard()
                         }
-                        _algorithmStates.value = _algorithmStates.value + (card.id to state)
+                        _algorithmStates.update { it + (card.id to state) }
                     }
                 }
                 shuffled.firstOrNull()?.let { _cardStartTimes[it.id] = Clock.System.now() }
@@ -204,13 +210,13 @@ class StudyViewModel(
         startTimerIfNeeded()
 
         val updatedState = algorithm.schedule(state, rating)
-        _algorithmStates.value = _algorithmStates.value + (currentCard.id to updatedState)
+        _algorithmStates.update { it + (currentCard.id to updatedState) }
 
         val now = Clock.System.now()
         val startTime = _cardStartTimes.remove(currentCard.id) ?: now
         val reviewTimeMs = ((now.toEpochMilliseconds() - startTime.toEpochMilliseconds()).coerceAtLeast(0)).toInt()
 
-        _history.value = _history.value + (_currentCardIndex.value to _isFlipped.value)
+        _history.update { it + (_currentCardIndex.value to _isFlipped.value) }
 
         screenModelScope.launch {
             try {
@@ -225,34 +231,36 @@ class StudyViewModel(
                     lapseCount = updatedState.lapses,
                     reviewedAt = now
                 )
-                reviewLogRepository.insert(reviewLog)
+                rateMutex.withLock {
+                    reviewLogRepository.insert(reviewLog)
 
-                val updatedCard = currentCard.copy(
-                    lastReviewedAt = now,
-                    nextReviewAt = updatedState.nextReviewAt,
-                    updatedAt = now
-                )
-                cardRepository.update(updatedCard)
+                    val updatedCard = currentCard.copy(
+                        lastReviewedAt = now,
+                        nextReviewAt = updatedState.nextReviewAt,
+                        updatedAt = now
+                    )
+                    cardRepository.update(updatedCard)
 
-                algorithmStateRepository.save(
-                    cardId = currentCard.id,
-                    mode = algorithm.mode.name,
-                    stateJson = serializeState(updatedState)
-                )
+                    algorithmStateRepository.save(
+                        cardId = currentCard.id,
+                        mode = algorithm.mode.name,
+                        stateJson = serializeState(updatedState)
+                    )
+
+                    _isFlipped.value = false
+                    _completedCards.update { it + 1 }
+
+                    if (_currentCardIndex.value < _cards.value.size - 1) {
+                        _currentCardIndex.value++
+                        _cards.value.getOrNull(_currentCardIndex.value)?.let { _cardStartTimes[it.id] = Clock.System.now() }
+                    } else {
+                        _currentCardIndex.value = _cards.value.size
+                        updatePlanProgress()
+                    }
+                }
             } catch (e: Exception) {
                 reportError(e, "rateCard-persist")
             }
-        }
-
-        _isFlipped.value = false
-        _completedCards.value++
-
-        if (_currentCardIndex.value < _cards.value.size - 1) {
-            _currentCardIndex.value++
-            _cards.value.getOrNull(_currentCardIndex.value)?.let { _cardStartTimes[it.id] = Clock.System.now() }
-        } else {
-            _currentCardIndex.value = _cards.value.size
-            updatePlanProgress()
         }
     }
 

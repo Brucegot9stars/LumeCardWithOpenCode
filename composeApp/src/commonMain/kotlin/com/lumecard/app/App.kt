@@ -66,10 +66,10 @@ fun App() {
                 crashLog = null
                 savedCrashLog = null
             },
-            title = { Text("App Error") },
+            title = { Text(strings.crashAppError) },
             text = {
                 Column {
-                    Text("The app encountered an error:", style = MaterialTheme.typography.bodyMedium)
+                    Text(strings.crashAppErrorDesc, style = MaterialTheme.typography.bodyMedium)
                     Spacer(modifier = Modifier.height(8.dp))
                     Box(
                         modifier = Modifier
@@ -92,13 +92,13 @@ fun App() {
                     OutlinedButton(onClick = {
                         crashLog?.let { clipboardManager.setText(AnnotatedString(it)) }
                     }) {
-                        Text("Copy")
+                        Text(strings.actionCopy)
                     }
                     Button(onClick = {
                         crashLog = null
                         savedCrashLog = null
                     }) {
-                        Text("OK")
+                        Text(strings.actionOk)
                     }
                 }
             },

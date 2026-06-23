@@ -9,7 +9,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -83,10 +82,10 @@ class StudyModeScreen(
             val clipboardManager = LocalClipboardManager.current
             AlertDialog(
                 onDismissRequest = { errorMsg = null },
-                title = { Text("Error") },
+                title = { Text(strings.errorTitle) },
                 text = {
                     Column {
-                        Text("An error occurred:", style = MaterialTheme.typography.bodyMedium)
+                        Text(strings.errorDesc, style = MaterialTheme.typography.bodyMedium)
                         Spacer(modifier = Modifier.height(8.dp))
                         Box(
                             modifier = Modifier
@@ -109,10 +108,10 @@ class StudyModeScreen(
                         OutlinedButton(onClick = {
                             errorMsg?.let { clipboardManager.setText(AnnotatedString(it)) }
                         }) {
-                            Text("Copy")
+                            Text(strings.actionCopy)
                         }
                         Button(onClick = { errorMsg = null }) {
-                            Text("OK")
+                            Text(strings.actionOk)
                         }
                     }
                 },

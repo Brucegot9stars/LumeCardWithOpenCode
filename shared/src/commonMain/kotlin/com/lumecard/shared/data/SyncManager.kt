@@ -32,17 +32,15 @@ class SyncManager(
 
     private suspend fun ensureDir(baseUrl: String, username: String, password: String, dir: String) {
         val dirUrl = baseUrl.trimEnd('/') + "/" + dir.trim('/') + "/"
-        try {
-            val r = client.request(dirUrl) {
-                method = HttpMethod("MKCOL")
-                basicAuth(username, password)
-            }
-            val s = r.status.value
-            val ok = s in 200..299 || s == 405
-            if (!ok) throw SyncException("MKCOL $dir failed: $s")
-        } catch (e: SyncException) {
-            throw e
-        } catch (_: Exception) { }
+        val r = client.request(dirUrl) {
+            method = HttpMethod("MKCOL")
+            basicAuth(username, password)
+        }
+        val s = r.status.value
+        // HTTP 405 = Method Not Allowed = directory already exists → success
+        if (s != 405 && (s < 200 || s > 299)) {
+            throw SyncException("MKCOL $dir failed: $s")
+        }
     }
 
     suspend fun uploadData(config: WebDavConfig, json: String): Result<Unit> {
@@ -324,87 +322,36 @@ class SyncManager(
 
         if (localDecks.isEmpty() && localCards.isEmpty()) return SyncResult.RemoteImport(remoteExport)
 
-        val now = Clock.System.now()
-
-        val localKbMap = localKnowledgeBases.associateBy { it.id }
-        val remoteKbMap = remoteExport.knowledgeBases.associateBy { it.id }
-        val mergedKbs = mutableListOf<com.lumecard.shared.model.KnowledgeBase>()
-        for (id in localKbMap.keys + remoteKbMap.keys) {
-            val local = localKbMap[id]
-            val remote = remoteKbMap[id]
-            when {
-                local != null && remote == null -> mergedKbs.add(local)
-                local == null && remote != null -> mergedKbs.add(remote.toKnowledgeBase())
-                local != null && remote != null -> {
-                    if (remote.version > local.version) mergedKbs.add(remote.toKnowledgeBase())
-                    else mergedKbs.add(local)
+        fun <T> mergeByVersion(
+            local: List<T>,
+            remote: List<T>,
+            key: (T) -> String,
+            version: (T) -> Long,
+        ): List<T> {
+            val localMap = local.associateBy { key(it) }
+            val remoteMap = remote.associateBy { key(it) }
+            return (localMap.keys + remoteMap.keys).mapNotNull { id ->
+                val l = localMap[id]; val r = remoteMap[id]
+                when {
+                    l != null && r == null -> l
+                    l == null && r != null -> r
+                    l != null && r != null -> if (version(r) > version(l)) r else l
+                    else -> null
                 }
             }
         }
 
-        val localDeckMap = localDecks.associateBy { it.id }
-        val remoteDeckMap = remoteExport.decks.associateBy { it.id }
-        val mergedDecks = mutableListOf<com.lumecard.shared.model.Deck>()
-        for (id in localDeckMap.keys + remoteDeckMap.keys) {
-            val local = localDeckMap[id]
-            val remote = remoteDeckMap[id]
-            when {
-                local != null && remote == null -> mergedDecks.add(local)
-                local == null && remote != null -> mergedDecks.add(remote.toDeck())
-                local != null && remote != null -> {
-                    if (remote.version > local.version) mergedDecks.add(remote.toDeck())
-                    else mergedDecks.add(local)
-                }
-            }
-        }
+        val remoteKbs = remoteExport.knowledgeBases.map { it.toKnowledgeBase() }
+        val remoteDecks = remoteExport.decks.map { it.toDeck() }
+        val remoteCards = remoteExport.cards.map { it.toCard() }
+        val remoteLogs = remoteExport.reviewLogs.map { it.toReviewLog() }
+        val remotePlans = remoteExport.learningPlans.map { it.toLearningPlan() }
 
-        val localCardMap = localCards.associateBy { it.id }
-        val remoteCardMap = remoteExport.cards.associateBy { it.id }
-        val mergedCards = mutableListOf<com.lumecard.shared.model.Card>()
-        for (id in localCardMap.keys + remoteCardMap.keys) {
-            val local = localCardMap[id]
-            val remote = remoteCardMap[id]
-            when {
-                local != null && remote == null -> mergedCards.add(local)
-                local == null && remote != null -> mergedCards.add(remote.toCard())
-                local != null && remote != null -> {
-                    if (remote.version > local.version) mergedCards.add(remote.toCard())
-                    else mergedCards.add(local)
-                }
-            }
-        }
-
-        val localLogMap = localReviewLogs.associateBy { it.id }
-        val remoteLogMap = remoteExport.reviewLogs.associateBy { it.id }
-        val mergedLogs = mutableListOf<com.lumecard.shared.model.ReviewLog>()
-        for (id in localLogMap.keys + remoteLogMap.keys) {
-            val local = localLogMap[id]
-            val remote = remoteLogMap[id]
-            when {
-                local != null && remote == null -> mergedLogs.add(local)
-                local == null && remote != null -> mergedLogs.add(remote.toReviewLog())
-                local != null && remote != null -> {
-                    if (remote.version > local.version) mergedLogs.add(remote.toReviewLog())
-                    else mergedLogs.add(local)
-                }
-            }
-        }
-
-        val localPlanMap = localLearningPlans.associateBy { it.id }
-        val remotePlanMap = remoteExport.learningPlans.associateBy { it.id }
-        val mergedPlans = mutableListOf<com.lumecard.shared.model.LearningPlan>()
-        for (id in localPlanMap.keys + remotePlanMap.keys) {
-            val local = localPlanMap[id]
-            val remote = remotePlanMap[id]
-            when {
-                local != null && remote == null -> mergedPlans.add(local)
-                local == null && remote != null -> mergedPlans.add(remote.toLearningPlan())
-                local != null && remote != null -> {
-                    if (remote.version > local.version) mergedPlans.add(remote.toLearningPlan())
-                    else mergedPlans.add(local)
-                }
-            }
-        }
+        val mergedKbs = mergeByVersion(localKnowledgeBases, remoteKbs, { it.id }, { it.version })
+        val mergedDecks = mergeByVersion(localDecks, remoteDecks, { it.id }, { it.version })
+        val mergedCards = mergeByVersion(localCards, remoteCards, { it.id }, { it.version })
+        val mergedLogs = mergeByVersion(localReviewLogs, remoteLogs, { it.id }, { it.version })
+        val mergedPlans = mergeByVersion(localLearningPlans, remotePlans, { it.id }, { it.version })
 
         val activeKbs = mergedKbs.filter { it.deletedAt == null }
         val activeDecks = mergedDecks.filter { it.deletedAt == null }

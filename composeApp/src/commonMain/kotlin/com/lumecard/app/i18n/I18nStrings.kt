@@ -24,6 +24,17 @@ interface I18nStrings {
     val actionSync: String
     val actionRetry: String
 
+    val errorTitle: String
+    val errorDesc: String
+    val errorUnknown: String
+    val crashAppError: String
+    val crashAppErrorDesc: String
+    val crashCompositionError: String
+    val crashRenderErrorDesc: String
+    val timeHours: String
+    val timeMinutes: String
+    val timeSeconds: String
+
     val dashStartLearning: String
     fun dashActivePlans(count: Int): String
     fun dashKBCount(count: Int): String
@@ -72,6 +83,9 @@ interface I18nStrings {
     val studyGoCreateCards: String
     val studyComplete: String
     fun studyCompleteMsg(count: Int): String
+    val studyCompleteReviewed: String
+    val studyCompleteTimeSpent: String
+    val studyCompleteXpEarned: String
     val studySwipeEasy: String
     val studySwipeBack: String
     val studyQuestion: String
@@ -106,6 +120,7 @@ interface I18nStrings {
     val deckSortModified: String
     val deckSortStudyTime: String
     val deckSortTitle: String
+    fun deckSortByLabel(field: String): String
     val deckEmpty: String
     val deckEmptyDesc: String
     val deckViewCards: String
@@ -138,6 +153,7 @@ interface I18nStrings {
     val cardSortCreated: String
     val cardSortModified: String
     val cardSortStudyTime: String
+    fun cardSortByLabel(field: String): String
     val cardEmpty: String
     val cardEmptyDesc: String
     val cardAdd: String
@@ -206,6 +222,9 @@ interface I18nStrings {
     val settingsImportDesc: String
     val settingsImportHint: String
     fun settingsImportError(msg: String): String
+    val settingsImportErrorReadFile: String
+    val settingsImportErrorInvalidJson: String
+    fun settingsImportSuccess(kbs: Int, decks: Int, cards: Int): String
     val settingsCloudSync: String
     val settingsCloudSyncDesc: String
     val settingsTodayProgress: String
@@ -237,6 +256,7 @@ interface I18nStrings {
     val updatePublishedAt: String
     val updateCopyError: String
     val updateCopySuccess: String
+    fun updateErrorCopyFormat(version: String, error: String, time: String): String
     val exportErrorPermission: String
     val exportErrorDiskSpace: String
     val exportErrorWrite: String
@@ -291,6 +311,12 @@ interface I18nStrings {
     val settingsConnectionStatus: String
     val settingsConnected: String
     val settingsDisconnected: String
+    val syncNoHistoryFound: String
+    val syncFailedToLoadHistory: String
+    val syncRestoreHistory: String
+    val syncNoHistoryAvailable: String
+    fun syncHistoryEntryFormat(timestamp: String, deviceId: String): String
+    fun syncIntervalMinutes(minutes: Int): String
     val webdavProviderLabel: String
     val webdavProviderCustom: String
     val webdavProviderJianguoyun: String
@@ -323,6 +349,7 @@ interface I18nStrings {
     val planProgress: String
     val planResetConfirm: String
     val planResetConfirmDesc: String
+    fun planCardsCount(count: Int): String
 
     val fieldName: String
     val fieldDescription: String
@@ -340,6 +367,8 @@ interface I18nStrings {
     val warehouseDeleteDesc: String
     val warehouseExpandAll: String
     val warehouseCollapseAll: String
+    fun warehouseSelectedCount(count: Int): String
+    fun warehouseChildCount(count: Int): String
 
     val statsTitle: String
     val statsOverview: String
@@ -390,9 +419,23 @@ interface I18nStrings {
     val langJa: String
     val langEs: String
 
+    val actionCopy: String
+    val actionSelectAll: String
     val actionPreview: String
     val editorPlaceholder: String
     val editorEmptyPreview: String
+    val editorColorTitle: String
+    val editorColorNone: String
+    val editorColorRed: String
+    val editorColorBlue: String
+    val editorColorGreen: String
+    val editorColorOrange: String
+    val editorColorPurple: String
+    val editorColorTeal: String
+    val editorColorBrown: String
+    val editorColorGray: String
+    val editorColorCustom: String
+    fun editorFontSizePx(size: Int): String
     val mermaidChartTitle: String
     fun deckNameLabel(name: String): String
 

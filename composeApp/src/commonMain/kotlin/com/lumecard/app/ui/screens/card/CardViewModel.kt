@@ -12,6 +12,8 @@ import com.lumecard.shared.repository.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 
@@ -30,6 +32,7 @@ class CardViewModel(
     val sortConfig: StateFlow<SortConfig> = _sortConfig
 
     private var currentDeckId: String? = null
+    private var loadCardsJob: kotlinx.coroutines.Job? = null
 
     fun loadSortPref() {
         screenModelScope.launch {
@@ -52,12 +55,13 @@ class CardViewModel(
 
     fun loadCards(deckId: String) {
         currentDeckId = deckId
-        screenModelScope.launch {
+        loadCardsJob?.cancel()
+        loadCardsJob = screenModelScope.launch {
             _isLoading.value = true
             combine(cardRepository.getByDeck(deckId), _sortConfig) { cards, sort ->
                 sortCards(cards, sort)
             }.collect { sorted ->
-                _cards.value = sorted
+                _cards.update { sorted }
                 _isLoading.value = false
             }
         }
@@ -75,10 +79,8 @@ class CardViewModel(
 
     fun getCardCount(deckId: String, onResult: (Int) -> Unit) {
         screenModelScope.launch {
-            cardRepository.getByDeck(deckId).collect { cards ->
-                onResult(cards.size)
-                return@collect
-            }
+            val count = cardRepository.getByDeck(deckId).first().size
+            onResult(count)
         }
     }
 
