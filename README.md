@@ -1,6 +1,6 @@
 # LumeCard
 
-一款现代化、跨平台的闪卡学习应用（Anki 替代品），使用 Compose Multiplatform + Kotlin 构建。
+基于 Compose Multiplatform 与 Kotlin 开发的闪卡学习应用，保留闪卡核心功能的同时大幅简化了操作。让学习者能专注于知识本身，免去繁琐的配置摸索。
 
 ---
 
