@@ -18,6 +18,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.ui.components.AnimatedDonutChart
 import com.lumecard.app.ui.components.LumeCardTopBar
+import com.lumecard.app.ui.screens.dashboard.DashboardScreen
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.app.i18n.I18nManager
 import org.koin.compose.koinInject
@@ -41,7 +42,7 @@ class StatsScreen : Screen {
             topBar = {
                 LumeCardTopBar(
                     title = strings.statsTitle,
-                    onBack = { navigator.pop() }
+                    onBack = { navigator.replace(DashboardScreen()) }
                 )
             }
         ) { padding ->

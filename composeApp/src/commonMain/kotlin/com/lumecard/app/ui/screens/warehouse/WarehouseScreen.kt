@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,7 +25,10 @@ import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.components.LumeCardDialog
 import com.lumecard.app.ui.components.LumeCardTextField
 import com.lumecard.app.ui.components.LumeCardTopBar
+import com.lumecard.app.ui.screens.card.CreateCardScreen
+import com.lumecard.app.ui.screens.dashboard.DashboardScreen
 import com.lumecard.app.ui.theme.LumeCardTheme
+import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -82,7 +86,7 @@ class WarehouseScreen : Screen {
                 } else {
                     LumeCardTopBar(
                         title = strings.warehouseTitle,
-                        onBack = { navigator.pop() },
+                        onBack = { navigator.replace(DashboardScreen()) },
                         action = {
                             IconButton(onClick = {
                                 createType = NodeType.KNOWLEDGE_BASE
@@ -125,7 +129,7 @@ class WarehouseScreen : Screen {
                 } else if (treeNodes.isEmpty()) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.List, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+                            Icon(Icons.AutoMirrored.Filled.List, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
                             Spacer(Modifier.height(spacing.md))
                             Text(strings.warehouseEmpty, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(Modifier.height(spacing.sm))
@@ -143,6 +147,23 @@ class WarehouseScreen : Screen {
                         }
                     }
                 } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.md),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        TextButton(
+                            onClick = { viewModel.expandAll() },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                        ) {
+                            Text(strings.warehouseExpandAll, style = MaterialTheme.typography.labelMedium)
+                        }
+                        TextButton(
+                            onClick = { viewModel.collapseAll() },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                        ) {
+                            Text(strings.warehouseCollapseAll, style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(horizontal = spacing.md, vertical = spacing.sm),
@@ -253,7 +274,9 @@ class WarehouseScreen : Screen {
                                                             showDeleteConfirm = true
                                                         },
                                                         onAddCard = null,
-                                                        onEditCard = null,
+                                                        onEditCard = (card.data as? Card)?.let { cardObj ->
+                                                            { navigator.push(CreateCardScreen(child.id, child.name, editCard = cardObj)) }
+                                                        },
                                                         onDeleteCard = null,
                                                         spacing = spacing,
                                                         radius = radius,
@@ -363,7 +386,7 @@ private fun TreeNodeItem(
 ) {
     val icon = when (node.type) {
         NodeType.KNOWLEDGE_BASE -> Icons.Default.Star
-        NodeType.DECK -> Icons.Default.List
+        NodeType.DECK -> Icons.AutoMirrored.Filled.List
         NodeType.CARD -> Icons.Default.Create
     }
     val iconTint = when (node.type) {
@@ -373,8 +396,14 @@ private fun TreeNodeItem(
     }
     val childCount = node.children.size
 
+    val cardModifier = if (node.type == NodeType.CARD && onEditCard != null) {
+        Modifier.fillMaxWidth().clickable { onEditCard() }
+    } else {
+        Modifier.fillMaxWidth()
+    }
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = cardModifier,
         shape = radius.card,
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)

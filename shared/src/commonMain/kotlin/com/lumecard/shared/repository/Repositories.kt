@@ -5,6 +5,7 @@ import com.lumecard.shared.model.Deck
 import com.lumecard.shared.model.KnowledgeBase
 import com.lumecard.shared.model.ReviewLog
 import kotlinx.coroutines.flow.Flow
+import kotlinx.datetime.Instant
 
 interface KnowledgeBaseRepository {
     fun getAll(): Flow<List<KnowledgeBase>>
@@ -12,6 +13,8 @@ interface KnowledgeBaseRepository {
     suspend fun insert(knowledgeBase: KnowledgeBase)
     suspend fun update(knowledgeBase: KnowledgeBase)
     suspend fun delete(id: String)
+    suspend fun getUpdatedSince(since: Instant): List<KnowledgeBase>
+    suspend fun markSynced(ids: List<String>, syncedAt: Instant)
 }
 
 interface DeckRepository {
@@ -21,6 +24,8 @@ interface DeckRepository {
     suspend fun insert(deck: Deck)
     suspend fun update(deck: Deck)
     suspend fun delete(id: String)
+    suspend fun getUpdatedSince(since: Instant): List<Deck>
+    suspend fun markSynced(ids: List<String>, syncedAt: Instant)
 }
 
 interface CardRepository {
@@ -32,6 +37,9 @@ interface CardRepository {
     suspend fun update(card: Card)
     suspend fun delete(id: String)
     suspend fun search(query: String): Flow<List<Card>>
+    suspend fun getUpdatedSince(since: Instant): List<Card>
+    suspend fun markSynced(ids: List<String>, syncedAt: Instant)
+    suspend fun rebuildFtsIndex()
 }
 
 interface ReviewLogRepository {
@@ -39,6 +47,8 @@ interface ReviewLogRepository {
     fun getByCardId(cardId: String): Flow<List<ReviewLog>>
     suspend fun insert(reviewLog: ReviewLog)
     suspend fun getStats(): ReviewStats
+    suspend fun getUpdatedSince(since: Instant): List<ReviewLog>
+    suspend fun markSynced(ids: List<String>, syncedAt: Instant)
 }
 
 data class ReviewStats(
@@ -64,6 +74,21 @@ interface AlgorithmStateRepository {
     suspend fun delete(cardId: String)
 }
 
+data class MediaCacheEntry(
+    val path: String,
+    val mtime: Long,
+    val sha1: String,
+    val syncedAt: Instant? = null
+)
+
+interface MediaCacheRepository {
+    suspend fun get(path: String): MediaCacheEntry?
+    suspend fun getAll(): List<MediaCacheEntry>
+    suspend fun set(path: String, mtime: Long, sha1: String, syncedAt: Instant? = null)
+    suspend fun remove(path: String)
+    suspend fun removeAll()
+}
+
 interface LearningPlanRepository {
     fun getAll(): Flow<List<com.lumecard.shared.model.LearningPlan>>
     suspend fun getById(id: String): com.lumecard.shared.model.LearningPlan?
@@ -71,4 +96,6 @@ interface LearningPlanRepository {
     suspend fun insert(plan: com.lumecard.shared.model.LearningPlan)
     suspend fun update(plan: com.lumecard.shared.model.LearningPlan)
     suspend fun delete(id: String)
+    suspend fun getUpdatedSince(since: Instant): List<com.lumecard.shared.model.LearningPlan>
+    suspend fun markSynced(ids: List<String>, syncedAt: Instant)
 }

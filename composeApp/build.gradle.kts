@@ -11,6 +11,7 @@ plugins {
 
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
+import java.io.File
 
 val appVersionProps = Properties().apply {
     val f = rootProject.file("version.properties")
@@ -18,6 +19,13 @@ val appVersionProps = Properties().apply {
 }
 val appVersionName = appVersionProps.getProperty("APP_VERSION_NAME", "0.0.1")
 val appVersionCode = appVersionProps.getProperty("APP_VERSION_CODE", "1").toInt()
+
+// Auto-detect WiX 7 installation (skip download on local machine)
+val wixDir = File(System.getenv("ProgramFiles") + "\\WiX Toolset v7.0\\bin")
+if (wixDir.exists()) {
+    System.setProperty("compose.wix.dir", wixDir.absolutePath)
+    logger.info("Using WiX 7 at ${wixDir.absolutePath}")
+}
 
 kotlin {
     androidTarget {
@@ -52,6 +60,7 @@ kotlin {
 
                 implementation(Dependencies.kotlinxCoroutines)
                 implementation(Dependencies.kotlinxDateTime)
+                implementation(Dependencies.kotlinxSerialization)
             }
         }
 
@@ -65,6 +74,7 @@ kotlin {
         val desktopMain by getting {
             dependencies {
                 implementation("org.jetbrains.skiko:skiko-awt-runtime-windows-x64:0.8.15")
+                implementation(Dependencies.kotlinxCoroutinesSwing)
             }
         }
     }
@@ -75,12 +85,15 @@ compose.desktop {
         mainClass = "com.lumecard.app.MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.Msi)
+            targetFormats(TargetFormat.Msi, TargetFormat.Exe)
             packageName = "LumeCard"
             packageVersion = appVersionName
             vendor = "AiDev"
 
+            modules("java.sql")
+
             windows {
+                iconFile.set(project.file("src/desktopMain/resources/icon.ico"))
                 menuGroup = "LumeCard"
                 upgradeUuid = "229b7cca-e9d0-4ee7-9e2e-c9c8dd3d71ce"
             }

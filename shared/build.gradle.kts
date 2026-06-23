@@ -72,6 +72,7 @@ sqldelight {
     databases {
         create("LumeCardDatabase") {
             packageName.set("com.lumecard.shared.database")
+            dialect("app.cash.sqldelight:sqlite-3-38-dialect:${Versions.sqlDelight}")
         }
     }
 }

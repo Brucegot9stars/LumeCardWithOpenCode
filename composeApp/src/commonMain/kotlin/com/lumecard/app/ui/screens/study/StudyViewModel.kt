@@ -17,7 +17,15 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlinx.serialization.json.Json
 import java.util.UUID
+
+enum class CardsStudyMode {
+    DUE_FIRST,
+    ALL_CARDS,
+    NEW_CARDS,
+    RANDOM
+}
 
 class StudyViewModel(
     private val cardRepository: CardRepository,
@@ -69,29 +77,56 @@ class StudyViewModel(
     private val _cardStartTimes = java.util.concurrent.ConcurrentHashMap<String, kotlinx.datetime.Instant>()
 
     private var activePlanIds: List<String> = emptyList()
+    private var activeDeckIds: List<String> = emptyList()
 
     private var _hasStartedStudying = false
 
-    fun loadCards(deckIds: List<String>, planIds: List<String> = emptyList()) {
+    private val _allCardsCache = MutableStateFlow<List<Card>>(emptyList())
+    val totalCardCount: Int get() = _allCardsCache.value.size
+    val unlearnedCardCount: Int get() = _allCardsCache.value.count { it.lastReviewedAt == null }
+
+    fun loadCards(deckIds: List<String>, planIds: List<String> = emptyList(), mode: CardsStudyMode = CardsStudyMode.DUE_FIRST, limit: Int = 20) {
         activePlanIds = planIds
+        activeDeckIds = deckIds
         _hasStartedStudying = false
         screenModelScope.launch {
             try {
-                println("[LumeCard] loadCards called with deckIds=$deckIds, planIds=$planIds")
+                println("[LumeCard] loadCards called mode=$mode limit=$limit deckIds=$deckIds")
                 val allCards = mutableListOf<Card>()
                 for (deckId in deckIds) {
-                    println("[LumeCard] Loading cards for deck: $deckId")
                     val deckCards = cardRepository.getByDeck(deckId).first()
                     println("[LumeCard] Found ${deckCards.size} cards for deck $deckId")
                     allCards.addAll(deckCards)
                 }
-                val now = Clock.System.now()
-                val dueCards = allCards.filter { card ->
-                    val next = card.nextReviewAt
-                    next == null || next <= now
+                _allCardsCache.value = allCards.toList()
+
+                val selected = when (mode) {
+                    CardsStudyMode.DUE_FIRST -> {
+                        val now = Clock.System.now()
+                        val dueCards = allCards.filter { card ->
+                            val next = card.nextReviewAt
+                            next == null || next <= now
+                        }
+                        if (dueCards.isEmpty() && allCards.isNotEmpty()) {
+                            println("[LumeCard] No due cards, using all cards")
+                            allCards
+                        } else {
+                            dueCards
+                        }
+                    }
+                    CardsStudyMode.ALL_CARDS -> allCards
+                    CardsStudyMode.NEW_CARDS -> {
+                        val unlearned = allCards.filter { it.lastReviewedAt == null }
+                        val count = unlearned.size.coerceAtMost(limit)
+                        if (count <= 0) allCards else unlearned.shuffled().take(count)
+                    }
+                    CardsStudyMode.RANDOM -> {
+                        val count = allCards.size.coerceAtMost(limit)
+                        if (count <= 0) allCards else allCards.shuffled().take(count)
+                    }
                 }
-                println("[LumeCard] Total cards: ${allCards.size}, due cards: ${dueCards.size}")
-                val shuffled = dueCards.shuffled()
+                println("[LumeCard] Total: ${allCards.size}, studying: ${selected.size}")
+                val shuffled = selected.shuffled()
                 _cards.value = shuffled
                 shuffled.forEach { card ->
                     if (!_algorithmStates.value.containsKey(card.id)) {
@@ -110,6 +145,16 @@ class StudyViewModel(
                 reportError(e, "loadCards")
             }
         }
+    }
+
+    fun reloadWithMode(mode: CardsStudyMode, limit: Int = 20) {
+        _cards.value = emptyList()
+        _currentCardIndex.value = 0
+        _completedCards.value = 0
+        _isFlipped.value = false
+        _history.value = emptyList()
+        _hasStartedStudying = false
+        loadCards(activeDeckIds, activePlanIds, mode, limit)
     }
 
     private fun startTimerIfNeeded() {
@@ -237,20 +282,21 @@ class StudyViewModel(
         }
     }
 
+    private val json = Json { ignoreUnknownKeys = true }
+
     private fun serializeState(state: AlgorithmState): String {
-        return buildString {
-            append("${state.intervalDays}|")
-            append("${state.nextReviewAt}|")
-            append("${state.repetitions}|")
-            append("${state.lapses}|")
-            append("${state.easeFactor}|")
-            append("${state.stage}|")
-            append("${state.stability}|")
-            append(state.difficulty)
-        }
+        return json.encodeToString(AlgorithmState.serializer(), state)
     }
 
     private fun deserializeState(data: String): AlgorithmState {
+        return try {
+            json.decodeFromString(AlgorithmState.serializer(), data)
+        } catch (_: Exception) {
+            deserializeLegacyState(data)
+        }
+    }
+
+    private fun deserializeLegacyState(data: String): AlgorithmState {
         val parts = data.split("|")
         return AlgorithmState(
             intervalDays = parts.getOrNull(0)?.toIntOrNull() ?: 0,

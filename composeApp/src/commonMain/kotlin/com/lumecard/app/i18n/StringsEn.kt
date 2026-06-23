@@ -85,6 +85,11 @@ object EnStrings : I18nStrings {
     override val studyCardTypeVideo = "Video"
     override val studyCardTypeMarkdown = "Markdown"
     override val studyCardTypeAi = "AI"
+    override val studyModeTitle = "Study Mode"
+    override val studyModeDesc = "Cards complete, choose how to continue"
+    override val studyContinueAll = "Study All Cards"
+    override fun studyNewCards(count: Int) = "Learn New Cards ($count)"
+    override fun studyRandom(count: Int) = "Random Study ($count)"
 
     override val deckCreate = "Create Deck"
     override val deckEdit = "Edit Deck"
@@ -161,7 +166,7 @@ object EnStrings : I18nStrings {
     override val cardTypeBasicHelp = "The most commonly used card type. Write a question or prompt on the front and the answer on the back. Ideal for vocabulary, knowledge review, and definitions."
     override val cardTypeReversedHelp = "Similar to Basic Card but also generates a reverse card. You'll see both front→back and back→front directions, reinforcing memory."
     override val cardTypeClozeHelp = "Fill-in-the-blank cards promote active recall. Use {{c1::answer}} format to mark blanks. Numbers indicate cloze index for multiple blanks."
-    override val cardTypeChoiceHelp = "Multiple choice cards provide options. Write one option per line on the back, prefix the correct answer with ✓. The front shows the question, the back highlights the correct answer."
+    override val cardTypeChoiceHelp = "Multiple choice cards provide options. Write one option per line in the options area, prefix the correct answer with +. During study, tap an option to answer — correct selections advance automatically, incorrect ones reveal the correct answer."
     override val cardTypeOcclusionHelp = "Image occlusion helps visual memory. Put the image path or URL on the front, and the description on the back. Great for maps, diagrams, and anatomy."
     override val cardTypeAudioHelp = "Audio cards for listening and pronunciation practice. Put the audio file path on the front and the transcript on the back. Play audio during study."
     override val cardTypeVideoHelp = "Video cards for video-based learning. Put the video path on the front and a summary on the back. Supports video learning scenarios."
@@ -170,7 +175,7 @@ object EnStrings : I18nStrings {
     override val cardTypeBasicExample = "Q: What is Apple?\nA: A technology company."
     override val cardTypeReversedExample = "Front: A technology company.\nBack: What is Apple?"
     override val cardTypeClozeExample = "The capital of China is {{c1::Beijing}}, with a population of about {{c2::21.54}} million."
-    override val cardTypeChoiceExample = "Which are programming languages?\n✓ Python\n✓ Java\nApple\n✓ JavaScript"
+    override val cardTypeChoiceExample = "Which are programming languages?\n+ Python\n+ Java\nApple\n+ JavaScript"
     override val cardTypeOcclusionExample = "Front: https://example.com/diagram.png\nBack: Human digestive system diagram"
     override val cardTypeAudioExample = "Front: /audio/lesson1.mp3\nBack: Hello, how are you?"
     override val cardTypeVideoExample = "Front: /video/tutorial.mp4\nBack: This video explains Newton's Second Law"
@@ -184,8 +189,8 @@ object EnStrings : I18nStrings {
     override val cardChoiceQuestion = "Question"
     override val cardChoiceQuestionPlaceholder = "Enter question..."
     override val cardChoiceOptions = "Options & Answer"
-    override val cardChoiceFormatHint = "One option per line. Prefix the correct answer with ✓ or √"
-    override val cardChoicePlaceholder = "e.g.\n✓ Python\nJava\nC++\nJavaScript"
+    override val cardChoiceFormatHint = "One option per line. Prefix the correct answer with +"
+    override val cardChoicePlaceholder = "e.g.\n+ Python\nJava\nC++\nJavaScript"
     override val cardOcclusionImage = "Image Reference"
     override val cardOcclusionImagePlaceholder = "Image path or URL"
     override val cardOcclusionImageHint = "Supports local paths and network image URLs"
@@ -354,6 +359,8 @@ object EnStrings : I18nStrings {
     override val warehouseCardContent = "Card content"
     override val warehouseDeleteConfirm = "Confirm Delete"
     override val warehouseDeleteDesc = "This action cannot be undone."
+    override val warehouseExpandAll = "Expand All"
+    override val warehouseCollapseAll = "Collapse All"
 
     override val statsTitle = "Learning Statistics"
     override val statsOverview = "Overview"
@@ -412,4 +419,7 @@ object EnStrings : I18nStrings {
 
     override val noteMarkdownSupport = "Supports Markdown formatting"
     override val noteOptional = "(optional)"
+
+    override val pasteMedia = "Paste Media"
+    override val browseMedia = "Browse..."
 }

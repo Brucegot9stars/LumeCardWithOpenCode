@@ -12,3 +12,6 @@ expect suspend fun pickOpenFile(
 expect fun readFileContent(path: String): String?
 
 expect fun writeFileContent(path: String, content: String): Boolean
+
+/** Open a file picker for images, audio, and video files. Returns absolute path (Desktop) or content URI (Android). */
+expect suspend fun pickMediaFile(): String?

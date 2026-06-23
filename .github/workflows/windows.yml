@@ -1,0 +1,81 @@
+name: Windows Desktop Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Install WiX 7.0.0
+        shell: pwsh
+        run: |
+          $wixDir = "C:\Program Files\WiX Toolset v7.0\bin"
+          if (-not (Test-Path "$wixDir\wix.exe")) {
+            $msi = "$env:TEMP\wix-cli-x64.msi"
+            Invoke-WebRequest -Uri "https://github.com/wixtoolset/wix/releases/download/v7.0.0/wix-cli-x64.msi" -OutFile $msi
+            Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /quiet /norestart" -Wait
+            Remove-Item $msi -Force
+            Write-Output "WiX 7.0.0 installed"
+          } else {
+            Write-Output "WiX 7 already present"
+          }
+
+      - name: Build all distributables
+        run: .\gradlew.bat :composeApp:createDistributable :composeApp:packageExe :composeApp:packageMsi
+
+      - name: Extract version
+        id: version
+        shell: pwsh
+        run: |
+          $props = @{}
+          Get-Content version.properties | ForEach-Object {
+            if ($_ -match '^([^=]+)=(.*)$') { $props[$matches[1]] = $matches[2] }
+          }
+          echo "version=$($props['APP_VERSION_NAME'])" >> $env:GITHUB_OUTPUT
+
+      - name: Package portable as ZIP
+        shell: pwsh
+        run: |
+          $ver = "${{ steps.version.outputs.version }}"
+          Push-Location "composeApp/build/compose/binaries/main/app"
+          Compress-Archive -Path "LumeCard" -DestinationPath "LumeCard-$ver-portable.zip" -Force
+          Pop-Location
+          Write-Output "Created composeApp/build/compose/binaries/main/app/LumeCard-$ver-portable.zip"
+
+      - name: Upload EXE installer to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: composeApp/build/compose/binaries/main/exe/*.exe
+
+      - name: Upload MSI installer to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: composeApp/build/compose/binaries/main/msi/*.msi
+
+      - name: Upload portable ZIP to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: composeApp/build/compose/binaries/main/app/LumeCard-*-portable.zip

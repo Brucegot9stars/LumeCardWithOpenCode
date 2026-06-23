@@ -85,6 +85,11 @@ object EsStrings : I18nStrings {
     override val studyCardTypeVideo = "Video"
     override val studyCardTypeMarkdown = "Markdown"
     override val studyCardTypeAi = "IA"
+    override val studyModeTitle = "Modo de estudio"
+    override val studyModeDesc = "Tarjetas completadas, elige cómo continuar"
+    override val studyContinueAll = "Estudiar todas"
+    override fun studyNewCards(count: Int) = "Nuevas tarjetas ($count)"
+    override fun studyRandom(count: Int) = "Aleatorio ($count)"
 
     override val deckCreate = "Crear mazo"
     override val deckEdit = "Editar mazo"
@@ -161,7 +166,7 @@ object EsStrings : I18nStrings {
     override val cardTypeBasicHelp = "La tarjeta básica es el tipo de tarjeta más común. Escribe una pregunta o pista en el anverso y la respuesta en el reverso. Ideal para aprendizaje de vocabulario, repaso de conceptos y memorización de definiciones."
     override val cardTypeReversedHelp = "La tarjeta bidireccional añade una tarjeta inversa a la tarjeta básica. Durante el estudio, verás tanto anverso→reverso como reverso→anverso, reforzando la memoria."
     override val cardTypeClozeHelp = "La tarjeta de hueco promueve el recuerdo activo ocultando información clave. Usa el formato {{c1::respuesta}} para marcar las posiciones de los huecos; el número indica el identificador del hueco."
-    override val cardTypeChoiceHelp = "La tarjeta de opción múltiple ofrece varias opciones. Escribe una opción por línea en el área de respuesta y marca la correcta con ✓ como prefijo. Durante el estudio, el anverso muestra la pregunta y el reverso muestra todas las opciones con la respuesta correcta resaltada."
+    override val cardTypeChoiceHelp = "La tarjeta de opción múltiple ofrece varias opciones. Escribe una opción por línea en el área de opciones y marca la correcta con + como prefijo. Durante el estudio, toca una opción para responder — las correctas avanzan automáticamente, las incorrectas muestran la respuesta correcta."
     override val cardTypeOcclusionHelp = "La tarjeta de oclusión de imagen ayuda a la memoria ocultando partes de una imagen. Escribe la ruta o URL de la imagen en el anverso y la descripción relacionada en el reverso. Ideal para mapas, diagramas y anatomía."
     override val cardTypeAudioHelp = "La tarjeta de audio es ideal para práctica auditiva y pronunciación. Escribe la ruta del archivo de audio en el anverso y el texto correspondiente en el reverso. Reproduce el audio durante el estudio para practicar dictado."
     override val cardTypeVideoHelp = "La tarjeta de video es ideal para aprender con contenido multimedia. Escribe la ruta del archivo de video en el anverso y el resumen o explicación en el reverso."
@@ -170,7 +175,7 @@ object EsStrings : I18nStrings {
     override val cardTypeBasicExample = "Q: What is Apple?\nA: A technology company."
     override val cardTypeReversedExample = "Anverso: A technology company.\nReverso: What is Apple?"
     override val cardTypeClozeExample = "La capital de Japón es {{c1::Tokio}}, con una población de aproximadamente {{c2::14}} millones."
-    override val cardTypeChoiceExample = "Which are programming languages?\n✓ Python\n✓ Java\nApple\n✓ JavaScript"
+    override val cardTypeChoiceExample = "Which are programming languages?\n+ Python\n+ Java\nApple\n+ JavaScript"
     override val cardTypeOcclusionExample = "Anverso: https://example.com/diagram.png\nReverso: Diagrama del sistema digestivo humano"
     override val cardTypeAudioExample = "Anverso: /audio/lesson1.mp3\nReverso: Hello, how are you?"
     override val cardTypeVideoExample = "Anverso: /video/tutorial.mp4\nReverso: Explicación de la segunda ley de Newton"
@@ -184,8 +189,8 @@ object EsStrings : I18nStrings {
     override val cardChoiceQuestion = "Pregunta"
     override val cardChoiceQuestionPlaceholder = "Introduce la pregunta..."
     override val cardChoiceOptions = "Opciones y respuesta"
-    override val cardChoiceFormatHint = "Una opción por línea, marca la correcta con ✓ o √"
-    override val cardChoicePlaceholder = "Ej:\n✓ Python\nJava\nC++\nJavaScript"
+    override val cardChoiceFormatHint = "Una opción por línea, marca la correcta con +"
+    override val cardChoicePlaceholder = "Ej:\n+ Python\nJava\nC++\nJavaScript"
     override val cardOcclusionImage = "Referencia de imagen"
     override val cardOcclusionImagePlaceholder = "Ruta de imagen o URL"
     override val cardOcclusionImageHint = "Soporta rutas locales o enlaces web"
@@ -354,6 +359,8 @@ object EsStrings : I18nStrings {
     override val warehouseCardContent = "Contenido de tarjeta"
     override val warehouseDeleteConfirm = "Confirmar eliminación"
     override val warehouseDeleteDesc = "Esta acción no se puede deshacer."
+    override val warehouseExpandAll = "Expandir todo"
+    override val warehouseCollapseAll = "Colapsar todo"
 
     override val statsTitle = "Estadísticas de estudio"
     override val statsOverview = "Resumen"
@@ -412,4 +419,7 @@ object EsStrings : I18nStrings {
 
     override val noteMarkdownSupport = "Soporta formato Markdown"
     override val noteOptional = "(Opcional)"
+
+    override val pasteMedia = "Pegar medio"
+    override val browseMedia = "Examinar..."
 }

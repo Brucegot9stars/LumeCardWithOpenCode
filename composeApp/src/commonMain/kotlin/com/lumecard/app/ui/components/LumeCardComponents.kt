@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.lumecard.app.i18n.I18nStrings
 import com.lumecard.app.ui.theme.LumeCardTheme
 
 // ─── LumeCardTopBar ───────────────────────────────────────────────────────
@@ -82,6 +83,7 @@ fun LumeCardRatingBar(
     onHard: () -> Unit,
     onGood: () -> Unit,
     onEasy: () -> Unit,
+    strings: I18nStrings,
     modifier: Modifier = Modifier,
     showShortcuts: Boolean = true,
 ) {
@@ -94,28 +96,28 @@ fun LumeCardRatingBar(
         horizontalArrangement = Arrangement.spacedBy(spacing.sm),
     ) {
         RatingChip(
-            label = "Again",
+            label = strings.studyRatingForgot,
             shortcut = if (showShortcuts) "1" else null,
             accentColor = colors.ratingAgain,
             modifier = Modifier.weight(1f),
             onClick = onAgain,
         )
         RatingChip(
-            label = "Hard",
+            label = strings.studyRatingHard,
             shortcut = if (showShortcuts) "2" else null,
             accentColor = colors.ratingHard,
             modifier = Modifier.weight(1f),
             onClick = onHard,
         )
         RatingChip(
-            label = "Good",
+            label = strings.studyRatingGood,
             shortcut = if (showShortcuts) "3" else null,
             accentColor = colors.ratingGood,
             modifier = Modifier.weight(1f),
             onClick = onGood,
         )
         RatingChip(
-            label = "Easy",
+            label = strings.studyRatingEasy,
             shortcut = if (showShortcuts) "4" else null,
             accentColor = colors.ratingEasy,
             modifier = Modifier.weight(1f),

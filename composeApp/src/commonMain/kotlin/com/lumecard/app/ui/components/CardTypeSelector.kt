@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.lumecard.app.i18n.I18nStrings
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.shared.model.CardType
 
@@ -26,6 +27,7 @@ import com.lumecard.shared.model.CardType
 fun CardTypeSelector(
     selectedType: CardType,
     onTypeSelected: (CardType) -> Unit,
+    strings: I18nStrings,
     modifier: Modifier = Modifier,
 ) {
     val spacing = LumeCardTheme.spacing
@@ -77,7 +79,7 @@ fun CardTypeSelector(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = cardTypeShortName(type),
+                        text = cardTypeShortName(type, strings),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
@@ -103,14 +105,14 @@ private fun cardTypeEmoji(type: CardType): String = when (type) {
     CardType.AI_GENERATED -> "\uD83E\uDD16"
 }
 
-private fun cardTypeShortName(type: CardType): String = when (type) {
-    CardType.BASIC -> "Basic"
-    CardType.REVERSED -> "Reversed"
-    CardType.CLOZE -> "Cloze"
-    CardType.MULTIPLE_CHOICE -> "Choice"
-    CardType.IMAGE_OCCLUSION -> "Image"
-    CardType.AUDIO -> "Audio"
-    CardType.VIDEO -> "Video"
+private fun cardTypeShortName(type: CardType, strings: I18nStrings): String = when (type) {
+    CardType.BASIC -> strings.cardTypeBasic
+    CardType.REVERSED -> strings.cardTypeReversed
+    CardType.CLOZE -> strings.cardTypeCloze
+    CardType.MULTIPLE_CHOICE -> strings.cardTypeChoice
+    CardType.IMAGE_OCCLUSION -> strings.cardTypeOcclusion
+    CardType.AUDIO -> strings.cardTypeAudio
+    CardType.VIDEO -> strings.cardTypeVideo
     CardType.MARKDOWN -> "Markdown"
     CardType.AI_GENERATED -> "AI"
 }

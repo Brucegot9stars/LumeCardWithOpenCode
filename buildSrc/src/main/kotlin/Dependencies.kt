@@ -25,6 +25,7 @@ object Dependencies {
     const val sqlDelightAndroid = "app.cash.sqldelight:android-driver:${Versions.sqlDelight}"
     const val sqlDelightJvm = "app.cash.sqldelight:sqlite-driver:${Versions.sqlDelight}"
     const val sqlDelightIos = "app.cash.sqldelight:native-driver:${Versions.sqlDelight}"
+    const val sqlDelightDialect = "app.cash.sqldelight:sqlite-3-38-dialect:${Versions.sqlDelight}"
 
     // Ktor
     const val ktorClient = "io.ktor:ktor-client-core:${Versions.ktor}"
@@ -51,6 +52,7 @@ object Dependencies {
 
     // Kotlinx
     const val kotlinxCoroutines = "org.jetbrains.kotlinx:kotlinx-coroutines-core:${Versions.kotlinxCoroutines}"
+    const val kotlinxCoroutinesSwing = "org.jetbrains.kotlinx:kotlinx-coroutines-swing:${Versions.kotlinxCoroutines}"
     const val kotlinxDateTime = "org.jetbrains.kotlinx:kotlinx-datetime:${Versions.kotlinxDateTime}"
     const val kotlinxSerialization = "org.jetbrains.kotlinx:kotlinx-serialization-json:${Versions.kotlinxSerialization}"
 }

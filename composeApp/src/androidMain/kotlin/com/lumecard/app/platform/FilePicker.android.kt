@@ -78,6 +78,10 @@ actual fun readFileContent(path: String): String? {
     }
 }
 
+actual suspend fun pickMediaFile(): String? {
+    return pickOpenFile("*/*")
+}
+
 actual fun writeFileContent(path: String, content: String): Boolean {
     return try {
         val context = AndroidContextHolder.context ?: return false

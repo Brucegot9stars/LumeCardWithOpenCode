@@ -59,19 +59,19 @@ class SqlDelightKnowledgeBaseRepository(
     }
 
     override suspend fun delete(id: String) {
-        val kb = queries.selectKnowledgeBaseById(id).executeAsOneOrNull()
-        if (kb != null) {
-            queries.insertKnowledgeBase(
-                id = kb.id,
-                name = kb.name,
-                description = kb.description,
-                created_at = kb.created_at,
-                updated_at = Clock.System.now().toString(),
-                version = kb.version + 1,
-                deleted_at = Clock.System.now().toString(),
-                synced_at = null
-            )
-        }
+        val now = Clock.System.now().toString()
+        queries.softDeleteCardsByKnowledgeBase(now, now, id)
+        queries.softDeleteDecksByKnowledgeBase(now, now, id)
+        queries.softDeleteKnowledgeBase(now, now, id)
+    }
+
+    override suspend fun getUpdatedSince(since: Instant): List<KnowledgeBase> {
+        return queries.selectKnowledgeBasesUpdatedSince(since.toString()).executeAsList().map { it.toKnowledgeBase() }
+    }
+
+    override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
+        val ts = syncedAt.toString()
+        ids.forEach { queries.updateKnowledgeBaseSyncedAt(ts, it) }
     }
 }
 
@@ -132,23 +132,18 @@ class SqlDelightDeckRepository(
     }
 
     override suspend fun delete(id: String) {
-        val deck = queries.selectDeckById(id).executeAsOneOrNull()
-        if (deck != null) {
-            queries.insertDeck(
-                id = deck.id,
-                knowledge_base_id = deck.knowledge_base_id,
-                name = deck.name,
-                description = deck.description,
-                color = deck.color,
-                icon = deck.icon,
-                parent_id = deck.parent_id,
-                created_at = deck.created_at,
-                updated_at = Clock.System.now().toString(),
-                version = deck.version + 1,
-                deleted_at = Clock.System.now().toString(),
-                synced_at = null
-            )
-        }
+        val now = Clock.System.now().toString()
+        queries.softDeleteCardsByDeck(now, now, id)
+        queries.softDeleteDeck(now, now, id)
+    }
+
+    override suspend fun getUpdatedSince(since: Instant): List<Deck> {
+        return queries.selectDecksUpdatedSince(since.toString()).executeAsList().map { it.toDeck() }
+    }
+
+    override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
+        val ts = syncedAt.toString()
+        ids.forEach { queries.updateDeckSyncedAt(ts, it) }
     }
 }
 
@@ -188,7 +183,7 @@ class SqlDelightCardRepository(
             type = card.type.name,
             front = card.front,
             back = card.back,
-            tags = card.tags.joinToString(","),
+            tags = Json.encodeToString(card.tags),
             media = Json.encodeToString(card.media),
             metadata = Json.encodeToString(card.metadata),
             created_at = card.createdAt.toString(),
@@ -199,6 +194,7 @@ class SqlDelightCardRepository(
             deleted_at = card.deletedAt?.toString(),
             synced_at = card.syncedAt?.toString()
         )
+        queries.insertCardFts(card.id, card.front, card.back, card.tags.joinToString(" "))
     }
 
     override suspend fun update(card: Card) {
@@ -207,7 +203,7 @@ class SqlDelightCardRepository(
             type = card.type.name,
             front = card.front,
             back = card.back,
-            tags = card.tags.joinToString(","),
+            tags = Json.encodeToString(card.tags),
             media = Json.encodeToString(card.media),
             metadata = Json.encodeToString(card.metadata),
             updated_at = Clock.System.now().toString(),
@@ -215,39 +211,35 @@ class SqlDelightCardRepository(
             next_review_at = card.nextReviewAt?.toString(),
             id = card.id
         )
+        queries.deleteCardFts(card.id)
+        queries.insertCardFts(card.id, card.front, card.back, card.tags.joinToString(" "))
     }
 
     override suspend fun delete(id: String) {
-        val card = queries.selectCardById(id).executeAsOneOrNull()
-        if (card != null) {
-            queries.insertCard(
-                id = card.id,
-                deck_id = card.deck_id,
-                type = card.type,
-                front = card.front,
-                back = card.back,
-                tags = card.tags,
-                media = card.media,
-                metadata = card.metadata,
-                created_at = card.created_at,
-                updated_at = Clock.System.now().toString(),
-                last_reviewed_at = card.last_reviewed_at,
-                next_review_at = card.next_review_at,
-                version = card.version + 1,
-                deleted_at = Clock.System.now().toString(),
-                synced_at = null
-            )
-        }
+        val now = Clock.System.now().toString()
+        queries.softDeleteCard(now, now, id)
+        queries.deleteCardFts(id)
     }
 
     override suspend fun search(query: String): Flow<List<Card>> {
-        return queries.selectAllCards().asFlow().mapToList(Dispatchers.Default).map { list ->
-            list.map { it.toDomain() }.filter { card ->
-                card.front.contains(query, ignoreCase = true) ||
-                card.back.contains(query, ignoreCase = true) ||
-                card.tags.any { tag -> tag.contains(query, ignoreCase = true) }
-            }
+        val likeQuery = "%${query.lowercase()}%"
+        return queries.searchCards(likeQuery, likeQuery, likeQuery).asFlow().mapToList(Dispatchers.Default).map { list ->
+            list.map { it.toDomain() }
         }
+    }
+
+    override suspend fun getUpdatedSince(since: Instant): List<Card> {
+        return queries.selectCardsUpdatedSince(since.toString()).executeAsList().map { it.toDomain() }
+    }
+
+    override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
+        val ts = syncedAt.toString()
+        ids.forEach { queries.updateCardSyncedAt(ts, it) }
+    }
+
+    override suspend fun rebuildFtsIndex() {
+        queries.deleteAllCardFts()
+        queries.rebuildCardFts()
     }
 }
 
@@ -300,6 +292,15 @@ class SqlDelightReviewLogRepository(
             retentionRate = retentionRate,
             studyTimeMinutes = studyTimeMinutes.toInt()
         )
+    }
+
+    override suspend fun getUpdatedSince(since: Instant): List<ReviewLog> {
+        return queries.selectReviewLogsUpdatedSince(since.toString()).executeAsList().map { it.toReviewLog() }
+    }
+
+    override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
+        val ts = syncedAt.toString()
+        ids.forEach { queries.updateReviewLogSyncedAt(ts, it) }
     }
 }
 
@@ -389,7 +390,7 @@ private fun com.lumecard.shared.database.SelectDueCards.toDomain() = Card(
     type = CardType.valueOf(type),
     front = front,
     back = back,
-    tags = (tags ?: "").split(",").filter { it.isNotBlank() },
+    tags = parseStringList(tags),
     createdAt = Instant.parse(created_at),
     updatedAt = Instant.parse(updated_at),
     lastReviewedAt = last_reviewed_at?.let { Instant.parse(it) },
@@ -402,7 +403,7 @@ private fun com.lumecard.shared.database.Card.toDomain() = Card(
     type = CardType.valueOf(type),
     front = front,
     back = back,
-    tags = (tags ?: "").split(",").filter { it.isNotBlank() },
+    tags = parseStringList(tags),
     media = try { if (media.isNullOrBlank()) emptyList() else Json.decodeFromString(media) } catch (_: Exception) { emptyList() },
     metadata = try { if (metadata.isNullOrBlank()) emptyMap() else Json.decodeFromString(metadata) } catch (_: Exception) { emptyMap() },
     createdAt = Instant.parse(created_at),
@@ -428,6 +429,33 @@ private fun com.lumecard.shared.database.ReviewLog.toReviewLog() = ReviewLog(
     deletedAt = deleted_at?.let { Instant.parse(it) },
     syncedAt = synced_at?.let { Instant.parse(it) }
 )
+
+class SqlDelightMediaCacheRepository(
+    private val database: LumeCardDatabase
+) : MediaCacheRepository {
+
+    private val queries get() = database.lumeCardDatabaseQueries
+
+    override suspend fun get(path: String): MediaCacheEntry? {
+        return queries.selectMediaCache(path).executeAsOneOrNull()?.toMediaCacheEntry()
+    }
+
+    override suspend fun getAll(): List<MediaCacheEntry> {
+        return queries.selectAllMediaCache().executeAsList().map { it.toMediaCacheEntry() }
+    }
+
+    override suspend fun set(path: String, mtime: Long, sha1: String, syncedAt: Instant?) {
+        queries.insertMediaCache(path, mtime, sha1, syncedAt?.toString())
+    }
+
+    override suspend fun remove(path: String) {
+        queries.deleteMediaCache(path)
+    }
+
+    override suspend fun removeAll() {
+        queries.deleteAllMediaCache()
+    }
+}
 
 class SqlDelightLearningPlanRepository(
     private val database: LumeCardDatabase
@@ -456,9 +484,9 @@ class SqlDelightLearningPlanRepository(
             description = plan.description,
             status = plan.status.name,
             is_default = if (plan.isDefault) 1L else 0L,
-            knowledge_base_ids = plan.knowledgeBaseIds.joinToString(","),
-            deck_ids = plan.deckIds.joinToString(","),
-            card_ids = plan.cardIds.joinToString(","),
+            knowledge_base_ids = Json.encodeToString(plan.knowledgeBaseIds),
+            deck_ids = Json.encodeToString(plan.deckIds),
+            card_ids = Json.encodeToString(plan.cardIds),
             total_cards = plan.totalCards.toLong(),
             completed_cards = plan.completedCards.toLong(),
             created_at = plan.createdAt.toString(),
@@ -476,9 +504,9 @@ class SqlDelightLearningPlanRepository(
             description = plan.description,
             status = plan.status.name,
             is_default = if (plan.isDefault) 1L else 0L,
-            knowledge_base_ids = plan.knowledgeBaseIds.joinToString(","),
-            deck_ids = plan.deckIds.joinToString(","),
-            card_ids = plan.cardIds.joinToString(","),
+            knowledge_base_ids = Json.encodeToString(plan.knowledgeBaseIds),
+            deck_ids = Json.encodeToString(plan.deckIds),
+            card_ids = Json.encodeToString(plan.cardIds),
             total_cards = plan.totalCards.toLong(),
             completed_cards = plan.completedCards.toLong(),
             created_at = plan.createdAt.toString(),
@@ -490,26 +518,17 @@ class SqlDelightLearningPlanRepository(
     }
 
     override suspend fun delete(id: String) {
-        val plan = queries.selectLearningPlanById(id).executeAsOneOrNull()
-        if (plan != null) {
-            queries.insertLearningPlan(
-                id = plan.id,
-                name = plan.name,
-                description = plan.description,
-                status = plan.status,
-                is_default = plan.is_default,
-                knowledge_base_ids = plan.knowledge_base_ids,
-                deck_ids = plan.deck_ids,
-                card_ids = plan.card_ids,
-                total_cards = plan.total_cards,
-                completed_cards = plan.completed_cards,
-                created_at = plan.created_at,
-                updated_at = Clock.System.now().toString(),
-                version = plan.version + 1,
-                deleted_at = Clock.System.now().toString(),
-                synced_at = null
-            )
-        }
+        val now = Clock.System.now().toString()
+        queries.softDeleteLearningPlan(now, now, id)
+    }
+
+    override suspend fun getUpdatedSince(since: Instant): List<com.lumecard.shared.model.LearningPlan> {
+        return queries.selectLearningPlansUpdatedSince(since.toString()).executeAsList().map { it.toLearningPlan() }
+    }
+
+    override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
+        val ts = syncedAt.toString()
+        ids.forEach { queries.updateLearningPlanSyncedAt(ts, it) }
     }
 }
 
@@ -519,9 +538,9 @@ private fun com.lumecard.shared.database.LearningPlan.toLearningPlan() = com.lum
     description = description,
     status = try { com.lumecard.shared.model.PlanStatus.valueOf(status) } catch (_: Exception) { com.lumecard.shared.model.PlanStatus.NOT_STARTED },
     isDefault = is_default == 1L,
-    knowledgeBaseIds = (knowledge_base_ids ?: "").split(",").filter { it.isNotBlank() },
-    deckIds = (deck_ids ?: "").split(",").filter { it.isNotBlank() },
-    cardIds = (card_ids ?: "").split(",").filter { it.isNotBlank() },
+    knowledgeBaseIds = parseStringList(knowledge_base_ids),
+    deckIds = parseStringList(deck_ids),
+    cardIds = parseStringList(card_ids),
     totalCards = total_cards.toInt(),
     completedCards = completed_cards.toInt(),
     createdAt = Instant.parse(created_at),
@@ -530,3 +549,19 @@ private fun com.lumecard.shared.database.LearningPlan.toLearningPlan() = com.lum
     deletedAt = deleted_at?.let { Instant.parse(it) },
     syncedAt = synced_at?.let { Instant.parse(it) }
 )
+
+private fun com.lumecard.shared.database.MediaCache.toMediaCacheEntry() = MediaCacheEntry(
+    path = path,
+    mtime = mtime,
+    sha1 = sha1,
+    syncedAt = synced_at?.let { Instant.parse(it) }
+)
+
+private fun parseStringList(value: String?): List<String> {
+    if (value.isNullOrBlank()) return emptyList()
+    return try {
+        Json.decodeFromString(value)
+    } catch (_: Exception) {
+        value.split(",").filter { it.isNotBlank() }
+    }
+}

@@ -85,6 +85,11 @@ object ZhTwStrings : I18nStrings {
     override val studyCardTypeVideo = "視訊"
     override val studyCardTypeMarkdown = "Markdown"
     override val studyCardTypeAi = "AI"
+    override val studyModeTitle = "選擇學習模式"
+    override val studyModeDesc = "已完成當前卡片，選擇接下來的學習方式"
+    override val studyContinueAll = "繼續學一遍"
+    override fun studyNewCards(count: Int) = "學習新卡（${count}張）"
+    override fun studyRandom(count: Int) = "隨機學習（${count}張）"
 
     override val deckCreate = "建立牌組"
     override val deckEdit = "編輯牌組"
@@ -161,7 +166,7 @@ object ZhTwStrings : I18nStrings {
     override val cardTypeBasicHelp = "基礎問答卡是最常用的卡片類型。正面寫問題或提示，背面寫答案。適用於詞彙記憶、知識點複習、定義背誦等場景。"
     override val cardTypeReversedHelp = "雙向問答卡在基礎問答卡的基礎上增加反向卡片。學習時會同時看到正面→背面和背面→正面兩種方向，加深記憶。"
     override val cardTypeClozeHelp = "填空題卡透過挖空關鍵資訊來促進主動回憶。使用 {{c1::答案}} 格式標記填空位置，數字表示挖空編號，可在同一文字中設定多個填空。"
-    override val cardTypeChoiceHelp = "選擇題卡提供多個選項供選擇。在答案區域每行寫一個選項，正確選項前加 ✓ 前綴標記。學習時正面顯示題目，背面顯示所有選項並高亮正確答案。"
+    override val cardTypeChoiceHelp = "選擇題卡提供多個選項供選擇。在選項區域每行寫一個選項，正確選項前加 + 標記。學習時點擊選項作答，選對自動進入下一張，選錯顯示正確答案。"
     override val cardTypeOcclusionHelp = "圖片記憶卡透過圖片遮擋方式輔助記憶。正面填寫圖片路徑或 URL，背面填寫圖片相關的說明內容。適用於地圖、圖表、解剖圖等視覺學習。"
     override val cardTypeAudioHelp = "音訊學習卡適用於聽力練習和發音學習。正面填寫音訊檔案路徑，背面填寫對應的文字內容。學習時可播放音訊進行聽寫訓練。"
     override val cardTypeVideoHelp = "視訊學習卡適用於視訊內容的學習。正面填寫視訊檔案路徑，背面填寫對應的文字摘要或講解內容。支援視訊學習場景。"
@@ -170,7 +175,7 @@ object ZhTwStrings : I18nStrings {
     override val cardTypeBasicExample = "Q: 什麼是 Apple？\nA: 一家科技公司。"
     override val cardTypeReversedExample = "正面：一家科技公司。\n背面：什麼是 Apple？"
     override val cardTypeClozeExample = "日本首都是 {{c1::東京}}，人口約 {{c2::1400}} 萬。"
-    override val cardTypeChoiceExample = "哪些是程式語言？\n✓ Python\n✓ Java\nApple\n✓ JavaScript"
+    override val cardTypeChoiceExample = "哪些是程式語言？\n+ Python\n+ Java\nApple\n+ JavaScript"
     override val cardTypeOcclusionExample = "正面：https://example.com/diagram.png\n背面：人體消化系統結構圖"
     override val cardTypeAudioExample = "正面：/audio/lesson1.mp3\n背面：Hello, how are you? 你好嗎？"
     override val cardTypeVideoExample = "正面：/video/tutorial.mp4\n背面：本視訊講解了牛頓第二定律"
@@ -184,8 +189,8 @@ object ZhTwStrings : I18nStrings {
     override val cardChoiceQuestion = "題目"
     override val cardChoiceQuestionPlaceholder = "輸入題目..."
     override val cardChoiceOptions = "選項與答案"
-    override val cardChoiceFormatHint = "每行一個選項，正確選項前加 ✓ 或 √"
-    override val cardChoicePlaceholder = "例如：\n✓ Python\nJava\nC++\nJavaScript"
+    override val cardChoiceFormatHint = "每行一個選項，正確選項前加 +"
+    override val cardChoicePlaceholder = "例如：\n+ Python\nJava\nC++\nJavaScript"
     override val cardOcclusionImage = "圖片引用"
     override val cardOcclusionImagePlaceholder = "圖片路徑或 URL"
     override val cardOcclusionImageHint = "支援本地路徑或網路圖片連結"
@@ -354,6 +359,8 @@ object ZhTwStrings : I18nStrings {
     override val warehouseCardContent = "卡牌內容"
     override val warehouseDeleteConfirm = "確認刪除"
     override val warehouseDeleteDesc = "刪除操作不可撤銷。"
+    override val warehouseExpandAll = "展開全部"
+    override val warehouseCollapseAll = "收起全部"
 
     override val statsTitle = "學習統計"
     override val statsOverview = "總覽"
@@ -412,4 +419,7 @@ object ZhTwStrings : I18nStrings {
 
     override val noteMarkdownSupport = "支援 Markdown 格式"
     override val noteOptional = "（選填）"
+
+    override val pasteMedia = "貼上媒體"
+    override val browseMedia = "瀏覽..."
 }

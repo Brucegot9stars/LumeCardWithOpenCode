@@ -16,6 +16,10 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.lumecard.app.platform.getMediaBasePath
+import com.lumecard.app.platform.pasteClipboardMedia
+import com.lumecard.app.platform.pickMediaFile
+import com.lumecard.app.platform.saveMediaFile
 import com.lumecard.app.ui.components.MarkdownText
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
@@ -24,6 +28,7 @@ import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.components.CardTypeSelector
 import com.lumecard.app.i18n.I18nStrings
 import com.lumecard.app.ui.theme.LumeCardTheme
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 class CreateCardScreen(
@@ -110,6 +115,7 @@ class CreateCardScreen(
                 CardTypeSelector(
                     selectedType = cardType,
                     onTypeSelected = { cardType = it },
+                    strings = strings,
                 )
 
                 // 类型专用输入区
@@ -186,6 +192,12 @@ class CreateCardScreen(
     }
 }
 
+private fun clozeAutoBack(front: String): String {
+    val clozeRegex = Regex("\\{\\{c\\d+::([^}]+)\\}\\}")
+    val clozeHintRegex = Regex("\\{\\{c\\d+::([^}]+)::([^}]+)\\}\\}")
+    return front.replace(clozeHintRegex, "$1").replace(clozeRegex, "$1")
+}
+
 @Composable
 private fun CardTypeInput(
     type: CardType,
@@ -211,16 +223,12 @@ private fun CardTypeInput(
             Text(strings.cardClozeFormatHint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(
                 value = front,
-                onValueChange = onFrontChange,
+                onValueChange = {
+                    onFrontChange(it)
+                    onBackChange(clozeAutoBack(it))
+                },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
                 placeholder = { Text(strings.cardClozePlaceholder) }
-            )
-            Text(strings.cardClozeFullText, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-            OutlinedTextField(
-                value = back,
-                onValueChange = onBackChange,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
-                placeholder = { Text(strings.cardClozeBackPlaceholder) }
             )
         }
         CardType.MULTIPLE_CHOICE -> {
@@ -302,6 +310,7 @@ private fun BasicCardFields(
     frontPlaceholder: String, backPlaceholder: String
 ) {
     val strings = koinInject<I18nManager>().strings
+    val scope = rememberCoroutineScope()
     Text(frontLabel, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
     OutlinedTextField(
         value = front,
@@ -310,6 +319,34 @@ private fun BasicCardFields(
         placeholder = { Text(frontPlaceholder) },
         supportingText = { Text(strings.noteMarkdownSupport) }
     )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End
+    ) {
+        TextButton(onClick = {
+            scope.launch {
+                val path = pickMediaFile()
+                if (path != null) {
+                    val ref = saveMediaFile(getMediaBasePath(), path)
+                    if (ref != null) onFrontChange(front + "\n$ref")
+                }
+            }
+        }) {
+            Icon(Icons.Default.Add, contentDescription = strings.browseMedia, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(4.dp))
+            Text(strings.browseMedia, style = MaterialTheme.typography.bodySmall)
+        }
+        TextButton(onClick = {
+            scope.launch {
+                val refs = pasteClipboardMedia(getMediaBasePath())
+                if (refs.isNotEmpty()) onFrontChange(front + "\n" + refs.joinToString("\n"))
+            }
+        }) {
+            Icon(Icons.Default.Add, contentDescription = strings.pasteMedia, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(4.dp))
+            Text(strings.pasteMedia, style = MaterialTheme.typography.bodySmall)
+        }
+    }
     Text(backLabel, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
     OutlinedTextField(
         value = back,
@@ -318,6 +355,34 @@ private fun BasicCardFields(
         placeholder = { Text(backPlaceholder) },
         supportingText = { Text(strings.noteMarkdownSupport) }
     )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End
+    ) {
+        TextButton(onClick = {
+            scope.launch {
+                val path = pickMediaFile()
+                if (path != null) {
+                    val ref = saveMediaFile(getMediaBasePath(), path)
+                    if (ref != null) onBackChange(back + "\n$ref")
+                }
+            }
+        }) {
+            Icon(Icons.Default.Add, contentDescription = strings.browseMedia, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(4.dp))
+            Text(strings.browseMedia, style = MaterialTheme.typography.bodySmall)
+        }
+        TextButton(onClick = {
+            scope.launch {
+                val refs = pasteClipboardMedia(getMediaBasePath())
+                if (refs.isNotEmpty()) onBackChange(back + "\n" + refs.joinToString("\n"))
+            }
+        }) {
+            Icon(Icons.Default.Add, contentDescription = strings.pasteMedia, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(4.dp))
+            Text(strings.pasteMedia, style = MaterialTheme.typography.bodySmall)
+        }
+    }
 }
 
 private fun cardTypeLabel(type: CardType, strings: I18nStrings): String = when (type) {

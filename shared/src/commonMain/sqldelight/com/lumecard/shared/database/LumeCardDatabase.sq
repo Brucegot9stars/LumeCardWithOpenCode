@@ -155,14 +155,52 @@ updateCard:
 UPDATE Card SET deck_id = ?, type = ?, front = ?, back = ?, tags = ?, media = ?, metadata = ?, updated_at = ?, last_reviewed_at = ?, next_review_at = ?, version = version + 1
 WHERE id = ?;
 
-deleteCard:
-DELETE FROM Card WHERE id = ?;
+softDeleteCard:
+UPDATE Card SET deleted_at = ?, updated_at = ?, version = version + 1, synced_at = NULL WHERE id = ?;
 
-deleteDeck:
-DELETE FROM Deck WHERE id = ?;
+softDeleteCardsByDeck:
+UPDATE Card SET deleted_at = ?, updated_at = ?, version = version + 1, synced_at = NULL WHERE deck_id = ? AND deleted_at IS NULL;
 
-deleteKnowledgeBase:
-DELETE FROM KnowledgeBase WHERE id = ?;
+softDeleteDecksByKnowledgeBase:
+UPDATE Deck SET deleted_at = ?, updated_at = ?, version = version + 1, synced_at = NULL WHERE knowledge_base_id = ? AND deleted_at IS NULL;
+
+softDeleteCardsByKnowledgeBase:
+UPDATE Card SET deleted_at = ?, updated_at = ?, version = version + 1, synced_at = NULL WHERE deck_id IN (SELECT id FROM Deck WHERE knowledge_base_id = ?) AND deleted_at IS NULL;
+
+softDeleteDeck:
+UPDATE Deck SET deleted_at = ?, updated_at = ?, version = version + 1, synced_at = NULL WHERE id = ?;
+
+softDeleteKnowledgeBase:
+UPDATE KnowledgeBase SET deleted_at = ?, updated_at = ?, version = version + 1, synced_at = NULL WHERE id = ?;
+
+softDeleteReviewLog:
+UPDATE ReviewLog SET deleted_at = ?, version = version + 1, synced_at = NULL WHERE id = ?;
+
+softDeleteLearningPlan:
+UPDATE LearningPlan SET deleted_at = ?, updated_at = ?, version = version + 1, synced_at = NULL WHERE id = ?;
+
+-- Compiled-time stub: replaced with FTS5 virtual table at runtime (see DatabaseDriverFactory).
+CREATE TABLE IF NOT EXISTS CardFTS(
+    card_id TEXT NOT NULL,
+    front TEXT NOT NULL,
+    back TEXT NOT NULL,
+    tags TEXT NOT NULL
+);
+
+insertCardFts:
+INSERT INTO CardFTS(card_id, front, back, tags) VALUES (?, ?, ?, ?);
+
+deleteCardFts:
+DELETE FROM CardFTS WHERE card_id = ?;
+
+deleteAllCardFts:
+DELETE FROM CardFTS;
+
+rebuildCardFts:
+INSERT INTO CardFTS(card_id, front, back, tags) SELECT id, front, back, tags FROM Card WHERE deleted_at IS NULL;
+
+searchCards:
+SELECT * FROM Card WHERE deleted_at IS NULL AND (front LIKE '%' || ? || '%' OR back LIKE '%' || ? || '%' OR tags LIKE '%' || ? || '%');
 
 selectAllReviewLogs:
 SELECT * FROM ReviewLog WHERE deleted_at IS NULL ORDER BY reviewed_at DESC;
@@ -208,3 +246,57 @@ SELECT * FROM LearningPlan WHERE is_default = 1 AND deleted_at IS NULL;
 insertLearningPlan:
 INSERT OR REPLACE INTO LearningPlan(id, name, description, status, is_default, knowledge_base_ids, deck_ids, card_ids, total_cards, completed_cards, created_at, updated_at, version, deleted_at, synced_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- Incremental sync queries
+selectKnowledgeBasesUpdatedSince:
+SELECT * FROM KnowledgeBase WHERE (synced_at IS NULL OR updated_at > ?) AND deleted_at IS NULL;
+
+selectDecksUpdatedSince:
+SELECT * FROM Deck WHERE (synced_at IS NULL OR updated_at > ?) AND deleted_at IS NULL;
+
+selectCardsUpdatedSince:
+SELECT * FROM Card WHERE (synced_at IS NULL OR updated_at > ?) AND deleted_at IS NULL;
+
+selectReviewLogsUpdatedSince:
+SELECT * FROM ReviewLog WHERE (synced_at IS NULL OR reviewed_at > ?) AND deleted_at IS NULL;
+
+selectLearningPlansUpdatedSince:
+SELECT * FROM LearningPlan WHERE (synced_at IS NULL OR updated_at > ?) AND deleted_at IS NULL;
+
+updateKnowledgeBaseSyncedAt:
+UPDATE KnowledgeBase SET synced_at = ? WHERE id = ?;
+
+updateDeckSyncedAt:
+UPDATE Deck SET synced_at = ? WHERE id = ?;
+
+updateCardSyncedAt:
+UPDATE Card SET synced_at = ? WHERE id = ?;
+
+updateReviewLogSyncedAt:
+UPDATE ReviewLog SET synced_at = ? WHERE id = ?;
+
+updateLearningPlanSyncedAt:
+UPDATE LearningPlan SET synced_at = ? WHERE id = ?;
+
+-- Media sync cache (Anki-style: track mtime + sha1 to avoid re-hashing)
+CREATE TABLE IF NOT EXISTS MediaCache (
+    path TEXT PRIMARY KEY NOT NULL,
+    mtime INTEGER NOT NULL,
+    sha1 TEXT NOT NULL,
+    synced_at TEXT
+);
+
+selectMediaCache:
+SELECT * FROM MediaCache WHERE path = ?;
+
+selectAllMediaCache:
+SELECT * FROM MediaCache;
+
+insertMediaCache:
+INSERT OR REPLACE INTO MediaCache(path, mtime, sha1, synced_at) VALUES (?, ?, ?, ?);
+
+deleteMediaCache:
+DELETE FROM MediaCache WHERE path = ?;
+
+deleteAllMediaCache:
+DELETE FROM MediaCache;

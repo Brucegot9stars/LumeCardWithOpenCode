@@ -4,7 +4,6 @@ import com.lumecard.shared.model.CardState
 import com.lumecard.shared.model.FSRSCard
 import com.lumecard.shared.model.Rating
 import kotlinx.datetime.Clock
-import kotlinx.datetime.DateTimePeriod
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -58,7 +57,7 @@ class FSRSAlgorithm(
             Rating.EASY -> 4
         }
 
-        val due = Clock.System.now().plus(DateTimePeriod(days = scheduledDays), TimeZone.UTC)
+        val due = Clock.System.now().plus(scheduledDays, DateTimeUnit.DAY, TimeZone.UTC)
 
         return card.copy(
             due = due,
@@ -81,7 +80,7 @@ class FSRSAlgorithm(
             Rating.EASY -> 4
         }
 
-        val due = Clock.System.now().plus(DateTimePeriod(days = scheduledDays), TimeZone.UTC)
+        val due = Clock.System.now().plus(scheduledDays, DateTimeUnit.DAY, TimeZone.UTC)
 
         return card.copy(
             due = due,
@@ -98,7 +97,7 @@ class FSRSAlgorithm(
         val newStability = calculateStability(card, rating)
 
         val scheduledDays = calculateInterval(newStability, rating)
-        val due = Clock.System.now().plus(DateTimePeriod(days = scheduledDays), TimeZone.UTC)
+        val due = Clock.System.now().plus(scheduledDays, DateTimeUnit.DAY, TimeZone.UTC)
 
         return card.copy(
             due = due,
@@ -121,7 +120,7 @@ class FSRSAlgorithm(
             Rating.EASY -> max(1, (newStability * 0.5).toInt())
         }
 
-        val due = Clock.System.now().plus(DateTimePeriod(days = scheduledDays), TimeZone.UTC)
+        val due = Clock.System.now().plus(scheduledDays, DateTimeUnit.DAY, TimeZone.UTC)
 
         return card.copy(
             due = due,

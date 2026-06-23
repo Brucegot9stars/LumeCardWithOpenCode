@@ -4,6 +4,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.utils.io.core.readBytes
 import kotlinx.datetime.Clock
 
 class SyncManager(
@@ -16,6 +17,8 @@ class SyncManager(
         private const val CONFIG_FILENAME = "config.json"
         private const val CONFIG_PATH = "$BACKUP_DIR/$CONFIG_FILENAME"
         private const val LEGACY_PATH = "lumecard_backup.json"
+        private const val MEDIA_DIR = "$BACKUP_DIR/media"
+        private const val MANIFEST_PATH = "$BACKUP_DIR/media_manifest.json"
     }
 
     private suspend fun ensureDir(baseUrl: String, username: String, password: String, dir: String) {
@@ -99,6 +102,69 @@ class SyncManager(
             }
             if (response.status == HttpStatusCode.OK) Result.success(response.bodyAsText())
             else Result.failure(SyncException("No legacy backup found"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun uploadManifest(config: WebDavConfig, manifestJson: String): Result<Unit> {
+        return try {
+            ensureDir(config.url, config.username, config.password, BACKUP_DIR)
+            val url = config.url.trimEnd('/') + "/" + MANIFEST_PATH
+            val response = client.put(url) {
+                basicAuth(config.username, config.password)
+                contentType(ContentType.Application.Json)
+                setBody(manifestJson)
+            }
+            if (response.status.isSuccess()) Result.success(Unit)
+            else Result.failure(SyncException("Upload manifest failed: ${response.status}"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun downloadManifest(config: WebDavConfig): Result<String> {
+        return try {
+            val url = config.url.trimEnd('/') + "/" + MANIFEST_PATH
+            val response = client.get(url) {
+                basicAuth(config.username, config.password)
+            }
+            if (response.status == HttpStatusCode.OK) Result.success(response.bodyAsText())
+            else Result.failure(SyncException("No manifest found"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun uploadMedia(config: WebDavConfig, relativePath: String, data: ByteArray): Result<Unit> {
+        return try {
+            val dir = MEDIA_DIR + "/" + relativePath.substringBeforeLast("/")
+            ensureDir(config.url, config.username, config.password, dir)
+            val url = config.url.trimEnd('/') + "/" + MEDIA_DIR + "/" + relativePath
+            val response = client.put(url) {
+                basicAuth(config.username, config.password)
+                contentType(ContentType.Application.OctetStream)
+                setBody(data)
+            }
+            if (response.status.isSuccess()) Result.success(Unit)
+            else Result.failure(SyncException("Upload media failed: ${response.status}"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun downloadMedia(config: WebDavConfig, relativePath: String): Result<ByteArray> {
+        return try {
+            val url = config.url.trimEnd('/') + "/" + MEDIA_DIR + "/" + relativePath
+            val response = client.get(url) {
+                basicAuth(config.username, config.password)
+            }
+            if (response.status == HttpStatusCode.OK) {
+                val channel = response.bodyAsChannel()
+                Result.success(channel.readRemaining().readBytes())
+            } else {
+                Result.failure(SyncException("Media not found: $relativePath"))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }
