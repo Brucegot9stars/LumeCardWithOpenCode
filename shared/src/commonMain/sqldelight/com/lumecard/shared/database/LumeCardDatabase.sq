@@ -268,3 +268,26 @@ UPDATE ReviewLog SET synced_at = ? WHERE id = ?;
 
 updateLearningPlanSyncedAt:
 UPDATE LearningPlan SET synced_at = ? WHERE id = ?;
+
+-- Media sync cache (Anki-style: track mtime + sha1 to avoid re-hashing)
+CREATE TABLE MediaCache (
+    path TEXT PRIMARY KEY NOT NULL,
+    mtime INTEGER NOT NULL,
+    sha1 TEXT NOT NULL,
+    synced_at TEXT
+);
+
+selectMediaCache:
+SELECT * FROM MediaCache WHERE path = ?;
+
+selectAllMediaCache:
+SELECT * FROM MediaCache;
+
+insertMediaCache:
+INSERT OR REPLACE INTO MediaCache(path, mtime, sha1, synced_at) VALUES (?, ?, ?, ?);
+
+deleteMediaCache:
+DELETE FROM MediaCache WHERE path = ?;
+
+deleteAllMediaCache:
+DELETE FROM MediaCache;

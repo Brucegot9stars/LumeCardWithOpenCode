@@ -19,9 +19,25 @@ actual fun scanMediaDirectory(basePath: String): List<MediaFileEntry> {
         MediaFileEntry(
             relativePath = relativePath,
             size = file.length(),
-            hash = file.sha256()
+            hash = file.sha1(),
+            mtime = file.lastModified()
         )
     }.toList()
+}
+
+actual fun scanMediaDirectoryRaw(basePath: String): List<RawFileEntry> {
+    val dir = File(basePath)
+    if (!dir.exists() || !dir.isDirectory) return emptyList()
+    return dir.walkTopDown().filter { it.isFile }.map { file ->
+        val relativePath = file.toPath().normalize().toString()
+            .removePrefix(dir.toPath().normalize().toString() + File.separator)
+            .replace("\\", "/")
+        RawFileEntry(relativePath, file.length(), file.lastModified())
+    }.toList()
+}
+
+actual fun hashFileSha1(absPath: String): String {
+    return File(absPath).sha1()
 }
 
 actual fun createZipPackage(outputPath: String, entries: List<ZipEntry>) {
@@ -36,8 +52,8 @@ actual fun createZipPackage(outputPath: String, entries: List<ZipEntry>) {
     }
 }
 
-private fun File.sha256(): String {
-    val digest = MessageDigest.getInstance("SHA-256")
+private fun File.sha1(): String {
+    val digest = MessageDigest.getInstance("SHA-1")
     FileInputStream(this).use { input ->
         val buffer = ByteArray(8192)
         var bytesRead: Int

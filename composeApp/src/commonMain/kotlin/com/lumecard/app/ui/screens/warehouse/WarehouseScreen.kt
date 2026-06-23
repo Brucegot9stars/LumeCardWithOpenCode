@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -125,7 +126,7 @@ class WarehouseScreen : Screen {
                 } else if (treeNodes.isEmpty()) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.List, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+                            Icon(Icons.AutoMirrored.Filled.List, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
                             Spacer(Modifier.height(spacing.md))
                             Text(strings.warehouseEmpty, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(Modifier.height(spacing.sm))
@@ -363,7 +364,7 @@ private fun TreeNodeItem(
 ) {
     val icon = when (node.type) {
         NodeType.KNOWLEDGE_BASE -> Icons.Default.Star
-        NodeType.DECK -> Icons.Default.List
+        NodeType.DECK -> Icons.AutoMirrored.Filled.List
         NodeType.CARD -> Icons.Default.Create
     }
     val iconTint = when (node.type) {

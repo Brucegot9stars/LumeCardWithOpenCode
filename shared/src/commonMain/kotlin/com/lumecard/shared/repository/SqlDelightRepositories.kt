@@ -427,6 +427,33 @@ private fun com.lumecard.shared.database.ReviewLog.toReviewLog() = ReviewLog(
     syncedAt = synced_at?.let { Instant.parse(it) }
 )
 
+class SqlDelightMediaCacheRepository(
+    private val database: LumeCardDatabase
+) : MediaCacheRepository {
+
+    private val queries get() = database.lumeCardDatabaseQueries
+
+    override suspend fun get(path: String): MediaCacheEntry? {
+        return queries.selectMediaCache(path).executeAsOneOrNull()?.toMediaCacheEntry()
+    }
+
+    override suspend fun getAll(): List<MediaCacheEntry> {
+        return queries.selectAllMediaCache().executeAsList().map { it.toMediaCacheEntry() }
+    }
+
+    override suspend fun set(path: String, mtime: Long, sha1: String, syncedAt: Instant?) {
+        queries.insertMediaCache(path, mtime, sha1, syncedAt?.toString())
+    }
+
+    override suspend fun remove(path: String) {
+        queries.deleteMediaCache(path)
+    }
+
+    override suspend fun removeAll() {
+        queries.deleteAllMediaCache()
+    }
+}
+
 class SqlDelightLearningPlanRepository(
     private val database: LumeCardDatabase
 ) : LearningPlanRepository {
@@ -517,6 +544,13 @@ private fun com.lumecard.shared.database.LearningPlan.toLearningPlan() = com.lum
     updatedAt = Instant.parse(updated_at),
     version = version,
     deletedAt = deleted_at?.let { Instant.parse(it) },
+    syncedAt = synced_at?.let { Instant.parse(it) }
+)
+
+private fun com.lumecard.shared.database.MediaCache.toMediaCacheEntry() = MediaCacheEntry(
+    path = path,
+    mtime = mtime,
+    sha1 = sha1,
     syncedAt = synced_at?.let { Instant.parse(it) }
 )
 

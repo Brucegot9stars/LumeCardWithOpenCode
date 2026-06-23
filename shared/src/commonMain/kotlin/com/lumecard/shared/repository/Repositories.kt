@@ -74,6 +74,21 @@ interface AlgorithmStateRepository {
     suspend fun delete(cardId: String)
 }
 
+data class MediaCacheEntry(
+    val path: String,
+    val mtime: Long,
+    val sha1: String,
+    val syncedAt: Instant? = null
+)
+
+interface MediaCacheRepository {
+    suspend fun get(path: String): MediaCacheEntry?
+    suspend fun getAll(): List<MediaCacheEntry>
+    suspend fun set(path: String, mtime: Long, sha1: String, syncedAt: Instant? = null)
+    suspend fun remove(path: String)
+    suspend fun removeAll()
+}
+
 interface LearningPlanRepository {
     fun getAll(): Flow<List<com.lumecard.shared.model.LearningPlan>>
     suspend fun getById(id: String): com.lumecard.shared.model.LearningPlan?

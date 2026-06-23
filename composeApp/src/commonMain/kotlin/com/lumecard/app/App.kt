@@ -6,6 +6,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,7 +31,7 @@ import org.koin.compose.koinInject
 enum class BottomNavItem(val icon: ImageVector) {
     Dashboard(Icons.Default.Home),
     Stats(Icons.Default.DateRange),
-    Warehouse(Icons.Default.List),
+    Warehouse(Icons.AutoMirrored.Filled.List),
     Settings(Icons.Default.Settings)
 }
 

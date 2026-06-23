@@ -168,6 +168,22 @@ class InMemoryReviewLogRepository : ReviewLogRepository {
     }
 }
 
+class InMemoryMediaCacheRepository : MediaCacheRepository {
+    private val cache = mutableMapOf<String, MediaCacheEntry>()
+
+    override suspend fun get(path: String): MediaCacheEntry? = cache[path]
+
+    override suspend fun getAll(): List<MediaCacheEntry> = cache.values.toList()
+
+    override suspend fun set(path: String, mtime: Long, sha1: String, syncedAt: Instant?) {
+        cache[path] = MediaCacheEntry(path, mtime, sha1, syncedAt)
+    }
+
+    override suspend fun remove(path: String) { cache.remove(path) }
+
+    override suspend fun removeAll() { cache.clear() }
+}
+
 class InMemoryLearningPlanRepository : LearningPlanRepository {
     private val plans = MutableStateFlow<List<LearningPlan>>(emptyList())
 

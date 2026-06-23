@@ -21,7 +21,9 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.platform.MediaFileEntry
+import com.lumecard.app.platform.hashFileSha1
 import com.lumecard.app.platform.scanMediaDirectory
+import com.lumecard.app.platform.scanMediaDirectoryRaw
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.shared.data.ExportManager
@@ -840,27 +842,29 @@ private suspend fun syncIncrementalData(
         }
     }
 
-    // Always sync media after data sync
+    // Anki-style media sync: cache mtime + SHA-1 to avoid re-hashing unchanged files
     val mediaBase = System.getProperty("lumecard.media.dir") ?: "${System.getProperty("user.home")}/.lumecard/media"
-    val localFiles = scanMediaDirectory(mediaBase)
-    if (localFiles.isNotEmpty()) {
-        val localManifest = MediaManifest(
-            version = 1,
-            entries = localFiles.map { MediaManifestEntry(it.relativePath, it.size, it.hash) }
-        )
+    val rawFiles = scanMediaDirectoryRaw(mediaBase)
+    if (rawFiles.isNotEmpty()) {
+        val resolved = rawFiles.map { raw ->
+            val cachedHash = mediaManager.getCachedHash(raw.relativePath, raw.mtime)
+            if (cachedHash != null) {
+                MediaManifestEntry(raw.relativePath, raw.size, cachedHash)
+            } else {
+                val sha1 = hashFileSha1("$mediaBase/${raw.relativePath}")
+                mediaManager.updateCache(raw.relativePath, raw.mtime, sha1)
+                MediaManifestEntry(raw.relativePath, raw.size, sha1)
+            }
+        }
+
+        val localManifest = MediaManifest(version = 1, entries = resolved)
         syncManager.uploadManifest(config, mediaManager.manifestToJson(localManifest))
 
         val remoteResult = syncManager.downloadManifest(config)
         val remoteManifest = if (remoteResult.isSuccess) mediaManager.manifestFromJson(remoteResult.getOrThrow()) else null
 
-        val needUpload = if (remoteManifest != null) {
-            mediaManager.diffLocalVsRemote(localManifest, remoteManifest)
-        } else {
-            localFiles.map { it.relativePath }
-        }
-
+        val needUpload = mediaManager.filesToUpload(resolved, remoteManifest)
         for (path in needUpload) {
-            val entry = localFiles.find { it.relativePath == path } ?: continue
             val absPath = "$mediaBase/$path"
             try {
                 val data = java.io.File(absPath).readBytes()
