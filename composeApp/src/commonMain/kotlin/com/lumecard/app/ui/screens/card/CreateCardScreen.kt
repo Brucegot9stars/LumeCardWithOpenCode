@@ -20,8 +20,9 @@ import com.lumecard.app.platform.getMediaBasePath
 import com.lumecard.app.platform.pasteClipboardMedia
 import com.lumecard.app.platform.pickMediaFile
 import com.lumecard.app.platform.saveMediaFile
-import com.lumecard.app.ui.components.MarkdownText
 import com.lumecard.app.ui.components.RichTextCardEditor
+import com.lumecard.app.ui.components.MarkdownText
+import com.mohamedrejeb.richeditor.model.RichTextState
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
 import com.lumecard.app.i18n.I18nManager
@@ -52,6 +53,8 @@ class CreateCardScreen(
         var showTypeMenu by remember { mutableStateOf(false) }
         var showTypeHelp by remember { mutableStateOf(true) }
         val isEditing = editCard != null
+        var frontRichState by remember { mutableStateOf<RichTextState?>(null) }
+        var backRichState by remember { mutableStateOf<RichTextState?>(null) }
 
         Scaffold(
             topBar = {
@@ -61,19 +64,21 @@ class CreateCardScreen(
                     action = {
                         IconButton(
                             onClick = {
+                                val saveFront = if (cardType == CardType.RICH_TEXT) (frontRichState?.toHtml() ?: front) else front
+                                val saveBack = if (cardType == CardType.RICH_TEXT) (backRichState?.toHtml() ?: back) else back
                                 if (isEditing) {
                                     viewModel.updateCard(
                                         card = editCard,
-                                        front = front,
-                                        back = back,
+                                        front = saveFront,
+                                        back = saveBack,
                                         type = cardType,
                                         tags = tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
                                     )
                                 } else {
                                     viewModel.createCard(
                                         deckId = deckId,
-                                        front = front,
-                                        back = back,
+                                        front = saveFront,
+                                        back = saveBack,
                                         type = cardType,
                                         tags = tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
                                     )
@@ -125,7 +130,8 @@ class CreateCardScreen(
                     front = front,
                     onFrontChange = { front = it },
                     back = back,
-                    onBackChange = { back = it }
+                    onBackChange = { back = it },
+                    onRichTextStatesReady = { f, b -> frontRichState = f; backRichState = b }
                 )
 
                 OutlinedTextField(
@@ -205,7 +211,8 @@ private fun CardTypeInput(
     front: String,
     onFrontChange: (String) -> Unit,
     back: String,
-    onBackChange: (String) -> Unit
+    onBackChange: (String) -> Unit,
+    onRichTextStatesReady: ((RichTextState, RichTextState) -> Unit)? = null,
 ) {
     val strings = koinInject<I18nManager>().strings
     when (type) {
@@ -225,6 +232,7 @@ private fun CardTypeInput(
                 back = back, onBackChange = onBackChange,
                 frontLabel = strings.cardFrontLabel,
                 backLabel = strings.cardBackLabel,
+                onStatesReady = onRichTextStatesReady,
             )
         }
         CardType.REVERSED, CardType.MARKDOWN, CardType.AI_GENERATED -> {

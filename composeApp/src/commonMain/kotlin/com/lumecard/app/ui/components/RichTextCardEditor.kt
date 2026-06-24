@@ -49,12 +49,17 @@ fun RichTextCardEditor(
     onBackChange: (String) -> Unit,
     frontLabel: String,
     backLabel: String,
+    onStatesReady: ((frontState: RichTextState, backState: RichTextState) -> Unit)? = null,
 ) {
     val strings = koinInject<I18nManager>().strings
     val scope = rememberCoroutineScope()
 
     val frontState = rememberRichTextState()
     val backState = rememberRichTextState()
+
+    LaunchedEffect(Unit) {
+        onStatesReady?.invoke(frontState, backState)
+    }
 
     val frontHtml = remember(front) {
         if (front.contains("<") && front.contains(">")) front
@@ -71,13 +76,11 @@ fun RichTextCardEditor(
 
     LaunchedEffect(frontState) {
         snapshotFlow { frontState.toHtml() }
-            .drop(1)
             .sample(300)
             .collectLatest { html -> onFrontChange(html) }
     }
     LaunchedEffect(backState) {
         snapshotFlow { backState.toHtml() }
-            .drop(1)
             .sample(300)
             .collectLatest { html -> onBackChange(html) }
     }
