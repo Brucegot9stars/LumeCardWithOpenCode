@@ -155,7 +155,18 @@ private fun RichTextToolbar(
     fun toggleStyleOnSelection(style: SpanStyle) {
         if (savedSelection.collapsed) return
         state.selection = savedSelection
-        runCatching { state.toggleSpanStyle(style) }
+        val cs = state.currentSpanStyle
+        val hasStyle = when {
+            style.fontWeight != null -> cs.fontWeight == style.fontWeight
+            style.fontStyle != null -> cs.fontStyle == style.fontStyle
+            style.textDecoration != null -> cs.textDecoration == style.textDecoration
+            else -> false
+        }
+        if (hasStyle) {
+            state.removeSpanStyle(style)
+        } else {
+            state.addSpanStyle(style)
+        }
     }
 
     Row(
@@ -254,10 +265,10 @@ private fun RichTextToolbar(
                             if (!savedSelection.collapsed) {
                                 state.selection = savedSelection
                                 if (c != null) {
-                                    runCatching { state.toggleSpanStyle(SpanStyle(color = c)) }
+                                    state.addSpanStyle(SpanStyle(color = c))
                                     hasExplicitColor = true
                                 } else {
-                                    runCatching { state.removeSpanStyle(SpanStyle(color = Color.Unspecified)) }
+                                    state.removeSpanStyle(SpanStyle(color = Color.Unspecified))
                                     hasExplicitColor = false
                                 }
                             }
@@ -292,7 +303,7 @@ private fun RichTextToolbar(
                         onClick = {
                             if (!savedSelection.collapsed) {
                                 state.selection = savedSelection
-                                runCatching { state.toggleSpanStyle(SpanStyle(fontSize = size.sp)) }
+                                state.addSpanStyle(SpanStyle(fontSize = size.sp))
                             }
                             showFontSizeMenu = false
                         },
