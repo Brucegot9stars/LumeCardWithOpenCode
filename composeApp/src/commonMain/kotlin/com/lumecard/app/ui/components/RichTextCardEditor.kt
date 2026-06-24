@@ -153,13 +153,9 @@ private fun RichTextToolbar(
     }
 
     fun toggleStyleOnSelection(style: SpanStyle) {
+        if (savedSelection.collapsed) return
         state.selection = savedSelection
-        state.toggleSpanStyle(style)
-    }
-
-    fun applyStyleOnSelection(style: SpanStyle) {
-        state.selection = savedSelection
-        state.toggleSpanStyle(style)
+        runCatching { state.toggleSpanStyle(style) }
     }
 
     Row(
@@ -255,13 +251,15 @@ private fun RichTextToolbar(
                             }
                         },
                         onClick = {
-                            state.selection = savedSelection
-                            if (c != null) {
-                                state.toggleSpanStyle(SpanStyle(color = c))
-                                hasExplicitColor = true
-                            } else {
-                                state.removeSpanStyle(SpanStyle(color = Color.Unspecified))
-                                hasExplicitColor = false
+                            if (!savedSelection.collapsed) {
+                                state.selection = savedSelection
+                                if (c != null) {
+                                    runCatching { state.toggleSpanStyle(SpanStyle(color = c)) }
+                                    hasExplicitColor = true
+                                } else {
+                                    runCatching { state.removeSpanStyle(SpanStyle(color = Color.Unspecified)) }
+                                    hasExplicitColor = false
+                                }
                             }
                             showColorPicker = false
                         },
@@ -292,7 +290,10 @@ private fun RichTextToolbar(
                     DropdownMenuItem(
                         text = { Text(strings.editorFontSizePx(size), fontSize = 13.sp) },
                         onClick = {
-                            applyStyleOnSelection(SpanStyle(fontSize = size.sp))
+                            if (!savedSelection.collapsed) {
+                                state.selection = savedSelection
+                                runCatching { state.toggleSpanStyle(SpanStyle(fontSize = size.sp)) }
+                            }
                             showFontSizeMenu = false
                         },
                     )
