@@ -433,7 +433,7 @@ class StudyScreen(
                                     containerColor = when {
                                         swipeOffset.value > 10f -> MaterialTheme.colorScheme.primaryContainer
                                         swipeOffset.value < -10f -> MaterialTheme.colorScheme.secondaryContainer
-                                        isFlipped -> MaterialTheme.colorScheme.secondaryContainer
+                                        isFlipped -> MaterialTheme.colorScheme.surface
                                         else -> MaterialTheme.colorScheme.surface
                                     }
                                 )

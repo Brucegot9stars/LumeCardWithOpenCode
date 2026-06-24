@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.text.TextRange
 import com.lumecard.app.i18n.I18nManager
 import com.mohamedrejeb.richeditor.model.rememberRichTextState
 import com.mohamedrejeb.richeditor.model.RichTextState
@@ -129,6 +130,13 @@ private fun RichTextToolbar(
 
     var showColorPicker by remember { mutableStateOf(false) }
     var showFontSizeMenu by remember { mutableStateOf(false) }
+    var savedSelection by remember { mutableStateOf(TextRange(0)) }
+
+    fun saveAndApply(action: () -> Unit) {
+        savedSelection = state.selection
+        action()
+        state.selection = savedSelection
+    }
 
     Row(
         modifier = Modifier
@@ -139,20 +147,22 @@ private fun RichTextToolbar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         ToolbarButton(
-            onClick = { state.toggleSpanStyle(SpanStyle(fontWeight = FontWeight.Bold)) },
+            onClick = { saveAndApply { state.toggleSpanStyle(SpanStyle(fontWeight = FontWeight.Bold)) } },
             selected = isBold,
             icon = { Text("B", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp) },
         )
         ToolbarButton(
-            onClick = { state.toggleSpanStyle(SpanStyle(fontStyle = FontStyle.Italic)) },
+            onClick = { saveAndApply { state.toggleSpanStyle(SpanStyle(fontStyle = FontStyle.Italic)) } },
             selected = isItalic,
             icon = { Text("I", fontStyle = FontStyle.Italic, fontSize = 14.sp) },
         )
         ToolbarButton(
             onClick = {
-                state.toggleSpanStyle(
-                    SpanStyle(textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline)
-                )
+                saveAndApply {
+                    state.toggleSpanStyle(
+                        SpanStyle(textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline)
+                    )
+                }
             },
             selected = isUnderline,
             icon = { Text("U", fontSize = 14.sp) },
@@ -161,7 +171,10 @@ private fun RichTextToolbar(
         Spacer(Modifier.width(4.dp))
         Box {
             ToolbarButton(
-                onClick = { showColorPicker = true },
+                onClick = {
+                    savedSelection = state.selection
+                    showColorPicker = true
+                },
                 selected = false,
                 icon = {
                     Box(
@@ -186,16 +199,16 @@ private fun RichTextToolbar(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(
                                     modifier = Modifier
-                                        .size(20.dp)
+                                        .size(24.dp)
                                         .then(
                                             if (c != null) Modifier.background(c, CircleShape)
-                                            else Modifier
+                                            else Modifier.background(MaterialTheme.colorScheme.surface, CircleShape)
                                         )
-                                        .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape),
+                                        .border(1.5.dp, MaterialTheme.colorScheme.outline, CircleShape),
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     if (c == null) {
-                                        Text("/", fontSize = 10.sp)
+                                        Text("/", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface)
                                     }
                                 }
                                 Spacer(Modifier.width(8.dp))
@@ -217,6 +230,7 @@ private fun RichTextToolbar(
                             }
                         },
                         onClick = {
+                            state.selection = savedSelection
                             if (c != null) {
                                 state.toggleSpanStyle(SpanStyle(color = c))
                             } else {
@@ -232,7 +246,10 @@ private fun RichTextToolbar(
         Spacer(Modifier.width(4.dp))
         Box {
             ToolbarButton(
-                onClick = { showFontSizeMenu = true },
+                onClick = {
+                    savedSelection = state.selection
+                    showFontSizeMenu = true
+                },
                 selected = false,
                 icon = {
                     Text(
@@ -249,6 +266,7 @@ private fun RichTextToolbar(
                     DropdownMenuItem(
                         text = { Text(strings.editorFontSizePx(size), fontSize = 13.sp) },
                         onClick = {
+                            state.selection = savedSelection
                             state.toggleSpanStyle(SpanStyle(fontSize = size.sp))
                             showFontSizeMenu = false
                         },
