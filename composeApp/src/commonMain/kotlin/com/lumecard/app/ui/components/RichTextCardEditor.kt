@@ -160,16 +160,12 @@ private fun RichTextToolbar(
 
     fun toggleStyleOnSelection(style: SpanStyle, check: (SpanStyle) -> Boolean) {
         state.selection = savedSelection
-        if (hasStyleInSelection(check)) {
-            state.removeSpanStyle(style, savedSelection)
-        } else {
-            state.addSpanStyle(style, savedSelection)
-        }
+        state.toggleSpanStyle(style)
     }
 
     fun applyStyleOnSelection(style: SpanStyle) {
         state.selection = savedSelection
-        state.addSpanStyle(style, savedSelection)
+        state.toggleSpanStyle(style)
     }
 
     Row(
@@ -273,10 +269,10 @@ private fun RichTextToolbar(
                         onClick = {
                             state.selection = savedSelection
                             if (c != null) {
-                                state.addSpanStyle(SpanStyle(color = c), savedSelection)
+                                state.toggleSpanStyle(SpanStyle(color = c))
                                 hasExplicitColor = true
                             } else {
-                                state.removeSpanStyle(SpanStyle(color = Color.Unspecified), savedSelection)
+                                state.removeSpanStyle(SpanStyle(color = Color.Unspecified))
                                 hasExplicitColor = false
                             }
                             showColorPicker = false
