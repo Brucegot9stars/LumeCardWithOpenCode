@@ -40,6 +40,18 @@ private val presetColors = listOf(
     Color(0xFF455A64),
 )
 
+private val presetColorNames = listOf(
+    "none",
+    "red",
+    "blue",
+    "green",
+    "orange",
+    "purple",
+    "teal",
+    "brown",
+    "gray",
+)
+
 private val presetFontSizes = listOf(12, 14, 16, 18, 20, 24, 30, 36)
 
 @Composable
@@ -132,10 +144,28 @@ private fun RichTextToolbar(
     var showFontSizeMenu by remember { mutableStateOf(false) }
     var savedSelection by remember { mutableStateOf(TextRange(0)) }
 
-    fun saveAndApply(action: () -> Unit) {
+    fun saveSelection() {
         savedSelection = state.selection
-        action()
+    }
+
+    fun hasStyleInSelection(check: (SpanStyle) -> Boolean): Boolean {
+        if (savedSelection.collapsed) return false
+        val rangeStyle = state.getSpanStyle(savedSelection)
+        return check(rangeStyle)
+    }
+
+    fun toggleStyleOnSelection(style: SpanStyle, check: (SpanStyle) -> Boolean) {
         state.selection = savedSelection
+        if (hasStyleInSelection(check)) {
+            state.removeSpanStyle(style, savedSelection)
+        } else {
+            state.addSpanStyle(style, savedSelection)
+        }
+    }
+
+    fun applyStyleOnSelection(style: SpanStyle) {
+        state.selection = savedSelection
+        state.addSpanStyle(style, savedSelection)
     }
 
     Row(
@@ -147,22 +177,31 @@ private fun RichTextToolbar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         ToolbarButton(
-            onClick = { saveAndApply { state.toggleSpanStyle(SpanStyle(fontWeight = FontWeight.Bold)) } },
+            onClick = {
+                saveSelection()
+                toggleStyleOnSelection(
+                    SpanStyle(fontWeight = FontWeight.Bold)
+                ) { it.fontWeight == FontWeight.Bold }
+            },
             selected = isBold,
             icon = { Text("B", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp) },
         )
         ToolbarButton(
-            onClick = { saveAndApply { state.toggleSpanStyle(SpanStyle(fontStyle = FontStyle.Italic)) } },
+            onClick = {
+                saveSelection()
+                toggleStyleOnSelection(
+                    SpanStyle(fontStyle = FontStyle.Italic)
+                ) { it.fontStyle == FontStyle.Italic }
+            },
             selected = isItalic,
             icon = { Text("I", fontStyle = FontStyle.Italic, fontSize = 14.sp) },
         )
         ToolbarButton(
             onClick = {
-                saveAndApply {
-                    state.toggleSpanStyle(
-                        SpanStyle(textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline)
-                    )
-                }
+                saveSelection()
+                toggleStyleOnSelection(
+                    SpanStyle(textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline)
+                ) { it.textDecoration == androidx.compose.ui.text.style.TextDecoration.Underline }
             },
             selected = isUnderline,
             icon = { Text("U", fontSize = 14.sp) },
@@ -172,18 +211,19 @@ private fun RichTextToolbar(
         Box {
             ToolbarButton(
                 onClick = {
-                    savedSelection = state.selection
+                    saveSelection()
                     showColorPicker = true
                 },
                 selected = false,
                 icon = {
                     Box(
                         modifier = Modifier
-                            .size(16.dp)
+                            .size(18.dp)
                             .background(
                                 currentStyle.color ?: MaterialTheme.colorScheme.onSurface,
                                 CircleShape
                             )
+                            .border(2.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f), CircleShape)
                     )
                 },
             )
@@ -192,49 +232,49 @@ private fun RichTextToolbar(
                 onDismissRequest = { showColorPicker = false },
             ) {
                 Text(strings.editorColorTitle, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp))
-                presetColors.forEach { color ->
+                presetColors.forEachIndexed { index, color ->
                     val c = color
                     DropdownMenuItem(
                         text = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(
                                     modifier = Modifier
-                                        .size(24.dp)
+                                        .size(28.dp)
                                         .then(
                                             if (c != null) Modifier.background(c, CircleShape)
                                             else Modifier.background(MaterialTheme.colorScheme.surface, CircleShape)
                                         )
-                                        .border(1.5.dp, MaterialTheme.colorScheme.outline, CircleShape),
+                                        .border(2.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.6f), CircleShape),
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     if (c == null) {
-                                        Text("/", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface)
+                                        Text("\u2715", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 }
-                                Spacer(Modifier.width(8.dp))
+                                Spacer(Modifier.width(12.dp))
                                 Text(
-                                    when (c) {
-                                        null -> strings.editorColorNone
-                                        Color(0xFFD32F2F) -> strings.editorColorRed
-                                        Color(0xFF1976D2) -> strings.editorColorBlue
-                                        Color(0xFF388E3C) -> strings.editorColorGreen
-                                        Color(0xFFF57C00) -> strings.editorColorOrange
-                                        Color(0xFF7B1FA2) -> strings.editorColorPurple
-                                        Color(0xFF00796B) -> strings.editorColorTeal
-                                        Color(0xFF5D4037) -> strings.editorColorBrown
-                                        Color(0xFF455A64) -> strings.editorColorGray
+                                    when (presetColorNames[index]) {
+                                        "none" -> strings.editorColorNone
+                                        "red" -> strings.editorColorRed
+                                        "blue" -> strings.editorColorBlue
+                                        "green" -> strings.editorColorGreen
+                                        "orange" -> strings.editorColorOrange
+                                        "purple" -> strings.editorColorPurple
+                                        "teal" -> strings.editorColorTeal
+                                        "brown" -> strings.editorColorBrown
+                                        "gray" -> strings.editorColorGray
                                         else -> strings.editorColorCustom
                                     },
-                                    fontSize = 13.sp,
+                                    fontSize = 14.sp,
                                 )
                             }
                         },
                         onClick = {
                             state.selection = savedSelection
                             if (c != null) {
-                                state.toggleSpanStyle(SpanStyle(color = c))
+                                state.addSpanStyle(SpanStyle(color = c), savedSelection)
                             } else {
-                                state.toggleSpanStyle(SpanStyle(color = Color.Unspecified))
+                                state.removeSpanStyle(SpanStyle(color = Color.Unspecified), savedSelection)
                             }
                             showColorPicker = false
                         },
@@ -247,7 +287,7 @@ private fun RichTextToolbar(
         Box {
             ToolbarButton(
                 onClick = {
-                    savedSelection = state.selection
+                    saveSelection()
                     showFontSizeMenu = true
                 },
                 selected = false,
@@ -266,8 +306,7 @@ private fun RichTextToolbar(
                     DropdownMenuItem(
                         text = { Text(strings.editorFontSizePx(size), fontSize = 13.sp) },
                         onClick = {
-                            state.selection = savedSelection
-                            state.toggleSpanStyle(SpanStyle(fontSize = size.sp))
+                            applyStyleOnSelection(SpanStyle(fontSize = size.sp))
                             showFontSizeMenu = false
                         },
                     )
