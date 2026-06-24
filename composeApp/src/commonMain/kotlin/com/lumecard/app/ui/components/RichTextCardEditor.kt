@@ -143,6 +143,7 @@ private fun RichTextToolbar(
     var showColorPicker by remember { mutableStateOf(false) }
     var showFontSizeMenu by remember { mutableStateOf(false) }
     var savedSelection by remember { mutableStateOf(TextRange(0)) }
+    var hasExplicitColor by remember { mutableStateOf(false) }
 
     fun saveSelection() {
         savedSelection = state.selection
@@ -216,15 +217,16 @@ private fun RichTextToolbar(
                 },
                 selected = false,
                 icon = {
-                    Box(
-                        modifier = Modifier
-                            .size(18.dp)
-                            .background(
-                                currentStyle.color ?: MaterialTheme.colorScheme.onSurface,
-                                CircleShape
-                            )
-                            .border(2.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f), CircleShape)
-                    )
+                    if (hasExplicitColor) {
+                        Box(
+                            modifier = Modifier
+                                .size(18.dp)
+                                .background(currentStyle.color, CircleShape)
+                                .border(2.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f), CircleShape)
+                        )
+                    } else {
+                        Text("\uD83C\uDFA8", fontSize = 16.sp)
+                    }
                 },
             )
             DropdownMenu(
@@ -273,8 +275,10 @@ private fun RichTextToolbar(
                             state.selection = savedSelection
                             if (c != null) {
                                 state.addSpanStyle(SpanStyle(color = c), savedSelection)
+                                hasExplicitColor = true
                             } else {
                                 state.removeSpanStyle(SpanStyle(color = Color.Unspecified), savedSelection)
+                                hasExplicitColor = false
                             }
                             showColorPicker = false
                         },
