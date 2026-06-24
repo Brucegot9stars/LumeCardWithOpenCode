@@ -10,15 +10,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.text.TextRange
 import com.lumecard.app.i18n.I18nManager
 import com.mohamedrejeb.richeditor.model.rememberRichTextState
 import com.mohamedrejeb.richeditor.model.RichTextState
@@ -69,6 +70,8 @@ fun RichTextCardEditor(
 
     val frontState = rememberRichTextState()
     val backState = rememberRichTextState()
+    var frontSavedSelection by remember { mutableStateOf(TextRange(0)) }
+    var backSavedSelection by remember { mutableStateOf(TextRange(0)) }
 
     LaunchedEffect(Unit) {
         onStatesReady?.invoke(frontState, backState)
@@ -99,12 +102,13 @@ fun RichTextCardEditor(
     }
 
     Text(frontLabel, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-    RichTextToolbar(state = frontState)
+    RichTextToolbar(state = frontState, savedSelection = frontSavedSelection)
     RichTextEditor(
         state = frontState,
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 150.dp)
+            .onFocusChanged { if (!it.isFocused) frontSavedSelection = frontState.selection }
             .border(
                 1.dp,
                 MaterialTheme.colorScheme.outline,
@@ -115,12 +119,13 @@ fun RichTextCardEditor(
 
     Spacer(Modifier.height(8.dp))
     Text(backLabel, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-    RichTextToolbar(state = backState)
+    RichTextToolbar(state = backState, savedSelection = backSavedSelection)
     RichTextEditor(
         state = backState,
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 150.dp)
+            .onFocusChanged { if (!it.isFocused) backSavedSelection = backState.selection }
             .border(
                 1.dp,
                 MaterialTheme.colorScheme.outline,
@@ -133,6 +138,7 @@ fun RichTextCardEditor(
 @Composable
 private fun RichTextToolbar(
     state: RichTextState,
+    savedSelection: TextRange,
 ) {
     val strings = koinInject<I18nManager>().strings
     val currentStyle = state.currentSpanStyle
@@ -142,12 +148,7 @@ private fun RichTextToolbar(
 
     var showColorPicker by remember { mutableStateOf(false) }
     var showFontSizeMenu by remember { mutableStateOf(false) }
-    var savedSelection by remember { mutableStateOf(TextRange(0)) }
     var hasExplicitColor by remember { mutableStateOf(false) }
-
-    fun saveSelection() {
-        savedSelection = state.selection
-    }
 
     fun hasStyleInSelection(check: (SpanStyle) -> Boolean): Boolean {
         if (savedSelection.collapsed) return false
@@ -179,7 +180,6 @@ private fun RichTextToolbar(
     ) {
         ToolbarButton(
             onClick = {
-                saveSelection()
                 toggleStyleOnSelection(
                     SpanStyle(fontWeight = FontWeight.Bold)
                 ) { it.fontWeight == FontWeight.Bold }
@@ -189,7 +189,6 @@ private fun RichTextToolbar(
         )
         ToolbarButton(
             onClick = {
-                saveSelection()
                 toggleStyleOnSelection(
                     SpanStyle(fontStyle = FontStyle.Italic)
                 ) { it.fontStyle == FontStyle.Italic }
@@ -199,7 +198,6 @@ private fun RichTextToolbar(
         )
         ToolbarButton(
             onClick = {
-                saveSelection()
                 toggleStyleOnSelection(
                     SpanStyle(textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline)
                 ) { it.textDecoration == androidx.compose.ui.text.style.TextDecoration.Underline }
@@ -212,7 +210,6 @@ private fun RichTextToolbar(
         Box {
             ToolbarButton(
                 onClick = {
-                    saveSelection()
                     showColorPicker = true
                 },
                 selected = false,
@@ -291,7 +288,6 @@ private fun RichTextToolbar(
         Box {
             ToolbarButton(
                 onClick = {
-                    saveSelection()
                     showFontSizeMenu = true
                 },
                 selected = false,
