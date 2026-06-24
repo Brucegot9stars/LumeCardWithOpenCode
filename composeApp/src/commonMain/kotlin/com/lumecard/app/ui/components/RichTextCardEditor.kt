@@ -23,6 +23,7 @@ import com.mohamedrejeb.richeditor.model.rememberRichTextState
 import com.mohamedrejeb.richeditor.model.RichTextState
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditor
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.dropWhile
 import kotlinx.coroutines.flow.sample
 import org.koin.compose.koinInject
 
@@ -63,25 +64,20 @@ fun RichTextCardEditor(
         if (back.contains("<") && back.contains(">")) back
         else "<p>${back.replace("\n", "<br>")}</p>"
     }
-    var frontReady by remember { mutableStateOf(false) }
-    var backReady by remember { mutableStateOf(false) }
-
     LaunchedEffect(Unit) {
         if (frontHtml.isNotBlank()) frontState.setHtml(frontHtml)
         if (backHtml.isNotBlank()) backState.setHtml(backHtml)
-        frontReady = true
-        backReady = true
     }
 
-    LaunchedEffect(frontReady) {
-        if (!frontReady) return@LaunchedEffect
+    LaunchedEffect(frontState) {
         snapshotFlow { frontState.toHtml() }
+            .dropWhile { it.isBlank() }
             .sample(300)
             .collectLatest { html -> onFrontChange(html) }
     }
-    LaunchedEffect(backReady) {
-        if (!backReady) return@LaunchedEffect
+    LaunchedEffect(backState) {
         snapshotFlow { backState.toHtml() }
+            .dropWhile { it.isBlank() }
             .sample(300)
             .collectLatest { html -> onBackChange(html) }
     }
