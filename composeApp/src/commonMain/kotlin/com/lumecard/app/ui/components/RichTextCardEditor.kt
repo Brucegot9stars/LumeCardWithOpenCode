@@ -63,17 +63,24 @@ fun RichTextCardEditor(
         if (back.contains("<") && back.contains(">")) back
         else "<p>${back.replace("\n", "<br>")}</p>"
     }
+    var frontReady by remember { mutableStateOf(false) }
+    var backReady by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         if (frontHtml.isNotBlank()) frontState.setHtml(frontHtml)
         if (backHtml.isNotBlank()) backState.setHtml(backHtml)
+        frontReady = true
+        backReady = true
     }
 
-    LaunchedEffect(frontState) {
+    LaunchedEffect(frontReady) {
+        if (!frontReady) return@LaunchedEffect
         snapshotFlow { frontState.toHtml() }
             .sample(300)
             .collectLatest { html -> onFrontChange(html) }
     }
-    LaunchedEffect(backState) {
+    LaunchedEffect(backReady) {
+        if (!backReady) return@LaunchedEffect
         snapshotFlow { backState.toHtml() }
             .sample(300)
             .collectLatest { html -> onBackChange(html) }

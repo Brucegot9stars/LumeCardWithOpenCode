@@ -203,8 +203,14 @@ fun CardItem(
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
+                val displayFront = remember(card.front) {
+                    val t = card.front
+                    if (t.contains("<") && t.contains(">"))
+                        t.replace(Regex("<[^>]+>"), "").trim()
+                    else t
+                }
                 Text(
-                    card.front,
+                    displayFront,
                     style = MaterialTheme.typography.bodyLarge,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
