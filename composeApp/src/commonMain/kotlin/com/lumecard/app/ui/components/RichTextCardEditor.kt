@@ -10,7 +10,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
@@ -70,8 +69,6 @@ fun RichTextCardEditor(
 
     val frontState = rememberRichTextState()
     val backState = rememberRichTextState()
-    var frontSavedSelection by remember { mutableStateOf(TextRange(0)) }
-    var backSavedSelection by remember { mutableStateOf(TextRange(0)) }
 
     LaunchedEffect(Unit) {
         onStatesReady?.invoke(frontState, backState)
@@ -102,13 +99,12 @@ fun RichTextCardEditor(
     }
 
     Text(frontLabel, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-    RichTextToolbar(state = frontState, savedSelection = frontSavedSelection)
+    RichTextToolbar(state = frontState)
     RichTextEditor(
         state = frontState,
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 150.dp)
-            .onFocusChanged { if (!it.isFocused) frontSavedSelection = frontState.selection }
             .border(
                 1.dp,
                 MaterialTheme.colorScheme.outline,
@@ -119,13 +115,12 @@ fun RichTextCardEditor(
 
     Spacer(Modifier.height(8.dp))
     Text(backLabel, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-    RichTextToolbar(state = backState, savedSelection = backSavedSelection)
+    RichTextToolbar(state = backState)
     RichTextEditor(
         state = backState,
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 150.dp)
-            .onFocusChanged { if (!it.isFocused) backSavedSelection = backState.selection }
             .border(
                 1.dp,
                 MaterialTheme.colorScheme.outline,
@@ -138,7 +133,6 @@ fun RichTextCardEditor(
 @Composable
 private fun RichTextToolbar(
     state: RichTextState,
-    savedSelection: TextRange,
 ) {
     val strings = koinInject<I18nManager>().strings
     val currentStyle = state.currentSpanStyle
@@ -149,6 +143,14 @@ private fun RichTextToolbar(
     var showColorPicker by remember { mutableStateOf(false) }
     var showFontSizeMenu by remember { mutableStateOf(false) }
     var hasExplicitColor by remember { mutableStateOf(false) }
+    var savedSelection by remember { mutableStateOf(TextRange(0)) }
+
+    LaunchedEffect(state.selection) {
+        val sel = state.selection
+        if (!sel.collapsed) {
+            savedSelection = sel
+        }
+    }
 
     fun hasStyleInSelection(check: (SpanStyle) -> Boolean): Boolean {
         if (savedSelection.collapsed) return false

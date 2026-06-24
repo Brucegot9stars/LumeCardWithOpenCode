@@ -432,6 +432,14 @@ private fun parseStyleAttribute(tag: String): SpanStyle {
 
 private fun parseHtmlColor(value: String): Color? {
     val v = value.trim()
+    val rgbMatch = Regex("""rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)""").find(v)
+    if (rgbMatch != null) {
+        val r = rgbMatch.groupValues[1].toIntOrNull() ?: return null
+        val g = rgbMatch.groupValues[2].toIntOrNull() ?: return null
+        val b = rgbMatch.groupValues[3].toIntOrNull() ?: return null
+        val a = rgbMatch.groupValues[4].toFloatOrNull() ?: 1f
+        return Color(r / 255f, g / 255f, b / 255f, a.coerceIn(0f, 1f))
+    }
     if (v.startsWith("#")) {
         val hex = v.removePrefix("#")
         val rgb = hex.toLongOrNull(16) ?: return null
