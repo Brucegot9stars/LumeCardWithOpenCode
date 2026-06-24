@@ -152,13 +152,7 @@ private fun RichTextToolbar(
         }
     }
 
-    fun hasStyleInSelection(check: (SpanStyle) -> Boolean): Boolean {
-        if (savedSelection.collapsed) return false
-        val rangeStyle = state.getSpanStyle(savedSelection)
-        return check(rangeStyle)
-    }
-
-    fun toggleStyleOnSelection(style: SpanStyle, check: (SpanStyle) -> Boolean) {
+    fun toggleStyleOnSelection(style: SpanStyle) {
         state.selection = savedSelection
         state.toggleSpanStyle(style)
     }
@@ -178,27 +172,21 @@ private fun RichTextToolbar(
     ) {
         ToolbarButton(
             onClick = {
-                toggleStyleOnSelection(
-                    SpanStyle(fontWeight = FontWeight.Bold)
-                ) { it.fontWeight == FontWeight.Bold }
+                toggleStyleOnSelection(SpanStyle(fontWeight = FontWeight.Bold))
             },
             selected = isBold,
             icon = { Text("B", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp) },
         )
         ToolbarButton(
             onClick = {
-                toggleStyleOnSelection(
-                    SpanStyle(fontStyle = FontStyle.Italic)
-                ) { it.fontStyle == FontStyle.Italic }
+                toggleStyleOnSelection(SpanStyle(fontStyle = FontStyle.Italic))
             },
             selected = isItalic,
             icon = { Text("I", fontStyle = FontStyle.Italic, fontSize = 14.sp) },
         )
         ToolbarButton(
             onClick = {
-                toggleStyleOnSelection(
-                    SpanStyle(textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline)
-                ) { it.textDecoration == androidx.compose.ui.text.style.TextDecoration.Underline }
+                toggleStyleOnSelection(SpanStyle(textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline))
             },
             selected = isUnderline,
             icon = { Text("U", fontSize = 14.sp) },
