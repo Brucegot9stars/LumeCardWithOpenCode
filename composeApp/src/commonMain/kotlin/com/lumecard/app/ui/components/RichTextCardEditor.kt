@@ -23,7 +23,7 @@ import com.mohamedrejeb.richeditor.model.rememberRichTextState
 import com.mohamedrejeb.richeditor.model.RichTextState
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditor
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.dropWhile
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.sample
 import org.koin.compose.koinInject
 
@@ -71,13 +71,13 @@ fun RichTextCardEditor(
 
     LaunchedEffect(frontState) {
         snapshotFlow { frontState.toHtml() }
-            .dropWhile { it.isBlank() }
+            .drop(1)
             .sample(300)
             .collectLatest { html -> onFrontChange(html) }
     }
     LaunchedEffect(backState) {
         snapshotFlow { backState.toHtml() }
-            .dropWhile { it.isBlank() }
+            .drop(1)
             .sample(300)
             .collectLatest { html -> onBackChange(html) }
     }
