@@ -89,7 +89,10 @@ class CardViewModel(
         front: String,
         back: String,
         type: CardType = CardType.BASIC,
-        tags: List<String> = emptyList()
+        tags: List<String> = emptyList(),
+        horizontalCenter: Boolean = false,
+        verticalCenter: Boolean = false,
+        fontSize: Int = 16,
     ) {
         if (front.isBlank() || back.isBlank()) return
 
@@ -100,7 +103,12 @@ class CardViewModel(
                 type = type,
                 front = front,
                 back = back,
-                tags = tags
+                tags = tags,
+                metadata = mutableMapOf<String, String>().apply {
+                    if (horizontalCenter) put("hcenter", "true")
+                    if (verticalCenter) put("vcenter", "true")
+                    put("fontSize", fontSize.toString())
+                }
             )
             cardRepository.insert(card)
         }
@@ -111,7 +119,10 @@ class CardViewModel(
         front: String,
         back: String,
         type: CardType,
-        tags: List<String>
+        tags: List<String>,
+        horizontalCenter: Boolean = false,
+        verticalCenter: Boolean = false,
+        fontSize: Int = 16,
     ) {
         screenModelScope.launch {
             val updated = card.copy(
@@ -119,6 +130,11 @@ class CardViewModel(
                 back = back,
                 type = type,
                 tags = tags,
+                metadata = card.metadata + mutableMapOf<String, String>().apply {
+                    if (horizontalCenter) put("hcenter", "true")
+                    if (verticalCenter) put("vcenter", "true")
+                    put("fontSize", fontSize.toString())
+                },
                 updatedAt = Clock.System.now()
             )
             cardRepository.update(updated)

@@ -293,28 +293,6 @@ class SettingsScreen : Screen {
                             }
                         },
                     )
-                    HorizontalDivider()
-                    ListItem(
-                        headlineContent = { Text(strings.settingsCenterHorizontal) },
-                        supportingContent = { Text(strings.settingsContentCenterDesc) },
-                        trailingContent = {
-                            Switch(
-                                checked = settingsState.contentHorizontalCenter,
-                                onCheckedChange = { settingsViewModel.setContentHorizontalCenter(it) },
-                            )
-                        },
-                    )
-                    HorizontalDivider()
-                    ListItem(
-                        headlineContent = { Text(strings.settingsCenterVertical) },
-                        supportingContent = { Text(strings.settingsContentCenterDesc) },
-                        trailingContent = {
-                            Switch(
-                                checked = settingsState.contentVerticalCenter,
-                                onCheckedChange = { settingsViewModel.setContentVerticalCenter(it) },
-                            )
-                        },
-                    )
                 }
 
                 // === Appearance ===

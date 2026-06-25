@@ -37,6 +37,7 @@ internal fun CardContent(
     displayMode: AnswerDisplayMode,
     horizontalCenter: Boolean = false,
     verticalCenter: Boolean = false,
+    fontSize: Int = 16,
     onConfirmChoice: (() -> Unit)? = null,
 ) {
     val strings = koinInject<I18nManager>().strings
@@ -45,8 +46,8 @@ internal fun CardContent(
             AnswerDisplayMode.FLIP -> {
                 FlipCard(
                     isFlipped = isFlipped,
-                    front = { CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice, horizontalCenter = horizontalCenter) },
-                    back = { CardFace(card, showBack = true, horizontalCenter = horizontalCenter) }
+                    front = { CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice, horizontalCenter = horizontalCenter, fontSize = fontSize) },
+                    back = { CardFace(card, showBack = true, horizontalCenter = horizontalCenter, fontSize = fontSize) }
                 )
             }
             AnswerDisplayMode.SPLIT -> {
@@ -77,7 +78,7 @@ internal fun CardContent(
                         shape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
                     ) {
-                        CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice, horizontalCenter = horizontalCenter)
+                        CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice, horizontalCenter = horizontalCenter, fontSize = fontSize)
                     }
                     Spacer(Modifier.height(16.dp))
                     Surface(
@@ -106,10 +107,10 @@ internal fun CardContent(
                         shape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp),
                         color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.2f)
                     ) {
-                        CardFace(card, showBack = true, horizontalCenter = horizontalCenter)
+                        CardFace(card, showBack = true, horizontalCenter = horizontalCenter, fontSize = fontSize)
                     }
                 } else {
-                    CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice, horizontalCenter = horizontalCenter)
+                    CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice, horizontalCenter = horizontalCenter, fontSize = fontSize)
                 }
             }
         }
@@ -157,6 +158,7 @@ internal fun CardFace(
     showBack: Boolean,
     onConfirmChoice: (() -> Unit)? = null,
     horizontalCenter: Boolean = false,
+    fontSize: Int = 16,
 ) {
     val clozeRegex = remember { Regex("\\{\\{c\\d+::([^}]+)\\}\\}") }
     val clozeHintRegex = remember { Regex("\\{\\{c\\d+::([^}]+)::([^}]+)\\}\\}") }
@@ -171,7 +173,8 @@ internal fun CardFace(
                 Text(
                     text = if (showBack) card.back else card.front,
                     modifier = Modifier.fillMaxWidth(),
-                    textAlign = textAlign
+                    textAlign = textAlign,
+                    fontSize = fontSize.sp,
                 )
             }
             CardType.RICH_TEXT -> {
@@ -182,15 +185,15 @@ internal fun CardFace(
                 MarkdownText(
                     markdown = if (showBack) card.back else card.front,
                     modifier = Modifier.fillMaxWidth(),
-                    textAlign = textAlign
+                    center = true,
                 )
             }
             CardType.CLOZE -> {
                 if (!showBack) {
                     val displayText = card.front.replace(clozeHintRegex, "____").replace(clozeRegex, "____")
-                    Text(displayText, style = MaterialTheme.typography.headlineSmall, textAlign = textAlign, modifier = Modifier.fillMaxWidth())
+                    Text(displayText, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(8.dp))
-                    Text(strings.studyClozeHint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth(), textAlign = textAlign)
+                    Text(strings.studyClozeHint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth())
                 } else {
                     val annotated = buildAnnotatedString {
                         var pos = 0
@@ -207,7 +210,7 @@ internal fun CardFace(
                             append(card.front.substring(pos))
                         }
                     }
-                    Text(annotated, style = MaterialTheme.typography.headlineSmall, textAlign = textAlign, modifier = Modifier.fillMaxWidth())
+                    Text(annotated, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.fillMaxWidth())
                 }
             }
             CardType.MULTIPLE_CHOICE -> {
@@ -229,7 +232,6 @@ internal fun CardFace(
                             modifier = Modifier.fillMaxWidth(),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onTertiaryContainer,
-                            textAlign = textAlign,
                         )
                         Spacer(Modifier.height(12.dp))
                         if (!showBack) {

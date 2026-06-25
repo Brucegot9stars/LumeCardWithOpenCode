@@ -119,7 +119,7 @@ fun App() {
                     }
                     val currentScreen = navigator.lastItemOrNull
                     if (currentScreen?.key != screen.key) {
-                        navigator.replace(screen)
+                        navigator.replaceAll(screen)
                     }
                 }
 

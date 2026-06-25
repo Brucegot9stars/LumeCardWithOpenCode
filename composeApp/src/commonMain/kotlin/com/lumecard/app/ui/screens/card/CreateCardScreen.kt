@@ -12,6 +12,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
@@ -44,6 +46,9 @@ class CreateCardScreen(
         var back by remember { mutableStateOf(editCard?.back ?: "") }
         var cardType by remember { mutableStateOf(editCard?.type ?: CardType.BASIC) }
         var tags by remember { mutableStateOf(editCard?.tags?.joinToString(", ") ?: "") }
+        var horizontalCenter by remember { mutableStateOf(editCard?.metadata?.get("hcenter")?.toBoolean() ?: false) }
+        var verticalCenter by remember { mutableStateOf(editCard?.metadata?.get("vcenter")?.toBoolean() ?: false) }
+        var fontSize by remember { mutableStateOf(editCard?.metadata?.get("fontSize")?.toIntOrNull() ?: 16) }
         var showTypeMenu by remember { mutableStateOf(false) }
         var showTypeHelp by remember { mutableStateOf(true) }
         val isEditing = editCard != null
@@ -63,7 +68,10 @@ class CreateCardScreen(
                                         front = saveFront,
                                         back = saveBack,
                                         type = cardType,
-                                        tags = tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
+                                        tags = tags.split(",").map { it.trim() }.filter { it.isNotBlank() },
+                                        horizontalCenter = horizontalCenter,
+                                        verticalCenter = verticalCenter,
+                                        fontSize = fontSize,
                                     )
                                 } else {
                                     viewModel.createCard(
@@ -71,7 +79,10 @@ class CreateCardScreen(
                                         front = saveFront,
                                         back = saveBack,
                                         type = cardType,
-                                        tags = tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
+                                        tags = tags.split(",").map { it.trim() }.filter { it.isNotBlank() },
+                                        horizontalCenter = horizontalCenter,
+                                        verticalCenter = verticalCenter,
+                                        fontSize = fontSize,
                                     )
                                 }
                                 navigator.pop()
@@ -122,6 +133,12 @@ class CreateCardScreen(
                     onFrontChange = { front = it },
                     back = back,
                     onBackChange = { back = it },
+                    horizontalCenter = horizontalCenter,
+                    verticalCenter = verticalCenter,
+                    onHorizontalCenterChange = { horizontalCenter = it },
+                    onVerticalCenterChange = { verticalCenter = it },
+                    fontSize = fontSize,
+                    onFontSizeChange = { fontSize = it },
                 )
 
                 OutlinedTextField(
@@ -138,11 +155,11 @@ class CreateCardScreen(
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                             Text(strings.cardQuestionLabel, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            CardPreviewContent(text = front, cardType = cardType)
+                            CardPreviewContent(text = front, cardType = cardType, fontSize = fontSize)
                             if (back.isNotBlank()) {
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                                 Text(strings.cardAnswerLabel, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                CardPreviewContent(text = back, cardType = cardType)
+                                CardPreviewContent(text = back, cardType = cardType, fontSize = fontSize)
                             }
                         }
                     }
@@ -202,6 +219,12 @@ private fun CardTypeInput(
     onFrontChange: (String) -> Unit,
     back: String,
     onBackChange: (String) -> Unit,
+    horizontalCenter: Boolean = false,
+    verticalCenter: Boolean = false,
+    onHorizontalCenterChange: ((Boolean) -> Unit)? = null,
+    onVerticalCenterChange: ((Boolean) -> Unit)? = null,
+    fontSize: Int = 16,
+    onFontSizeChange: ((Int) -> Unit)? = null,
 ) {
     val strings = koinInject<I18nManager>().strings
     when (type) {
@@ -212,7 +235,13 @@ private fun CardTypeInput(
                 frontLabel = strings.cardFrontLabel,
                 backLabel = strings.cardBackLabel,
                 frontPlaceholder = strings.cardFrontPlaceholder,
-                backPlaceholder = strings.cardBackPlaceholder
+                backPlaceholder = strings.cardBackPlaceholder,
+                horizontalCenter = horizontalCenter,
+                verticalCenter = verticalCenter,
+                onHorizontalCenterChange = onHorizontalCenterChange,
+                onVerticalCenterChange = onVerticalCenterChange,
+                fontSize = fontSize,
+                onFontSizeChange = onFontSizeChange,
             )
         }
         CardType.RICH_TEXT -> {
@@ -271,7 +300,13 @@ private fun BasicCardFields(
     front: String, onFrontChange: (String) -> Unit,
     back: String, onBackChange: (String) -> Unit,
     frontLabel: String, backLabel: String,
-    frontPlaceholder: String, backPlaceholder: String
+    frontPlaceholder: String, backPlaceholder: String,
+    horizontalCenter: Boolean = false,
+    verticalCenter: Boolean = false,
+    onHorizontalCenterChange: ((Boolean) -> Unit)? = null,
+    onVerticalCenterChange: ((Boolean) -> Unit)? = null,
+    fontSize: Int = 16,
+    onFontSizeChange: ((Int) -> Unit)? = null,
 ) {
     val strings = koinInject<I18nManager>().strings
     Text(frontLabel, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
@@ -288,12 +323,44 @@ private fun BasicCardFields(
         modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
         placeholder = { Text(backPlaceholder) }
     )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(strings.cardHorizontalCenter, style = MaterialTheme.typography.bodyMedium)
+        Switch(checked = horizontalCenter, onCheckedChange = onHorizontalCenterChange)
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(strings.cardVerticalCenter, style = MaterialTheme.typography.bodyMedium)
+        Switch(checked = verticalCenter, onCheckedChange = onVerticalCenterChange)
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(strings.cardFontSize, style = MaterialTheme.typography.bodyMedium)
+        Spacer(Modifier.width(8.dp))
+        Slider(
+            value = fontSize.toFloat(),
+            onValueChange = { onFontSizeChange?.invoke(it.roundToInt()) },
+            valueRange = 12f..120f,
+            steps = 107,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text("${fontSize}sp", style = MaterialTheme.typography.bodySmall)
+    }
 }
 
 @Composable
-private fun CardPreviewContent(text: String, cardType: CardType) {
+private fun CardPreviewContent(text: String, cardType: CardType, fontSize: Int = 16) {
     when (cardType) {
-        CardType.BASIC -> Text(text, modifier = Modifier.fillMaxWidth())
+        CardType.BASIC -> Text(text, modifier = Modifier.fillMaxWidth(), fontSize = fontSize.sp)
         else -> MarkdownText(markdown = text, modifier = Modifier.fillMaxWidth())
     }
 }

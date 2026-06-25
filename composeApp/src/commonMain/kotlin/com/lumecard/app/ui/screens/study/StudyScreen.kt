@@ -366,7 +366,10 @@ class StudyScreen(
                                         modifier = Modifier.fillMaxSize().padding(20.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        CardContent(card = nextCard, isFlipped = false, displayMode = settingsState.answerDisplayMode, horizontalCenter = settingsState.contentHorizontalCenter, verticalCenter = settingsState.contentVerticalCenter)
+                                        val nextHCenter = nextCard.type == CardType.BASIC && nextCard.metadata["hcenter"].toBoolean()
+                                        val nextVCenter = nextCard.type == CardType.BASIC && nextCard.metadata["vcenter"].toBoolean()
+                                        val nextFontSize = nextCard.metadata["fontSize"]?.toIntOrNull() ?: 16
+                                        CardContent(card = nextCard, isFlipped = false, displayMode = settingsState.answerDisplayMode, horizontalCenter = nextHCenter, verticalCenter = nextVCenter, fontSize = nextFontSize)
                                     }
                                 }
                             }
@@ -447,12 +450,16 @@ class StudyScreen(
                                     }
                                 )
                             ) {
+                                        val isBasicCard = currentCard.type == CardType.BASIC
+                                val hCenter = isBasicCard && currentCard.metadata["hcenter"].toBoolean()
+                                val vCenter = isBasicCard && currentCard.metadata["vcenter"].toBoolean()
+                                val fontSize = currentCard.metadata["fontSize"]?.toIntOrNull() ?: 16
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .padding(horizontal = 20.dp, vertical = 12.dp)
-                                        .then(if (settingsState.contentVerticalCenter) Modifier else Modifier.verticalScroll(rememberScrollState())),
-                                    contentAlignment = if (settingsState.contentVerticalCenter) Alignment.Center else Alignment.TopStart
+                                        .then(if (vCenter) Modifier else Modifier.verticalScroll(rememberScrollState())),
+                                    contentAlignment = if (vCenter) Alignment.Center else Alignment.TopStart
                                 ) {
                                     val onConfirmChoice: (() -> Unit)? = remember(currentCard) {
                                         if (currentCard.type == CardType.MULTIPLE_CHOICE) {
@@ -463,8 +470,9 @@ class StudyScreen(
                                         card = currentCard,
                                         isFlipped = isFlipped,
                                         displayMode = settingsState.answerDisplayMode,
-                                        horizontalCenter = settingsState.contentHorizontalCenter,
-                                        verticalCenter = settingsState.contentVerticalCenter,
+                                        horizontalCenter = hCenter,
+                                        verticalCenter = vCenter,
+                                        fontSize = fontSize,
                                         onConfirmChoice = onConfirmChoice,
                                     )
                                 }

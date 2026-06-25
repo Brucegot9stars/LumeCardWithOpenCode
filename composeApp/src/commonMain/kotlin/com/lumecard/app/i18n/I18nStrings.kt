@@ -143,6 +143,9 @@ interface I18nStrings {
     val cardFrontPlaceholder: String
     val cardBackPlaceholder: String
     val cardTags: String
+    val cardHorizontalCenter: String
+    val cardVerticalCenter: String
+    val cardFontSize: String
     val cardTagsPlaceholder: String
     val cardTagsHint: String
     val cardTypeHelp: String
@@ -212,10 +215,6 @@ interface I18nStrings {
     val settingsReviewMode: String
     val settingsAnswerDisplay: String
     val settingsAnswerMode: String
-    val settingsContentCenter: String
-    val settingsContentCenterDesc: String
-    val settingsCenterHorizontal: String
-    val settingsCenterVertical: String
     val settingsAppearance: String
     val settingsDarkMode: String
     val settingsDarkModeDesc: String

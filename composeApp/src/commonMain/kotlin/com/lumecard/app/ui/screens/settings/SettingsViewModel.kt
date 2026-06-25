@@ -28,8 +28,6 @@ class SettingsViewModel(
             state.autoSyncIntervalMinutes = settingsRepository.getInt("auto_sync_interval_minutes", 30)
             val langStr = settingsRepository.get("language") ?: AppLocale.SYSTEM.name
             state.language = try { AppLocale.valueOf(langStr) } catch (_: Exception) { AppLocale.SYSTEM }
-            state.contentHorizontalCenter = settingsRepository.getBoolean("contentHorizontalCenter", false)
-            state.contentVerticalCenter = settingsRepository.getBoolean("contentVerticalCenter", false)
         }
     }
 
@@ -45,8 +43,6 @@ class SettingsViewModel(
             settingsRepository.set("auto_sync_enabled", state.autoSyncEnabled.toString())
             settingsRepository.set("auto_sync_interval_minutes", state.autoSyncIntervalMinutes.toString())
             settingsRepository.set("language", state.language.name)
-            settingsRepository.set("contentHorizontalCenter", state.contentHorizontalCenter.toString())
-            settingsRepository.set("contentVerticalCenter", state.contentVerticalCenter.toString())
             state.markClean()
             state.isSaving = false
         }
@@ -95,16 +91,6 @@ class SettingsViewModel(
 
     fun setAutoSyncInterval(minutes: Int) {
         state.autoSyncIntervalMinutes = minutes.coerceIn(5, 1440)
-        state.markDirty()
-    }
-
-    fun setContentHorizontalCenter(enabled: Boolean) {
-        state.contentHorizontalCenter = enabled
-        state.markDirty()
-    }
-
-    fun setContentVerticalCenter(enabled: Boolean) {
-        state.contentVerticalCenter = enabled
         state.markDirty()
     }
 }
