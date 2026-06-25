@@ -3,8 +3,8 @@ package com.lumecard.shared.domain.scheduler
 import com.lumecard.shared.model.CardState
 import com.lumecard.shared.model.FSRSCard
 import com.lumecard.shared.model.Rating
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 class FSRSAlgorithmAdapter(private val inner: FSRSAlgorithm) : ReviewAlgorithm {
     override val mode: ReviewMode = ReviewMode.FSRS

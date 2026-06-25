@@ -212,6 +212,10 @@ interface I18nStrings {
     val settingsReviewMode: String
     val settingsAnswerDisplay: String
     val settingsAnswerMode: String
+    val settingsContentCenter: String
+    val settingsContentCenterDesc: String
+    val settingsCenterHorizontal: String
+    val settingsCenterVertical: String
     val settingsAppearance: String
     val settingsDarkMode: String
     val settingsDarkModeDesc: String

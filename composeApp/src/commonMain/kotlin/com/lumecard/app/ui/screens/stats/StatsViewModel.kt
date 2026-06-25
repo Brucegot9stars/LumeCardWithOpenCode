@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -71,7 +71,7 @@ class StatsViewModel(
                     next != null && next > now
                 }
                 val weekStart = today.minus(today.dayOfWeek.ordinal, DateTimeUnit.DAY)
-                val monthStart = LocalDate(today.year, today.monthNumber, 1)
+                val monthStart = LocalDate(today.year, today.month, 1)
 
                 val todayLogs = allLogs.filter {
                     it.reviewedAt.toLocalDateTime(TimeZone.currentSystemDefault()).date == today

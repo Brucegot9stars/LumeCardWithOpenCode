@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
+
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
@@ -42,6 +43,7 @@ class StudyModeScreen(
     override val key: ScreenKey = "StudyMode_${planIds.sorted().joinToString("_")}"
 
     @OptIn(ExperimentalMaterial3Api::class)
+    @Suppress("OverloadResolutionAmbiguity")
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
@@ -79,6 +81,7 @@ class StudyModeScreen(
         }
 
         if (errorMsg != null) {
+            @Suppress("DEPRECATION")
             val clipboardManager = LocalClipboardManager.current
             AlertDialog(
                 onDismissRequest = { errorMsg = null },
@@ -107,10 +110,10 @@ class StudyModeScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = {
                             errorMsg?.let { clipboardManager.setText(AnnotatedString(it)) }
-                        }) {
+                        }, interactionSource = null) {
                             Text(strings.actionCopy)
                         }
-                        Button(onClick = { errorMsg = null }) {
+                        Button(onClick = { errorMsg = null }, interactionSource = null) {
                             Text(strings.actionOk)
                         }
                     }
@@ -174,6 +177,7 @@ class StudyModeScreen(
                                         }
                                     }
                                 },
+                                interactionSource = null,
                                 enabled = enabled
                             ) {
                                 Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(20.dp))
@@ -219,6 +223,7 @@ class StudyModeScreen(
                                     }
                                 }
                             },
+                            interactionSource = null,
                             enabled = enabled
                         ) {
                             Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
@@ -282,7 +287,8 @@ class StudyModeScreen(
                                     } else if (mode == StudyMode.MULTI) {
                                         selectedDeckIds = emptySet()
                                     }
-                                }
+                                },
+                                interactionSource = null,
                             )
                             Spacer(Modifier.width(12.dp))
                             val label = when (mode) {
@@ -326,7 +332,7 @@ class StudyModeScreen(
 
                     if (studyableDecks.isEmpty()) {
                         item {
-                            Card(modifier = Modifier.fillMaxWidth()) {
+                            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors()) {
                                 Box(
                                     modifier = Modifier.fillMaxWidth().padding(32.dp),
                                     contentAlignment = Alignment.Center
@@ -380,14 +386,16 @@ class StudyModeScreen(
                                                 } else {
                                                     selectedDeckIds - deck.id
                                                 }
-                                            }
+                                            },
+                                            interactionSource = null,
                                         )
                                     } else {
                                         RadioButton(
                                             selected = isSelected,
                                             onClick = {
                                                 selectedDeckIds = setOf(deck.id)
-                                            }
+                                            },
+                                            interactionSource = null,
                                         )
                                     }
                                     Spacer(Modifier.width(12.dp))

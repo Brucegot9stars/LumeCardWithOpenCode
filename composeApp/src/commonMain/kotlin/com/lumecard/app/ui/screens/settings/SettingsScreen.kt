@@ -42,7 +42,7 @@ import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.Deck
 import com.lumecard.shared.model.KnowledgeBase
 import com.lumecard.shared.model.CardType
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import com.lumecard.app.platform.getAppVersion
 import com.lumecard.app.platform.pickSaveFile
 import com.lumecard.app.platform.pickOpenFile
@@ -291,6 +291,28 @@ class SettingsScreen : Screen {
                                     }
                                 }
                             }
+                        },
+                    )
+                    HorizontalDivider()
+                    ListItem(
+                        headlineContent = { Text(strings.settingsCenterHorizontal) },
+                        supportingContent = { Text(strings.settingsContentCenterDesc) },
+                        trailingContent = {
+                            Switch(
+                                checked = settingsState.contentHorizontalCenter,
+                                onCheckedChange = { settingsViewModel.setContentHorizontalCenter(it) },
+                            )
+                        },
+                    )
+                    HorizontalDivider()
+                    ListItem(
+                        headlineContent = { Text(strings.settingsCenterVertical) },
+                        supportingContent = { Text(strings.settingsContentCenterDesc) },
+                        trailingContent = {
+                            Switch(
+                                checked = settingsState.contentVerticalCenter,
+                                onCheckedChange = { settingsViewModel.setContentVerticalCenter(it) },
+                            )
                         },
                     )
                 }

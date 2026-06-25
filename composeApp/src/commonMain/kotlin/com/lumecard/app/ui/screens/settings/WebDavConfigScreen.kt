@@ -50,13 +50,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.koin.compose.koinInject
 
 class WebDavConfigScreen : Screen {
     override val key: ScreenKey = "WebDavConfig"
 
     @OptIn(ExperimentalMaterial3Api::class)
+    @Suppress("OverloadResolutionAmbiguity")
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
@@ -276,7 +277,7 @@ class WebDavConfigScreen : Screen {
                                 singleLine = true,
                                 visualTransformation = if (showPass) VisualTransformation.None else PasswordVisualTransformation(),
                                 trailingIcon = {
-                                    TextButton(onClick = { showPass = !showPass }) {
+                                    TextButton(onClick = { showPass = !showPass }, interactionSource = null) {
                                         Text(
                                             if (showPass) "\u2713" else "\u25CB",
                                             style = MaterialTheme.typography.labelMedium,
@@ -320,6 +321,7 @@ class WebDavConfigScreen : Screen {
                                             snackbarHostState.showSnackbar(msg)
                                         }
                                     },
+                                    interactionSource = null,
                                     modifier = Modifier.weight(1f),
                                 ) {
                                     Text(strings.settingsSyncTestConnection)
@@ -346,6 +348,7 @@ class WebDavConfigScreen : Screen {
                                             }
                                         }
                                     },
+                                    interactionSource = null,
                                     modifier = Modifier.weight(1f),
                                 ) {
                                     Text(strings.actionSave)
@@ -358,6 +361,7 @@ class WebDavConfigScreen : Screen {
                                     editConfig = null
                                     testResult = null
                                 },
+                                interactionSource = null,
                             ) {
                                 Text(strings.actionCancel)
                             }
@@ -481,6 +485,7 @@ class WebDavConfigScreen : Screen {
                             testResult = null
                             isEditing = true
                         },
+                        interactionSource = null,
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(spacing.sm))
@@ -617,6 +622,7 @@ class WebDavConfigScreen : Screen {
                                 }
                             }
                         },
+                        interactionSource = null,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !isSyncing,
                     ) {
@@ -651,6 +657,7 @@ class WebDavConfigScreen : Screen {
                                     }
                                 }
                             },
+                            interactionSource = null,
                             modifier = Modifier.weight(1f),
                             enabled = !isSyncing,
                         ) {
@@ -679,6 +686,7 @@ class WebDavConfigScreen : Screen {
                                     }
                                 }
                             },
+                            interactionSource = null,
                             modifier = Modifier.weight(1f),
                             enabled = !isSyncing,
                         ) {
@@ -689,6 +697,7 @@ class WebDavConfigScreen : Screen {
                     // Restore from cloud
                     OutlinedButton(
                         onClick = { showRestoreConfirm = true },
+                        interactionSource = null,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !isSyncing,
                     ) {
@@ -717,6 +726,7 @@ class WebDavConfigScreen : Screen {
                                 }
                             }
                         },
+                        interactionSource = null,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !isSyncing,
                     ) {
@@ -748,10 +758,10 @@ class WebDavConfigScreen : Screen {
                                 snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: strings.errorUnknown))
                             }
                         }
-                    }) { Text(strings.actionConfirm) }
+                    }, interactionSource = null) { Text(strings.actionConfirm) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { deleteConfirmId = null }) { Text(strings.actionCancel) }
+                    TextButton(onClick = { deleteConfirmId = null }, interactionSource = null) { Text(strings.actionCancel) }
                 },
             )
         }
@@ -823,6 +833,7 @@ class WebDavConfigScreen : Screen {
                                             }
                                         }
                                     },
+                                    interactionSource = null,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Text(
@@ -837,7 +848,7 @@ class WebDavConfigScreen : Screen {
                     }
                 },
                 confirmButton = {
-                    TextButton(onClick = { showRestoreHistory = false }) {
+                    TextButton(onClick = { showRestoreHistory = false }, interactionSource = null) {
                         Text(strings.actionCancel)
                     }
                 },
@@ -904,10 +915,10 @@ class WebDavConfigScreen : Screen {
                                 isSyncing = false
                             }
                         }
-                    }) { Text(strings.actionConfirm) }
+                    }, interactionSource = null) { Text(strings.actionConfirm) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showRestoreConfirm = false }) { Text(strings.actionCancel) }
+                    TextButton(onClick = { showRestoreConfirm = false }, interactionSource = null) { Text(strings.actionCancel) }
                 },
             )
         }

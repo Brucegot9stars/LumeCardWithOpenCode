@@ -15,12 +15,14 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.i18n.I18nStrings
+import com.lumecard.app.ui.util.htmlToAnnotatedString
 import com.lumecard.app.ui.components.MarkdownText
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
@@ -33,6 +35,8 @@ internal fun CardContent(
     card: Card,
     isFlipped: Boolean,
     displayMode: AnswerDisplayMode,
+    horizontalCenter: Boolean = false,
+    verticalCenter: Boolean = false,
     onConfirmChoice: (() -> Unit)? = null,
 ) {
     val strings = koinInject<I18nManager>().strings
@@ -41,8 +45,8 @@ internal fun CardContent(
             AnswerDisplayMode.FLIP -> {
                 FlipCard(
                     isFlipped = isFlipped,
-                    front = { CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice) },
-                    back = { CardFace(card, showBack = true) }
+                    front = { CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice, horizontalCenter = horizontalCenter) },
+                    back = { CardFace(card, showBack = true, horizontalCenter = horizontalCenter) }
                 )
             }
             AnswerDisplayMode.SPLIT -> {
@@ -73,7 +77,7 @@ internal fun CardContent(
                         shape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
                     ) {
-                        CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice).let { it }
+                        CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice, horizontalCenter = horizontalCenter)
                     }
                     Spacer(Modifier.height(16.dp))
                     Surface(
@@ -102,10 +106,10 @@ internal fun CardContent(
                         shape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp),
                         color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.2f)
                     ) {
-                        CardFace(card, showBack = true).let { it }
+                        CardFace(card, showBack = true, horizontalCenter = horizontalCenter)
                     }
                 } else {
-                    CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice)
+                    CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice, horizontalCenter = horizontalCenter)
                 }
             }
         }
@@ -152,18 +156,22 @@ internal fun CardFace(
     card: Card,
     showBack: Boolean,
     onConfirmChoice: (() -> Unit)? = null,
+    horizontalCenter: Boolean = false,
 ) {
     val clozeRegex = remember { Regex("\\{\\{c\\d+::([^}]+)\\}\\}") }
     val clozeHintRegex = remember { Regex("\\{\\{c\\d+::([^}]+)::([^}]+)\\}\\}") }
     val clozeAnswerRegex = remember { Regex("\\{\\{c\\d+::([^:}]+)(?:::([^}]+))?\\}\\}") }
 
     val strings = koinInject<I18nManager>().strings
-    Column(modifier = Modifier.fillMaxWidth()) {
+    val align = if (horizontalCenter) Alignment.CenterHorizontally else Alignment.Start
+    val textAlign = if (horizontalCenter) TextAlign.Center else TextAlign.Start
+    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = align) {
         when (card.type) {
             CardType.BASIC -> {
-                MarkdownText(
-                    markdown = if (showBack) card.back else card.front,
-                    modifier = Modifier.fillMaxWidth()
+                Text(
+                    text = if (showBack) card.back else card.front,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = textAlign
                 )
             }
             CardType.RICH_TEXT -> {
@@ -173,15 +181,16 @@ internal fun CardFace(
             CardType.REVERSED, CardType.MARKDOWN, CardType.AI_GENERATED -> {
                 MarkdownText(
                     markdown = if (showBack) card.back else card.front,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = textAlign
                 )
             }
             CardType.CLOZE -> {
                 if (!showBack) {
                     val displayText = card.front.replace(clozeHintRegex, "____").replace(clozeRegex, "____")
-                    Text(displayText, style = MaterialTheme.typography.headlineSmall)
+                    Text(displayText, style = MaterialTheme.typography.headlineSmall, textAlign = textAlign, modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(8.dp))
-                    Text(strings.studyClozeHint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(strings.studyClozeHint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth(), textAlign = textAlign)
                 } else {
                     val annotated = buildAnnotatedString {
                         var pos = 0
@@ -198,7 +207,7 @@ internal fun CardFace(
                             append(card.front.substring(pos))
                         }
                     }
-                    Text(annotated, style = MaterialTheme.typography.headlineSmall)
+                    Text(annotated, style = MaterialTheme.typography.headlineSmall, textAlign = textAlign, modifier = Modifier.fillMaxWidth())
                 }
             }
             CardType.MULTIPLE_CHOICE -> {
@@ -217,8 +226,10 @@ internal fun CardFace(
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
                             question,
+                            modifier = Modifier.fillMaxWidth(),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            textAlign = textAlign,
                         )
                         Spacer(Modifier.height(12.dp))
                         if (!showBack) {
@@ -301,169 +312,6 @@ internal fun RichTextCardFace(html: String) {
         modifier = Modifier.fillMaxWidth(),
     )
 }
-
-private fun htmlToAnnotatedString(html: String): androidx.compose.ui.text.AnnotatedString {
-    val input = html.trim()
-    if (!input.contains("<") || !input.contains(">"))
-        return buildAnnotatedString { append(input) }
-
-    return buildAnnotatedString {
-        var i = 0
-        val tagStack = mutableListOf<SpanStyle>()
-        var endsWithNewline = false
-
-        fun currentStyle(): SpanStyle {
-            var style = SpanStyle()
-            for (s in tagStack.reversed()) {
-                val merged = SpanStyle(
-                    fontWeight = s.fontWeight ?: style.fontWeight,
-                    fontStyle = s.fontStyle ?: style.fontStyle,
-                    textDecoration = s.textDecoration ?: style.textDecoration,
-                    color = s.color ?: style.color,
-                    fontSize = s.fontSize ?: style.fontSize,
-                )
-                style = merged
-            }
-            return style
-        }
-
-        while (i < input.length) {
-            if (input[i] == '<') {
-                val close = input.indexOf('>', i)
-                if (close == -1) { append(input.substring(i)); break }
-                val tag = input.substring(i + 1, close)
-                i = close + 1
-
-                when {
-                    tag.startsWith("/") -> {
-                        val name = tag.substring(1).split(" ", ">").first().lowercase()
-                        when (name) {
-                            "b", "strong", "i", "em", "u", "span", "p", "div" ->
-                                if (tagStack.isNotEmpty()) tagStack.removeAt(tagStack.lastIndex)
-                        }
-                        if (name == "p" || name == "div") endsWithNewline = false
-                    }
-                    tag.startsWith("br") -> { append("\n"); endsWithNewline = true }
-                    tag.startsWith("p") -> {
-                        if (!endsWithNewline && length > 0) { append("\n"); endsWithNewline = true }
-                        tagStack.add(SpanStyle())
-                    }
-                    tag.startsWith("div") -> {
-                        if (!endsWithNewline && length > 0) { append("\n"); endsWithNewline = true }
-                        tagStack.add(SpanStyle())
-                    }
-                    tag.startsWith("b") || tag.startsWith("strong") ->
-                        tagStack.add(SpanStyle(fontWeight = FontWeight.Bold))
-                    tag.startsWith("i") || tag.startsWith("em") ->
-                        tagStack.add(SpanStyle(fontStyle = FontStyle.Italic))
-                    tag.startsWith("u") ->
-                        tagStack.add(SpanStyle(textDecoration = TextDecoration.Underline))
-                    tag.startsWith("span") -> {
-                        val styleAttr = parseStyleAttribute(tag)
-                        tagStack.add(styleAttr)
-                    }
-                }
-            } else {
-                val nextTag = input.indexOf('<', i)
-                val text = if (nextTag == -1) input.substring(i) else input.substring(i, nextTag)
-                i = if (nextTag == -1) input.length else nextTag
-
-                val cleaned = text.replace("\n", " ").replace("\r", "")
-                if (cleaned.isNotEmpty()) {
-                    withStyle(currentStyle()) { append(cleaned) }
-                    endsWithNewline = cleaned.endsWith('\n')
-                }
-            }
-        }
-    }
-}
-
-private fun parseStyleAttribute(tag: String): SpanStyle {
-    val styleMatch = Regex("""style\s*=\s*"([^"]*)"""").find(tag)
-    val styles = styleMatch?.groupValues?.getOrNull(1) ?: return SpanStyle()
-    var fontWeight: FontWeight? = null
-    var fontStyle: FontStyle? = null
-    var textDecoration: TextDecoration? = null
-    var color: Color? = null
-    var fontSize: androidx.compose.ui.unit.TextUnit? = null
-
-    for (decl in styles.split(";")) {
-        val parts = decl.trim().split(":", limit = 2)
-        if (parts.size != 2) continue
-        val prop = parts[0].trim().lowercase()
-        val value = parts[1].trim().lowercase()
-        when (prop) {
-            "font-weight" -> {
-                when (value) {
-                    "bold", "700", "800", "900" -> fontWeight = FontWeight.Bold
-                    "600" -> fontWeight = FontWeight.SemiBold
-                    "500" -> fontWeight = FontWeight.Medium
-                    "400", "normal" -> fontWeight = FontWeight.Normal
-                    "300" -> fontWeight = FontWeight.Light
-                }
-            }
-            "font-style" -> {
-                if (value == "italic") fontStyle = FontStyle.Italic
-            }
-            "text-decoration" -> {
-                if (value.contains("underline")) textDecoration = TextDecoration.Underline
-                if (value.contains("line-through")) textDecoration = TextDecoration.LineThrough
-            }
-            "color" -> {
-                color = parseHtmlColor(value)
-            }
-            "font-size" -> {
-                val numMatch = Regex("""(\d+(?:\.\d+)?)""").find(value)
-                if (numMatch != null) {
-                    val num = numMatch.groupValues[1].toFloatOrNull()
-                    if (num != null) fontSize = num.sp
-                }
-            }
-        }
-    }
-    return SpanStyle(
-        fontWeight = fontWeight,
-        fontStyle = fontStyle,
-        textDecoration = textDecoration,
-        color = color ?: Color.Unspecified,
-        fontSize = fontSize ?: androidx.compose.ui.unit.TextUnit.Unspecified,
-    )
-}
-
-private fun parseHtmlColor(value: String): Color? {
-    val v = value.trim()
-    val rgbMatch = Regex("""rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)""").find(v)
-    if (rgbMatch != null) {
-        val r = rgbMatch.groupValues[1].toIntOrNull() ?: return null
-        val g = rgbMatch.groupValues[2].toIntOrNull() ?: return null
-        val b = rgbMatch.groupValues[3].toIntOrNull() ?: return null
-        val a = rgbMatch.groupValues[4].toFloatOrNull() ?: 1f
-        return Color(r / 255f, g / 255f, b / 255f, a.coerceIn(0f, 1f))
-    }
-    if (v.startsWith("#")) {
-        val hex = v.removePrefix("#")
-        val rgb = hex.toLongOrNull(16) ?: return null
-        return when (hex.length) {
-            6 -> Color(0xFF000000 or rgb)
-            8 -> Color(rgb)
-            else -> null
-        }
-    }
-    return when (v) {
-        "red" -> Color.Red
-        "blue" -> Color.Blue
-        "green" -> Color(0xFF2E7D32)
-        "black" -> Color.Black
-        "white" -> Color.White
-        "gray", "grey" -> Color.Gray
-        "purple" -> Color(0xFF7B1FA2)
-        "orange" -> Color(0xFFF57C00)
-        "teal" -> Color(0xFF00796B)
-        "brown" -> Color(0xFF5D4037)
-        else -> null
-    }
-}
-
 
 @Composable
 internal fun CompletionStat(

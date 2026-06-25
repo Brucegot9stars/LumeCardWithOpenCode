@@ -109,8 +109,8 @@ class DeckViewModel(
             description = description,
             color = deckColors[existingCount % deckColors.size],
             icon = deckIcons[existingCount % deckIcons.size],
-            createdAt = kotlinx.datetime.Clock.System.now(),
-            updatedAt = kotlinx.datetime.Clock.System.now()
+            createdAt = kotlin.time.Clock.System.now(),
+            updatedAt = kotlin.time.Clock.System.now()
         )
         deckRepository.insert(deck)
     }
@@ -120,7 +120,7 @@ class DeckViewModel(
         val updated = deck.copy(
             name = name,
             description = description,
-            updatedAt = kotlinx.datetime.Clock.System.now()
+            updatedAt = kotlin.time.Clock.System.now()
         )
         deckRepository.update(updated)
     }
@@ -132,7 +132,7 @@ class DeckViewModel(
             if (id in plan.deckIds) {
                 planRepository.update(plan.copy(
                     deckIds = plan.deckIds - id,
-                    updatedAt = kotlinx.datetime.Clock.System.now()
+                    updatedAt = kotlin.time.Clock.System.now()
                 ))
             }
         }

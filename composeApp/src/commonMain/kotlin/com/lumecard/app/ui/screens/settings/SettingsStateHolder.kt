@@ -16,6 +16,8 @@ class SettingsStateHolder {
     var autoSyncEnabled by mutableStateOf(false)
     var autoSyncIntervalMinutes by mutableStateOf(30)
     var language by mutableStateOf(AppLocale.SYSTEM)
+    var contentHorizontalCenter by mutableStateOf(false)
+    var contentVerticalCenter by mutableStateOf(false)
     var isDirty by mutableStateOf(false)
     var isSaving by mutableStateOf(false)
 

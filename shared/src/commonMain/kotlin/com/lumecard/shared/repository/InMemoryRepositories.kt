@@ -4,8 +4,8 @@ import com.lumecard.shared.model.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlinx.coroutines.flow.update
 
 class InMemoryKnowledgeBaseRepository : KnowledgeBaseRepository {
@@ -93,7 +93,8 @@ class InMemoryCardRepository : CardRepository {
         val now = Clock.System.now()
         return cards.map { list ->
             list.filter { card ->
-                card.nextReviewAt != null && card.nextReviewAt!! <= now
+                val next = card.nextReviewAt
+                next != null && next <= now
             }
         }
     }

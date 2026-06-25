@@ -16,13 +16,8 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import com.lumecard.app.platform.getMediaBasePath
-import com.lumecard.app.platform.pasteClipboardMedia
-import com.lumecard.app.platform.pickMediaFile
-import com.lumecard.app.platform.saveMediaFile
 import com.lumecard.app.ui.components.RichTextCardEditor
 import com.lumecard.app.ui.components.MarkdownText
-import com.mohamedrejeb.richeditor.model.RichTextState
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
 import com.lumecard.app.i18n.I18nManager
@@ -30,7 +25,6 @@ import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.components.CardTypeSelector
 import com.lumecard.app.i18n.I18nStrings
 import com.lumecard.app.ui.theme.LumeCardTheme
-import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 class CreateCardScreen(
@@ -53,9 +47,6 @@ class CreateCardScreen(
         var showTypeMenu by remember { mutableStateOf(false) }
         var showTypeHelp by remember { mutableStateOf(true) }
         val isEditing = editCard != null
-        var frontRichState by remember { mutableStateOf<RichTextState?>(null) }
-        var backRichState by remember { mutableStateOf<RichTextState?>(null) }
-
         Scaffold(
             topBar = {
                 LumeCardTopBar(
@@ -64,8 +55,8 @@ class CreateCardScreen(
                     action = {
                         IconButton(
                             onClick = {
-                                val saveFront = if (cardType == CardType.RICH_TEXT) (frontRichState?.toHtml() ?: front) else front
-                                val saveBack = if (cardType == CardType.RICH_TEXT) (backRichState?.toHtml() ?: back) else back
+                                val saveFront = front
+                                val saveBack = back
                                 if (isEditing) {
                                     viewModel.updateCard(
                                         card = editCard,
@@ -131,7 +122,6 @@ class CreateCardScreen(
                     onFrontChange = { front = it },
                     back = back,
                     onBackChange = { back = it },
-                    onRichTextStatesReady = { f, b -> frontRichState = f; backRichState = b }
                 )
 
                 OutlinedTextField(
@@ -148,11 +138,11 @@ class CreateCardScreen(
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                             Text(strings.cardQuestionLabel, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            MarkdownText(markdown = front, modifier = Modifier.fillMaxWidth())
+                            CardPreviewContent(text = front, cardType = cardType)
                             if (back.isNotBlank()) {
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                                 Text(strings.cardAnswerLabel, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                MarkdownText(markdown = back, modifier = Modifier.fillMaxWidth())
+                                CardPreviewContent(text = back, cardType = cardType)
                             }
                         }
                     }
@@ -212,7 +202,6 @@ private fun CardTypeInput(
     onFrontChange: (String) -> Unit,
     back: String,
     onBackChange: (String) -> Unit,
-    onRichTextStatesReady: ((RichTextState, RichTextState) -> Unit)? = null,
 ) {
     val strings = koinInject<I18nManager>().strings
     when (type) {
@@ -232,7 +221,6 @@ private fun CardTypeInput(
                 back = back, onBackChange = onBackChange,
                 frontLabel = strings.cardFrontLabel,
                 backLabel = strings.cardBackLabel,
-                onStatesReady = onRichTextStatesReady,
             )
         }
         CardType.REVERSED, CardType.MARKDOWN, CardType.AI_GENERATED -> {
@@ -286,78 +274,27 @@ private fun BasicCardFields(
     frontPlaceholder: String, backPlaceholder: String
 ) {
     val strings = koinInject<I18nManager>().strings
-    val scope = rememberCoroutineScope()
     Text(frontLabel, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
     OutlinedTextField(
         value = front,
         onValueChange = onFrontChange,
         modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
-        placeholder = { Text(frontPlaceholder) },
-        supportingText = { Text(strings.noteMarkdownSupport) }
+        placeholder = { Text(frontPlaceholder) }
     )
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.End
-    ) {
-        TextButton(onClick = {
-            scope.launch {
-                val path = pickMediaFile()
-                if (path != null) {
-                    val ref = saveMediaFile(getMediaBasePath(), path)
-                    if (ref != null) onFrontChange(front + "\n$ref")
-                }
-            }
-        }) {
-            Icon(Icons.Default.Add, contentDescription = strings.browseMedia, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(4.dp))
-            Text(strings.browseMedia, style = MaterialTheme.typography.bodySmall)
-        }
-        TextButton(onClick = {
-            scope.launch {
-                val refs = pasteClipboardMedia(getMediaBasePath())
-                if (refs.isNotEmpty()) onFrontChange(front + "\n" + refs.joinToString("\n"))
-            }
-        }) {
-            Icon(Icons.Default.Add, contentDescription = strings.pasteMedia, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(4.dp))
-            Text(strings.pasteMedia, style = MaterialTheme.typography.bodySmall)
-        }
-    }
     Text(backLabel, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
     OutlinedTextField(
         value = back,
         onValueChange = onBackChange,
         modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
-        placeholder = { Text(backPlaceholder) },
-        supportingText = { Text(strings.noteMarkdownSupport) }
+        placeholder = { Text(backPlaceholder) }
     )
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.End
-    ) {
-        TextButton(onClick = {
-            scope.launch {
-                val path = pickMediaFile()
-                if (path != null) {
-                    val ref = saveMediaFile(getMediaBasePath(), path)
-                    if (ref != null) onBackChange(back + "\n$ref")
-                }
-            }
-        }) {
-            Icon(Icons.Default.Add, contentDescription = strings.browseMedia, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(4.dp))
-            Text(strings.browseMedia, style = MaterialTheme.typography.bodySmall)
-        }
-        TextButton(onClick = {
-            scope.launch {
-                val refs = pasteClipboardMedia(getMediaBasePath())
-                if (refs.isNotEmpty()) onBackChange(back + "\n" + refs.joinToString("\n"))
-            }
-        }) {
-            Icon(Icons.Default.Add, contentDescription = strings.pasteMedia, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(4.dp))
-            Text(strings.pasteMedia, style = MaterialTheme.typography.bodySmall)
-        }
+}
+
+@Composable
+private fun CardPreviewContent(text: String, cardType: CardType) {
+    when (cardType) {
+        CardType.BASIC -> Text(text, modifier = Modifier.fillMaxWidth())
+        else -> MarkdownText(markdown = text, modifier = Modifier.fillMaxWidth())
     }
 }
 

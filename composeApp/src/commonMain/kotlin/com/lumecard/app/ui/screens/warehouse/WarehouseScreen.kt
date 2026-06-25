@@ -37,6 +37,7 @@ class WarehouseScreen : Screen {
     override val key: ScreenKey = "Warehouse"
 
     @OptIn(ExperimentalMaterial3Api::class)
+    @Suppress("OverloadResolutionAmbiguity")
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
@@ -153,12 +154,14 @@ class WarehouseScreen : Screen {
                     ) {
                         TextButton(
                             onClick = { viewModel.expandAll() },
+                            interactionSource = null,
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                         ) {
                             Text(strings.warehouseExpandAll, style = MaterialTheme.typography.labelMedium)
                         }
                         TextButton(
                             onClick = { viewModel.collapseAll() },
+                            interactionSource = null,
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                         ) {
                             Text(strings.warehouseCollapseAll, style = MaterialTheme.typography.labelMedium)
@@ -368,6 +371,7 @@ class WarehouseScreen : Screen {
     }
 }
 
+@Suppress("OverloadResolutionAmbiguity")
 @Composable
 private fun TreeNodeItem(
     node: TreeNode,
@@ -419,6 +423,7 @@ private fun TreeNodeItem(
                 Checkbox(
                     checked = isSelected,
                     onCheckedChange = { onToggleSelect() },
+                    interactionSource = null,
                 )
             }
 

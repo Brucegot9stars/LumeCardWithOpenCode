@@ -1,8 +1,8 @@
 plugins {
-    id("com.android.library")
     kotlin("multiplatform")
     id("org.jetbrains.kotlin.plugin.serialization")
     id("app.cash.sqldelight")
+    id("com.android.library")
 }
 
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -56,7 +56,7 @@ kotlin {
 
 android {
     namespace = "com.lumecard.shared"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 26

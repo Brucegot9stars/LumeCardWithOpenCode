@@ -150,7 +150,7 @@ fun UpdateCheckDialog(
                 }
                 is UpdateState.Error -> {
                     TextButton(onClick = {
-                        val errorMsg = strings.updateErrorCopyFormat(getAppVersion(), updateState.message, kotlinx.datetime.Clock.System.now().toString())
+                        val errorMsg = strings.updateErrorCopyFormat(getAppVersion(), updateState.message, kotlin.time.Clock.System.now().toString())
                         onCopyError(errorMsg)
                         onDismiss()
                     }) {

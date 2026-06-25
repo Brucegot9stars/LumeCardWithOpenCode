@@ -3,9 +3,9 @@ package com.lumecard.shared.domain.scheduler
 import com.lumecard.shared.model.CardState
 import com.lumecard.shared.model.FSRSCard
 import com.lumecard.shared.model.Rating
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
 import kotlin.math.max

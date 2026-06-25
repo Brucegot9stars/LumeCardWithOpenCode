@@ -39,8 +39,8 @@ import com.lumecard.shared.model.CardType
 import com.lumecard.shared.model.Rating
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import kotlin.math.abs
 
 private const val SWIPE_ANIM_DURATION_MS = 200
@@ -57,12 +57,14 @@ class StudyScreen(
     override val key: ScreenKey = "Study_${deckIds.sorted().joinToString("_")}_${planIds.sorted().joinToString("_")}"
 
     @OptIn(ExperimentalMaterial3Api::class)
+    @Suppress("OverloadResolutionAmbiguity")
     @Composable
     override fun Content() {
         var crashError by remember { mutableStateOf<String?>(null) }
         val strings = koinInject<I18nManager>().strings
 
         if (crashError != null) {
+            @Suppress("DEPRECATION")
             val clipboardManager = LocalClipboardManager.current
             AlertDialog(
                 onDismissRequest = { crashError = null },
@@ -91,8 +93,8 @@ class StudyScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = {
                             crashError?.let { clipboardManager.setText(AnnotatedString(it)) }
-                        }) { Text(strings.actionCopy) }
-                        Button(onClick = { crashError = null }) { Text(strings.actionOk) }
+                        }, interactionSource = null) { Text(strings.actionCopy) }
+                        Button(onClick = { crashError = null }, interactionSource = null) { Text(strings.actionOk) }
                     }
                 },
             )
@@ -136,13 +138,14 @@ class StudyScreen(
         val unlearnedAvail = viewModel.unlearnedCardCount
 
         if (error != null) {
+            @Suppress("DEPRECATION")
             val clipboardManager = LocalClipboardManager.current
             AlertDialog(
-                onDismissRequest = { viewModel.clearError() },
-                title = { Text(strings.errorTitle) },
+                onDismissRequest = { crashError = null },
+                title = { Text(strings.crashCompositionError) },
                 text = {
                     Column {
-                        Text(strings.errorDesc, style = MaterialTheme.typography.bodyMedium)
+                        Text(strings.crashRenderErrorDesc, style = MaterialTheme.typography.bodyMedium)
                         Spacer(modifier = Modifier.height(8.dp))
                         Box(
                             modifier = Modifier
@@ -153,7 +156,7 @@ class StudyScreen(
                                 .padding(8.dp)
                         ) {
                             Text(
-                                text = error ?: "",
+                                text = crashError ?: "",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -162,12 +165,15 @@ class StudyScreen(
                 },
                 confirmButton = {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = {
-                            error?.let { clipboardManager.setText(AnnotatedString(it)) }
-                        }) {
+                        TextButton(onClick = { crashError = null }, interactionSource = null) {
+                            Text(strings.actionCancel)
+                        }
+                        Button(onClick = {
+                            crashError?.let { clipboardManager.setText(AnnotatedString(it)) }
+                        }, interactionSource = null) {
                             Text(strings.actionCopy)
                         }
-                        Button(onClick = { viewModel.clearError() }) {
+                        Button(onClick = { viewModel.clearError() }, interactionSource = null) {
                             Text(strings.actionOk)
                         }
                     }
@@ -206,6 +212,7 @@ class StudyScreen(
                                 showStudyModeDialog = false
                                 viewModel.reloadWithMode(CardsStudyMode.ALL_CARDS)
                             },
+                            interactionSource = null,
                             modifier = Modifier.fillMaxWidth(),
                         ) { Text(strings.studyContinueAll) }
                         Spacer(Modifier.height(4.dp))
@@ -216,6 +223,7 @@ class StudyScreen(
                                     showStudyModeDialog = false
                                     viewModel.reloadWithMode(CardsStudyMode.NEW_CARDS, dailyLimit)
                                 },
+                                interactionSource = null,
                                 modifier = Modifier.fillMaxWidth(),
                             ) { Text(newCardLabel) }
                             Spacer(Modifier.height(4.dp))
@@ -226,11 +234,12 @@ class StudyScreen(
                                 showStudyModeDialog = false
                                 viewModel.reloadWithMode(CardsStudyMode.RANDOM, dailyLimit)
                             },
+                            interactionSource = null,
                             modifier = Modifier.fillMaxWidth(),
                         ) { Text(randomLabel()) }
                     }
                 },
-                confirmButton = { TextButton(onClick = { navigator.pop() }) { Text(strings.actionDone) } }
+                confirmButton = { TextButton(onClick = { navigator.pop() }, interactionSource = null) { Text(strings.actionDone) } }
             )
         }
 
@@ -301,7 +310,7 @@ class StudyScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     if (cards.isEmpty()) {
-                        Card(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                        Card(modifier = Modifier.fillMaxWidth().weight(1f), colors = CardDefaults.cardColors()) {
                             Box(
                                 modifier = Modifier.fillMaxSize().padding(32.dp),
                                 contentAlignment = Alignment.Center
@@ -326,7 +335,7 @@ class StudyScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Spacer(Modifier.height(24.dp))
-                                    Button(onClick = { navigator.pop() }) {
+                                    Button(onClick = { navigator.pop() }, interactionSource = null) {
                                         Text(strings.actionBack)
                                     }
                                 }
@@ -357,7 +366,7 @@ class StudyScreen(
                                         modifier = Modifier.fillMaxSize().padding(20.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        CardContent(card = nextCard, isFlipped = false, displayMode = settingsState.answerDisplayMode)
+                                        CardContent(card = nextCard, isFlipped = false, displayMode = settingsState.answerDisplayMode, horizontalCenter = settingsState.contentHorizontalCenter, verticalCenter = settingsState.contentVerticalCenter)
                                     }
                                 }
                             }
@@ -442,11 +451,11 @@ class StudyScreen(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .padding(horizontal = 20.dp, vertical = 12.dp)
-                                        .verticalScroll(rememberScrollState()),
-                                    contentAlignment = Alignment.TopStart
+                                        .then(if (settingsState.contentVerticalCenter) Modifier else Modifier.verticalScroll(rememberScrollState())),
+                                    contentAlignment = if (settingsState.contentVerticalCenter) Alignment.Center else Alignment.TopStart
                                 ) {
                                     val onConfirmChoice: (() -> Unit)? = remember(currentCard) {
-                                        if (currentCard?.type == CardType.MULTIPLE_CHOICE) {
+                                        if (currentCard.type == CardType.MULTIPLE_CHOICE) {
                                             { viewModel.flipCard() }
                                         } else null
                                     }
@@ -454,6 +463,8 @@ class StudyScreen(
                                         card = currentCard,
                                         isFlipped = isFlipped,
                                         displayMode = settingsState.answerDisplayMode,
+                                        horizontalCenter = settingsState.contentHorizontalCenter,
+                                        verticalCenter = settingsState.contentVerticalCenter,
                                         onConfirmChoice = onConfirmChoice,
                                     )
                                 }
@@ -522,6 +533,7 @@ class StudyScreen(
                         Card(
                             modifier = Modifier.fillMaxWidth().weight(1f),
                             shape = LumeCardTheme.radius.card,
+                            colors = CardDefaults.cardColors(),
                         ) {
                             Column(
                                 modifier = Modifier
@@ -598,12 +610,14 @@ class StudyScreen(
                                 ) {
                                     OutlinedButton(
                                         onClick = { navigator.pop() },
+                                        interactionSource = null,
                                         modifier = Modifier.weight(1f),
                                     ) {
                                         Text(strings.actionDone)
                                     }
                                     Button(
                                         onClick = { navigator.pop() },
+                                        interactionSource = null,
                                         modifier = Modifier.weight(1f),
                                     ) {
                                         Text(strings.dashStartLearning)
@@ -623,6 +637,7 @@ class StudyScreen(
                         ) {
                             OutlinedButton(
                                 onClick = { viewModel.goBack() },
+                                interactionSource = null,
                                 enabled = viewModel.canGoBack,
                                 modifier = Modifier.weight(1f)
                             ) {
@@ -631,9 +646,10 @@ class StudyScreen(
                                 Text(strings.studyPreviousCard)
                             }
 
-                            if (!isFlipped && currentCard?.type != CardType.MULTIPLE_CHOICE) {
+                            if (!isFlipped && currentCard.type != CardType.MULTIPLE_CHOICE) {
                                 Button(
                                     onClick = { viewModel.flipCard() },
+                                    interactionSource = null,
                                     modifier = Modifier.weight(2f),
                                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                                 ) {

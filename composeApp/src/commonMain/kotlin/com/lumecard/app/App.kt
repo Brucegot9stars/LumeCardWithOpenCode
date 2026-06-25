@@ -60,6 +60,7 @@ fun App() {
     }
 
     if (crashLog != null) {
+        @Suppress("DEPRECATION")
         val clipboardManager = LocalClipboardManager.current
         AlertDialog(
             onDismissRequest = {

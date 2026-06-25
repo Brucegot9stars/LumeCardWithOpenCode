@@ -1,24 +1,18 @@
 object Versions {
-    const val kotlin = "2.0.20"
-    const val compose = "1.7.3"
-    const val sqlDelight = "2.0.2"
+    const val kotlin = "2.4.0"
+    const val compose = "1.11.1"
+    const val sqlDelight = "2.3.2"
     const val ktor = "2.3.12"
     const val koin = "3.5.6"
     const val voyager = "1.0.1"
-    const val kotlinxCoroutines = "1.8.1"
-    const val kotlinxDateTime = "0.6.1"
-    const val kotlinxSerialization = "1.7.2"
-    const val commonmark = "0.21.0"
-    const val composeRichEditor = "1.0.0-rc10"
+    const val kotlinxCoroutines = "1.11.0"
+    const val kotlinxDateTime = "0.7.1"
+    const val kotlinxSerialization = "1.11.0"
+    const val mikepenzMarkdown = "0.41.0"
 }
 
 object Dependencies {
-    // Compose
-    const val composeRuntime = "org.jetbrains.compose.runtime:runtime:${Versions.compose}"
-    const val composeFoundation = "org.jetbrains.compose.foundation:foundation:${Versions.compose}"
-    const val composeMaterial3 = "org.jetbrains.compose.material3:material3:${Versions.compose}"
-    const val composeComponents = "org.jetbrains.compose.components:components-resources:${Versions.compose}"
-    const val composeIcons = "org.jetbrains.compose.components:components-resources:${Versions.compose}"
+    // Compose — managed by the org.jetbrains.compose plugin via compose.* accessors
 
     // SQLDelight
     const val sqlDelightRuntime = "app.cash.sqldelight:runtime:${Versions.sqlDelight}"
@@ -44,15 +38,9 @@ object Dependencies {
     const val voyagerScreen = "cafe.adriel.voyager:voyager-screenmodel:${Versions.voyager}"
     const val voyagerTabNavigator = "cafe.adriel.voyager:voyager-tab-navigator:${Versions.voyager}"
 
-    // CommonMark
-    const val commonmark = "org.commonmark:commonmark:${Versions.commonmark}"
-    const val commonmarkGfmTables = "org.commonmark:commonmark-ext-gfm-tables:${Versions.commonmark}"
-    const val commonmarkGfmStrikethrough = "org.commonmark:commonmark-ext-gfm-strikethrough:${Versions.commonmark}"
-    const val commonmarkAutolink = "org.commonmark:commonmark-ext-autolink:${Versions.commonmark}"
-    const val commonmarkTaskList = "org.commonmark:commonmark-ext-task-list-items:${Versions.commonmark}"
-
-    // RichText Editor
-    const val composeRichEditor = "com.mohamedrejeb.richeditor:richeditor-compose:${Versions.composeRichEditor}"
+    // Mikepenz Markdown Renderer
+    const val mikepenzMarkdown = "com.mikepenz:multiplatform-markdown-renderer:${Versions.mikepenzMarkdown}"
+    const val mikepenzMarkdownM3 = "com.mikepenz:multiplatform-markdown-renderer-m3:${Versions.mikepenzMarkdown}"
 
     // Kotlinx
     const val kotlinxCoroutines = "org.jetbrains.kotlinx:kotlinx-coroutines-core:${Versions.kotlinxCoroutines}"

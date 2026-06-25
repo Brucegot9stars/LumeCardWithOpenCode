@@ -58,6 +58,7 @@ class LearningPlanSelectionScreen : Screen {
         }
 
         if (errorMsg != null) {
+            @Suppress("DEPRECATION")
             val clipboardManager = LocalClipboardManager.current
             AlertDialog(
                 onDismissRequest = { errorMsg = null },

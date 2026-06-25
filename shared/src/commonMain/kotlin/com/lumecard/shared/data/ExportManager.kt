@@ -6,7 +6,7 @@ import com.lumecard.shared.model.Deck
 import com.lumecard.shared.model.KnowledgeBase
 import com.lumecard.shared.model.LearningPlan
 import com.lumecard.shared.model.ReviewLog
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 

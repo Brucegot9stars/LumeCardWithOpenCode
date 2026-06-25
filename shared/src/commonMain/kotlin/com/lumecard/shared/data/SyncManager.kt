@@ -5,7 +5,7 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.utils.io.core.readBytes
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 
@@ -375,40 +375,40 @@ class SyncException(message: String) : Exception(message)
 
 fun ExportKnowledgeBase.toKnowledgeBase() = com.lumecard.shared.model.KnowledgeBase(
     id = id, name = name, description = description,
-    createdAt = try { kotlinx.datetime.Instant.parse(createdAt) } catch (_: Exception) { kotlinx.datetime.Clock.System.now() },
-    updatedAt = try { kotlinx.datetime.Instant.parse(updatedAt) } catch (_: Exception) { kotlinx.datetime.Clock.System.now() },
+    createdAt = try { kotlin.time.Instant.parse(createdAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
+    updatedAt = try { kotlin.time.Instant.parse(updatedAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
     version = version,
-    deletedAt = deletedAt?.let { try { kotlinx.datetime.Instant.parse(it) } catch (_: Exception) { null } }
+    deletedAt = deletedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } }
 )
 
 fun ExportDeck.toDeck() = com.lumecard.shared.model.Deck(
     id = id, knowledgeBaseId = knowledgeBaseId, name = name, description = description,
     color = color, icon = icon, parentId = parentId,
-    createdAt = try { kotlinx.datetime.Instant.parse(createdAt) } catch (_: Exception) { kotlinx.datetime.Clock.System.now() },
-    updatedAt = try { kotlinx.datetime.Instant.parse(updatedAt) } catch (_: Exception) { kotlinx.datetime.Clock.System.now() },
+    createdAt = try { kotlin.time.Instant.parse(createdAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
+    updatedAt = try { kotlin.time.Instant.parse(updatedAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
     version = version,
-    deletedAt = deletedAt?.let { try { kotlinx.datetime.Instant.parse(it) } catch (_: Exception) { null } }
+    deletedAt = deletedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } }
 )
 
 fun ExportCard.toCard() = com.lumecard.shared.model.Card(
     id = id, deckId = deckId,
     type = try { com.lumecard.shared.model.CardType.valueOf(type) } catch (_: Exception) { com.lumecard.shared.model.CardType.BASIC },
     front = front, back = back, tags = tags,
-    createdAt = try { kotlinx.datetime.Instant.parse(createdAt) } catch (_: Exception) { kotlinx.datetime.Clock.System.now() },
-    updatedAt = try { kotlinx.datetime.Instant.parse(updatedAt) } catch (_: Exception) { kotlinx.datetime.Clock.System.now() },
-    lastReviewedAt = lastReviewedAt?.let { try { kotlinx.datetime.Instant.parse(it) } catch (_: Exception) { null } },
-    nextReviewAt = nextReviewAt?.let { try { kotlinx.datetime.Instant.parse(it) } catch (_: Exception) { null } },
+    createdAt = try { kotlin.time.Instant.parse(createdAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
+    updatedAt = try { kotlin.time.Instant.parse(updatedAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
+    lastReviewedAt = lastReviewedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } },
+    nextReviewAt = nextReviewAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } },
     version = version,
-    deletedAt = deletedAt?.let { try { kotlinx.datetime.Instant.parse(it) } catch (_: Exception) { null } }
+    deletedAt = deletedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } }
 )
 
 fun ExportReviewLog.toReviewLog() = com.lumecard.shared.model.ReviewLog(
     id = id, cardId = cardId, rating = rating, reviewTime = reviewTime,
     interval = interval, easeFactor = easeFactor, repetitions = repetitions,
     lapseCount = lapseCount,
-    reviewedAt = try { kotlinx.datetime.Instant.parse(reviewedAt) } catch (_: Exception) { kotlinx.datetime.Clock.System.now() },
+    reviewedAt = try { kotlin.time.Instant.parse(reviewedAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
     version = version,
-    deletedAt = deletedAt?.let { try { kotlinx.datetime.Instant.parse(it) } catch (_: Exception) { null } }
+    deletedAt = deletedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } }
 )
 
 fun ExportLearningPlan.toLearningPlan() = com.lumecard.shared.model.LearningPlan(
@@ -416,10 +416,10 @@ fun ExportLearningPlan.toLearningPlan() = com.lumecard.shared.model.LearningPlan
     status = try { com.lumecard.shared.model.PlanStatus.valueOf(status) } catch (_: Exception) { com.lumecard.shared.model.PlanStatus.NOT_STARTED },
     isDefault = isDefault, knowledgeBaseIds = knowledgeBaseIds, deckIds = deckIds,
     cardIds = cardIds, totalCards = totalCards, completedCards = completedCards,
-    createdAt = try { kotlinx.datetime.Instant.parse(createdAt) } catch (_: Exception) { kotlinx.datetime.Clock.System.now() },
-    updatedAt = try { kotlinx.datetime.Instant.parse(updatedAt) } catch (_: Exception) { kotlinx.datetime.Clock.System.now() },
+    createdAt = try { kotlin.time.Instant.parse(createdAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
+    updatedAt = try { kotlin.time.Instant.parse(updatedAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
     version = version,
-    deletedAt = deletedAt?.let { try { kotlinx.datetime.Instant.parse(it) } catch (_: Exception) { null } }
+    deletedAt = deletedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } }
 )
 
 sealed class SyncResult {

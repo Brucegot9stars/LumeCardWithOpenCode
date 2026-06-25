@@ -1,7 +1,7 @@
 package com.lumecard.shared.domain.scheduler
 
 import com.lumecard.shared.model.Rating
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.DateTimePeriod
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
