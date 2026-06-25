@@ -20,8 +20,7 @@ import com.lumecard.shared.model.CardType
 
 /**
  * Visual grid selector for card types.
- * Displays all 9 card types as selectable cards with emoji + name + description.
- * Replaces the dropdown in CreateCardScreen.
+ * Displays all card types as selectable cards with emoji + name.
  */
 @Composable
 fun CardTypeSelector(
@@ -98,11 +97,9 @@ private fun cardTypeEmoji(type: CardType): String = when (type) {
     CardType.REVERSED -> "\uD83D\uDD04"
     CardType.CLOZE -> "\uD83D\uDD24"
     CardType.MULTIPLE_CHOICE -> "\u2705"
-    CardType.IMAGE_OCCLUSION -> "\uD83D\uDDBC\uFE0F"
-    CardType.AUDIO -> "\uD83D\uDD0A"
-    CardType.VIDEO -> "\uD83D\uDCF9"
     CardType.MARKDOWN -> "\uD83D\uDCC4"
     CardType.AI_GENERATED -> "\uD83E\uDD16"
+    CardType.RICH_TEXT -> "\uD83C\uDFA8"
 }
 
 private fun cardTypeShortName(type: CardType, strings: I18nStrings): String = when (type) {
@@ -110,10 +107,8 @@ private fun cardTypeShortName(type: CardType, strings: I18nStrings): String = wh
     CardType.REVERSED -> strings.cardTypeReversed
     CardType.CLOZE -> strings.cardTypeCloze
     CardType.MULTIPLE_CHOICE -> strings.cardTypeChoice
-    CardType.IMAGE_OCCLUSION -> strings.cardTypeOcclusion
-    CardType.AUDIO -> strings.cardTypeAudio
-    CardType.VIDEO -> strings.cardTypeVideo
     CardType.MARKDOWN -> "Markdown"
     CardType.AI_GENERATED -> "AI"
+    CardType.RICH_TEXT -> strings.cardTypeRichText
 }
 

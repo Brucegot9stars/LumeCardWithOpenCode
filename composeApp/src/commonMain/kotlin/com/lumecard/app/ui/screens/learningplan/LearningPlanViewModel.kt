@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import java.util.UUID
 
 class LearningPlanViewModel(
@@ -106,7 +106,12 @@ class LearningPlanViewModel(
     }
 
     suspend fun deletePlan(id: String) {
+        val plan = planRepository.getById(id)
         planRepository.delete(id)
+        if (plan != null && plan.isDefault) {
+            val remaining = planRepository.getAll().first().filter { it.id != id && it.deletedAt == null }
+            remaining.firstOrNull()?.let { planRepository.update(it.copy(isDefault = true, updatedAt = Clock.System.now())) }
+        }
     }
 
     suspend fun setDefault(id: String) {

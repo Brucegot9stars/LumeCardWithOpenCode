@@ -3,8 +3,6 @@ package com.lumecard.app.ui.screens.stats
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,6 +25,7 @@ class StatsScreen : Screen {
     override val key: ScreenKey = "Stats"
 
     @OptIn(ExperimentalMaterial3Api::class)
+    @Suppress("OverloadResolutionAmbiguity")
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
@@ -93,7 +92,8 @@ class StatsScreen : Screen {
                 )
 
                 Card(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors()
                 ) {
                     Column(
                         modifier = Modifier
@@ -180,7 +180,7 @@ class StatsScreen : Screen {
                     color = MaterialTheme.colorScheme.primary
                 )
 
-                Card(modifier = Modifier.fillMaxWidth()) {
+                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors()) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -239,7 +239,8 @@ class StatsScreen : Screen {
                 )
 
                 Card(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors()
                 ) {
                     Column(
                         modifier = Modifier
@@ -265,7 +266,8 @@ class StatsScreen : Screen {
                 )
 
                 Card(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors()
                 ) {
                     Column(
                         modifier = Modifier
@@ -292,6 +294,7 @@ class StatsScreen : Screen {
     }
 }
 
+@Suppress("OverloadResolutionAmbiguity")
 @Composable
 fun StatCard(
     modifier: Modifier = Modifier,

@@ -37,6 +37,7 @@ class WarehouseScreen : Screen {
     override val key: ScreenKey = "Warehouse"
 
     @OptIn(ExperimentalMaterial3Api::class)
+    @Suppress("OverloadResolutionAmbiguity")
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
@@ -65,18 +66,18 @@ class WarehouseScreen : Screen {
             topBar = {
                 if (isSelectMode) {
                     TopAppBar(
-                        title = { Text("${selectedIds.size} selected") },
+                        title = { Text(strings.warehouseSelectedCount(selectedIds.size)) },
                         navigationIcon = {
                             IconButton(onClick = { viewModel.clearSelection() }) {
-                                Icon(Icons.Default.Close, contentDescription = "Cancel")
+                                Icon(Icons.Default.Close, contentDescription = strings.actionCancel)
                             }
                         },
                         actions = {
                             IconButton(onClick = { viewModel.selectAll() }) {
-                                Icon(Icons.Default.Check, contentDescription = "Select All")
+                                Icon(Icons.Default.Check, contentDescription = strings.actionSelectAll)
                             }
                             IconButton(onClick = { showDeleteConfirm = true }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                                Icon(Icons.Default.Delete, contentDescription = strings.actionDelete, tint = MaterialTheme.colorScheme.error)
                             }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
@@ -153,12 +154,14 @@ class WarehouseScreen : Screen {
                     ) {
                         TextButton(
                             onClick = { viewModel.expandAll() },
+                            interactionSource = null,
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                         ) {
                             Text(strings.warehouseExpandAll, style = MaterialTheme.typography.labelMedium)
                         }
                         TextButton(
                             onClick = { viewModel.collapseAll() },
+                            interactionSource = null,
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                         ) {
                             Text(strings.warehouseCollapseAll, style = MaterialTheme.typography.labelMedium)
@@ -368,6 +371,7 @@ class WarehouseScreen : Screen {
     }
 }
 
+@Suppress("OverloadResolutionAmbiguity")
 @Composable
 private fun TreeNodeItem(
     node: TreeNode,
@@ -384,6 +388,7 @@ private fun TreeNodeItem(
     spacing: com.lumecard.app.ui.theme.LumeCardSpacing,
     radius: com.lumecard.app.ui.theme.LumeCardRadius,
 ) {
+    val strings = koinInject<I18nManager>().strings
     val icon = when (node.type) {
         NodeType.KNOWLEDGE_BASE -> Icons.Default.Star
         NodeType.DECK -> Icons.AutoMirrored.Filled.List
@@ -418,6 +423,7 @@ private fun TreeNodeItem(
                 Checkbox(
                     checked = isSelected,
                     onCheckedChange = { onToggleSelect() },
+                    interactionSource = null,
                 )
             }
 
@@ -446,7 +452,7 @@ private fun TreeNodeItem(
                 )
                 if (childCount > 0) {
                     Text(
-                        "$childCount items",
+                        strings.warehouseChildCount(childCount),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -456,19 +462,19 @@ private fun TreeNodeItem(
             if (!isSelectMode) {
                 if (onAddDeck != null) {
                     IconButton(onClick = onAddDeck, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Add, contentDescription = "Add", modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Add, contentDescription = strings.warehouseAdd, modifier = Modifier.size(16.dp))
                     }
                 }
                 if (onAddCard != null) {
                     IconButton(onClick = onAddCard, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Add, contentDescription = "Add Card", modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Add, contentDescription = strings.cardAdd, modifier = Modifier.size(16.dp))
                     }
                 }
                 IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Icons.Default.Edit, contentDescription = strings.warehouseEdit, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
+                    Icon(Icons.Default.Delete, contentDescription = strings.actionDelete, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
                 }
             }
         }

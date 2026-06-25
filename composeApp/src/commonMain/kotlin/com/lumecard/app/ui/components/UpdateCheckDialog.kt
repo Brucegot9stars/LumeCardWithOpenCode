@@ -150,7 +150,7 @@ fun UpdateCheckDialog(
                 }
                 is UpdateState.Error -> {
                     TextButton(onClick = {
-                        val errorMsg = "LumeCard Update Error\nVersion: ${getAppVersion()}\nError: ${updateState.message}\nTime: ${kotlinx.datetime.Clock.System.now()}"
+                        val errorMsg = strings.updateErrorCopyFormat(getAppVersion(), updateState.message, kotlin.time.Clock.System.now().toString())
                         onCopyError(errorMsg)
                         onDismiss()
                     }) {

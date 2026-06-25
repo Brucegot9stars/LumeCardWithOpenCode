@@ -1,7 +1,7 @@
 package com.lumecard.shared.model
 
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -30,7 +30,12 @@ data class Deck(
     val version: Long = 1,
     val deletedAt: Instant? = null,
     val syncedAt: Instant? = null
-)
+) {
+    companion object {
+        val colors = listOf("#4CAF50", "#2196F3", "#FF9800", "#E91E63", "#9C27B0", "#00BCD4", "#FF5722", "#607D8B")
+        val icons = listOf("\uD83D\uDCDA", "\uD83C\uDF93", "\uD83D\uDCA1", "\uD83C\uDF1F", "\uD83C\uDFAF", "\uD83D\uDCDD", "\uD83D\uDD2C", "\uD83C\uDFA8")
+    }
+}
 
 @Serializable
 data class Card(
@@ -57,11 +62,9 @@ enum class CardType {
     REVERSED,
     CLOZE,
     MULTIPLE_CHOICE,
-    IMAGE_OCCLUSION,
-    AUDIO,
-    VIDEO,
     MARKDOWN,
-    AI_GENERATED
+    AI_GENERATED,
+    RICH_TEXT
 }
 
 @Serializable

@@ -6,7 +6,7 @@ import com.lumecard.shared.model.Deck
 import com.lumecard.shared.model.KnowledgeBase
 import com.lumecard.shared.model.LearningPlan
 import com.lumecard.shared.model.ReviewLog
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -120,6 +120,20 @@ data class ExportReviewLog(
     val deletedAt: String? = null
 )
 
+/** A snapshot entry in the sync history archive. */
+@Serializable
+data class SyncHistoryEntry(
+    val timestamp: String,
+    val deviceId: String,
+    val filename: String
+)
+
+/** Index of all sync snapshots on the remote. */
+@Serializable
+data class SyncHistoryIndex(
+    val entries: List<SyncHistoryEntry> = emptyList()
+)
+
 @Serializable
 data class ExportLearningPlan(
     val id: String,
@@ -144,6 +158,57 @@ class ExportManager {
         ignoreUnknownKeys = true
     }
 
+    private fun exportKbs(kbs: List<KnowledgeBase>) = kbs.map { kb ->
+        ExportKnowledgeBase(
+            id = kb.id, name = kb.name, description = kb.description,
+            createdAt = kb.createdAt.toString(), updatedAt = kb.updatedAt.toString(),
+            version = kb.version, deletedAt = kb.deletedAt?.toString()
+        )
+    }
+
+    private fun exportDecks(decks: List<Deck>) = decks.map { d ->
+        ExportDeck(
+            id = d.id, knowledgeBaseId = d.knowledgeBaseId, name = d.name,
+            description = d.description, color = d.color, icon = d.icon,
+            parentId = d.parentId, createdAt = d.createdAt.toString(),
+            updatedAt = d.updatedAt.toString(), version = d.version,
+            deletedAt = d.deletedAt?.toString()
+        )
+    }
+
+    private fun exportCards(cards: List<Card>) = cards.map { c ->
+        ExportCard(
+            id = c.id, deckId = c.deckId, type = c.type.name,
+            front = c.front, back = c.back, tags = c.tags,
+            createdAt = c.createdAt.toString(), updatedAt = c.updatedAt.toString(),
+            lastReviewedAt = c.lastReviewedAt?.toString(),
+            nextReviewAt = c.nextReviewAt?.toString(),
+            version = c.version, deletedAt = c.deletedAt?.toString()
+        )
+    }
+
+    private fun exportReviewLogs(logs: List<ReviewLog>) = logs.map { l ->
+        ExportReviewLog(
+            id = l.id, cardId = l.cardId, rating = l.rating,
+            reviewTime = l.reviewTime, interval = l.interval,
+            easeFactor = l.easeFactor, repetitions = l.repetitions,
+            lapseCount = l.lapseCount, reviewedAt = l.reviewedAt.toString(),
+            version = l.version, deletedAt = l.deletedAt?.toString()
+        )
+    }
+
+    private fun exportPlans(plans: List<LearningPlan>) = plans.map { p ->
+        ExportLearningPlan(
+            id = p.id, name = p.name, description = p.description,
+            status = p.status.name, isDefault = p.isDefault,
+            knowledgeBaseIds = p.knowledgeBaseIds, deckIds = p.deckIds,
+            cardIds = p.cardIds, totalCards = p.totalCards,
+            completedCards = p.completedCards,
+            createdAt = p.createdAt.toString(), updatedAt = p.updatedAt.toString(),
+            version = p.version, deletedAt = p.deletedAt?.toString()
+        )
+    }
+
     fun exportData(
         knowledgeBases: List<KnowledgeBase>,
         decks: List<Deck>,
@@ -155,52 +220,11 @@ class ExportManager {
         val export = DataExport(
             exportDate = Clock.System.now().toString(),
             deviceId = deviceId,
-            knowledgeBases = knowledgeBases.map { kb ->
-                ExportKnowledgeBase(
-                    id = kb.id, name = kb.name, description = kb.description,
-                    createdAt = kb.createdAt.toString(), updatedAt = kb.updatedAt.toString(),
-                    version = kb.version, deletedAt = kb.deletedAt?.toString()
-                )
-            },
-            decks = decks.map { d ->
-                ExportDeck(
-                    id = d.id, knowledgeBaseId = d.knowledgeBaseId, name = d.name,
-                    description = d.description, color = d.color, icon = d.icon,
-                    parentId = d.parentId, createdAt = d.createdAt.toString(),
-                    updatedAt = d.updatedAt.toString(), version = d.version,
-                    deletedAt = d.deletedAt?.toString()
-                )
-            },
-            cards = cards.map { c ->
-                ExportCard(
-                    id = c.id, deckId = c.deckId, type = c.type.name,
-                    front = c.front, back = c.back, tags = c.tags,
-                    createdAt = c.createdAt.toString(), updatedAt = c.updatedAt.toString(),
-                    lastReviewedAt = c.lastReviewedAt?.toString(),
-                    nextReviewAt = c.nextReviewAt?.toString(),
-                    version = c.version, deletedAt = c.deletedAt?.toString()
-                )
-            },
-            reviewLogs = reviewLogs.map { l ->
-                ExportReviewLog(
-                    id = l.id, cardId = l.cardId, rating = l.rating,
-                    reviewTime = l.reviewTime, interval = l.interval,
-                    easeFactor = l.easeFactor, repetitions = l.repetitions,
-                    lapseCount = l.lapseCount, reviewedAt = l.reviewedAt.toString(),
-                    version = l.version, deletedAt = l.deletedAt?.toString()
-                )
-            },
-            learningPlans = learningPlans.map { p ->
-                ExportLearningPlan(
-                    id = p.id, name = p.name, description = p.description,
-                    status = p.status.name, isDefault = p.isDefault,
-                    knowledgeBaseIds = p.knowledgeBaseIds, deckIds = p.deckIds,
-                    cardIds = p.cardIds, totalCards = p.totalCards,
-                    completedCards = p.completedCards,
-                    createdAt = p.createdAt.toString(), updatedAt = p.updatedAt.toString(),
-                    version = p.version, deletedAt = p.deletedAt?.toString()
-                )
-            }
+            knowledgeBases = exportKbs(knowledgeBases),
+            decks = exportDecks(decks),
+            cards = exportCards(cards),
+            reviewLogs = exportReviewLogs(reviewLogs),
+            learningPlans = exportPlans(learningPlans)
         )
         return json.encodeToString(DataExport.serializer(), export)
     }
@@ -215,32 +239,9 @@ class ExportManager {
         val export = ShareExport(
             exportDate = Clock.System.now().toString(),
             deviceId = deviceId,
-            knowledgeBases = knowledgeBases.map { kb ->
-                ExportKnowledgeBase(
-                    id = kb.id, name = kb.name, description = kb.description,
-                    createdAt = kb.createdAt.toString(), updatedAt = kb.updatedAt.toString(),
-                    version = kb.version, deletedAt = kb.deletedAt?.toString()
-                )
-            },
-            decks = decks.map { d ->
-                ExportDeck(
-                    id = d.id, knowledgeBaseId = d.knowledgeBaseId, name = d.name,
-                    description = d.description, color = d.color, icon = d.icon,
-                    parentId = d.parentId, createdAt = d.createdAt.toString(),
-                    updatedAt = d.updatedAt.toString(), version = d.version,
-                    deletedAt = d.deletedAt?.toString()
-                )
-            },
-            cards = cards.map { c ->
-                ExportCard(
-                    id = c.id, deckId = c.deckId, type = c.type.name,
-                    front = c.front, back = c.back, tags = c.tags,
-                    createdAt = c.createdAt.toString(), updatedAt = c.updatedAt.toString(),
-                    lastReviewedAt = c.lastReviewedAt?.toString(),
-                    nextReviewAt = c.nextReviewAt?.toString(),
-                    version = c.version, deletedAt = c.deletedAt?.toString()
-                )
-            }
+            knowledgeBases = exportKbs(knowledgeBases),
+            decks = exportDecks(decks),
+            cards = exportCards(cards)
         )
         return json.encodeToString(ShareExport.serializer(), export)
     }
@@ -268,52 +269,11 @@ class ExportManager {
             exportDate = Clock.System.now().toString(),
             since = since,
             deviceId = deviceId,
-            knowledgeBases = knowledgeBases.map { kb ->
-                ExportKnowledgeBase(
-                    id = kb.id, name = kb.name, description = kb.description,
-                    createdAt = kb.createdAt.toString(), updatedAt = kb.updatedAt.toString(),
-                    version = kb.version, deletedAt = kb.deletedAt?.toString()
-                )
-            },
-            decks = decks.map { d ->
-                ExportDeck(
-                    id = d.id, knowledgeBaseId = d.knowledgeBaseId, name = d.name,
-                    description = d.description, color = d.color, icon = d.icon,
-                    parentId = d.parentId, createdAt = d.createdAt.toString(),
-                    updatedAt = d.updatedAt.toString(), version = d.version,
-                    deletedAt = d.deletedAt?.toString()
-                )
-            },
-            cards = cards.map { c ->
-                ExportCard(
-                    id = c.id, deckId = c.deckId, type = c.type.name,
-                    front = c.front, back = c.back, tags = c.tags,
-                    createdAt = c.createdAt.toString(), updatedAt = c.updatedAt.toString(),
-                    lastReviewedAt = c.lastReviewedAt?.toString(),
-                    nextReviewAt = c.nextReviewAt?.toString(),
-                    version = c.version, deletedAt = c.deletedAt?.toString()
-                )
-            },
-            reviewLogs = reviewLogs.map { l ->
-                ExportReviewLog(
-                    id = l.id, cardId = l.cardId, rating = l.rating,
-                    reviewTime = l.reviewTime, interval = l.interval,
-                    easeFactor = l.easeFactor, repetitions = l.repetitions,
-                    lapseCount = l.lapseCount, reviewedAt = l.reviewedAt.toString(),
-                    version = l.version, deletedAt = l.deletedAt?.toString()
-                )
-            },
-            learningPlans = learningPlans.map { p ->
-                ExportLearningPlan(
-                    id = p.id, name = p.name, description = p.description,
-                    status = p.status.name, isDefault = p.isDefault,
-                    knowledgeBaseIds = p.knowledgeBaseIds, deckIds = p.deckIds,
-                    cardIds = p.cardIds, totalCards = p.totalCards,
-                    completedCards = p.completedCards,
-                    createdAt = p.createdAt.toString(), updatedAt = p.updatedAt.toString(),
-                    version = p.version, deletedAt = p.deletedAt?.toString()
-                )
-            }
+            knowledgeBases = exportKbs(knowledgeBases),
+            decks = exportDecks(decks),
+            cards = exportCards(cards),
+            reviewLogs = exportReviewLogs(reviewLogs),
+            learningPlans = exportPlans(learningPlans)
         )
         return json.encodeToString(IncrementalExport.serializer(), export)
     }
@@ -351,6 +311,20 @@ class ExportManager {
                 knowledgeBases = share.knowledgeBases,
                 decks = share.decks,
                 cards = share.cards
+            )
+        } catch (_: Exception) { null }
+
+        return try {
+            val inc = json.decodeFromString(IncrementalExport.serializer(), jsonString)
+            DataExport(
+                exportType = "backup",
+                exportDate = inc.exportDate,
+                deviceId = inc.deviceId,
+                knowledgeBases = inc.knowledgeBases,
+                decks = inc.decks,
+                cards = inc.cards,
+                reviewLogs = inc.reviewLogs,
+                learningPlans = inc.learningPlans
             )
         } catch (_: Exception) { null }
     }

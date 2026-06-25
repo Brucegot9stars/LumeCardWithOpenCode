@@ -28,6 +28,7 @@ import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.shared.data.ExportManager
 import com.lumecard.shared.data.MediaManager
+import com.lumecard.shared.data.SyncHistoryEntry
 import com.lumecard.shared.data.MediaManifest
 import com.lumecard.shared.data.MediaManifestEntry
 import com.lumecard.shared.data.SyncManager
@@ -49,14 +50,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
 import org.koin.compose.koinInject
 
 class WebDavConfigScreen : Screen {
     override val key: ScreenKey = "WebDavConfig"
 
     @OptIn(ExperimentalMaterial3Api::class)
+    @Suppress("OverloadResolutionAmbiguity")
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
@@ -90,14 +91,16 @@ class WebDavConfigScreen : Screen {
         var syncStatus by remember { mutableStateOf("") }
         var deleteConfirmId by remember { mutableStateOf<String?>(null) }
         var showRestoreConfirm by remember { mutableStateOf(false) }
+        var showRestoreHistory by remember { mutableStateOf(false) }
+        var historyEntries by remember { mutableStateOf<List<SyncHistoryEntry>>(emptyList()) }
+        var restoreHistoryTarget by remember { mutableStateOf<SyncHistoryEntry?>(null) }
         var autoSyncEnabled by remember { mutableStateOf(false) }
         var autoSyncInterval by remember { mutableStateOf(30) }
         var showIntervalDropdown by remember { mutableStateOf(false) }
         var defaultConfig by remember { mutableStateOf<WebDavConfig?>(null) }
 
-        val localeCode = i18nManager.currentLocale.code
         val providerPresets = WebDavProviders.all.map { provider ->
-            Triple(WebDavProviders.getName(provider, localeCode), provider.urlTemplate, provider.id)
+            Triple(provider.name, provider.url, provider.id)
         }
 
         fun reloadConfigs() {
@@ -200,16 +203,16 @@ class WebDavConfigScreen : Screen {
                             )
 
                             var showProviderMenu by remember { mutableStateOf(false) }
+                            var selectedProviderId by remember { mutableStateOf<String?>(null) }
                             val detectedProvider = remember(editUrl) {
                                 if (editUrl.isNotBlank()) WebDavProviders.detectProvider(editUrl) else null
                             }
-                            val displayProviderName = remember(editUrl, detectedProvider) {
-                                if (detectedProvider != null) {
-                                    WebDavProviders.getName(detectedProvider, localeCode)
-                                } else {
-                                    val matched = providerPresets.firstOrNull { it.second == editUrl }
-                                    matched?.first ?: strings.webdavProviderCustom
-                                }
+                            val displayProviderName = remember(selectedProviderId, editUrl, detectedProvider) {
+                                selectedProviderId?.let { id ->
+                                    providerPresets.firstOrNull { it.third == id }?.first
+                                } ?: detectedProvider?.name
+                                    ?: providerPresets.firstOrNull { it.second == editUrl }?.first
+                                    ?: strings.webdavProviderCustom
                             }
                             Box {
                                 OutlinedTextField(
@@ -231,18 +234,25 @@ class WebDavConfigScreen : Screen {
                                     expanded = showProviderMenu,
                                     onDismissRequest = { showProviderMenu = false },
                                 ) {
-                                    providerPresets.forEach { (name, url, _) ->
+                                    providerPresets.forEach { (name, url, id) ->
                                         DropdownMenuItem(
                                             text = { Text(name) },
                                             onClick = {
-                                                if (url.isNotEmpty()) {
-                                                    editUrl = url
-                                                    if (editName.isBlank()) editName = name
-                                                }
+                                                selectedProviderId = id
+                                                editUrl = url
+                                                if (editName.isBlank()) editName = name
                                                 showProviderMenu = false
                                             },
                                         )
                                     }
+                                    HorizontalDivider()
+                                    DropdownMenuItem(
+                                        text = { Text(strings.webdavProviderCustom) },
+                                        onClick = {
+                                            selectedProviderId = null
+                                            showProviderMenu = false
+                                        },
+                                    )
                                 }
                             }
 
@@ -267,7 +277,7 @@ class WebDavConfigScreen : Screen {
                                 singleLine = true,
                                 visualTransformation = if (showPass) VisualTransformation.None else PasswordVisualTransformation(),
                                 trailingIcon = {
-                                    TextButton(onClick = { showPass = !showPass }) {
+                                    TextButton(onClick = { showPass = !showPass }, interactionSource = null) {
                                         Text(
                                             if (showPass) "\u2713" else "\u25CB",
                                             style = MaterialTheme.typography.labelMedium,
@@ -305,12 +315,13 @@ class WebDavConfigScreen : Screen {
                                             val result = withContext(Dispatchers.IO) { webDavConfigManager.testConnection(config) }
                                             testResult = result.fold(
                                                 onSuccess = { strings.settingsSyncTestSuccess },
-                                                onFailure = { strings.settingsSyncTestError(it.message ?: "Unknown") }
+                                                onFailure = { strings.settingsSyncTestError(it.message ?: strings.errorUnknown) }
                                             )
                                             val msg = testResult ?: return@launch
                                             snackbarHostState.showSnackbar(msg)
                                         }
                                     },
+                                    interactionSource = null,
                                     modifier = Modifier.weight(1f),
                                 ) {
                                     Text(strings.settingsSyncTestConnection)
@@ -333,10 +344,11 @@ class WebDavConfigScreen : Screen {
                                                 testResult = null
                                                 reloadConfigs()
                                             } catch (e: Exception) {
-                                                snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
+                                                snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: strings.errorUnknown))
                                             }
                                         }
                                     },
+                                    interactionSource = null,
                                     modifier = Modifier.weight(1f),
                                 ) {
                                     Text(strings.actionSave)
@@ -349,6 +361,7 @@ class WebDavConfigScreen : Screen {
                                     editConfig = null
                                     testResult = null
                                 },
+                                interactionSource = null,
                             ) {
                                 Text(strings.actionCancel)
                             }
@@ -447,7 +460,7 @@ class WebDavConfigScreen : Screen {
                                                             withContext(Dispatchers.IO) { webDavConfigManager.setDefault(config.id) }
                                                             reloadConfigs()
                                                         } catch (e: Exception) {
-                                                            snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
+                                                            snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: strings.errorUnknown))
                                                         }
                                                     }
                                                 },
@@ -472,6 +485,7 @@ class WebDavConfigScreen : Screen {
                             testResult = null
                             isEditing = true
                         },
+                        interactionSource = null,
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(spacing.sm))
@@ -601,13 +615,14 @@ class WebDavConfigScreen : Screen {
                                     snackbarHostState.showSnackbar(strings.settingsSyncSuccess(0))
                                     reloadConfigs()
                                 } catch (e: Exception) {
-                                    syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
-                                    snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
+                                    syncStatus = strings.settingsSyncError(e.message ?: strings.errorUnknown)
+                                    snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: strings.errorUnknown))
                                 } finally {
                                     isSyncing = false
                                 }
                             }
                         },
+                        interactionSource = null,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !isSyncing,
                     ) {
@@ -642,6 +657,7 @@ class WebDavConfigScreen : Screen {
                                     }
                                 }
                             },
+                            interactionSource = null,
                             modifier = Modifier.weight(1f),
                             enabled = !isSyncing,
                         ) {
@@ -670,6 +686,7 @@ class WebDavConfigScreen : Screen {
                                     }
                                 }
                             },
+                            interactionSource = null,
                             modifier = Modifier.weight(1f),
                             enabled = !isSyncing,
                         ) {
@@ -680,12 +697,42 @@ class WebDavConfigScreen : Screen {
                     // Restore from cloud
                     OutlinedButton(
                         onClick = { showRestoreConfirm = true },
+                        interactionSource = null,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !isSyncing,
                     ) {
                         Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(spacing.sm))
                         Text(strings.settingsRestoreFromCloud)
+                    }
+
+                    // Restore history
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                try {
+                                    val config = defaultConfig ?: return@launch
+                                    val index = withContext(Dispatchers.IO) {
+                                        syncManager.downloadHistoryIndex(config)
+                                    }
+                                    if (index.isSuccess) {
+                                        historyEntries = index.getOrThrow().entries.reversed()
+                                        showRestoreHistory = true
+                                    } else {
+                                        snackbarHostState.showSnackbar("No history found")
+                                    }
+                                } catch (_: Exception) {
+                                    snackbarHostState.showSnackbar("Failed to load history")
+                                }
+                            }
+                        },
+                        interactionSource = null,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isSyncing,
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(spacing.sm))
+                        Text(strings.syncRestoreHistory)
                     }
                 }
 
@@ -708,13 +755,102 @@ class WebDavConfigScreen : Screen {
                                 reloadConfigs()
                             } catch (e: Exception) {
                                 deleteConfirmId = null
-                                snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
+                                snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: strings.errorUnknown))
                             }
                         }
-                    }) { Text(strings.actionConfirm) }
+                    }, interactionSource = null) { Text(strings.actionConfirm) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { deleteConfirmId = null }) { Text(strings.actionCancel) }
+                    TextButton(onClick = { deleteConfirmId = null }, interactionSource = null) { Text(strings.actionCancel) }
+                },
+            )
+        }
+
+        // Restore history dialog
+        if (showRestoreHistory) {
+            AlertDialog(
+                onDismissRequest = { showRestoreHistory = false },
+                title = { Text(strings.syncRestoreHistory) },
+                text = {
+                    if (historyEntries.isEmpty()) {
+                        Text(strings.syncNoHistoryAvailable)
+                    } else {
+                        Column {
+                            historyEntries.forEach { entry ->
+                                TextButton(
+                                    onClick = {
+                                        restoreHistoryTarget = entry
+                                        showRestoreHistory = false
+                                        scope.launch {
+                                            isSyncing = true
+                                            syncStatus = strings.settingsSyncing
+                                            try {
+                                                val config = defaultConfig ?: return@launch
+                                                val result = withContext(Dispatchers.IO) {
+                                                    val remoteResult = syncManager.downloadSnapshot(config, entry.filename)
+                                                    var restoredDecks = 0
+                                                    if (remoteResult.isSuccess) {
+                                                        val remote = exportManager.importData(remoteResult.getOrThrow())
+                                                        if (remote != null) {
+                                                            for (kb in knowledgeBaseRepository.getAll().first()) {
+                                                                knowledgeBaseRepository.delete(kb.id)
+                                                            }
+                                                            for (deck in deckRepository.getAll().first()) {
+                                                                deckRepository.delete(deck.id)
+                                                            }
+                                                            for (card in cardRepository.getAll().first()) {
+                                                                cardRepository.delete(card.id)
+                                                            }
+                                                            for (kb in remote.knowledgeBases) {
+                                                                knowledgeBaseRepository.insert(kb.toKnowledgeBase())
+                                                            }
+                                                            for (deck in remote.decks) {
+                                                                deckRepository.insert(deck.toDeck())
+                                                                restoredDecks++
+                                                            }
+                                                            for (card in remote.cards) {
+                                                                cardRepository.insert(card.toCard())
+                                                            }
+                                                            for (log in remote.reviewLogs) {
+                                                                reviewLogRepository.insert(log.toReviewLog())
+                                                            }
+                                                            for (plan in remote.learningPlans) {
+                                                                planRepository.insert(plan.toLearningPlan())
+                                                            }
+                                                        }
+                                                    }
+                                                    webDavConfigManager.updateLastSync(config.id)
+                                                    restoredDecks
+                                                }
+                                                syncStatus = strings.settingsSyncSuccess(result)
+                                                snackbarHostState.showSnackbar(strings.settingsSyncSuccess(result))
+                                                reloadConfigs()
+                                            } catch (e: Exception) {
+                                                syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
+                                                snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: strings.errorUnknown))
+                                            } finally {
+                                                isSyncing = false
+                                            }
+                                        }
+                                    },
+                                    interactionSource = null,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        strings.syncHistoryEntryFormat(entry.timestamp, entry.deviceId),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showRestoreHistory = false }, interactionSource = null) {
+                        Text(strings.actionCancel)
+                    }
                 },
             )
         }
@@ -779,10 +915,10 @@ class WebDavConfigScreen : Screen {
                                 isSyncing = false
                             }
                         }
-                    }) { Text(strings.actionConfirm) }
+                    }, interactionSource = null) { Text(strings.actionConfirm) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showRestoreConfirm = false }) { Text(strings.actionCancel) }
+                    TextButton(onClick = { showRestoreConfirm = false }, interactionSource = null) { Text(strings.actionCancel) }
                 },
             )
         }
@@ -801,46 +937,23 @@ private suspend fun syncIncrementalData(
     mediaManager: MediaManager
 ) {
     val now = Clock.System.now()
-    val since = config.lastSyncAt?.let { try { Instant.parse(it) } catch (_: Exception) { null } }
 
-    if (since == null) {
-        val kbs = kbRepository.getAll().first()
-        val decks = deckRepository.getAll().first()
-        val cards = cardRepository.getAll().first()
-        val logs = reviewLogRepository.getAll().first()
-        val plans = planRepository.getAll().first()
-        val json = exportManager.exportData(kbs, decks, cards, logs, plans)
-        syncManager.uploadData(config, json).getOrThrow()
-        kbRepository.markSynced(kbs.map { it.id }, now)
-        deckRepository.markSynced(decks.map { it.id }, now)
-        cardRepository.markSynced(cards.map { it.id }, now)
-        reviewLogRepository.markSynced(logs.map { it.id }, now)
-        planRepository.markSynced(plans.map { it.id }, now)
-    } else {
-        val dirtyKbs = kbRepository.getUpdatedSince(since)
-        val dirtyDecks = deckRepository.getUpdatedSince(since)
-        val dirtyCards = cardRepository.getUpdatedSince(since)
-        val dirtyLogs = reviewLogRepository.getUpdatedSince(since)
-        val dirtyPlans = planRepository.getUpdatedSince(since)
+    syncManager.archiveCurrentSnapshot(config)
 
-        if (dirtyKbs.isNotEmpty() || dirtyDecks.isNotEmpty() || dirtyCards.isNotEmpty() || dirtyLogs.isNotEmpty() || dirtyPlans.isNotEmpty()) {
-            val json = exportManager.exportIncrementalData(
-                knowledgeBases = dirtyKbs,
-                decks = dirtyDecks,
-                cards = dirtyCards,
-                reviewLogs = dirtyLogs,
-                learningPlans = dirtyPlans,
-                since = since.toString()
-            )
-            syncManager.uploadData(config, json).getOrThrow()
+    val allKbs = kbRepository.getAll().first()
+    val allDecks = deckRepository.getAll().first()
+    val allCards = cardRepository.getAll().first()
+    val allLogs = reviewLogRepository.getAll().first()
+    val allPlans = planRepository.getAll().first()
 
-            kbRepository.markSynced(dirtyKbs.map { it.id }, now)
-            deckRepository.markSynced(dirtyDecks.map { it.id }, now)
-            cardRepository.markSynced(dirtyCards.map { it.id }, now)
-            reviewLogRepository.markSynced(dirtyLogs.map { it.id }, now)
-            planRepository.markSynced(dirtyPlans.map { it.id }, now)
-        }
-    }
+    val json = exportManager.exportData(allKbs, allDecks, allCards, allLogs, allPlans)
+    syncManager.uploadData(config, json).getOrThrow()
+
+    kbRepository.markSynced(allKbs.map { it.id }, now)
+    deckRepository.markSynced(allDecks.map { it.id }, now)
+    cardRepository.markSynced(allCards.map { it.id }, now)
+    reviewLogRepository.markSynced(allLogs.map { it.id }, now)
+    planRepository.markSynced(allPlans.map { it.id }, now)
 
     // Anki-style media sync: cache mtime + SHA-1 to avoid re-hashing unchanged files
     val mediaBase = System.getProperty("lumecard.media.dir") ?: "${System.getProperty("user.home")}/.lumecard/media"

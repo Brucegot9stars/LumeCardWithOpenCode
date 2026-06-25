@@ -2,11 +2,11 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 
 plugins {
-    id("com.android.application")
     kotlin("multiplatform")
-    id("org.jetbrains.kotlin.plugin.compose")
-    id("org.jetbrains.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
+    id("org.jetbrains.compose")
+    id("org.jetbrains.kotlin.plugin.compose")
+    id("com.android.application")
 }
 
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -41,10 +41,12 @@ kotlin {
             dependencies {
                 implementation(project(":shared"))
 
-                implementation(Dependencies.composeRuntime)
-                implementation(Dependencies.composeFoundation)
-                implementation(Dependencies.composeMaterial3)
-                implementation(Dependencies.composeComponents)
+                implementation(compose.runtime)
+                implementation(compose.foundation)
+                implementation(compose.material3)
+                implementation(compose.material)
+                implementation(compose.materialIconsExtended)
+                implementation(compose.components.resources)
 
                 implementation(Dependencies.voyagerNavigator)
                 implementation(Dependencies.voyagerScreen)
@@ -52,11 +54,8 @@ kotlin {
 
                 implementation(Dependencies.koinCompose)
 
-                implementation(Dependencies.commonmark)
-                implementation(Dependencies.commonmarkGfmTables)
-                implementation(Dependencies.commonmarkGfmStrikethrough)
-                implementation(Dependencies.commonmarkAutolink)
-                implementation(Dependencies.commonmarkTaskList)
+                implementation(Dependencies.mikepenzMarkdown)
+                implementation(Dependencies.mikepenzMarkdownM3)
 
                 implementation(Dependencies.kotlinxCoroutines)
                 implementation(Dependencies.kotlinxDateTime)
@@ -103,12 +102,12 @@ compose.desktop {
 
     android {
         namespace = "com.lumecard.app"
-        compileSdk = 35
+        compileSdk = 36
 
         defaultConfig {
             applicationId = "com.lumecard.app"
             minSdk = 26
-            targetSdk = 35
+            targetSdk = 36
             versionCode = (System.getenv("VERSION_CODE")?.toIntOrNull()
                 ?: project.findProperty("VERSION_CODE")?.toString()?.toIntOrNull()
                 ?: appVersionCode)

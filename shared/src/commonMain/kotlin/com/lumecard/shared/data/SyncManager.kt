@@ -5,7 +5,9 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.utils.io.core.readBytes
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 
 class SyncManager(
     private val client: HttpClient
@@ -19,21 +21,26 @@ class SyncManager(
         private const val LEGACY_PATH = "lumecard_backup.json"
         private const val MEDIA_DIR = "$BACKUP_DIR/media"
         private const val MANIFEST_PATH = "$BACKUP_DIR/media_manifest.json"
+
+        private const val HISTORY_DIR = "$BACKUP_DIR/history"
+        private const val HISTORY_INDEX_FILENAME = "history_index.json"
+        private const val HISTORY_INDEX_PATH = "$BACKUP_DIR/$HISTORY_INDEX_FILENAME"
+        private const val MAX_HISTORY = 15
     }
+
+    private val json = Json { ignoreUnknownKeys = true }
 
     private suspend fun ensureDir(baseUrl: String, username: String, password: String, dir: String) {
         val dirUrl = baseUrl.trimEnd('/') + "/" + dir.trim('/') + "/"
-        try {
-            val r = client.request(dirUrl) {
-                method = HttpMethod("MKCOL")
-                basicAuth(username, password)
-            }
-            val s = r.status.value
-            val ok = s in 200..299 || s == 405
-            if (!ok) throw SyncException("MKCOL $dir failed: $s")
-        } catch (e: SyncException) {
-            throw e
-        } catch (_: Exception) { }
+        val r = client.request(dirUrl) {
+            method = HttpMethod("MKCOL")
+            basicAuth(username, password)
+        }
+        val s = r.status.value
+        // HTTP 405 = Method Not Allowed = directory already exists → success
+        if (s != 405 && (s < 200 || s > 299)) {
+            throw SyncException("MKCOL $dir failed: $s")
+        }
     }
 
     suspend fun uploadData(config: WebDavConfig, json: String): Result<Unit> {
@@ -178,6 +185,109 @@ class SyncManager(
         return downloadData(config)
     }
 
+    /** Download the current remote data.json, archive it to history/ with timestamp + deviceId. */
+    suspend fun archiveCurrentSnapshot(config: WebDavConfig): Result<SyncHistoryEntry?> {
+        return try {
+            val currentResult = downloadData(config)
+            if (currentResult.isFailure) return Result.success(null)
+
+            val currentJson = currentResult.getOrThrow()
+            val deviceId = try {
+                json.decodeFromString(DataExport.serializer(), currentJson).deviceId ?: "unknown"
+            } catch (_: Exception) { "unknown" }
+
+            val timestamp = Clock.System.now().toString().replace("T", "_").replace(":", "-").substringBefore("Z")
+            val safeDeviceId = deviceId.replace(Regex("[^a-zA-Z0-9_-]"), "_").take(16)
+            val filename = "${HISTORY_DIR}/${timestamp}_${safeDeviceId}.json"
+
+            ensureDir(config.url, config.username, config.password, HISTORY_DIR)
+            val url = config.url.trimEnd('/') + "/" + filename
+            val response = client.put(url) {
+                basicAuth(config.username, config.password)
+                contentType(ContentType.Application.Json)
+                setBody(currentJson)
+            }
+            if (response.status.isSuccess()) {
+                val entry = SyncHistoryEntry(
+                    timestamp = Clock.System.now().toString(),
+                    deviceId = deviceId,
+                    filename = filename
+                )
+                updateHistoryIndex(config, entry)
+                Result.success(entry)
+            } else {
+                Result.failure(SyncException("Archive failed: ${response.status}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /** Append an entry to the remote history_index.json, keeping at most MAX_HISTORY entries. */
+    private suspend fun updateHistoryIndex(config: WebDavConfig, newEntry: SyncHistoryEntry): Result<Unit> {
+        return try {
+            val existingResult = downloadHistoryIndex(config)
+            val existing = existingResult.getOrNull() ?: SyncHistoryIndex()
+            val allEntries = existing.entries + newEntry
+            val pruned = if (allEntries.size > MAX_HISTORY) {
+                val toRemove = allEntries.take(allEntries.size - MAX_HISTORY)
+                for (old in toRemove) {
+                    try {
+                        val delUrl = config.url.trimEnd('/') + "/" + old.filename
+                        client.delete(delUrl) { basicAuth(config.username, config.password) }
+                    } catch (_: Exception) { }
+                }
+                allEntries.takeLast(MAX_HISTORY)
+            } else {
+                allEntries
+            }
+            val updated = SyncHistoryIndex(pruned)
+            val indexBody = json.encodeToString(updated)
+            val url = config.url.trimEnd('/') + "/" + HISTORY_INDEX_PATH
+            val response = client.put(url) {
+                basicAuth(config.username, config.password)
+                contentType(ContentType.Application.Json)
+                setBody(indexBody)
+            }
+            if (response.status.isSuccess()) Result.success(Unit)
+            else Result.failure(SyncException("Update history index failed: ${response.status}"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /** Download the history_index.json from remote. */
+    suspend fun downloadHistoryIndex(config: WebDavConfig): Result<SyncHistoryIndex> {
+        return try {
+            val url = config.url.trimEnd('/') + "/" + HISTORY_INDEX_PATH
+            val response = client.get(url) {
+                basicAuth(config.username, config.password)
+            }
+            if (response.status == HttpStatusCode.OK) {
+                val index = json.decodeFromString<SyncHistoryIndex>(response.bodyAsText())
+                Result.success(index)
+            } else {
+                Result.success(SyncHistoryIndex())
+            }
+        } catch (_: Exception) {
+            Result.success(SyncHistoryIndex())
+        }
+    }
+
+    /** Download the content of a specific history snapshot by filename. */
+    suspend fun downloadSnapshot(config: WebDavConfig, filename: String): Result<String> {
+        return try {
+            val url = config.url.trimEnd('/') + "/" + filename
+            val response = client.get(url) {
+                basicAuth(config.username, config.password)
+            }
+            if (response.status == HttpStatusCode.OK) Result.success(response.bodyAsText())
+            else Result.failure(SyncException("Snapshot not found"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     /**
      * Full bidirectional data sync with version-based conflict resolution.
      */
@@ -204,6 +314,7 @@ class SyncManager(
         val remoteExport = exportManager.importData(remoteJson)
 
         if (remoteExport == null) {
+            archiveCurrentSnapshot(config)
             val json = exportManager.exportData(localKnowledgeBases, localDecks, localCards, localReviewLogs, localLearningPlans)
             uploadData(config, json)
             return SyncResult.Success(true, false, localDecks.size)
@@ -211,87 +322,36 @@ class SyncManager(
 
         if (localDecks.isEmpty() && localCards.isEmpty()) return SyncResult.RemoteImport(remoteExport)
 
-        val now = Clock.System.now()
-
-        val localKbMap = localKnowledgeBases.associateBy { it.id }
-        val remoteKbMap = remoteExport.knowledgeBases.associateBy { it.id }
-        val mergedKbs = mutableListOf<com.lumecard.shared.model.KnowledgeBase>()
-        for (id in localKbMap.keys + remoteKbMap.keys) {
-            val local = localKbMap[id]
-            val remote = remoteKbMap[id]
-            when {
-                local != null && remote == null -> mergedKbs.add(local)
-                local == null && remote != null -> mergedKbs.add(remote.toKnowledgeBase())
-                local != null && remote != null -> {
-                    if (remote.version > local.version) mergedKbs.add(remote.toKnowledgeBase())
-                    else mergedKbs.add(local)
+        fun <T> mergeByVersion(
+            local: List<T>,
+            remote: List<T>,
+            key: (T) -> String,
+            version: (T) -> Long,
+        ): List<T> {
+            val localMap = local.associateBy { key(it) }
+            val remoteMap = remote.associateBy { key(it) }
+            return (localMap.keys + remoteMap.keys).mapNotNull { id ->
+                val l = localMap[id]; val r = remoteMap[id]
+                when {
+                    l != null && r == null -> l
+                    l == null && r != null -> r
+                    l != null && r != null -> if (version(r) > version(l)) r else l
+                    else -> null
                 }
             }
         }
 
-        val localDeckMap = localDecks.associateBy { it.id }
-        val remoteDeckMap = remoteExport.decks.associateBy { it.id }
-        val mergedDecks = mutableListOf<com.lumecard.shared.model.Deck>()
-        for (id in localDeckMap.keys + remoteDeckMap.keys) {
-            val local = localDeckMap[id]
-            val remote = remoteDeckMap[id]
-            when {
-                local != null && remote == null -> mergedDecks.add(local)
-                local == null && remote != null -> mergedDecks.add(remote.toDeck())
-                local != null && remote != null -> {
-                    if (remote.version > local.version) mergedDecks.add(remote.toDeck())
-                    else mergedDecks.add(local)
-                }
-            }
-        }
+        val remoteKbs = remoteExport.knowledgeBases.map { it.toKnowledgeBase() }
+        val remoteDecks = remoteExport.decks.map { it.toDeck() }
+        val remoteCards = remoteExport.cards.map { it.toCard() }
+        val remoteLogs = remoteExport.reviewLogs.map { it.toReviewLog() }
+        val remotePlans = remoteExport.learningPlans.map { it.toLearningPlan() }
 
-        val localCardMap = localCards.associateBy { it.id }
-        val remoteCardMap = remoteExport.cards.associateBy { it.id }
-        val mergedCards = mutableListOf<com.lumecard.shared.model.Card>()
-        for (id in localCardMap.keys + remoteCardMap.keys) {
-            val local = localCardMap[id]
-            val remote = remoteCardMap[id]
-            when {
-                local != null && remote == null -> mergedCards.add(local)
-                local == null && remote != null -> mergedCards.add(remote.toCard())
-                local != null && remote != null -> {
-                    if (remote.version > local.version) mergedCards.add(remote.toCard())
-                    else mergedCards.add(local)
-                }
-            }
-        }
-
-        val localLogMap = localReviewLogs.associateBy { it.id }
-        val remoteLogMap = remoteExport.reviewLogs.associateBy { it.id }
-        val mergedLogs = mutableListOf<com.lumecard.shared.model.ReviewLog>()
-        for (id in localLogMap.keys + remoteLogMap.keys) {
-            val local = localLogMap[id]
-            val remote = remoteLogMap[id]
-            when {
-                local != null && remote == null -> mergedLogs.add(local)
-                local == null && remote != null -> mergedLogs.add(remote.toReviewLog())
-                local != null && remote != null -> {
-                    if (remote.version > local.version) mergedLogs.add(remote.toReviewLog())
-                    else mergedLogs.add(local)
-                }
-            }
-        }
-
-        val localPlanMap = localLearningPlans.associateBy { it.id }
-        val remotePlanMap = remoteExport.learningPlans.associateBy { it.id }
-        val mergedPlans = mutableListOf<com.lumecard.shared.model.LearningPlan>()
-        for (id in localPlanMap.keys + remotePlanMap.keys) {
-            val local = localPlanMap[id]
-            val remote = remotePlanMap[id]
-            when {
-                local != null && remote == null -> mergedPlans.add(local)
-                local == null && remote != null -> mergedPlans.add(remote.toLearningPlan())
-                local != null && remote != null -> {
-                    if (remote.version > local.version) mergedPlans.add(remote.toLearningPlan())
-                    else mergedPlans.add(local)
-                }
-            }
-        }
+        val mergedKbs = mergeByVersion(localKnowledgeBases, remoteKbs, { it.id }, { it.version })
+        val mergedDecks = mergeByVersion(localDecks, remoteDecks, { it.id }, { it.version })
+        val mergedCards = mergeByVersion(localCards, remoteCards, { it.id }, { it.version })
+        val mergedLogs = mergeByVersion(localReviewLogs, remoteLogs, { it.id }, { it.version })
+        val mergedPlans = mergeByVersion(localLearningPlans, remotePlans, { it.id }, { it.version })
 
         val activeKbs = mergedKbs.filter { it.deletedAt == null }
         val activeDecks = mergedDecks.filter { it.deletedAt == null }
@@ -299,6 +359,7 @@ class SyncManager(
         val activeLogs = mergedLogs.filter { it.deletedAt == null }
         val activePlans = mergedPlans.filter { it.deletedAt == null }
 
+        archiveCurrentSnapshot(config)
         val mergedJson = exportManager.exportData(
             knowledgeBases = activeKbs, decks = activeDecks, cards = activeCards,
             reviewLogs = activeLogs, learningPlans = activePlans
@@ -314,40 +375,40 @@ class SyncException(message: String) : Exception(message)
 
 fun ExportKnowledgeBase.toKnowledgeBase() = com.lumecard.shared.model.KnowledgeBase(
     id = id, name = name, description = description,
-    createdAt = try { kotlinx.datetime.Instant.parse(createdAt) } catch (_: Exception) { kotlinx.datetime.Clock.System.now() },
-    updatedAt = try { kotlinx.datetime.Instant.parse(updatedAt) } catch (_: Exception) { kotlinx.datetime.Clock.System.now() },
+    createdAt = try { kotlin.time.Instant.parse(createdAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
+    updatedAt = try { kotlin.time.Instant.parse(updatedAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
     version = version,
-    deletedAt = deletedAt?.let { try { kotlinx.datetime.Instant.parse(it) } catch (_: Exception) { null } }
+    deletedAt = deletedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } }
 )
 
 fun ExportDeck.toDeck() = com.lumecard.shared.model.Deck(
     id = id, knowledgeBaseId = knowledgeBaseId, name = name, description = description,
     color = color, icon = icon, parentId = parentId,
-    createdAt = try { kotlinx.datetime.Instant.parse(createdAt) } catch (_: Exception) { kotlinx.datetime.Clock.System.now() },
-    updatedAt = try { kotlinx.datetime.Instant.parse(updatedAt) } catch (_: Exception) { kotlinx.datetime.Clock.System.now() },
+    createdAt = try { kotlin.time.Instant.parse(createdAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
+    updatedAt = try { kotlin.time.Instant.parse(updatedAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
     version = version,
-    deletedAt = deletedAt?.let { try { kotlinx.datetime.Instant.parse(it) } catch (_: Exception) { null } }
+    deletedAt = deletedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } }
 )
 
 fun ExportCard.toCard() = com.lumecard.shared.model.Card(
     id = id, deckId = deckId,
     type = try { com.lumecard.shared.model.CardType.valueOf(type) } catch (_: Exception) { com.lumecard.shared.model.CardType.BASIC },
     front = front, back = back, tags = tags,
-    createdAt = try { kotlinx.datetime.Instant.parse(createdAt) } catch (_: Exception) { kotlinx.datetime.Clock.System.now() },
-    updatedAt = try { kotlinx.datetime.Instant.parse(updatedAt) } catch (_: Exception) { kotlinx.datetime.Clock.System.now() },
-    lastReviewedAt = lastReviewedAt?.let { try { kotlinx.datetime.Instant.parse(it) } catch (_: Exception) { null } },
-    nextReviewAt = nextReviewAt?.let { try { kotlinx.datetime.Instant.parse(it) } catch (_: Exception) { null } },
+    createdAt = try { kotlin.time.Instant.parse(createdAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
+    updatedAt = try { kotlin.time.Instant.parse(updatedAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
+    lastReviewedAt = lastReviewedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } },
+    nextReviewAt = nextReviewAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } },
     version = version,
-    deletedAt = deletedAt?.let { try { kotlinx.datetime.Instant.parse(it) } catch (_: Exception) { null } }
+    deletedAt = deletedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } }
 )
 
 fun ExportReviewLog.toReviewLog() = com.lumecard.shared.model.ReviewLog(
     id = id, cardId = cardId, rating = rating, reviewTime = reviewTime,
     interval = interval, easeFactor = easeFactor, repetitions = repetitions,
     lapseCount = lapseCount,
-    reviewedAt = try { kotlinx.datetime.Instant.parse(reviewedAt) } catch (_: Exception) { kotlinx.datetime.Clock.System.now() },
+    reviewedAt = try { kotlin.time.Instant.parse(reviewedAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
     version = version,
-    deletedAt = deletedAt?.let { try { kotlinx.datetime.Instant.parse(it) } catch (_: Exception) { null } }
+    deletedAt = deletedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } }
 )
 
 fun ExportLearningPlan.toLearningPlan() = com.lumecard.shared.model.LearningPlan(
@@ -355,10 +416,10 @@ fun ExportLearningPlan.toLearningPlan() = com.lumecard.shared.model.LearningPlan
     status = try { com.lumecard.shared.model.PlanStatus.valueOf(status) } catch (_: Exception) { com.lumecard.shared.model.PlanStatus.NOT_STARTED },
     isDefault = isDefault, knowledgeBaseIds = knowledgeBaseIds, deckIds = deckIds,
     cardIds = cardIds, totalCards = totalCards, completedCards = completedCards,
-    createdAt = try { kotlinx.datetime.Instant.parse(createdAt) } catch (_: Exception) { kotlinx.datetime.Clock.System.now() },
-    updatedAt = try { kotlinx.datetime.Instant.parse(updatedAt) } catch (_: Exception) { kotlinx.datetime.Clock.System.now() },
+    createdAt = try { kotlin.time.Instant.parse(createdAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
+    updatedAt = try { kotlin.time.Instant.parse(updatedAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
     version = version,
-    deletedAt = deletedAt?.let { try { kotlinx.datetime.Instant.parse(it) } catch (_: Exception) { null } }
+    deletedAt = deletedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } }
 )
 
 sealed class SyncResult {

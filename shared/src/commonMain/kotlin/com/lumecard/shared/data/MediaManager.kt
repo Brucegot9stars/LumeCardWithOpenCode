@@ -1,7 +1,7 @@
 package com.lumecard.shared.data
 
 import com.lumecard.shared.repository.MediaCacheRepository
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json

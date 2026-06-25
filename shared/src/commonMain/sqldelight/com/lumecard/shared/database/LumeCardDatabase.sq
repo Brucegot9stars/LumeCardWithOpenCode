@@ -61,19 +61,6 @@ CREATE TABLE ReviewLog (
     FOREIGN KEY (card_id) REFERENCES Card(id)
 );
 
-CREATE TABLE FSRSCard (
-    id TEXT PRIMARY KEY NOT NULL,
-    due TEXT NOT NULL,
-    stability REAL NOT NULL,
-    difficulty REAL NOT NULL,
-    elapsed_days INTEGER NOT NULL,
-    scheduled_days INTEGER NOT NULL,
-    reps INTEGER NOT NULL,
-    lapse_count INTEGER NOT NULL,
-    state TEXT NOT NULL,
-    FOREIGN KEY (id) REFERENCES Card(id)
-);
-
 CREATE TABLE AppSettings (
     key TEXT PRIMARY KEY NOT NULL,
     setting_value TEXT NOT NULL
@@ -135,9 +122,15 @@ insertKnowledgeBase:
 INSERT OR REPLACE INTO KnowledgeBase(id, name, description, created_at, updated_at, version, deleted_at, synced_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
+updateKnowledgeBase:
+UPDATE KnowledgeBase SET name = ?, description = ?, updated_at = ?, version = version + 1, deleted_at = ?, synced_at = ? WHERE id = ?;
+
 insertDeck:
 INSERT OR REPLACE INTO Deck(id, knowledge_base_id, name, description, color, icon, parent_id, created_at, updated_at, version, deleted_at, synced_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateDeck:
+UPDATE Deck SET name = ?, description = ?, color = ?, icon = ?, parent_id = ?, updated_at = ?, version = version + 1, deleted_at = ?, synced_at = ? WHERE id = ?;
 
 insertCard:
 INSERT OR REPLACE INTO Card(id, deck_id, type, front, back, tags, media, metadata, created_at, updated_at, last_reviewed_at, next_review_at, version, deleted_at, synced_at)
@@ -146,10 +139,6 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 insertReviewLog:
 INSERT OR REPLACE INTO ReviewLog(id, card_id, rating, review_time, interval, ease_factor, repetitions, lapse_count, reviewed_at, version, deleted_at, synced_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-
-insertFSRSCard:
-INSERT OR REPLACE INTO FSRSCard(id, due, stability, difficulty, elapsed_days, scheduled_days, reps, lapse_count, state)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 updateCard:
 UPDATE Card SET deck_id = ?, type = ?, front = ?, back = ?, tags = ?, media = ?, metadata = ?, updated_at = ?, last_reviewed_at = ?, next_review_at = ?, version = version + 1
@@ -246,6 +235,9 @@ SELECT * FROM LearningPlan WHERE is_default = 1 AND deleted_at IS NULL;
 insertLearningPlan:
 INSERT OR REPLACE INTO LearningPlan(id, name, description, status, is_default, knowledge_base_ids, deck_ids, card_ids, total_cards, completed_cards, created_at, updated_at, version, deleted_at, synced_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateLearningPlan:
+UPDATE LearningPlan SET name = ?, description = ?, status = ?, is_default = ?, knowledge_base_ids = ?, deck_ids = ?, card_ids = ?, total_cards = ?, completed_cards = ?, updated_at = ?, version = version + 1, deleted_at = ?, synced_at = ? WHERE id = ?;
 
 -- Incremental sync queries
 selectKnowledgeBasesUpdatedSince:

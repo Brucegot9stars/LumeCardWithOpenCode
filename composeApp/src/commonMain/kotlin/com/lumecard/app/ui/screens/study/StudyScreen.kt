@@ -5,11 +5,10 @@ import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -18,40 +17,35 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import com.lumecard.app.ui.components.MarkdownText
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.components.LumeCardRatingBar
 import com.lumecard.app.ui.components.ProgressRing
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.app.ui.screens.settings.AnswerDisplayMode
 import com.lumecard.app.i18n.I18nManager
+import com.lumecard.app.i18n.I18nStrings
 import com.lumecard.app.ui.screens.settings.SettingsStateHolder
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
 import com.lumecard.shared.model.Rating
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.text.AnnotatedString
 import kotlin.math.abs
+
+private const val SWIPE_ANIM_DURATION_MS = 200
+private const val SWIPE_VELOCITY_THRESHOLD = 800f
+private const val SWIPE_THRESHOLD_RATIO = 0.2f
 
 class StudyScreen(
     private val deckIds: List<String>,
@@ -63,18 +57,21 @@ class StudyScreen(
     override val key: ScreenKey = "Study_${deckIds.sorted().joinToString("_")}_${planIds.sorted().joinToString("_")}"
 
     @OptIn(ExperimentalMaterial3Api::class)
+    @Suppress("OverloadResolutionAmbiguity")
     @Composable
     override fun Content() {
         var crashError by remember { mutableStateOf<String?>(null) }
+        val strings = koinInject<I18nManager>().strings
 
         if (crashError != null) {
+            @Suppress("DEPRECATION")
             val clipboardManager = LocalClipboardManager.current
             AlertDialog(
                 onDismissRequest = { crashError = null },
-                title = { Text("Composition Error") },
+                title = { Text(strings.crashCompositionError) },
                 text = {
                     Column {
-                        Text("An error occurred during rendering:", style = MaterialTheme.typography.bodyMedium)
+                        Text(strings.crashRenderErrorDesc, style = MaterialTheme.typography.bodyMedium)
                         Spacer(modifier = Modifier.height(8.dp))
                         Box(
                             modifier = Modifier
@@ -96,8 +93,8 @@ class StudyScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = {
                             crashError?.let { clipboardManager.setText(AnnotatedString(it)) }
-                        }) { Text("Copy") }
-                        Button(onClick = { crashError = null }) { Text("OK") }
+                        }, interactionSource = null) { Text(strings.actionCopy) }
+                        Button(onClick = { crashError = null }, interactionSource = null) { Text(strings.actionOk) }
                     }
                 },
             )
@@ -107,7 +104,6 @@ class StudyScreen(
         val navigator = LocalNavigator.currentOrThrow
         val viewModel: StudyViewModel = koinInject()
         val settingsState: SettingsStateHolder = koinInject()
-        val strings = koinInject<I18nManager>().strings
         val cards by viewModel.cards.collectAsState()
         val currentIndex by viewModel.currentCardIndex.collectAsState()
         val isFlipped by viewModel.isFlipped.collectAsState()
@@ -142,13 +138,14 @@ class StudyScreen(
         val unlearnedAvail = viewModel.unlearnedCardCount
 
         if (error != null) {
+            @Suppress("DEPRECATION")
             val clipboardManager = LocalClipboardManager.current
             AlertDialog(
-                onDismissRequest = { viewModel.clearError() },
-                title = { Text("Error") },
+                onDismissRequest = { crashError = null },
+                title = { Text(strings.crashCompositionError) },
                 text = {
                     Column {
-                        Text("An error occurred:", style = MaterialTheme.typography.bodyMedium)
+                        Text(strings.crashRenderErrorDesc, style = MaterialTheme.typography.bodyMedium)
                         Spacer(modifier = Modifier.height(8.dp))
                         Box(
                             modifier = Modifier
@@ -159,7 +156,7 @@ class StudyScreen(
                                 .padding(8.dp)
                         ) {
                             Text(
-                                text = error ?: "",
+                                text = crashError ?: "",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -168,13 +165,16 @@ class StudyScreen(
                 },
                 confirmButton = {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = {
-                            error?.let { clipboardManager.setText(AnnotatedString(it)) }
-                        }) {
-                            Text("Copy")
+                        TextButton(onClick = { crashError = null }, interactionSource = null) {
+                            Text(strings.actionCancel)
                         }
-                        Button(onClick = { viewModel.clearError() }) {
-                            Text("OK")
+                        Button(onClick = {
+                            crashError?.let { clipboardManager.setText(AnnotatedString(it)) }
+                        }, interactionSource = null) {
+                            Text(strings.actionCopy)
+                        }
+                        Button(onClick = { viewModel.clearError() }, interactionSource = null) {
+                            Text(strings.actionOk)
                         }
                     }
                 },
@@ -212,6 +212,7 @@ class StudyScreen(
                                 showStudyModeDialog = false
                                 viewModel.reloadWithMode(CardsStudyMode.ALL_CARDS)
                             },
+                            interactionSource = null,
                             modifier = Modifier.fillMaxWidth(),
                         ) { Text(strings.studyContinueAll) }
                         Spacer(Modifier.height(4.dp))
@@ -222,6 +223,7 @@ class StudyScreen(
                                     showStudyModeDialog = false
                                     viewModel.reloadWithMode(CardsStudyMode.NEW_CARDS, dailyLimit)
                                 },
+                                interactionSource = null,
                                 modifier = Modifier.fillMaxWidth(),
                             ) { Text(newCardLabel) }
                             Spacer(Modifier.height(4.dp))
@@ -232,11 +234,12 @@ class StudyScreen(
                                 showStudyModeDialog = false
                                 viewModel.reloadWithMode(CardsStudyMode.RANDOM, dailyLimit)
                             },
+                            interactionSource = null,
                             modifier = Modifier.fillMaxWidth(),
                         ) { Text(randomLabel()) }
                     }
                 },
-                confirmButton = { TextButton(onClick = { navigator.pop() }) { Text(strings.actionDone) } }
+                confirmButton = { TextButton(onClick = { navigator.pop() }, interactionSource = null) { Text(strings.actionDone) } }
             )
         }
 
@@ -250,7 +253,7 @@ class StudyScreen(
             .fillMaxSize()
     ) {
             val screenWidth = maxWidth.value
-            val threshold = screenWidth * 0.2f
+            val threshold = screenWidth * SWIPE_THRESHOLD_RATIO
 
             Scaffold(
                 topBar = {
@@ -283,7 +286,7 @@ class StudyScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text(
-                                formatElapsedTime(elapsedSeconds),
+                                formatElapsedTime(elapsedSeconds, strings),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                             )
@@ -307,7 +310,7 @@ class StudyScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     if (cards.isEmpty()) {
-                        Card(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                        Card(modifier = Modifier.fillMaxWidth().weight(1f), colors = CardDefaults.cardColors()) {
                             Box(
                                 modifier = Modifier.fillMaxSize().padding(32.dp),
                                 contentAlignment = Alignment.Center
@@ -332,7 +335,7 @@ class StudyScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Spacer(Modifier.height(24.dp))
-                                    Button(onClick = { navigator.pop() }) {
+                                    Button(onClick = { navigator.pop() }, interactionSource = null) {
                                         Text(strings.actionBack)
                                     }
                                 }
@@ -363,7 +366,10 @@ class StudyScreen(
                                         modifier = Modifier.fillMaxSize().padding(20.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        CardContent(card = nextCard, isFlipped = false, displayMode = settingsState.answerDisplayMode)
+                                        val nextHCenter = nextCard.type == CardType.BASIC && nextCard.metadata["hcenter"].toBoolean()
+                                        val nextVCenter = nextCard.type == CardType.BASIC && nextCard.metadata["vcenter"].toBoolean()
+                                        val nextFontSize = nextCard.metadata["fontSize"]?.toIntOrNull() ?: 16
+                                        CardContent(card = nextCard, isFlipped = false, displayMode = settingsState.answerDisplayMode, horizontalCenter = nextHCenter, verticalCenter = nextVCenter, fontSize = nextFontSize)
                                     }
                                 }
                             }
@@ -390,7 +396,7 @@ class StudyScreen(
                                             onDragEnd = {
                                                 if (isAnimatingOut) return@detectHorizontalDragGestures
                                                 val offset = swipeOffset.value
-                                                val velocityTrigger = abs(velocity) > 800f
+                                                val velocityTrigger = abs(velocity) > SWIPE_VELOCITY_THRESHOLD
                                                 val distanceTrigger = abs(offset) > threshold
                                                 if (distanceTrigger || velocityTrigger) {
                                                     isAnimatingOut = true
@@ -398,7 +404,7 @@ class StudyScreen(
                                                     scope.launch {
                                                         swipeOffset.animateTo(
                                                             targetValue = target,
-                                                            animationSpec = tween(200, easing = FastOutLinearInEasing)
+                                                            animationSpec = tween(SWIPE_ANIM_DURATION_MS, easing = FastOutLinearInEasing)
                                                         )
                                                         swipeOffset.snapTo(0f)
                                                         isAnimatingOut = false
@@ -439,20 +445,24 @@ class StudyScreen(
                                     containerColor = when {
                                         swipeOffset.value > 10f -> MaterialTheme.colorScheme.primaryContainer
                                         swipeOffset.value < -10f -> MaterialTheme.colorScheme.secondaryContainer
-                                        isFlipped -> MaterialTheme.colorScheme.secondaryContainer
+                                        isFlipped -> MaterialTheme.colorScheme.surface
                                         else -> MaterialTheme.colorScheme.surface
                                     }
                                 )
                             ) {
+                                        val isBasicCard = currentCard.type == CardType.BASIC
+                                val hCenter = isBasicCard && currentCard.metadata["hcenter"].toBoolean()
+                                val vCenter = isBasicCard && currentCard.metadata["vcenter"].toBoolean()
+                                val fontSize = currentCard.metadata["fontSize"]?.toIntOrNull() ?: 16
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .padding(horizontal = 20.dp, vertical = 12.dp)
-                                        .verticalScroll(rememberScrollState()),
-                                    contentAlignment = Alignment.TopStart
+                                        .then(if (vCenter) Modifier else Modifier.verticalScroll(rememberScrollState())),
+                                    contentAlignment = if (vCenter) Alignment.Center else Alignment.TopStart
                                 ) {
-                                    val onMultipleChoiceSelected: ((isCorrect: Boolean) -> Unit)? = remember(currentCard) {
-                                        if (currentCard?.type == CardType.MULTIPLE_CHOICE) {
+                                    val onConfirmChoice: (() -> Unit)? = remember(currentCard) {
+                                        if (currentCard.type == CardType.MULTIPLE_CHOICE) {
                                             { viewModel.flipCard() }
                                         } else null
                                     }
@@ -460,7 +470,10 @@ class StudyScreen(
                                         card = currentCard,
                                         isFlipped = isFlipped,
                                         displayMode = settingsState.answerDisplayMode,
-                                        onMultipleChoiceSelected = onMultipleChoiceSelected,
+                                        horizontalCenter = hCenter,
+                                        verticalCenter = vCenter,
+                                        fontSize = fontSize,
+                                        onConfirmChoice = onConfirmChoice,
                                     )
                                 }
                             }
@@ -525,10 +538,10 @@ class StudyScreen(
                             }
                         }
                     } else {
-                        // ── Study Complete ─────────────────────────────
                         Card(
                             modifier = Modifier.fillMaxWidth().weight(1f),
                             shape = LumeCardTheme.radius.card,
+                            colors = CardDefaults.cardColors(),
                         ) {
                             Column(
                                 modifier = Modifier
@@ -538,7 +551,6 @@ class StudyScreen(
                             ) {
                                 Spacer(modifier = Modifier.height(8.dp))
 
-                                // Celebration ring
                                 ProgressRing(
                                     progress = 1f,
                                     size = 88.dp,
@@ -549,7 +561,6 @@ class StudyScreen(
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
 
-                                // Large checkmark overlay
                                 Surface(
                                     shape = LumeCardTheme.radius.pill,
                                     color = LumeCardTheme.semanticColors.progressFill.copy(alpha = 0.15f),
@@ -581,22 +592,21 @@ class StudyScreen(
 
                                 Spacer(modifier = Modifier.height(24.dp))
 
-                                // Stats row
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceEvenly,
                                 ) {
                                     CompletionStat(
                                         value = "$completedCards",
-                                        label = "Reviewed",
+                                        label = strings.studyCompleteReviewed,
                                     )
                                     CompletionStat(
-                                        value = formatElapsedTime(elapsedSeconds),
-                                        label = "Time spent",
+                                        value = formatElapsedTime(elapsedSeconds, strings),
+                                        label = strings.studyCompleteTimeSpent,
                                     )
                                     CompletionStat(
                                         value = "${(completedCards * 75 + 100).coerceAtMost(999)}",
-                                        label = "XP earned",
+                                        label = strings.studyCompleteXpEarned,
                                     )
                                 }
 
@@ -608,12 +618,14 @@ class StudyScreen(
                                 ) {
                                     OutlinedButton(
                                         onClick = { navigator.pop() },
+                                        interactionSource = null,
                                         modifier = Modifier.weight(1f),
                                     ) {
                                         Text(strings.actionDone)
                                     }
                                     Button(
                                         onClick = { navigator.pop() },
+                                        interactionSource = null,
                                         modifier = Modifier.weight(1f),
                                     ) {
                                         Text(strings.dashStartLearning)
@@ -633,6 +645,7 @@ class StudyScreen(
                         ) {
                             OutlinedButton(
                                 onClick = { viewModel.goBack() },
+                                interactionSource = null,
                                 enabled = viewModel.canGoBack,
                                 modifier = Modifier.weight(1f)
                             ) {
@@ -641,9 +654,10 @@ class StudyScreen(
                                 Text(strings.studyPreviousCard)
                             }
 
-                            if (!isFlipped && currentCard?.type != CardType.MULTIPLE_CHOICE) {
+                            if (!isFlipped && currentCard.type != CardType.MULTIPLE_CHOICE) {
                                 Button(
                                     onClick = { viewModel.flipCard() },
+                                    interactionSource = null,
                                     modifier = Modifier.weight(2f),
                                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                                 ) {
@@ -674,298 +688,3 @@ class StudyScreen(
         }
     }
 }
-
-@Composable
-private fun CardContent(
-    card: Card,
-    isFlipped: Boolean,
-    displayMode: AnswerDisplayMode,
-    onMultipleChoiceSelected: ((isCorrect: Boolean) -> Unit)? = null,
-) {
-    val strings = koinInject<I18nManager>().strings
-    Column(modifier = Modifier.fillMaxWidth()) {
-        when (displayMode) {
-            AnswerDisplayMode.FLIP -> {
-                FlipCard(
-                    isFlipped = isFlipped,
-                    front = { CardFace(card, showBack = false, onMultipleChoiceSelected = onMultipleChoiceSelected) },
-                    back = { CardFace(card, showBack = true) }
-                )
-            }
-            AnswerDisplayMode.SPLIT -> {
-                if (isFlipped) {
-                    // Question section
-                    Surface(
-                        shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
-                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                    strings.studyQuestion,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer
-                                )
-                            Spacer(Modifier.weight(1f))
-                            Text(
-                                cardTypeName(card.type),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.6f)
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    Surface(
-                        shape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
-                    ) {
-                        CardFace(card, showBack = false, onMultipleChoiceSelected = onMultipleChoiceSelected).let { it }
-                    }
-                    Spacer(Modifier.height(16.dp))
-                    // Answer section
-                    Surface(
-                        shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                    strings.studyAnswer,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            Spacer(Modifier.weight(1f))
-                            Text(
-                                    strings.studyRevealed,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
-                                )
-                        }
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    Surface(
-                        shape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.2f)
-                    ) {
-                        CardFace(card, showBack = true).let { it }
-                    }
-                } else {
-                    CardFace(card, showBack = false, onMultipleChoiceSelected = onMultipleChoiceSelected)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun FlipCard(
-    isFlipped: Boolean,
-    front: @Composable () -> Unit,
-    back: @Composable () -> Unit
-) {
-    val rotation = remember { Animatable(if (isFlipped) 180f else 0f) }
-    var cardWidth by remember { mutableFloatStateOf(1f) }
-
-    LaunchedEffect(isFlipped) {
-        rotation.animateTo(
-            targetValue = if (isFlipped) 180f else 0f,
-            animationSpec = tween(500)
-        )
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .onSizeChanged { cardWidth = it.width.coerceAtLeast(1).toFloat() }
-            .graphicsLayer {
-                rotationY = rotation.value
-                cameraDistance = cardWidth * 8f
-            }
-    ) {
-        if (rotation.value < 90f) {
-            front()
-        } else {
-            Box(modifier = Modifier.graphicsLayer { scaleX = -1f }) {
-                back()
-            }
-        }
-    }
-}
-
-@Composable
-private fun CardFace(
-    card: Card,
-    showBack: Boolean,
-    onMultipleChoiceSelected: ((isCorrect: Boolean) -> Unit)? = null,
-) {
-    val clozeRegex = remember { Regex("\\{\\{c\\d+::([^}]+)\\}\\}") }
-    val clozeHintRegex = remember { Regex("\\{\\{c\\d+::([^}]+)::([^}]+)\\}\\}") }
-    val clozeAnswerRegex = remember { Regex("\\{\\{c\\d+::([^:}]+)(?:::([^}]+))?\\}\\}") }
-
-    val strings = koinInject<I18nManager>().strings
-    Column(modifier = Modifier.fillMaxWidth()) {
-        when (card.type) {
-            CardType.BASIC, CardType.REVERSED -> {
-                Text(
-                    text = if (showBack) card.back else card.front,
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            CardType.MARKDOWN, CardType.AI_GENERATED -> {
-                MarkdownText(
-                    markdown = if (showBack) card.back else card.front,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            CardType.CLOZE -> {
-                if (!showBack) {
-                    val displayText = card.front.replace(clozeHintRegex, "____").replace(clozeRegex, "____")
-                    Text(displayText, style = MaterialTheme.typography.headlineSmall)
-                    Spacer(Modifier.height(8.dp))
-                    Text(strings.studyClozeHint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else {
-                    val annotated = buildAnnotatedString {
-                        var pos = 0
-                        for (match in clozeAnswerRegex.findAll(card.front)) {
-                            if (pos < match.range.first) {
-                                append(card.front.substring(pos, match.range.first))
-                            }
-                            withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold, color = Color.Red)) {
-                                append(match.groupValues[1])
-                            }
-                            pos = match.range.last + 1
-                        }
-                        if (pos < card.front.length) {
-                            append(card.front.substring(pos))
-                        }
-                    }
-                    Text(annotated, style = MaterialTheme.typography.headlineSmall)
-                }
-            }
-            CardType.MULTIPLE_CHOICE -> {
-                val question = card.front
-                val options = card.back.split("\n").filter { it.isNotBlank() }
-                Text(question, style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(12.dp))
-                options.forEach { opt ->
-                    val isCorrect = opt.startsWith("+")
-                    val displayOpt = opt.removePrefix("+").trim()
-                    if (showBack && isCorrect) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                "✓",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Red,
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            FilterChip(
-                                selected = true,
-                                onClick = {},
-                                label = {
-                                    Text(displayOpt, fontWeight = FontWeight.Bold, color = Color.Red)
-                                },
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                    } else {
-                        FilterChip(
-                            selected = showBack && isCorrect,
-                            onClick = {
-                                onMultipleChoiceSelected?.invoke(isCorrect)
-                            },
-                            label = { Text(displayOpt) },
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                        )
-                    }
-                }
-            }
-            CardType.IMAGE_OCCLUSION -> {
-                Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(8.dp))
-                Text(if (showBack) card.back else strings.studyImageHint, style = MaterialTheme.typography.bodyMedium)
-            }
-            CardType.AUDIO, CardType.VIDEO -> {
-                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.height(8.dp))
-                MarkdownText(
-                    markdown = if (showBack) card.back else card.front,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun cardTypeName(type: CardType): String {
-    val strings = koinInject<I18nManager>().strings
-    return when (type) {
-        CardType.BASIC -> strings.studyCardTypeBasic
-        CardType.REVERSED -> strings.studyCardTypeReversed
-        CardType.CLOZE -> strings.studyCardTypeCloze
-        CardType.MULTIPLE_CHOICE -> strings.studyCardTypeChoice
-        CardType.IMAGE_OCCLUSION -> strings.studyCardTypeOcclusion
-        CardType.AUDIO -> strings.studyCardTypeAudio
-        CardType.VIDEO -> strings.studyCardTypeVideo
-        CardType.MARKDOWN -> strings.studyCardTypeMarkdown
-        CardType.AI_GENERATED -> strings.studyCardTypeAi
-    }
-}
-@Composable
-private fun CompletionStat(
-    value: String,
-    label: String,
-) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            value,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-
-
-private fun formatElapsedTime(totalSeconds: Int): String {
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return if (minutes > 0) {
-        if (minutes >= 60) {
-            val hours = minutes / 60
-            val mins = minutes % 60
-            StringBuilder().append(hours).append("h ").append(mins).append("m").toString()
-        } else {
-            StringBuilder().append(minutes).append("m ").append(seconds).append("s").toString()
-        }
-    } else {
-        StringBuilder().append(seconds).append("s").toString()
-    }
-}
-
-
-
-
-
-
-
-
-
-
-
-

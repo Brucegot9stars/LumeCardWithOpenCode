@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import java.util.UUID
 
 data class TreeNode(
@@ -165,12 +165,10 @@ class WarehouseViewModel(
     suspend fun createDeck(kbId: String, name: String, description: String?) {
         val decks = deckRepository.getAll().first()
         val existingCount = decks.size
-        val icons = listOf("\uD83D\uDCDA", "\uD83C\uDF93", "\uD83D\uDCA1", "\uD83C\uDF1F", "\uD83C\uDFAF", "\uD83D\uDCDD", "\uD83D\uDD2C", "\uD83C\uDFA8")
-        val colors = listOf("#4CAF50", "#2196F3", "#FF9800", "#E91E63", "#9C27B0", "#00BCD4", "#FF5722", "#607D8B")
         deckRepository.insert(Deck(
             id = "deck_${UUID.randomUUID().toString().take(8)}",
             knowledgeBaseId = kbId, name = name, description = description,
-            color = colors[existingCount % colors.size], icon = icons[existingCount % icons.size],
+            color = Deck.colors[existingCount % Deck.colors.size], icon = Deck.icons[existingCount % Deck.icons.size],
             createdAt = Clock.System.now(), updatedAt = Clock.System.now()
         ))
         _expandedIds.value = _expandedIds.value + kbId

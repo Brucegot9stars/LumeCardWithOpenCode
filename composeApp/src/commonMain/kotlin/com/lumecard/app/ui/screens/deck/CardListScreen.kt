@@ -6,7 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -150,7 +150,7 @@ class CardListScreen(
                 ) {
                     item {
                         Text(
-                            "${strings.actionSort}: ${sortConfig.field.name}",
+                            strings.cardSortByLabel(sortConfig.field.name),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 8.dp)
@@ -203,8 +203,14 @@ fun CardItem(
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
+                val displayFront = remember(card.front) {
+                    val t = card.front
+                    if (t.contains("<") && t.contains(">"))
+                        t.replace(Regex("<[^>]+>"), "").trim()
+                    else t
+                }
                 Text(
-                    card.front,
+                    displayFront,
                     style = MaterialTheme.typography.bodyLarge,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis

@@ -15,8 +15,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlin.time.Clock
 import kotlinx.serialization.json.Json
 import java.util.UUID
 
@@ -68,16 +71,19 @@ class StudyViewModel(
 
     private var timerJob: Job? = null
 
-    private val _sessionStartTime = MutableStateFlow<kotlinx.datetime.Instant?>(null)
-    val sessionStartTime: StateFlow<kotlinx.datetime.Instant?> = _sessionStartTime
+    private val _sessionStartTime = MutableStateFlow<kotlin.time.Instant?>(null)
+    val sessionStartTime: StateFlow<kotlin.time.Instant?> = _sessionStartTime
 
     private val _elapsedSeconds = MutableStateFlow(0)
     val elapsedSeconds: StateFlow<Int> = _elapsedSeconds
 
-    private val _cardStartTimes = java.util.concurrent.ConcurrentHashMap<String, kotlinx.datetime.Instant>()
+    private val _cardStartTimes = java.util.concurrent.ConcurrentHashMap<String, kotlin.time.Instant>()
 
     private var activePlanIds: List<String> = emptyList()
     private var activeDeckIds: List<String> = emptyList()
+    private var loadCardsJob: kotlinx.coroutines.Job? = null
+    private val rateMutex = Mutex()
+    private var planBaselineCompleted: Map<String, Int> = emptyMap()
 
     private var _hasStartedStudying = false
 
@@ -89,8 +95,13 @@ class StudyViewModel(
         activePlanIds = planIds
         activeDeckIds = deckIds
         _hasStartedStudying = false
-        screenModelScope.launch {
+        planBaselineCompleted = emptyMap()
+        loadCardsJob?.cancel()
+        loadCardsJob = screenModelScope.launch {
             try {
+                planBaselineCompleted = activePlanIds.mapNotNull { id ->
+                    planRepository.getById(id)?.let { it.id to it.completedCards }
+                }.toMap()
                 println("[LumeCard] loadCards called mode=$mode limit=$limit deckIds=$deckIds")
                 val allCards = mutableListOf<Card>()
                 for (deckId in deckIds) {
@@ -136,7 +147,7 @@ class StudyViewModel(
                         } else {
                             algorithm.initCard()
                         }
-                        _algorithmStates.value = _algorithmStates.value + (card.id to state)
+                        _algorithmStates.update { it + (card.id to state) }
                     }
                 }
                 shuffled.firstOrNull()?.let { _cardStartTimes[it.id] = Clock.System.now() }
@@ -204,13 +215,13 @@ class StudyViewModel(
         startTimerIfNeeded()
 
         val updatedState = algorithm.schedule(state, rating)
-        _algorithmStates.value = _algorithmStates.value + (currentCard.id to updatedState)
+        _algorithmStates.update { it + (currentCard.id to updatedState) }
 
         val now = Clock.System.now()
         val startTime = _cardStartTimes.remove(currentCard.id) ?: now
         val reviewTimeMs = ((now.toEpochMilliseconds() - startTime.toEpochMilliseconds()).coerceAtLeast(0)).toInt()
 
-        _history.value = _history.value + (_currentCardIndex.value to _isFlipped.value)
+        _history.update { it + (_currentCardIndex.value to _isFlipped.value) }
 
         screenModelScope.launch {
             try {
@@ -225,34 +236,36 @@ class StudyViewModel(
                     lapseCount = updatedState.lapses,
                     reviewedAt = now
                 )
-                reviewLogRepository.insert(reviewLog)
+                rateMutex.withLock {
+                    reviewLogRepository.insert(reviewLog)
 
-                val updatedCard = currentCard.copy(
-                    lastReviewedAt = now,
-                    nextReviewAt = updatedState.nextReviewAt,
-                    updatedAt = now
-                )
-                cardRepository.update(updatedCard)
+                    val updatedCard = currentCard.copy(
+                        lastReviewedAt = now,
+                        nextReviewAt = updatedState.nextReviewAt,
+                        updatedAt = now
+                    )
+                    cardRepository.update(updatedCard)
 
-                algorithmStateRepository.save(
-                    cardId = currentCard.id,
-                    mode = algorithm.mode.name,
-                    stateJson = serializeState(updatedState)
-                )
+                    algorithmStateRepository.save(
+                        cardId = currentCard.id,
+                        mode = algorithm.mode.name,
+                        stateJson = serializeState(updatedState)
+                    )
+
+                    _isFlipped.value = false
+                    _completedCards.update { it + 1 }
+
+                    if (_currentCardIndex.value < _cards.value.size - 1) {
+                        _currentCardIndex.value++
+                        _cards.value.getOrNull(_currentCardIndex.value)?.let { _cardStartTimes[it.id] = Clock.System.now() }
+                    } else {
+                        _currentCardIndex.value = _cards.value.size
+                        updatePlanProgress()
+                    }
+                }
             } catch (e: Exception) {
                 reportError(e, "rateCard-persist")
             }
-        }
-
-        _isFlipped.value = false
-        _completedCards.value++
-
-        if (_currentCardIndex.value < _cards.value.size - 1) {
-            _currentCardIndex.value++
-            _cards.value.getOrNull(_currentCardIndex.value)?.let { _cardStartTimes[it.id] = Clock.System.now() }
-        } else {
-            _currentCardIndex.value = _cards.value.size
-            updatePlanProgress()
         }
     }
 
@@ -262,7 +275,8 @@ class StudyViewModel(
             try {
                 for (planId in activePlanIds) {
                     val plan = planRepository.getById(planId) ?: continue
-                    val newCompleted = (plan.completedCards + _completedCards.value).coerceAtMost(plan.totalCards)
+                    val baseline = planBaselineCompleted[planId] ?: plan.completedCards
+                    val newCompleted = (baseline + _completedCards.value).coerceAtMost(plan.totalCards)
                     val newStatus = if (newCompleted >= plan.totalCards) {
                         com.lumecard.shared.model.PlanStatus.COMPLETED
                     } else if (newCompleted > 0) {
@@ -273,7 +287,7 @@ class StudyViewModel(
                     planRepository.update(plan.copy(
                         completedCards = newCompleted,
                         status = newStatus,
-                        updatedAt = kotlinx.datetime.Clock.System.now()
+                        updatedAt = kotlin.time.Clock.System.now()
                     ))
                 }
             } catch (e: Exception) {
@@ -300,7 +314,7 @@ class StudyViewModel(
         val parts = data.split("|")
         return AlgorithmState(
             intervalDays = parts.getOrNull(0)?.toIntOrNull() ?: 0,
-            nextReviewAt = parts.getOrNull(1)?.let { try { kotlinx.datetime.Instant.parse(it) } catch (_: Exception) { Clock.System.now() } } ?: Clock.System.now(),
+            nextReviewAt = parts.getOrNull(1)?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { Clock.System.now() } } ?: Clock.System.now(),
             repetitions = parts.getOrNull(2)?.toIntOrNull() ?: 0,
             lapses = parts.getOrNull(3)?.toIntOrNull() ?: 0,
             easeFactor = parts.getOrNull(4)?.toFloatOrNull() ?: 2.5f,

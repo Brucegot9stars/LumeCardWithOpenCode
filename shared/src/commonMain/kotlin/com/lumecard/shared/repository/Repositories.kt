@@ -5,7 +5,7 @@ import com.lumecard.shared.model.Deck
 import com.lumecard.shared.model.KnowledgeBase
 import com.lumecard.shared.model.ReviewLog
 import kotlinx.coroutines.flow.Flow
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 interface KnowledgeBaseRepository {
     fun getAll(): Flow<List<KnowledgeBase>>

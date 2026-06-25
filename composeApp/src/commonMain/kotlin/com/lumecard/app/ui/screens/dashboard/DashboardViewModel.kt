@@ -10,12 +10,15 @@ import com.lumecard.shared.repository.KnowledgeBaseRepository
 import com.lumecard.shared.repository.LearningPlanRepository
 import com.lumecard.shared.repository.ReviewLogRepository
 import com.lumecard.shared.repository.SettingsRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
@@ -56,6 +59,8 @@ class DashboardViewModel(
     private val _activePlanCount = MutableStateFlow(0)
     val activePlanCount: StateFlow<Int> = _activePlanCount.asStateFlow()
 
+    private var loadJob: Job? = null
+
     init {
         loadGoal()
         loadDecks()
@@ -68,31 +73,34 @@ class DashboardViewModel(
 
     private fun loadGoal() {
         screenModelScope.launch {
-            _dailyGoal.value = settingsRepository.getInt("dailyGoal", 20)
+            _dailyGoal.update { settingsRepository.getInt("dailyGoal", 20) }
         }
     }
 
     private fun loadDecks() {
-        screenModelScope.launch {
+        loadJob?.cancel()
+        loadJob = screenModelScope.launch {
             _isLoading.value = true
-            deckRepository.getAll().collect { deckList ->
-                _decks.value = deckList
-                val withCount = deckList.map { deck ->
-                    val cards = cardRepository.getByDeck(deck.id).first()
-                    DeckWithCount(deck, cards.size)
+            coroutineScope {
+                launch {
+                    knowledgeBaseRepository.getAll().collect { list ->
+                        _kbCount.update { list.size }
+                    }
                 }
-                _decksWithCount.value = withCount
-                _isLoading.value = false
-            }
-        }
-        screenModelScope.launch {
-            knowledgeBaseRepository.getAll().collect { list ->
-                _kbCount.value = list.size
-            }
-        }
-        screenModelScope.launch {
-            planRepository.getAll().collect { list ->
-                _activePlanCount.value = list.count { it.status == PlanStatus.IN_PROGRESS }
+                launch {
+                    planRepository.getAll().collect { list ->
+                        _activePlanCount.update { list.count { it.status == PlanStatus.IN_PROGRESS } }
+                    }
+                }
+                deckRepository.getAll().collect { deckList ->
+                    _decks.update { deckList }
+                    val withCount = deckList.map { deck ->
+                        val cards = cardRepository.getByDeck(deck.id).first()
+                        DeckWithCount(deck, cards.size)
+                    }
+                    _decksWithCount.update { withCount }
+                    _isLoading.value = false
+                }
             }
         }
     }

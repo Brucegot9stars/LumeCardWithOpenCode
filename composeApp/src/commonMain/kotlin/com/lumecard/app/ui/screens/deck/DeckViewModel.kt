@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -43,6 +44,7 @@ class DeckViewModel(
     val deckCardCounts: StateFlow<Map<String, Int>> = _deckCardCounts.asStateFlow()
 
     private var currentKnowledgeBaseId: String = "default"
+    private var loadDecksJob: kotlinx.coroutines.Job? = null
 
     init {
         loadSortPref()
@@ -69,7 +71,8 @@ class DeckViewModel(
 
     fun loadDecks(knowledgeBaseId: String? = null) {
         currentKnowledgeBaseId = knowledgeBaseId ?: "default"
-        screenModelScope.launch {
+        loadDecksJob?.cancel()
+        loadDecksJob = screenModelScope.launch {
             _isLoading.value = true
             combine(deckRepository.getAll(), _sortConfig) { deckList, sort ->
                 val filtered = if (knowledgeBaseId != null) {
@@ -79,10 +82,10 @@ class DeckViewModel(
                 }
                 sortDecks(filtered, sort)
             }.collect { sorted ->
-                _decks.value = sorted
+                _decks.update { sorted }
                 _isLoading.value = false
                 val allCards = cardRepository.getAll().first()
-                _deckCardCounts.value = allCards.groupBy { it.deckId }.mapValues { it.value.size }
+                _deckCardCounts.update { allCards.groupBy { it.deckId }.mapValues { it.value.size } }
             }
         }
     }
@@ -106,8 +109,8 @@ class DeckViewModel(
             description = description,
             color = deckColors[existingCount % deckColors.size],
             icon = deckIcons[existingCount % deckIcons.size],
-            createdAt = kotlinx.datetime.Clock.System.now(),
-            updatedAt = kotlinx.datetime.Clock.System.now()
+            createdAt = kotlin.time.Clock.System.now(),
+            updatedAt = kotlin.time.Clock.System.now()
         )
         deckRepository.insert(deck)
     }
@@ -117,7 +120,7 @@ class DeckViewModel(
         val updated = deck.copy(
             name = name,
             description = description,
-            updatedAt = kotlinx.datetime.Clock.System.now()
+            updatedAt = kotlin.time.Clock.System.now()
         )
         deckRepository.update(updated)
     }
@@ -129,7 +132,7 @@ class DeckViewModel(
             if (id in plan.deckIds) {
                 planRepository.update(plan.copy(
                     deckIds = plan.deckIds - id,
-                    updatedAt = kotlinx.datetime.Clock.System.now()
+                    updatedAt = kotlin.time.Clock.System.now()
                 ))
             }
         }
@@ -138,7 +141,7 @@ class DeckViewModel(
     suspend fun getDeckById(id: String): Deck? = deckRepository.getById(id)
 
     companion object {
-        val deckColors = listOf("#4CAF50", "#2196F3", "#FF9800", "#E91E63", "#9C27B0", "#00BCD4", "#FF5722", "#607D8B")
-        val deckIcons = listOf("📚", "🎓", "💡", "🌟", "🎯", "📝", "🔬", "🎨")
+        val deckColors get() = Deck.colors
+        val deckIcons get() = Deck.icons
     }
 }

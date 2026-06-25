@@ -1,7 +1,7 @@
 package com.lumecard.shared.domain.scheduler
 
 import com.lumecard.shared.model.Rating
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 
 enum class ReviewMode {

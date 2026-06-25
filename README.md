@@ -12,7 +12,7 @@
 - ✅ **深色/浅色模式** — Material Design 3 主题，设置页面切换即生效
 - ✅ **卡片翻转模式** — 支持 Flip（点击翻转）与 Split（上下分区）两种复习查看模式
 - ✅ **知识库管理** — 树状结构管理知识库 → 牌组 → 卡牌层级，支持批量操作
-- ✅ **卡片管理** — 创建/编辑/删除卡片，支持 9 种卡片类型（Basic、Reversed、Cloze、Multiple Choice、Image Occlusion、Audio、Video、Markdown、AI Generated）
+- ✅ **卡片管理** — 创建/编辑/删除卡片，支持 6 种卡片类型（Basic、Reversed、Cloze、Multiple Choice、Markdown、AI）
 - ✅ **学习流程** — 翻卡 → 评分（Again/Hard/Good/Easy），间隔重复调度，支持左滑/右滑手势评分
 - ✅ **学习计划** — 创建/编辑/删除学习计划，支持关联知识库/牌组/卡牌，进度追踪，状态管理
 - ✅ **多牌组学习模式** — 支持混合模式（所有牌组）、单牌组模式、多牌组选择模式
@@ -68,15 +68,17 @@ LumeCard/
 │       │   │   └── PlatformModule.kt # 平台相关 Koin 模块（expect）
 │       │   ├── i18n/               # 国际化
 │       │   │   ├── I18nManager.kt  # 多语言管理
-│       │   │   ├── I18nStrings.kt  # 字符串接口（300+ 条）
-│       │   │   └── Strings*.kt     # 各语言实现
+│   │   │   ├── I18nStrings.kt  # 字符串接口（350+ 条）
+│   │   │   └── Strings*.kt     # 各语言实现
 │       │   ├── platform/           # 平台抽象
 │       │   └── ui/
 │       │       ├── components/     # 可复用组件
 │       │       │   ├── AnimatedDonutChart.kt  # 环形进度图
 │       │       │   ├── LumeCardDialog.kt      # 统一弹窗组件
 │       │       │   ├── ProgressRing.kt        # 进度环
-│       │       │   └── MarkdownRenderer.kt    # GFM 渲染
+│       │       │       ├── RichTextCardEditor.kt  # 富文本编辑器（BASIC 卡片）
+    ├── UpdateCheckDialog.kt   # 更新检查弹窗
+    └── MarkdownRenderer.kt    # GFM 渲染
 │       │       ├── navigation/Navigation.kt
 │       │       ├── theme/Theme.kt  # Material 3 绿色调主题
 │       │       └── screens/
@@ -185,7 +187,7 @@ Knowledge Base → Deck → Card
 
 - **KnowledgeBase** — 顶层知识库，卡片与牌组的容器
 - **Deck** — 牌组，支持层级嵌套（`parentId` 引用），配有颜色与 emoji 图标
-- **Card** — 闪卡，9 种类型，支持标签（tags）、媒体附件（media）、元数据（metadata）
+- **Card** — 闪卡，6 种类型（Basic、Reversed、Cloze、Multiple Choice、Markdown、AI），支持标签（tags）、媒体附件（media）、元数据（metadata）
 
 ### 复习算法架构
 

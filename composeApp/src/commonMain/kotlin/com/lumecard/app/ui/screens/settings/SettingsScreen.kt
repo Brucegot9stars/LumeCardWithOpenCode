@@ -38,6 +38,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.lumecard.shared.model.Card
+import com.lumecard.shared.model.Deck
+import com.lumecard.shared.model.KnowledgeBase
+import com.lumecard.shared.model.CardType
+import kotlin.time.Instant
 import com.lumecard.app.platform.getAppVersion
 import com.lumecard.app.platform.pickSaveFile
 import com.lumecard.app.platform.pickOpenFile
@@ -499,20 +504,59 @@ class SettingsScreen : Screen {
                                         }
                                         val json = withContext(Dispatchers.IO) { readFileContent(filePath) }
                                         if (json == null) {
-                                            snackbarHostState.showSnackbar(strings.settingsImportError("Cannot read file"))
+                                            snackbarHostState.showSnackbar(strings.settingsImportError(strings.settingsImportErrorReadFile))
                                             return@launch
                                         }
                                         val export = exportManager.importData(json)
                                         if (export == null) {
-                                            snackbarHostState.showSnackbar(strings.settingsImportError("Invalid JSON format"))
+                                            snackbarHostState.showSnackbar(strings.settingsImportError(strings.settingsImportErrorInvalidJson))
                                             return@launch
+                                        }
+                                        withContext(Dispatchers.IO) {
+                                            for (ekb in export.knowledgeBases) {
+                                                knowledgeBaseRepository.insert(
+                                                    KnowledgeBase(
+                                                        id = ekb.id, name = ekb.name, description = ekb.description,
+                                                        createdAt = Instant.parse(ekb.createdAt),
+                                                        updatedAt = Instant.parse(ekb.updatedAt),
+                                                        version = ekb.version
+                                                    )
+                                                )
+                                            }
+                                            for (ed in export.decks) {
+                                                deckRepository.insert(
+                                                    Deck(
+                                                        id = ed.id, knowledgeBaseId = ed.knowledgeBaseId,
+                                                        name = ed.name, description = ed.description,
+                                                        color = ed.color, icon = ed.icon,
+                                                        parentId = ed.parentId,
+                                                        createdAt = Instant.parse(ed.createdAt),
+                                                        updatedAt = Instant.parse(ed.updatedAt),
+                                                        version = ed.version
+                                                    )
+                                                )
+                                            }
+                                            for (ec in export.cards) {
+                                                cardRepository.insert(
+                                                    Card(
+                                                        id = ec.id, deckId = ec.deckId,
+                                                        type = try { CardType.valueOf(ec.type) } catch (_: Exception) { CardType.BASIC },
+                                                        front = ec.front, back = ec.back, tags = ec.tags,
+                                                        createdAt = Instant.parse(ec.createdAt),
+                                                        updatedAt = Instant.parse(ec.updatedAt),
+                                                        lastReviewedAt = ec.lastReviewedAt?.let { Instant.parse(it) },
+                                                        nextReviewAt = ec.nextReviewAt?.let { Instant.parse(it) },
+                                                        version = ec.version
+                                                    )
+                                                )
+                                            }
                                         }
                                         val importedKBs = export.knowledgeBases.size
                                         val importedDecks = export.decks.size
                                         val importedCards = export.cards.size
-                                        snackbarHostState.showSnackbar("Imported: $importedKBs KBs, $importedDecks decks, $importedCards cards")
+                                        snackbarHostState.showSnackbar(strings.settingsImportSuccess(importedKBs, importedDecks, importedCards))
                                     } catch (e: Exception) {
-                                        snackbarHostState.showSnackbar(strings.settingsImportError(e.message ?: "Unknown"))
+                                        snackbarHostState.showSnackbar(strings.settingsImportError(e.message ?: strings.errorUnknown))
                                     }
                                 }
                             },
@@ -578,7 +622,7 @@ class SettingsScreen : Screen {
                             }
                         }
                         Spacer(Modifier.height(spacing.sm))
-                        Text("LumeCard", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text(strings.appName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                         Text("v${getAppVersion()}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.height(spacing.md))
                         HorizontalDivider()
