@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -119,7 +120,7 @@ fun App() {
                     }
                     val currentScreen = navigator.lastItemOrNull
                     if (currentScreen?.key != screen.key) {
-                        navigator.replaceAll(screen)
+                        withFrameNanos { navigator.replaceAll(screen) }
                     }
                 }
 

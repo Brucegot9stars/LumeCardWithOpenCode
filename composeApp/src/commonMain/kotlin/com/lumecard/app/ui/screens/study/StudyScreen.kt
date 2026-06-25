@@ -37,6 +37,7 @@ import com.lumecard.app.ui.screens.settings.SettingsStateHolder
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
 import com.lumecard.shared.model.Rating
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -200,7 +201,7 @@ class StudyScreen(
                 strings.studyRandom(actual)
             }
             AlertDialog(
-                onDismissRequest = { navigator.pop() },
+                onDismissRequest = { scope.launch { delay(1); navigator.pop() } },
                 title = { Text(strings.studyModeTitle) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -239,7 +240,7 @@ class StudyScreen(
                         ) { Text(randomLabel()) }
                     }
                 },
-                confirmButton = { TextButton(onClick = { navigator.pop() }, interactionSource = null) { Text(strings.actionDone) } }
+                confirmButton = { TextButton(onClick = { scope.launch { delay(1); navigator.pop() } }, interactionSource = null) { Text(strings.actionDone) } }
             )
         }
 
@@ -259,7 +260,7 @@ class StudyScreen(
                 topBar = {
                     LumeCardTopBar(
                         title = "${strings.actionLearning}: $deckName",
-                        onBack = { navigator.pop() }
+                        onBack = { scope.launch { delay(1); navigator.pop() } }
                     )
                 }
             ) { padding ->
@@ -335,7 +336,7 @@ class StudyScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Spacer(Modifier.height(24.dp))
-                                    Button(onClick = { navigator.pop() }, interactionSource = null) {
+                                    Button(onClick = { scope.launch { delay(1); navigator.pop() } }, interactionSource = null) {
                                         Text(strings.actionBack)
                                     }
                                 }
@@ -617,14 +618,14 @@ class StudyScreen(
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
                                     OutlinedButton(
-                                        onClick = { navigator.pop() },
+                                        onClick = { scope.launch { delay(1); navigator.pop() } },
                                         interactionSource = null,
                                         modifier = Modifier.weight(1f),
                                     ) {
                                         Text(strings.actionDone)
                                     }
                                     Button(
-                                        onClick = { navigator.pop() },
+                                        onClick = { scope.launch { delay(1); navigator.pop() } },
                                         interactionSource = null,
                                         modifier = Modifier.weight(1f),
                                     ) {
