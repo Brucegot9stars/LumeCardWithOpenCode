@@ -42,7 +42,6 @@ class LearningPlanScreen(
         var saveTrigger by remember { mutableStateOf(0) }
 
         LaunchedEffect(saveTrigger) {
-            System.err.println("[LumeCard] LaunchedEffect key=$saveTrigger")
             if (saveTrigger <= 0) return@LaunchedEffect
             val saved = try {
                 if (editPlanId != null) {
@@ -69,11 +68,9 @@ class LearningPlanScreen(
                     )
                 }
                 true
-            } catch (e: Exception) {
-                System.err.println("[LumeCard] Save error: ${e.message}")
+            } catch (_: Exception) {
                 false
             }
-            System.err.println("[LumeCard] Save result: $saved")
             if (saved) showSuccess = true else showError = true
         }
 
@@ -125,10 +122,7 @@ class LearningPlanScreen(
                 }
                 Spacer(Modifier.height(spacing.md))
                 Button(
-                    onClick = {
-                        System.err.println("[LumeCard] Save button CLICKED")
-                        saveTrigger++
-                    },
+                    onClick = { saveTrigger++ },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = canSave && !showSuccess && !showError,
                     colors = ButtonDefaults.buttonColors(

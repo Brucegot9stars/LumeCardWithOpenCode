@@ -303,7 +303,6 @@ class StudyViewModel(
                     }
                     val baseline = planBaselineCompleted[planId] ?: plan.completedCards
                     val newCompleted = (baseline + ratedInPlan).coerceAtMost(plan.totalCards)
-                    println("[LumeCard] savePlanProgress plan=$planId total=${plan.totalCards} baseline=$baseline ratedInPlan=$ratedInPlan new=$newCompleted")
                     val newStatus = if (newCompleted >= plan.totalCards) {
                         com.lumecard.shared.model.PlanStatus.COMPLETED
                     } else if (newCompleted > 0) {
