@@ -9,6 +9,7 @@ import com.lumecard.shared.model.Rating
 import com.lumecard.shared.model.ReviewLog
 import com.lumecard.shared.repository.AlgorithmStateRepository
 import com.lumecard.shared.repository.CardRepository
+import com.lumecard.shared.repository.DeckRepository
 import com.lumecard.shared.repository.LearningPlanRepository
 import com.lumecard.shared.repository.ReviewLogRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,7 +36,8 @@ class StudyViewModel(
     private val reviewLogRepository: ReviewLogRepository,
     private val algorithmStateRepository: AlgorithmStateRepository,
     private val algorithm: ReviewAlgorithm,
-    private val planRepository: LearningPlanRepository
+    private val planRepository: LearningPlanRepository,
+    private val deckRepository: DeckRepository
 ) : ScreenModel {
 
     private val _error = MutableStateFlow<String?>(null)
@@ -273,10 +275,22 @@ class StudyViewModel(
         if (activePlanIds.isEmpty()) return
         screenModelScope.launch {
             try {
+                val allCards = cardRepository.getAll().first()
+                val allDecks = deckRepository.getAll().first()
                 for (planId in activePlanIds) {
                     val plan = planRepository.getById(planId) ?: continue
-                    val baseline = planBaselineCompleted[planId] ?: plan.completedCards
-                    val newCompleted = (baseline + _completedCards.value).coerceAtMost(plan.totalCards)
+                    val planCardIds = plan.cardIds.toSet()
+                    val planDeckIds = plan.deckIds.toSet()
+                    val planKbIds = plan.knowledgeBaseIds.toSet()
+                    val planCards = allCards.filter { card ->
+                        card.deletedAt == null && (
+                            card.id in planCardIds ||
+                            card.deckId in planDeckIds ||
+                            allDecks.any { it.id == card.deckId && it.knowledgeBaseId in planKbIds }
+                        )
+                    }
+                    val reviewedCount = planCards.count { it.lastReviewedAt != null }
+                    val newCompleted = reviewedCount.coerceAtMost(plan.totalCards)
                     val newStatus = if (newCompleted >= plan.totalCards) {
                         com.lumecard.shared.model.PlanStatus.COMPLETED
                     } else if (newCompleted > 0) {

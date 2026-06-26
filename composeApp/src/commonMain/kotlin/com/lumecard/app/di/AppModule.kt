@@ -25,7 +25,7 @@ val appModule = module {
 
     factory { DashboardViewModel(get(), get(), get(), get(), get(), get()) }
     factory { DeckViewModel(get(), get(), get(), get()) }
-    factory { StudyViewModel(get(), get(), get(), get(), get()) }
+    factory { StudyViewModel(get(), get(), get(), get(), get(), get()) }
     factory { CardViewModel(get(), get()) }
     factory { StatsViewModel(get(), get(), get(), get()) }
     factory { SettingsViewModel(get(), get(), get()) }
