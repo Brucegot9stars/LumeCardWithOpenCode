@@ -11,10 +11,10 @@ import kotlinx.coroutines.flow.update
 class InMemoryKnowledgeBaseRepository : KnowledgeBaseRepository {
     private val knowledgeBases = MutableStateFlow<List<KnowledgeBase>>(emptyList())
 
-    override fun getAll(): Flow<List<KnowledgeBase>> = knowledgeBases
+    override fun getAll(): Flow<List<KnowledgeBase>> = knowledgeBases.map { list -> list.filter { it.deletedAt == null } }
 
     override suspend fun getById(id: String): KnowledgeBase? {
-        return knowledgeBases.value.find { it.id == id }
+        return knowledgeBases.value.find { it.id == id && it.deletedAt == null }
     }
 
     override suspend fun insert(knowledgeBase: KnowledgeBase) {
@@ -43,14 +43,14 @@ class InMemoryKnowledgeBaseRepository : KnowledgeBaseRepository {
 class InMemoryDeckRepository : DeckRepository {
     private val decks = MutableStateFlow<List<Deck>>(emptyList())
 
-    override fun getAll(): Flow<List<Deck>> = decks
+    override fun getAll(): Flow<List<Deck>> = decks.map { list -> list.filter { it.deletedAt == null } }
 
     override fun getByKnowledgeBase(knowledgeBaseId: String): Flow<List<Deck>> {
-        return decks.map { list -> list.filter { it.knowledgeBaseId == knowledgeBaseId } }
+        return decks.map { list -> list.filter { it.knowledgeBaseId == knowledgeBaseId && it.deletedAt == null } }
     }
 
     override suspend fun getById(id: String): Deck? {
-        return decks.value.find { it.id == id }
+        return decks.value.find { it.id == id && it.deletedAt == null }
     }
 
     override suspend fun insert(deck: Deck) {
@@ -79,22 +79,21 @@ class InMemoryDeckRepository : DeckRepository {
 class InMemoryCardRepository : CardRepository {
     private val cards = MutableStateFlow<List<Card>>(emptyList())
 
-    override fun getAll(): Flow<List<Card>> = cards
+    override fun getAll(): Flow<List<Card>> = cards.map { list -> list.filter { it.deletedAt == null } }
 
     override fun getByDeck(deckId: String): Flow<List<Card>> {
-        return cards.map { list -> list.filter { it.deckId == deckId } }
+        return cards.map { list -> list.filter { it.deckId == deckId && it.deletedAt == null } }
     }
 
     override suspend fun getById(id: String): Card? {
-        return cards.value.find { it.id == id }
+        return cards.value.find { it.id == id && it.deletedAt == null }
     }
 
     override suspend fun getDueCards(): Flow<List<Card>> {
         val now = Clock.System.now()
         return cards.map { list ->
             list.filter { card ->
-                val next = card.nextReviewAt
-                next != null && next <= now
+                card.deletedAt == null && card.nextReviewAt != null && card.nextReviewAt <= now
             }
         }
     }
@@ -116,9 +115,11 @@ class InMemoryCardRepository : CardRepository {
     override suspend fun search(query: String): Flow<List<Card>> {
         return cards.map { list ->
             list.filter { card ->
-                card.front.contains(query, ignoreCase = true) ||
-                card.back.contains(query, ignoreCase = true) ||
-                card.tags.any { it.contains(query, ignoreCase = true) }
+                card.deletedAt == null && (
+                    card.front.contains(query, ignoreCase = true) ||
+                    card.back.contains(query, ignoreCase = true) ||
+                    card.tags.any { it.contains(query, ignoreCase = true) }
+                )
             }
         }
     }
@@ -138,10 +139,10 @@ class InMemoryCardRepository : CardRepository {
 class InMemoryReviewLogRepository : ReviewLogRepository {
     private val reviewLogs = MutableStateFlow<List<ReviewLog>>(emptyList())
 
-    override fun getAll(): Flow<List<ReviewLog>> = reviewLogs
+    override fun getAll(): Flow<List<ReviewLog>> = reviewLogs.map { list -> list.filter { it.deletedAt == null } }
 
     override fun getByCardId(cardId: String): Flow<List<ReviewLog>> {
-        return reviewLogs.map { list -> list.filter { it.cardId == cardId } }
+        return reviewLogs.map { list -> list.filter { it.cardId == cardId && it.deletedAt == null } }
     }
 
     override suspend fun insert(reviewLog: ReviewLog) {
@@ -192,14 +193,14 @@ class InMemoryMediaCacheRepository : MediaCacheRepository {
 class InMemoryLearningPlanRepository : LearningPlanRepository {
     private val plans = MutableStateFlow<List<LearningPlan>>(emptyList())
 
-    override fun getAll(): Flow<List<LearningPlan>> = plans
+    override fun getAll(): Flow<List<LearningPlan>> = plans.map { list -> list.filter { it.deletedAt == null } }
 
     override suspend fun getById(id: String): LearningPlan? {
-        return plans.value.find { it.id == id }
+        return plans.value.find { it.id == id && it.deletedAt == null }
     }
 
     override suspend fun getDefault(): LearningPlan? {
-        return plans.value.find { it.isDefault }
+        return plans.value.find { it.isDefault && it.deletedAt == null }
     }
 
     override suspend fun insert(plan: LearningPlan) {
