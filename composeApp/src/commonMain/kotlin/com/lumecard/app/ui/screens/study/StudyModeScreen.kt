@@ -27,6 +27,7 @@ import com.lumecard.shared.model.Deck
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.theme.LumeCardTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
@@ -173,7 +174,12 @@ class StudyModeScreen(
                                                     cardIds = plan.cardIds,
                                                     isDefault = plan.isDefault
                                                 )
-                                                snackbarHostState.showSnackbar(strings.planUpdated, duration = SnackbarDuration.Short)
+                                                val job = launch {
+                                                    snackbarHostState.showSnackbar(strings.planUpdated, duration = SnackbarDuration.Indefinite)
+                                                }
+                                                delay(1250)
+                                                job.cancel()
+                                                snackbarHostState.currentSnackbarData?.dismiss()
                                             }
                                         } catch (e: Exception) {
                                             println("[LumeCard ERROR] StudyModeScreen savePlan: ${e.message}")
@@ -228,8 +234,10 @@ class StudyModeScreen(
                                                 )
                                             }
                                         }
-                                        val msg = if (planIds.isEmpty()) strings.planCreated else strings.planUpdated
-                                        snackbarHostState.showSnackbar(msg, duration = SnackbarDuration.Short)
+                                        snackbarHostState.showSnackbar(
+                                            if (planIds.isEmpty()) strings.planCreated else strings.planUpdated,
+                                            duration = SnackbarDuration.Short
+                                        )
                                         navigator.push(StudyScreen(deckIds, name, planIds = resolvedPlanIds))
                                     } catch (e: Exception) {
                                         println("[LumeCard ERROR] StudyModeScreen navigate: ${e.message}")

@@ -29,6 +29,7 @@ import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.screens.study.StudyModeScreen
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.shared.model.PlanStatus
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
@@ -279,10 +280,15 @@ class LearningPlanSelectionScreen : Screen {
                             true
                         } catch (_: Exception) { false }
                         showCreateDialog = false
-                        snackbarHostState.showSnackbar(
-                            message = if (saved) (if (editPlanId != null) strings.planUpdated else strings.planCreated) else strings.errorDesc,
-                            duration = SnackbarDuration.Short
-                        )
+                        val job = launch {
+                            snackbarHostState.showSnackbar(
+                                message = if (saved) (if (editPlanId != null) strings.planUpdated else strings.planCreated) else strings.errorDesc,
+                                duration = SnackbarDuration.Indefinite
+                            )
+                        }
+                        delay(1250)
+                        job.cancel()
+                        snackbarHostState.currentSnackbarData?.dismiss()
                     }
                 },
                 confirmText = strings.actionSave,
