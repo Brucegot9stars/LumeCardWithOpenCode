@@ -26,7 +26,9 @@ import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.components.LumeCardDialog
 import com.lumecard.app.ui.components.LumeCardTextField
 import com.lumecard.app.ui.components.LumeCardTopBar
+import com.lumecard.app.ui.screens.study.CardsStudyMode
 import com.lumecard.app.ui.screens.study.StudyModeScreen
+import com.lumecard.app.ui.screens.study.StudyScreen
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.shared.model.PlanStatus
 import kotlinx.coroutines.delay
@@ -184,6 +186,7 @@ class LearningPlanSelectionScreen : Screen {
                             PlanStatus.IN_PROGRESS -> strings.planStatusInProgress
                             PlanStatus.COMPLETED -> strings.planStatusCompleted
                         }
+                        var showAllDoneDialog by remember { mutableStateOf(false) }
 
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -191,24 +194,6 @@ class LearningPlanSelectionScreen : Screen {
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                             ),
-                            onClick = {
-                                scope.launch {
-                                    try {
-                                        viewModel.startPlan(plan.id)
-                                    } catch (e: Exception) {
-                                        println("[LumeCard ERROR] PlanSelection startPlan: ${e.message}")
-                                        e.printStackTrace()
-                                        errorMsg = "startPlan: ${e.message}\n${e.stackTraceToString()}"
-                                    }
-                                }
-                                try {
-                                    navigator.push(StudyModeScreen(planIds = listOf(plan.id), preSelectedDeckIds = plan.deckIds))
-                                } catch (e: Exception) {
-                                    println("[LumeCard ERROR] PlanSelection navigate plan: ${e.message}")
-                                    e.printStackTrace()
-                                    errorMsg = "navigate: ${e.message}\n${e.stackTraceToString()}"
-                                }
-                            }
                         ) {
                             Column(modifier = Modifier.fillMaxWidth().padding(spacing.md)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -240,7 +225,82 @@ class LearningPlanSelectionScreen : Screen {
                                     Spacer(Modifier.width(spacing.sm))
                                     Text("${(progress * 100).toInt()}%", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
+                                Spacer(Modifier.height(spacing.sm))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                                ) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            scope.launch {
+                                                try {
+                                                    viewModel.startPlan(plan.id)
+                                                    val deckIds = viewModel.getDeckIdsForPlan(plan)
+                                                    navigator.push(StudyScreen(deckIds, plan.name, planIds = listOf(plan.id), initialMode = CardsStudyMode.DUE_ONLY))
+                                                } catch (e: Exception) {
+                                                    println("[LumeCard ERROR] PlanSelection review: ${e.message}")
+                                                    e.printStackTrace()
+                                                    errorMsg = "review: ${e.message}\n${e.stackTraceToString()}"
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                    ) {
+                                        Text(strings.planReview)
+                                    }
+                                    Button(
+                                        onClick = {
+                                            scope.launch {
+                                                try {
+                                                    viewModel.startPlan(plan.id)
+                                                    val dueCount = viewModel.getDueCardCountForPlan(plan)
+                                                    val newCount = viewModel.getNewCardCountForPlan(plan)
+                                                    if (dueCount > 0 || newCount > 0) {
+                                                        val deckIds = viewModel.getDeckIdsForPlan(plan)
+                                                        val mode = if (dueCount > 0) CardsStudyMode.DUE_ONLY else CardsStudyMode.NEW_CARDS
+                                                        navigator.push(StudyScreen(deckIds, plan.name, planIds = listOf(plan.id), initialMode = mode))
+                                                    } else {
+                                                        showAllDoneDialog = true
+                                                    }
+                                                } catch (e: Exception) {
+                                                    println("[LumeCard ERROR] PlanSelection learn: ${e.message}")
+                                                    e.printStackTrace()
+                                                    errorMsg = "learn: ${e.message}\n${e.stackTraceToString()}"
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                    ) {
+                                        Text(strings.planLearn)
+                                    }
+                                }
                             }
+                        }
+
+                        if (showAllDoneDialog) {
+                            AlertDialog(
+                                onDismissRequest = { showAllDoneDialog = false },
+                                title = { Text(strings.planAllDoneTitle) },
+                                text = { Text(strings.planAllDoneDesc) },
+                                confirmButton = {
+                                    Button(onClick = {
+                                        showAllDoneDialog = false
+                                        scope.launch {
+                                            try {
+                                                val deckIds = viewModel.getDeckIdsForPlan(plan)
+                                                navigator.push(StudyScreen(deckIds, plan.name, planIds = listOf(plan.id), initialMode = CardsStudyMode.ALL_CARDS))
+                                            } catch (e: Exception) {
+                                                println("[LumeCard ERROR] PlanSelection re-learn: ${e.message}")
+                                            }
+                                        }
+                                    }) { Text(strings.planReviewAgain) }
+                                },
+                                dismissButton = {
+                                    OutlinedButton(onClick = { showAllDoneDialog = false }) {
+                                        Text(strings.actionCancel)
+                                    }
+                                }
+                            )
                         }
                     }
 

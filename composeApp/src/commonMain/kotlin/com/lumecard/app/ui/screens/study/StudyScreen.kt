@@ -55,7 +55,8 @@ private const val SWIPE_THRESHOLD_RATIO = 0.2f
 class StudyScreen(
     private val deckIds: List<String>,
     private val deckName: String,
-    private val planIds: List<String> = emptyList()
+    private val planIds: List<String> = emptyList(),
+    private val initialMode: CardsStudyMode = CardsStudyMode.DUE_FIRST,
 ) : Screen {
     constructor(deckId: String, deckName: String) : this(listOf(deckId), deckName)
 
@@ -188,7 +189,7 @@ class StudyScreen(
         }
 
         LaunchedEffect(deckIds) {
-            viewModel.loadCards(deckIds, planIds)
+            viewModel.loadCards(deckIds, planIds, initialMode)
         }
 
         LaunchedEffect(currentCard) {

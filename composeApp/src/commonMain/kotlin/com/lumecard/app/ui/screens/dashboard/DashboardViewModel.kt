@@ -3,6 +3,7 @@ package com.lumecard.app.ui.screens.dashboard
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import com.lumecard.shared.model.Deck
+import com.lumecard.shared.model.LearningPlan
 import com.lumecard.shared.model.PlanStatus
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
@@ -58,6 +59,9 @@ class DashboardViewModel(
 
     private val _activePlanCount = MutableStateFlow(0)
     val activePlanCount: StateFlow<Int> = _activePlanCount.asStateFlow()
+
+    private val _duePlanCount = MutableStateFlow(0)
+    val duePlanCount: StateFlow<Int> = _duePlanCount.asStateFlow()
 
     private var loadJob: Job? = null
 
@@ -121,6 +125,22 @@ class DashboardViewModel(
                 next != null && next <= now
             }
             _totalDueCards.value = dueCount
+
+            val allPlans = planRepository.getAll().first()
+            val allDecks = deckRepository.getAll().first()
+            val duePlanCount = allPlans.count { plan ->
+                val planCardIds = plan.cardIds.toSet()
+                val planDeckIds = plan.deckIds.toSet()
+                val planKbIds = plan.knowledgeBaseIds.toSet()
+                allCards.any { card ->
+                    card.deletedAt == null && (
+                        card.id in planCardIds ||
+                        card.deckId in planDeckIds ||
+                        allDecks.any { it.id == card.deckId && it.knowledgeBaseId in planKbIds }
+                    ) && card.nextReviewAt?.let { it <= now } == true
+                }
+            }
+            _duePlanCount.value = duePlanCount
         }
     }
 }

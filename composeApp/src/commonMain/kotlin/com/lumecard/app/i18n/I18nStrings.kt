@@ -36,6 +36,10 @@ interface I18nStrings {
 
     val dashStartLearning: String
     fun dashActivePlans(count: Int): String
+    val dashPendingReview: String
+    fun dashDuePlans(count: Int): String
+    val dashDueCardsLabel: String
+    fun dashDueCardsCount(count: Int): String
     fun dashKBCount(count: Int): String
     val dashManageDecks: String
     val dashQuickActions: String
@@ -360,6 +364,11 @@ interface I18nStrings {
     val planProgress: String
     val planResetConfirm: String
     val planResetConfirmDesc: String
+    val planReview: String
+    val planLearn: String
+    val planAllDoneTitle: String
+    val planAllDoneDesc: String
+    val planReviewAgain: String
     fun planCardsCount(count: Int): String
 
     val fieldName: String

@@ -58,6 +58,7 @@ class DashboardScreen : Screen {
         val totalDueCards by viewModel.totalDueCards.collectAsState()
         val kbCount by viewModel.kbCount.collectAsState()
         val activePlanCount by viewModel.activePlanCount.collectAsState()
+        val duePlanCount by viewModel.duePlanCount.collectAsState()
 
         LaunchedEffect(Unit) { viewModel.loadStats() }
 
@@ -172,6 +173,40 @@ class DashboardScreen : Screen {
                                     iconBackgroundColor = MaterialTheme.colorScheme.tertiary,
                                     iconTint = MaterialTheme.colorScheme.onTertiary,
                                     onClick = { navigator.push(KnowledgeBaseScreen()) },
+                                )
+                            }
+
+                            Spacer(Modifier.height(spacing.sm))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                            ) {
+                                QuickActionCard(
+                                    modifier = Modifier.weight(1f),
+                                    title = strings.dashPendingReview,
+                                    subtitle = strings.dashDuePlans(duePlanCount),
+                                    enabled = duePlanCount > 0,
+                                    icon = Icons.Default.Refresh,
+                                    isPrimary = true,
+                                    onClick = { navigator.push(LearningPlanSelectionScreen()) },
+                                )
+                                QuickActionCard(
+                                    modifier = Modifier.weight(1f),
+                                    title = strings.dashDueCardsLabel,
+                                    subtitle = strings.dashDueCardsCount(totalDueCards),
+                                    enabled = totalDueCards > 0,
+                                    icon = Icons.Default.Schedule,
+                                    isPrimary = false,
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    iconBackgroundColor = MaterialTheme.colorScheme.secondary,
+                                    iconTint = MaterialTheme.colorScheme.onSecondary,
+                                    onClick = {
+                                        if (totalDueCards > 0) {
+                                            // Let StudyModeScreen handle mode selection with all decks
+                                            navigator.push(StudyModeScreen())
+                                        }
+                                    },
                                 )
                             }
                         }

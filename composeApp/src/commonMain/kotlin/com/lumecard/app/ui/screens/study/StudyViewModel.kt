@@ -26,6 +26,7 @@ import java.util.UUID
 
 enum class CardsStudyMode {
     DUE_FIRST,
+    DUE_ONLY,
     ALL_CARDS,
     NEW_CARDS,
     RANDOM
@@ -126,6 +127,13 @@ class StudyViewModel(
                             allCards
                         } else {
                             dueCards
+                        }
+                    }
+                    CardsStudyMode.DUE_ONLY -> {
+                        val now = Clock.System.now()
+                        allCards.filter { card ->
+                            val next = card.nextReviewAt
+                            next != null && next <= now
                         }
                     }
                     CardsStudyMode.ALL_CARDS -> allCards

@@ -171,6 +171,12 @@ class LearningPlanViewModel(
         }
     }
 
+    suspend fun getDeckIdsForPlan(plan: LearningPlan): List<String> {
+        if (plan.deckIds.isNotEmpty()) return plan.deckIds
+        val allDecks = deckRepository.getAll().first()
+        return allDecks.filter { it.deletedAt == null && it.knowledgeBaseId in plan.knowledgeBaseIds }.map { it.id }
+    }
+
     suspend fun getDeckCountForPlan(plan: LearningPlan): Int {
         val allDecks = deckRepository.getAll().first()
         return allDecks.count { deck ->
@@ -179,6 +185,17 @@ class LearningPlanViewModel(
                 deck.knowledgeBaseId in plan.knowledgeBaseIds
             )
         }
+    }
+
+    suspend fun getDueCardCountForPlan(plan: LearningPlan): Int {
+        val cards = getCardsForPlan(plan)
+        val now = kotlin.time.Clock.System.now()
+        return cards.count { it.nextReviewAt?.let { t -> t <= now } == true }
+    }
+
+    suspend fun getNewCardCountForPlan(plan: LearningPlan): Int {
+        val cards = getCardsForPlan(plan)
+        return cards.count { it.lastReviewedAt == null }
     }
 
     private suspend fun resolveCardIds(kbIds: List<String>, deckIds: List<String>, cardIds: List<String>): Set<String> {
