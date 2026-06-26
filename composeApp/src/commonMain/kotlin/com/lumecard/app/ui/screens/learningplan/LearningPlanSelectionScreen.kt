@@ -47,6 +47,7 @@ class LearningPlanSelectionScreen : Screen {
         val isLoading by viewModel.isLoading.collectAsState()
         val scope = rememberCoroutineScope()
 
+        val snackbarHostState = remember { SnackbarHostState() }
         var showCreateDialog by remember { mutableStateOf(false) }
         var editPlanId by remember { mutableStateOf<String?>(null) }
         var dialogName by remember { mutableStateOf("") }
@@ -115,7 +116,8 @@ class LearningPlanSelectionScreen : Screen {
                         }
                     }
                 )
-            }
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) }
         ) { padding ->
             if (isLoading) {
                 Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
@@ -265,15 +267,22 @@ class LearningPlanSelectionScreen : Screen {
                 onDismiss = { showCreateDialog = false },
                 onConfirm = {
                     scope.launch {
-                        if (editPlanId != null) {
-                            val existing = viewModel.plans.value.find { it.id == editPlanId }
-                            if (existing != null) {
-                                viewModel.updatePlan(editPlanId!!, dialogName, dialogDesc.ifBlank { null }, existing.knowledgeBaseIds, existing.deckIds, existing.cardIds, existing.isDefault)
+                        val saved = try {
+                            if (editPlanId != null) {
+                                val existing = viewModel.plans.value.find { it.id == editPlanId }
+                                if (existing != null) {
+                                    viewModel.updatePlan(editPlanId!!, dialogName, dialogDesc.ifBlank { null }, existing.knowledgeBaseIds, existing.deckIds, existing.cardIds, existing.isDefault)
+                                }
+                            } else {
+                                viewModel.createPlan(dialogName, dialogDesc.ifBlank { null }, emptyList(), emptyList(), emptyList())
                             }
-                        } else {
-                            viewModel.createPlan(dialogName, dialogDesc.ifBlank { null }, emptyList(), emptyList(), emptyList())
-                        }
+                            true
+                        } catch (_: Exception) { false }
                         showCreateDialog = false
+                        snackbarHostState.showSnackbar(
+                            message = if (saved) (if (editPlanId != null) strings.planUpdated else strings.planCreated) else strings.errorDesc,
+                            duration = SnackbarDuration.Short
+                        )
                     }
                 },
                 confirmText = strings.actionSave,

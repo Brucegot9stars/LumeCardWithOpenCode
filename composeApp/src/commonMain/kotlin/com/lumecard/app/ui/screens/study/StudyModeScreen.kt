@@ -54,6 +54,7 @@ class StudyModeScreen(
         val decks by deckViewModel.decks.collectAsState()
         val deckCardCounts by deckViewModel.deckCardCounts.collectAsState()
 
+        val snackbarHostState = remember { SnackbarHostState() }
         var selectedMode by remember { mutableStateOf(StudyMode.MIXED) }
         var selectedDeckIds by remember { mutableStateOf(setOf<String>()) }
         var errorMsg by remember { mutableStateOf<String?>(null) }
@@ -128,6 +129,7 @@ class StudyModeScreen(
                     onBack = { navigator.pop() }
                 )
             },
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
                 val enabled = when (selectedMode) {
                     StudyMode.MIXED -> studyableDecks.isNotEmpty()
@@ -225,6 +227,8 @@ class StudyModeScreen(
                                                 )
                                             }
                                         }
+                                        val msg = if (planIds.isEmpty()) strings.planCreated else strings.planUpdated
+                                        snackbarHostState.showSnackbar(msg, duration = SnackbarDuration.Short)
                                         navigator.push(StudyScreen(deckIds, name, planIds = resolvedPlanIds))
                                     } catch (e: Exception) {
                                         println("[LumeCard ERROR] StudyModeScreen navigate: ${e.message}")
