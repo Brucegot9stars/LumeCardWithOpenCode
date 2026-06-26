@@ -39,7 +39,8 @@ class LearningPlanScreen(
         var description by remember { mutableStateOf("") }
         var isDefault by remember { mutableStateOf(false) }
         val canSave = name.isNotBlank()
-        var saveState by remember { mutableStateOf<Boolean?>(null) } // null=idle, true=success, false=error
+        var showSuccess by remember { mutableStateOf(false) }
+        var showError by remember { mutableStateOf(false) }
 
         LaunchedEffect(editPlanId) {
             if (editPlanId != null) {
@@ -51,22 +52,6 @@ class LearningPlanScreen(
                     isDefault = plan.isDefault
                 }
             }
-        }
-
-        when (saveState) {
-            true -> AlertDialog(
-                onDismissRequest = { navigator.pop() },
-                title = { Text(if (editPlanId != null) strings.planUpdated else strings.planCreated) },
-                text = { Text(if (editPlanId != null) strings.planSavedDescUpdate else strings.planSavedDescCreate) },
-                confirmButton = { Button(onClick = { navigator.pop() }) { Text(strings.actionOk) } }
-            )
-            false -> AlertDialog(
-                onDismissRequest = { saveState = null },
-                title = { Text(strings.errorTitle) },
-                text = { Text(strings.errorDesc) },
-                confirmButton = { Button(onClick = { saveState = null }) { Text(strings.actionOk) } }
-            )
-            null -> { }
         }
 
         Scaffold(
@@ -132,17 +117,35 @@ class LearningPlanScreen(
                                     )
                                 }
                             }
-                            saveState = result.isSuccess
+                            val saved = result.isSuccess
+                            if (saved) showSuccess = true else showError = true
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = canSave,
+                    enabled = canSave && !showSuccess && !showError,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (canSave) Color(0xFF4CAF50) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        contentColor = if (canSave) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                        containerColor = if (canSave && !showSuccess && !showError) Color(0xFF4CAF50) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        contentColor = if (canSave && !showSuccess && !showError) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                     )
                 ) {
                     Text(strings.actionSave)
+                }
+
+                if (showSuccess) {
+                    AlertDialog(
+                        onDismissRequest = { navigator.pop() },
+                        title = { Text(if (editPlanId != null) strings.planUpdated else strings.planCreated) },
+                        text = { Text(if (editPlanId != null) strings.planSavedDescUpdate else strings.planSavedDescCreate) },
+                        confirmButton = { Button(onClick = { navigator.pop() }) { Text(strings.actionOk) } }
+                    )
+                }
+                if (showError) {
+                    AlertDialog(
+                        onDismissRequest = { showError = false },
+                        title = { Text(strings.errorTitle) },
+                        text = { Text(strings.errorDesc) },
+                        confirmButton = { Button(onClick = { showError = false }) { Text(strings.actionOk) } }
+                    )
                 }
             }
         }
