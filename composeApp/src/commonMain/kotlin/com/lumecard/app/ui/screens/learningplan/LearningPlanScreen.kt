@@ -18,7 +18,6 @@ import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.components.LumeCardTextField
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.theme.LumeCardTheme
-import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 class LearningPlanScreen(
@@ -33,7 +32,6 @@ class LearningPlanScreen(
         val viewModel: LearningPlanViewModel = koinInject()
         val strings = koinInject<I18nManager>().strings
         val spacing = LumeCardTheme.spacing
-        val scope = rememberCoroutineScope()
 
         var name by remember { mutableStateOf("") }
         var description by remember { mutableStateOf("") }
@@ -41,6 +39,43 @@ class LearningPlanScreen(
         val canSave = name.isNotBlank()
         var showSuccess by remember { mutableStateOf(false) }
         var showError by remember { mutableStateOf(false) }
+        var saveTrigger by remember { mutableStateOf(0) }
+
+        LaunchedEffect(saveTrigger) {
+            if (saveTrigger <= 0) return@LaunchedEffect
+            System.err.println("[LumeCard] Save triggered...")
+            val saved = try {
+                if (editPlanId != null) {
+                    val existing = viewModel.plans.value.find { it.id == editPlanId }
+                    if (existing != null) {
+                        viewModel.updatePlan(
+                            id = editPlanId,
+                            name = name,
+                            description = description.ifBlank { null },
+                            knowledgeBaseIds = existing.knowledgeBaseIds,
+                            deckIds = existing.deckIds,
+                            cardIds = existing.cardIds,
+                            isDefault = isDefault
+                        )
+                    }
+                } else {
+                    viewModel.createPlan(
+                        name = name,
+                        description = description.ifBlank { null },
+                        knowledgeBaseIds = emptyList(),
+                        deckIds = emptyList(),
+                        cardIds = emptyList(),
+                        isDefault = isDefault
+                    )
+                }
+                true
+            } catch (e: Exception) {
+                System.err.println("[LumeCard] Save error: ${e.message}")
+                false
+            }
+            System.err.println("[LumeCard] Save result: $saved")
+            if (saved) showSuccess = true else showError = true
+        }
 
         LaunchedEffect(editPlanId) {
             if (editPlanId != null) {
@@ -90,38 +125,7 @@ class LearningPlanScreen(
                 }
                 Spacer(Modifier.height(spacing.md))
                 Button(
-                    onClick = {
-                        scope.launch {
-                            val result = runCatching {
-                                if (editPlanId != null) {
-                                    val existing = viewModel.plans.value.find { it.id == editPlanId }
-                                    if (existing != null) {
-                                        viewModel.updatePlan(
-                                            id = editPlanId,
-                                            name = name,
-                                            description = description.ifBlank { null },
-                                            knowledgeBaseIds = existing.knowledgeBaseIds,
-                                            deckIds = existing.deckIds,
-                                            cardIds = existing.cardIds,
-                                            isDefault = isDefault
-                                        )
-                                    }
-                                } else {
-                                    viewModel.createPlan(
-                                        name = name,
-                                        description = description.ifBlank { null },
-                                        knowledgeBaseIds = emptyList(),
-                                        deckIds = emptyList(),
-                                        cardIds = emptyList(),
-                                        isDefault = isDefault
-                                    )
-                                }
-                            }
-                            val saved = result.isSuccess
-                            println("[LumeCard] Plan save result: success=$saved")
-                            if (saved) showSuccess = true else showError = true
-                        }
-                    },
+                    onClick = { saveTrigger++ },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = canSave && !showSuccess && !showError,
                     colors = ButtonDefaults.buttonColors(
