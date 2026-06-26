@@ -208,12 +208,13 @@ actual fun playRatingSound(rating: Rating) {
                     buf to dur
                 }
                 Rating.EASY -> {
-                    val dur = 280; val n = (sampleRate * dur / 1000f).toInt()
-                    val attackSamples = (sampleRate * 0.002f).toInt()
+                    val dur = 600; val n = (sampleRate * dur / 1000f).toInt()
+                    val attackSamples = (sampleRate * 0.001f).toInt()
                     val partials = arrayOf(
-                        doubleArrayOf(3200.0, 1.0, 50.0),
-                        doubleArrayOf(4900.0, 0.4, 35.0),
-                        doubleArrayOf(6100.0, 0.2, 25.0),
+                        doubleArrayOf(2800.0, 1.00, 250.0),
+                        doubleArrayOf(4300.0, 0.45, 180.0),
+                        doubleArrayOf(5600.0, 0.20, 120.0),
+                        doubleArrayOf(7200.0, 0.10, 80.0),
                     )
                     val buf = ShortArray(n) { i ->
                         val t = i / sampleRate
@@ -223,7 +224,7 @@ actual fun playRatingSound(rating: Rating) {
                             val env = attack * exp(-t * 1000.0 / p[2])
                             sample += p[1] * sin(2.0 * PI * p[0] * t) * env
                         }
-                        (0.5 * Short.MAX_VALUE * sample).toInt().toShort()
+                        (0.45 * Short.MAX_VALUE * sample).toInt().toShort()
                     }
                     buf to dur
                 }
