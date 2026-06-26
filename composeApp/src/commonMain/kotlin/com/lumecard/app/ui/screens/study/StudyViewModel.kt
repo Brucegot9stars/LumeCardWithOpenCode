@@ -254,13 +254,13 @@ class StudyViewModel(
 
                     _isFlipped.value = false
                     _completedCards.update { it + 1 }
+                    updatePlanProgress()
 
                     if (_currentCardIndex.value < _cards.value.size - 1) {
                         _currentCardIndex.value++
                         _cards.value.getOrNull(_currentCardIndex.value)?.let { _cardStartTimes[it.id] = Clock.System.now() }
                     } else {
                         _currentCardIndex.value = _cards.value.size
-                        updatePlanProgress()
                     }
                 }
             } catch (e: Exception) {
@@ -269,7 +269,7 @@ class StudyViewModel(
         }
     }
 
-    private fun updatePlanProgress() {
+    fun savePlanProgress() {
         if (activePlanIds.isEmpty()) return
         screenModelScope.launch {
             try {
@@ -291,9 +291,13 @@ class StudyViewModel(
                     ))
                 }
             } catch (e: Exception) {
-                reportError(e, "updatePlanProgress")
+                reportError(e, "savePlanProgress")
             }
         }
+    }
+
+    private fun updatePlanProgress() {
+        savePlanProgress()
     }
 
     private val json = Json { ignoreUnknownKeys = true }

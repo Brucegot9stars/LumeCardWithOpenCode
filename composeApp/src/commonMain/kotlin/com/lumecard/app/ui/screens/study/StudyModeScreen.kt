@@ -234,10 +234,6 @@ class StudyModeScreen(
                                                 )
                                             }
                                         }
-                                        snackbarHostState.showSnackbar(
-                                            if (planIds.isEmpty()) strings.planCreated else strings.planUpdated,
-                                            duration = SnackbarDuration.Short
-                                        )
                                         navigator.push(StudyScreen(deckIds, name, planIds = resolvedPlanIds))
                                     } catch (e: Exception) {
                                         println("[LumeCard ERROR] StudyModeScreen navigate: ${e.message}")
