@@ -118,6 +118,7 @@ class LearningPlanScreen(
                                 }
                             }
                             val saved = result.isSuccess
+                            println("[LumeCard] Plan save result: success=$saved")
                             if (saved) showSuccess = true else showError = true
                         }
                     },
@@ -131,23 +132,28 @@ class LearningPlanScreen(
                     Text(strings.actionSave)
                 }
 
-                if (showSuccess) {
-                    AlertDialog(
-                        onDismissRequest = { navigator.pop() },
-                        title = { Text(if (editPlanId != null) strings.planUpdated else strings.planCreated) },
-                        text = { Text(if (editPlanId != null) strings.planSavedDescUpdate else strings.planSavedDescCreate) },
-                        confirmButton = { Button(onClick = { navigator.pop() }) { Text(strings.actionOk) } }
-                    )
-                }
-                if (showError) {
-                    AlertDialog(
-                        onDismissRequest = { showError = false },
-                        title = { Text(strings.errorTitle) },
-                        text = { Text(strings.errorDesc) },
-                        confirmButton = { Button(onClick = { showError = false }) { Text(strings.actionOk) } }
-                    )
-                }
             }
+        }
+        if (showSuccess) {
+            AlertDialog(
+                onDismissRequest = { showSuccess = false },
+                title = { Text(if (editPlanId != null) strings.planUpdated else strings.planCreated) },
+                text = { Text(if (editPlanId != null) strings.planSavedDescUpdate else strings.planSavedDescCreate) },
+                confirmButton = {
+                    Button(onClick = {
+                        showSuccess = false
+                        navigator.pop()
+                    }) { Text(strings.actionOk) }
+                }
+            )
+        }
+        if (showError) {
+            AlertDialog(
+                onDismissRequest = { showError = false },
+                title = { Text(strings.errorTitle) },
+                text = { Text(strings.errorDesc) },
+                confirmButton = { Button(onClick = { showError = false }) { Text(strings.actionOk) } }
+            )
         }
     }
 }
