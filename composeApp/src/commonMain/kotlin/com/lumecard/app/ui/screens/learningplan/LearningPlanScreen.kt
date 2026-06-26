@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
@@ -37,7 +38,7 @@ class LearningPlanScreen(
         var name by remember { mutableStateOf("") }
         var description by remember { mutableStateOf("") }
         var isDefault by remember { mutableStateOf(false) }
-        var showSavedDialog by remember { mutableStateOf(false) }
+        val canSave = name.isNotBlank()
 
         LaunchedEffect(editPlanId) {
             if (editPlanId != null) {
@@ -49,19 +50,6 @@ class LearningPlanScreen(
                     isDefault = plan.isDefault
                 }
             }
-        }
-
-        if (showSavedDialog) {
-            AlertDialog(
-                onDismissRequest = { navigator.pop() },
-                title = { Text(if (editPlanId != null) strings.planUpdated else strings.planCreated) },
-                text = { Text(if (editPlanId != null) strings.planSavedDescUpdate else strings.planSavedDescCreate) },
-                confirmButton = {
-                    Button(onClick = { navigator.pop() }) {
-                        Text(strings.actionOk)
-                    }
-                }
-            )
         }
 
         Scaffold(
@@ -102,36 +90,38 @@ class LearningPlanScreen(
                 Button(
                     onClick = {
                         scope.launch {
-                            runCatching {
-                                if (editPlanId != null) {
-                                    val existing = viewModel.plans.value.find { it.id == editPlanId }
-                                    if (existing != null) {
-                                        viewModel.updatePlan(
-                                            id = editPlanId,
-                                            name = name,
-                                            description = description.ifBlank { null },
-                                            knowledgeBaseIds = existing.knowledgeBaseIds,
-                                            deckIds = existing.deckIds,
-                                            cardIds = existing.cardIds,
-                                            isDefault = isDefault
-                                        )
-                                    }
-                                } else {
-                                    viewModel.createPlan(
+                            if (editPlanId != null) {
+                                val existing = viewModel.plans.value.find { it.id == editPlanId }
+                                if (existing != null) {
+                                    viewModel.updatePlan(
+                                        id = editPlanId,
                                         name = name,
                                         description = description.ifBlank { null },
-                                        knowledgeBaseIds = emptyList(),
-                                        deckIds = emptyList(),
-                                        cardIds = emptyList(),
+                                        knowledgeBaseIds = existing.knowledgeBaseIds,
+                                        deckIds = existing.deckIds,
+                                        cardIds = existing.cardIds,
                                         isDefault = isDefault
                                     )
                                 }
-                                showSavedDialog = true
+                            } else {
+                                viewModel.createPlan(
+                                    name = name,
+                                    description = description.ifBlank { null },
+                                    knowledgeBaseIds = emptyList(),
+                                    deckIds = emptyList(),
+                                    cardIds = emptyList(),
+                                    isDefault = isDefault
+                                )
                             }
+                            navigator.pop()
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = name.isNotBlank()
+                    enabled = canSave,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (canSave) Color(0xFF4CAF50) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        contentColor = if (canSave) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                    )
                 ) {
                     Text(strings.actionSave)
                 }
