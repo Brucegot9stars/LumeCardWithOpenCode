@@ -438,6 +438,8 @@ object JaStrings : I18nStrings {
     override fun editorFontSizePx(size: Int) = "${size}px"
     override val mermaidChartTitle = "Mermaid ダイアグラム"
     override fun deckNameLabel(name: String) = "デッキ: $name"
+    override fun deckListTitle(name: String) = "$name のデッキ一覧"
+    override fun cardListTitle(name: String) = "$name のカード一覧"
 
     override val noteMarkdownSupport = "Markdown 形式に対応"
     override val noteOptional = "（任意）"

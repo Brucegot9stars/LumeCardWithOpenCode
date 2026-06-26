@@ -438,6 +438,8 @@ object EnStrings : I18nStrings {
     override fun editorFontSizePx(size: Int) = "${size}px"
     override val mermaidChartTitle = "Mermaid Diagram"
     override fun deckNameLabel(name: String) = "Deck: $name"
+    override fun deckListTitle(name: String) = "$name's Decks"
+    override fun cardListTitle(name: String) = "$name's Cards"
 
     override val noteMarkdownSupport = "Supports Markdown formatting"
     override val noteOptional = "(optional)"

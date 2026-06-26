@@ -86,6 +86,7 @@ class StudyViewModel(
     private var loadCardsJob: kotlinx.coroutines.Job? = null
     private val rateMutex = Mutex()
     private var planBaselineCompleted: Map<String, Int> = emptyMap()
+    private val ratedCardIds = mutableSetOf<String>()
 
     private var _hasStartedStudying = false
 
@@ -164,6 +165,7 @@ class StudyViewModel(
         _cards.value = emptyList()
         _currentCardIndex.value = 0
         _completedCards.value = 0
+        ratedCardIds.clear()
         _isFlipped.value = false
         _history.value = emptyList()
         _hasStartedStudying = false
@@ -256,6 +258,7 @@ class StudyViewModel(
 
                     _isFlipped.value = false
                     _completedCards.update { it + 1 }
+                    ratedCardIds.add(currentCard.id)
                     updatePlanProgress()
 
                     if (_currentCardIndex.value < _cards.value.size - 1) {
@@ -282,16 +285,17 @@ class StudyViewModel(
                     val planCardIds = plan.cardIds.toSet()
                     val planDeckIds = plan.deckIds.toSet()
                     val planKbIds = plan.knowledgeBaseIds.toSet()
-                    val planCards = allCards.filter { card ->
-                        card.deletedAt == null && (
+                    val ratedInPlan = ratedCardIds.count { cardId ->
+                        val card = allCards.find { it.id == cardId }
+                        card != null && card.deletedAt == null && (
                             card.id in planCardIds ||
                             card.deckId in planDeckIds ||
                             allDecks.any { it.id == card.deckId && it.knowledgeBaseId in planKbIds }
                         )
                     }
-                    val reviewedCount = planCards.count { it.lastReviewedAt != null }
-                    println("[LumeCard] savePlanProgress plan=$planId total=${plan.totalCards} planCards=${planCards.size} reviewed=$reviewedCount")
-                    val newCompleted = reviewedCount.coerceAtMost(plan.totalCards)
+                    val baseline = planBaselineCompleted[planId] ?: plan.completedCards
+                    val newCompleted = (baseline + ratedInPlan).coerceAtMost(plan.totalCards)
+                    println("[LumeCard] savePlanProgress plan=$planId total=${plan.totalCards} baseline=$baseline ratedInPlan=$ratedInPlan new=$newCompleted")
                     val newStatus = if (newCompleted >= plan.totalCards) {
                         com.lumecard.shared.model.PlanStatus.COMPLETED
                     } else if (newCompleted > 0) {

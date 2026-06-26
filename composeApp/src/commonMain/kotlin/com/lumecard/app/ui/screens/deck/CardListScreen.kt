@@ -50,7 +50,7 @@ class CardListScreen(
         Scaffold(
             topBar = {
                 LumeCardTopBar(
-                    title = deckName,
+                    title = strings.cardListTitle(deckName),
                     onBack = { navigator.pop() },
                     action = {
                         Row(

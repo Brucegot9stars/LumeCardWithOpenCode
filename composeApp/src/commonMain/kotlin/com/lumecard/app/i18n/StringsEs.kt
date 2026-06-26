@@ -438,6 +438,8 @@ object EsStrings : I18nStrings {
     override fun editorFontSizePx(size: Int) = "${size}px"
     override val mermaidChartTitle = "Diagrama Mermaid"
     override fun deckNameLabel(name: String) = "Mazo: $name"
+    override fun deckListTitle(name: String) = "Mazos de $name"
+    override fun cardListTitle(name: String) = "Tarjetas de $name"
 
     override val noteMarkdownSupport = "Soporta formato Markdown"
     override val noteOptional = "(Opcional)"

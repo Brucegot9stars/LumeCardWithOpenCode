@@ -438,6 +438,8 @@ object ZhTwStrings : I18nStrings {
     override fun editorFontSizePx(size: Int) = "${size}px"
     override val mermaidChartTitle = "Mermaid 流程圖"
     override fun deckNameLabel(name: String) = "牌組: $name"
+    override fun deckListTitle(name: String) = "$name 的牌組列表"
+    override fun cardListTitle(name: String) = "$name 的卡牌列表"
 
     override val noteMarkdownSupport = "支援 Markdown 格式"
     override val noteOptional = "（選填）"

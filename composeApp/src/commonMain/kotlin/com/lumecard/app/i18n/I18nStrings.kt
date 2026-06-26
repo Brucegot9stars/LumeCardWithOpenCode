@@ -449,6 +449,8 @@ interface I18nStrings {
     fun editorFontSizePx(size: Int): String
     val mermaidChartTitle: String
     fun deckNameLabel(name: String): String
+    fun deckListTitle(name: String): String
+    fun cardListTitle(name: String): String
 
     val noteMarkdownSupport: String
     val noteOptional: String
