@@ -337,6 +337,8 @@ object ZhCnStrings : I18nStrings {
     override val planEdit = "编辑计划"
     override val planCreated = "计划已创建"
     override val planUpdated = "计划已更新"
+    override val planSavedDescCreate = "新的学习计划已成功创建。"
+    override val planSavedDescUpdate = "学习计划已成功更新。"
     override val planEmpty = "暂无学习计划"
     override val planDeleteConfirm = "确认删除"
     override val planDeleteConfirmDesc = "删除学习计划不会影响原始卡牌数据。此操作不可撤销。"

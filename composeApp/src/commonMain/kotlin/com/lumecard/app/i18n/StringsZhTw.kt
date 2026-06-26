@@ -337,6 +337,8 @@ object ZhTwStrings : I18nStrings {
     override val planEdit = "編輯計劃"
     override val planCreated = "計劃已建立"
     override val planUpdated = "計劃已更新"
+    override val planSavedDescCreate = "新的學習計劃已成功建立。"
+    override val planSavedDescUpdate = "學習計劃已成功更新。"
     override val planEmpty = "暫無學習計劃"
     override val planDeleteConfirm = "確認刪除"
     override val planDeleteConfirmDesc = "刪除學習計劃不會影響原始卡牌數據。此操作不可撤銷。"

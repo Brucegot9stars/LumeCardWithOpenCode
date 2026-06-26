@@ -53,8 +53,9 @@ class LearningPlanScreen(
 
         if (showSavedDialog) {
             AlertDialog(
-                onDismissRequest = { },
+                onDismissRequest = { navigator.pop() },
                 title = { Text(if (editPlanId != null) strings.planUpdated else strings.planCreated) },
+                text = { Text(if (editPlanId != null) strings.planSavedDescUpdate else strings.planSavedDescCreate) },
                 confirmButton = {
                     Button(onClick = { navigator.pop() }) {
                         Text(strings.actionOk)
@@ -101,30 +102,32 @@ class LearningPlanScreen(
                 Button(
                     onClick = {
                         scope.launch {
-                            if (editPlanId != null) {
-                                val existing = viewModel.plans.value.find { it.id == editPlanId }
-                                if (existing != null) {
-                                    viewModel.updatePlan(
-                                        id = editPlanId,
+                            runCatching {
+                                if (editPlanId != null) {
+                                    val existing = viewModel.plans.value.find { it.id == editPlanId }
+                                    if (existing != null) {
+                                        viewModel.updatePlan(
+                                            id = editPlanId,
+                                            name = name,
+                                            description = description.ifBlank { null },
+                                            knowledgeBaseIds = existing.knowledgeBaseIds,
+                                            deckIds = existing.deckIds,
+                                            cardIds = existing.cardIds,
+                                            isDefault = isDefault
+                                        )
+                                    }
+                                } else {
+                                    viewModel.createPlan(
                                         name = name,
                                         description = description.ifBlank { null },
-                                        knowledgeBaseIds = existing.knowledgeBaseIds,
-                                        deckIds = existing.deckIds,
-                                        cardIds = existing.cardIds,
+                                        knowledgeBaseIds = emptyList(),
+                                        deckIds = emptyList(),
+                                        cardIds = emptyList(),
                                         isDefault = isDefault
                                     )
                                 }
-                            } else {
-                                viewModel.createPlan(
-                                    name = name,
-                                    description = description.ifBlank { null },
-                                    knowledgeBaseIds = emptyList(),
-                                    deckIds = emptyList(),
-                                    cardIds = emptyList(),
-                                    isDefault = isDefault
-                                )
+                                showSavedDialog = true
                             }
-                            showSavedDialog = true
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),

@@ -337,6 +337,8 @@ object EsStrings : I18nStrings {
     override val planEdit = "Editar plan"
     override val planCreated = "Plan creado"
     override val planUpdated = "Plan actualizado"
+    override val planSavedDescCreate = "Tu nuevo plan de estudio ha sido creado."
+    override val planSavedDescUpdate = "Tu plan de estudio ha sido actualizado."
     override val planEmpty = "No hay planes de estudio"
     override val planDeleteConfirm = "Confirmar eliminación"
     override val planDeleteConfirmDesc = "Eliminar un plan no afectará los datos originales de las tarjetas. Esta acción no se puede deshacer."
