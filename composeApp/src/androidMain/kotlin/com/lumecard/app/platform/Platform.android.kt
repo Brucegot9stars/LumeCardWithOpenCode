@@ -1,6 +1,12 @@
 package com.lumecard.app.platform
 
 import android.content.ClipboardManager
+import android.media.AudioAttributes
+import android.media.AudioFormat
+import android.media.AudioTrack
+import com.lumecard.shared.model.Rating
+import kotlin.math.PI
+import kotlin.math.sin
 import android.content.Context
 import android.net.Uri
 import com.lumecard.shared.database.AndroidContextHolder
@@ -122,6 +128,46 @@ private fun mimeGroupForAndroid(ext: String): String? = when (ext) {
     "mp3", "wav", "ogg", "m4a", "wma", "flac", "aac" -> "audio"
     "mp4", "mov", "avi", "mkv", "wmv", "webm" -> "video"
     else -> null
+}
+
+actual fun playRatingSound(rating: Rating) {
+    val (freq, durationMs) = when (rating) {
+        Rating.AGAIN -> 220.0 to 150
+        Rating.HARD -> 330.0 to 150
+        Rating.GOOD -> 440.0 to 200
+        Rating.EASY -> 660.0 to 250
+    }
+    Thread({
+        try {
+            val sampleRate = 22050
+            val numSamples = sampleRate * durationMs / 1000
+            val samples = ShortArray(numSamples) { i ->
+                val t = i.toDouble() / sampleRate
+                (0.7 * Short.MAX_VALUE * sin(2.0 * PI * freq * t)).toInt().toShort()
+            }
+            val minBuf = AudioTrack.getMinBufferSize(sampleRate,
+                AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
+            val track = AudioTrack(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_GAME)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build(),
+                AudioFormat.Builder()
+                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                    .setSampleRate(sampleRate)
+                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build(),
+                minBuf.coerceAtLeast(numSamples * 2),
+                AudioTrack.MODE_STATIC, 0
+            )
+            val buf = ByteArray(numSamples * 2)
+            for (i in samples.indices) {
+                buf[i * 2] = (samples[i].toInt() and 0xFF).toByte()
+                buf[i * 2 + 1] = (samples[i].toInt() shr 8).toByte()
+            }
+            track.write(buf, 0, buf.size)
+            track.play()
+            track.release()
+        } catch (_: Exception) { }
+    }, "RatingSound").apply { isDaemon = true }.start()
 }
 
 private fun markdownRefAndroid(mimeGroup: String, fileName: String): String = when (mimeGroup) {

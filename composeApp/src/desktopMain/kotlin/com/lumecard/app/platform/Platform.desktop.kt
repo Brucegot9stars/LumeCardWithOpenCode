@@ -1,6 +1,11 @@
 package com.lumecard.app.platform
 
+import com.lumecard.shared.model.Rating
 import java.awt.Toolkit
+import javax.sound.sampled.AudioFormat
+import javax.sound.sampled.AudioSystem
+import kotlin.math.PI
+import kotlin.math.sin
 import java.awt.datatransfer.DataFlavor
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
@@ -140,6 +145,37 @@ private fun saveFile(mediaDir: String, fileName: String, bytes: ByteArray) {
     val dir = File(mediaDir)
     if (!dir.exists()) dir.mkdirs()
     File(dir, fileName).outputStream().use { it.write(bytes) }
+}
+
+actual fun playRatingSound(rating: Rating) {
+    val (freq, durationMs) = when (rating) {
+        Rating.AGAIN -> 220.0 to 150
+        Rating.HARD -> 330.0 to 150
+        Rating.GOOD -> 440.0 to 200
+        Rating.EASY -> 660.0 to 250
+    }
+    Thread({
+        try {
+            val sampleRate = 22050f
+            val numSamples = (sampleRate * durationMs / 1000f).toInt()
+            val samples = ShortArray(numSamples) { i ->
+                val t = i / sampleRate
+                (0.7 * Short.MAX_VALUE * sin(2.0 * PI * freq * t)).toInt().toShort()
+            }
+            val format = AudioFormat(sampleRate, 16, 1, true, false)
+            val line = AudioSystem.getSourceDataLine(format)
+            line.open(format)
+            line.start()
+            val buffer = ByteArray(numSamples * 2)
+            for (i in samples.indices) {
+                buffer[i * 2] = (samples[i].toInt() and 0xFF).toByte()
+                buffer[i * 2 + 1] = (samples[i].toInt() shr 8).toByte()
+            }
+            line.write(buffer, 0, buffer.size)
+            line.drain()
+            line.close()
+        } catch (_: Exception) { }
+    }, "RatingSound").apply { isDaemon = true }.start()
 }
 
 private fun File.sha1(): String {

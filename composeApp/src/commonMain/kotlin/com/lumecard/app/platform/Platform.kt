@@ -1,6 +1,10 @@
 package com.lumecard.app.platform
 
+import com.lumecard.shared.model.Rating
+
 expect fun isDesktopPlatform(): Boolean
+
+expect fun playRatingSound(rating: Rating)
 
 data class MediaFileEntry(
     val relativePath: String,

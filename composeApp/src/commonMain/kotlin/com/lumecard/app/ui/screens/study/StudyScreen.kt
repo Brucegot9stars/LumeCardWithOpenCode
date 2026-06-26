@@ -26,6 +26,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.lumecard.app.platform.playRatingSound
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.components.LumeCardRatingBar
 import com.lumecard.app.ui.components.ProgressRing
@@ -676,10 +677,10 @@ class StudyScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             LumeCardRatingBar(
-                                onAgain = { viewModel.rateCard(Rating.AGAIN) },
-                                onHard = { viewModel.rateCard(Rating.HARD) },
-                                onGood = { viewModel.rateCard(Rating.GOOD) },
-                                onEasy = { viewModel.rateCard(Rating.EASY) },
+                                onAgain = { playRatingSound(Rating.AGAIN); viewModel.rateCard(Rating.AGAIN) },
+                                onHard = { playRatingSound(Rating.HARD); viewModel.rateCard(Rating.HARD) },
+                                onGood = { playRatingSound(Rating.GOOD); viewModel.rateCard(Rating.GOOD) },
+                                onEasy = { playRatingSound(Rating.EASY); viewModel.rateCard(Rating.EASY) },
                                 strings = strings,
                             )
                         }
