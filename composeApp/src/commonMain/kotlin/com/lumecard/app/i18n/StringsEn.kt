@@ -344,6 +344,7 @@ object EnStrings : I18nStrings {
     override val planStatusInProgress = "In Progress"
     override val planStatusCompleted = "Completed"
     override val planDefault = "Default"
+    override fun planAutoName(deckCount: Int) = "$deckCount decks"
     override val planRandom = "Random Study"
     override val planRandomDesc = "Randomly select cards to study"
     override val planSelectToStart = "Select a plan to start"

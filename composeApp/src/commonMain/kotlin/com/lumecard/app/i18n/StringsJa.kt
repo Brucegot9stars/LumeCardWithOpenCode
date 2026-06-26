@@ -344,6 +344,7 @@ object JaStrings : I18nStrings {
     override val planStatusInProgress = "進行中"
     override val planStatusCompleted = "完了"
     override val planDefault = "デフォルト"
+    override fun planAutoName(deckCount: Int) = "$deckCount デッキ"
     override val planRandom = "ランダム学習"
     override val planRandomDesc = "ランダムにカードを選択して学習"
     override val planSelectToStart = "計画を選択して開始"

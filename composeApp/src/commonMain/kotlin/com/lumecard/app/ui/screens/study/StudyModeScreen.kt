@@ -201,8 +201,18 @@ class StudyModeScreen(
                                 }
                                 scope.launch {
                                     try {
-                                        if (planIds.isNotEmpty() && selectedMode != StudyMode.MIXED) {
-                                            val plan = planViewModel.getPlanById(planIds.first())
+                                        val resolvedPlanIds = if (planIds.isEmpty() && deckIds.isNotEmpty()) {
+                                            val plan = planViewModel.createPlan(
+                                                name = strings.planAutoName(deckIds.size),
+                                                description = null,
+                                                knowledgeBaseIds = emptyList(),
+                                                deckIds = deckIds,
+                                                cardIds = emptyList(),
+                                            )
+                                            listOf(plan.id)
+                                        } else planIds
+                                        if (resolvedPlanIds.isNotEmpty() && selectedMode != StudyMode.MIXED) {
+                                            val plan = planViewModel.getPlanById(resolvedPlanIds.first())
                                             if (plan != null) {
                                                 planViewModel.updatePlan(
                                                     id = plan.id,
@@ -215,7 +225,7 @@ class StudyModeScreen(
                                                 )
                                             }
                                         }
-                                        navigator.push(StudyScreen(deckIds, name, planIds = planIds))
+                                        navigator.push(StudyScreen(deckIds, name, planIds = resolvedPlanIds))
                                     } catch (e: Exception) {
                                         println("[LumeCard ERROR] StudyModeScreen navigate: ${e.message}")
                                         e.printStackTrace()

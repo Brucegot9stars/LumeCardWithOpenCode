@@ -351,6 +351,7 @@ interface I18nStrings {
     val planStatusInProgress: String
     val planStatusCompleted: String
     val planDefault: String
+    fun planAutoName(deckCount: Int): String
     val planRandom: String
     val planRandomDesc: String
     val planSelectToStart: String

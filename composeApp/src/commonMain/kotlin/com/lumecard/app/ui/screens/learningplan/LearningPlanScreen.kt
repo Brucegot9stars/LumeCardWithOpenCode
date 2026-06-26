@@ -113,7 +113,12 @@ class LearningPlanScreen(
                                     isDefault = isDefault
                                 )
                             }
-                            snackbarHostState.showSnackbar(if (editPlanId != null) strings.planUpdated else strings.planCreated)
+                            try {
+                                snackbarHostState.showSnackbar(
+                                    message = if (editPlanId != null) strings.planUpdated else strings.planCreated,
+                                    duration = SnackbarDuration.Short
+                                )
+                            } catch (_: kotlinx.coroutines.CancellationException) { }
                             navigator.pop()
                         }
                     },

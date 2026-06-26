@@ -344,6 +344,7 @@ object ZhTwStrings : I18nStrings {
     override val planStatusInProgress = "進行中"
     override val planStatusCompleted = "已完成"
     override val planDefault = "預設"
+    override fun planAutoName(deckCount: Int) = "$deckCount 個牌組"
     override val planRandom = "隨機學習"
     override val planRandomDesc = "隨機選擇卡牌開始學習"
     override val planSelectToStart = "選擇計劃開始學習"
