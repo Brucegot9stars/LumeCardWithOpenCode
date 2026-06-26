@@ -177,7 +177,7 @@ class StudyModeScreen(
                                                 val job = launch {
                                                     snackbarHostState.showSnackbar(strings.planUpdated, duration = SnackbarDuration.Indefinite)
                                                 }
-                                                delay(1250)
+                                                delay(1000)
                                                 job.cancel()
                                                 snackbarHostState.currentSnackbarData?.dismiss()
                                             }

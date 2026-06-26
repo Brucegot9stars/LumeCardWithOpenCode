@@ -286,7 +286,7 @@ class LearningPlanSelectionScreen : Screen {
                                 duration = SnackbarDuration.Indefinite
                             )
                         }
-                        delay(1250)
+                        delay(1000)
                         job.cancel()
                         snackbarHostState.currentSnackbarData?.dismiss()
                     }
