@@ -11,11 +11,13 @@ import com.lumecard.shared.database.AndroidContextHolder
 import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AndroidContextHolder.context = applicationContext
         FilePickerState.activity = this
+        FilePickerState.launcher = FilePickerState.createLauncher(this)
 
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
@@ -64,17 +66,6 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             App()
-        }
-    }
-
-    @Deprecated("Use registerForActivityResult instead", ReplaceWith(""))
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        when (requestCode) {
-            1001, 1002 -> {
-                val uri = if (resultCode == RESULT_OK) data?.data?.toString() else null
-                FilePickerState.onResult(uri)
-            }
         }
     }
 }

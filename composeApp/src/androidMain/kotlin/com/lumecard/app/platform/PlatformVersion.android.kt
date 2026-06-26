@@ -6,15 +6,11 @@ import java.util.Properties
 
 actual fun getAppVersion(): String {
     return try {
-        val context = AndroidContextHolder.context
-        if (context != null) {
-            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-            pInfo.versionName ?: readVersionFromAsset(context) ?: "0.0.1"
-        } else {
-            readVersionFromAsset(null) ?: "0.0.1"
-        }
+        val ctx = AndroidContextHolder.context
+        val pInfo = ctx.packageManager.getPackageInfo(ctx.packageName, 0)
+        pInfo.versionName ?: readVersionFromAsset(ctx) ?: "0.0.1"
     } catch (e: Exception) {
-        readVersionFromAsset(AndroidContextHolder.context) ?: "0.0.1"
+        readVersionFromAsset(try { AndroidContextHolder.context } catch (_: Exception) { null }) ?: "0.0.1"
     }
 }
 

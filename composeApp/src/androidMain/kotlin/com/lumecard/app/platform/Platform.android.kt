@@ -70,7 +70,7 @@ actual fun getMediaBasePath(): String {
 actual fun pasteClipboardMedia(mediaDir: String): List<String> {
     val refs = mutableListOf<String>()
     try {
-        val context = AndroidContextHolder.context ?: return refs
+        val context = AndroidContextHolder.context
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = clipboard.primaryClip ?: return refs
         val desc = clip.description ?: return refs
@@ -105,7 +105,7 @@ actual fun pasteClipboardMedia(mediaDir: String): List<String> {
 
 actual fun saveMediaFile(mediaDir: String, sourcePath: String): String? {
     return try {
-        val context = AndroidContextHolder.context ?: return null
+        val context = AndroidContextHolder.context
         val uri = Uri.parse(sourcePath)
         val bytes = if (uri.scheme == "content" || uri.scheme == "file") {
             context.contentResolver.openInputStream(uri)?.use { it.readBytes() }

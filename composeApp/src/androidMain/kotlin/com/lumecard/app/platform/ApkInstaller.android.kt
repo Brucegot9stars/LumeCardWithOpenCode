@@ -9,7 +9,7 @@ import java.io.File
 
 actual fun installApk(apkPath: String): Boolean {
     return try {
-        val context = AndroidContextHolder.context ?: return false
+        val context = AndroidContextHolder.context
         val file = File(apkPath)
         if (!file.exists()) return false
 
