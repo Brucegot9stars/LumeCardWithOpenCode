@@ -173,6 +173,7 @@ class StudyModeScreen(
                                                     cardIds = plan.cardIds,
                                                     isDefault = plan.isDefault
                                                 )
+                                                snackbarHostState.showSnackbar(strings.planUpdated, duration = SnackbarDuration.Short)
                                             }
                                         } catch (e: Exception) {
                                             println("[LumeCard ERROR] StudyModeScreen savePlan: ${e.message}")
