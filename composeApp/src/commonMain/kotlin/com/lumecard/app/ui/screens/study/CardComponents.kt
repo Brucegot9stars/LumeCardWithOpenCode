@@ -44,11 +44,13 @@ internal fun CardContent(
     Column(modifier = Modifier.fillMaxWidth()) {
         when (displayMode) {
             AnswerDisplayMode.FLIP -> {
-                FlipCard(
-                    isFlipped = isFlipped,
-                    front = { CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice, horizontalCenter = horizontalCenter, fontSize = fontSize) },
-                    back = { CardFace(card, showBack = true, horizontalCenter = horizontalCenter, fontSize = fontSize) }
-                )
+                key(card.id) {
+                    FlipCard(
+                        isFlipped = isFlipped,
+                        front = { CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice, horizontalCenter = horizontalCenter, fontSize = fontSize) },
+                        back = { CardFace(card, showBack = true, horizontalCenter = horizontalCenter, fontSize = fontSize) }
+                    )
+                }
             }
             AnswerDisplayMode.SPLIT -> {
                 if (isFlipped) {
