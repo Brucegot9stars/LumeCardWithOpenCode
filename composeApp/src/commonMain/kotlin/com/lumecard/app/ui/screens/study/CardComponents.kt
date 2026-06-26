@@ -162,7 +162,6 @@ internal fun CardFace(
 ) {
     val clozeRegex = remember { Regex("\\{\\{c\\d+::([^}]+)\\}\\}") }
     val clozeHintRegex = remember { Regex("\\{\\{c\\d+::([^}]+)::([^}]+)\\}\\}") }
-    val clozeAnswerRegex = remember { Regex("\\{\\{c\\d+::([^:}]+)(?:::([^}]+))?\\}\\}") }
 
     val strings = koinInject<I18nManager>().strings
     val align = if (horizontalCenter) Alignment.CenterHorizontally else Alignment.Start
@@ -191,18 +190,18 @@ internal fun CardFace(
             CardType.CLOZE -> {
                 if (!showBack) {
                     val displayText = card.front.replace(clozeHintRegex, "____").replace(clozeRegex, "____")
-                    Text(displayText, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.fillMaxWidth())
+                    Text(displayText, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.fillMaxWidth(), textAlign = textAlign, fontSize = fontSize.sp)
                     Spacer(Modifier.height(8.dp))
                     Text(strings.studyClozeHint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth())
                 } else {
                     val annotated = buildAnnotatedString {
                         var pos = 0
-                        for (match in clozeAnswerRegex.findAll(card.front)) {
+                        for (match in clozeRegex.findAll(card.front)) {
                             if (pos < match.range.first) {
                                 append(card.front.substring(pos, match.range.first))
                             }
                             withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold, color = Color.Red)) {
-                                append(match.groupValues[1])
+                                append(match.groupValues[1].substringBefore("::"))
                             }
                             pos = match.range.last + 1
                         }
@@ -210,7 +209,7 @@ internal fun CardFace(
                             append(card.front.substring(pos))
                         }
                     }
-                    Text(annotated, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.fillMaxWidth())
+                    Text(annotated, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.fillMaxWidth(), textAlign = textAlign, fontSize = fontSize.sp)
                 }
             }
             CardType.MULTIPLE_CHOICE -> {
