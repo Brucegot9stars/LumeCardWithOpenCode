@@ -335,6 +335,8 @@ object EnStrings : I18nStrings {
     override val planTitle = "Learning Plans"
     override val planCreate = "New Plan"
     override val planEdit = "Edit Plan"
+    override val planCreated = "Plan created"
+    override val planUpdated = "Plan updated"
     override val planEmpty = "No learning plans yet"
     override val planDeleteConfirm = "Confirm Delete"
     override val planDeleteConfirmDesc = "Deleting a plan will not affect original card data. This cannot be undone."

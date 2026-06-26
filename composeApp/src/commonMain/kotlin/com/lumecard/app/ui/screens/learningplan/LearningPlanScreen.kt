@@ -33,6 +33,7 @@ class LearningPlanScreen(
         val strings = koinInject<I18nManager>().strings
         val spacing = LumeCardTheme.spacing
         val scope = rememberCoroutineScope()
+        val snackbarHostState = remember { SnackbarHostState() }
 
         var name by remember { mutableStateOf("") }
         var description by remember { mutableStateOf("") }
@@ -56,7 +57,8 @@ class LearningPlanScreen(
                     title = if (editPlanId != null) strings.planEdit else strings.planCreate,
                     onBack = { navigator.pop() }
                 )
-            }
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) }
         ) { padding ->
             Column(
                 modifier = Modifier
@@ -111,6 +113,7 @@ class LearningPlanScreen(
                                     isDefault = isDefault
                                 )
                             }
+                            snackbarHostState.showSnackbar(if (editPlanId != null) strings.planUpdated else strings.planCreated)
                             navigator.pop()
                         }
                     },

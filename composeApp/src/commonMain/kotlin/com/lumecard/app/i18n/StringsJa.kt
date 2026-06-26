@@ -335,6 +335,8 @@ object JaStrings : I18nStrings {
     override val planTitle = "学習計画"
     override val planCreate = "新規計画"
     override val planEdit = "計画編集"
+    override val planCreated = "計画を作成しました"
+    override val planUpdated = "計画を更新しました"
     override val planEmpty = "学習計画がありません"
     override val planDeleteConfirm = "削除確認"
     override val planDeleteConfirmDesc = "学習計画を削除しても、元のカードデータには影響しません。この操作は元に戻せません。"

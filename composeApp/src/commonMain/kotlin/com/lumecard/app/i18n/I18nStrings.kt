@@ -342,6 +342,8 @@ interface I18nStrings {
     val planTitle: String
     val planCreate: String
     val planEdit: String
+    val planCreated: String
+    val planUpdated: String
     val planEmpty: String
     val planDeleteConfirm: String
     val planDeleteConfirmDesc: String
