@@ -148,26 +148,75 @@ private fun saveFile(mediaDir: String, fileName: String, bytes: ByteArray) {
     File(dir, fileName).outputStream().use { it.write(bytes) }
 }
 
+private fun generateSweepTone(
+    sampleRate: Float, numSamples: Int,
+    freqStart: Double, freqEnd: Double,
+    decayMs: Double, attackMs: Double,
+    harmonicAmplitude: Double = 0.0,
+): ShortArray {
+    val attackSamples = (sampleRate * attackMs / 1000f).toInt()
+    return ShortArray(numSamples) { i ->
+        val t = i / sampleRate; val p = t * sampleRate / numSamples
+        val freq = freqStart + (freqEnd - freqStart) * p
+        val attack = if (i < attackSamples) i.toFloat() / attackSamples else 1f
+        val envelope = attack * exp(-t * 1000.0 / decayMs)
+        val amp = 0.6 * Short.MAX_VALUE * envelope
+        val fund = sin(2.0 * PI * freq * t)
+        val harm = harmonicAmplitude * sin(2.0 * PI * 2.0 * freq * t)
+        (amp * (fund + harm)).toInt().toShort()
+    }
+}
+
 actual fun playRatingSound(rating: Rating) {
     Thread({
         try {
             val sampleRate = 22050f
-            val durationMs = 400
-            val numSamples = (sampleRate * durationMs / 1000f).toInt()
-            val freq = 880.0
-            val harmonicFreq = 2640.0
-            val samples = ShortArray(numSamples) { i ->
-                val t = i / sampleRate
-                val envelope = exp(-3.0 * t * sampleRate / numSamples)
-                val fundamental = sin(2.0 * PI * freq * t)
-                val harmonic = 0.3 * sin(2.0 * PI * harmonicFreq * t)
-                (0.6 * Short.MAX_VALUE * envelope * (fundamental + harmonic)).toInt().toShort()
+            val (samples, durationMs) = when (rating) {
+                Rating.AGAIN -> {
+                    val dur = 350; val n = (sampleRate * dur / 1000f).toInt()
+                    val buf = ShortArray(n)
+                    val fStart = 440.0; val fEnd = 220.0
+                    for (i in 0 until n) {
+                        val t = i / sampleRate; val p = t * sampleRate / n
+                        val freq = fStart - (fStart - fEnd) * p
+                        val envelope = exp(-2.5 * p)
+                        buf[i] = (0.6 * Short.MAX_VALUE * envelope * sin(2.0 * PI * freq * t)).toInt().toShort()
+                    }
+                    buf to dur
+                }
+                Rating.HARD -> {
+                    val dur = 300; val n = (sampleRate * dur / 1000f).toInt()
+                    val buf = ShortArray(n)
+                    val f1 = 330.0; val f2 = 392.0
+                    for (i in 0 until n) {
+                        val t = i / sampleRate; val p = t * sampleRate / n
+                        val envelope = exp(-3.0 * p)
+                        val a1 = sin(2.0 * PI * f1 * t); val a2 = 0.6 * sin(2.0 * PI * f2 * t)
+                        buf[i] = (0.5 * Short.MAX_VALUE * envelope * (a1 + a2)).toInt().toShort()
+                    }
+                    buf to dur
+                }
+                Rating.GOOD -> {
+                    val dur = 250; val n = (sampleRate * dur / 1000f).toInt()
+                    val buf = ShortArray(n)
+                    val freq = 660.0
+                    for (i in 0 until n) {
+                        val t = i / sampleRate; val p = t * sampleRate / n
+                        val envelope = exp(-5.0 * p)
+                        buf[i] = (0.6 * Short.MAX_VALUE * envelope * sin(2.0 * PI * freq * t)).toInt().toShort()
+                    }
+                    buf to dur
+                }
+                Rating.EASY -> {
+                    val dur = 110; val n = (sampleRate * dur / 1000f).toInt()
+                    generateSweepTone(sampleRate, n, freqStart = 784.0, freqEnd = 988.0, decayMs = 22.0, attackMs = 5.0, harmonicAmplitude = 0.15) to dur
+                }
             }
             val format = AudioFormat(sampleRate, 16, 1, true, false)
             val line = AudioSystem.getSourceDataLine(format)
             line.open(format)
             line.start()
-            val buffer = ByteArray(numSamples * 2)
+            val buffer = ByteArray(samples.size * 2)
             for (i in samples.indices) {
                 buffer[i * 2] = (samples[i].toInt() and 0xFF).toByte()
                 buffer[i * 2 + 1] = (samples[i].toInt() shr 8).toByte()
