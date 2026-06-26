@@ -51,6 +51,7 @@ class LearningPlanSelectionScreen : Screen {
         var editPlanId by remember { mutableStateOf<String?>(null) }
         var dialogName by remember { mutableStateOf("") }
         var dialogDesc by remember { mutableStateOf("") }
+        var deletePlanId by remember { mutableStateOf<String?>(null) }
         var errorMsg by remember { mutableStateOf<String?>(null) }
 
         LaunchedEffect(Unit) {
@@ -218,6 +219,10 @@ class LearningPlanSelectionScreen : Screen {
                                             Text(strings.planDefault, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
                                         }
                                     }
+                                    Spacer(Modifier.width(spacing.xs))
+                                    IconButton(onClick = { deletePlanId = plan.id }, modifier = Modifier.size(28.dp)) {
+                                        Icon(Icons.Default.Delete, contentDescription = strings.actionDelete, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                                    }
                                 }
                                 val desc = plan.description
                                 if (desc != null) {
@@ -277,6 +282,33 @@ class LearningPlanSelectionScreen : Screen {
                 LumeCardTextField(value = dialogName, onValueChange = { dialogName = it }, label = strings.fieldName)
                 LumeCardTextField(value = dialogDesc, onValueChange = { dialogDesc = it }, label = strings.fieldDescription, singleLine = false)
             }
+        }
+
+        // Delete confirmation dialog
+        if (deletePlanId != null) {
+            AlertDialog(
+                onDismissRequest = { deletePlanId = null },
+                title = { Text(strings.planDeleteConfirm) },
+                text = { Text(strings.planDeleteConfirmDesc) },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                deletePlanId?.let { viewModel.deletePlan(it) }
+                                deletePlanId = null
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text(strings.actionDelete)
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(onClick = { deletePlanId = null }) {
+                        Text(strings.actionCancel)
+                    }
+                }
+            )
         }
     }
 }
