@@ -290,6 +290,7 @@ class StudyViewModel(
                         )
                     }
                     val reviewedCount = planCards.count { it.lastReviewedAt != null }
+                    println("[LumeCard] savePlanProgress plan=$planId total=${plan.totalCards} planCards=${planCards.size} reviewed=$reviewedCount")
                     val newCompleted = reviewedCount.coerceAtMost(plan.totalCards)
                     val newStatus = if (newCompleted >= plan.totalCards) {
                         com.lumecard.shared.model.PlanStatus.COMPLETED
