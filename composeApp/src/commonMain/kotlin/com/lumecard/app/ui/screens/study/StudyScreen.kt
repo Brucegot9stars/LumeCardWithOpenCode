@@ -26,6 +26,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.lumecard.app.platform.SoundSettings
 import com.lumecard.app.platform.playRatingSound
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.components.LumeCardRatingBar
@@ -124,6 +125,7 @@ class StudyScreen(
         var velocity by remember { mutableFloatStateOf(0f) }
 
         var showStudyModeDialog by remember { mutableStateOf(false) }
+        var soundEnabled by remember { mutableStateOf(SoundSettings.enabled) }
         var hasChosenMode by remember { mutableStateOf(false) }
         val allDone = cards.isNotEmpty() && currentIndex >= cards.size
         LaunchedEffect(allDone, cards.isEmpty()) {
@@ -261,7 +263,19 @@ class StudyScreen(
                 topBar = {
                     LumeCardTopBar(
                         title = "${strings.actionLearning}: $deckName",
-                        onBack = { scope.launch { delay(1); navigator.pop() } }
+                        onBack = { scope.launch { delay(1); navigator.pop() } },
+                        action = {
+                            IconButton(onClick = {
+                                soundEnabled = !soundEnabled
+                                SoundSettings.enabled = soundEnabled
+                            }) {
+                                Icon(
+                                    Icons.Default.Notifications,
+                                    contentDescription = if (soundEnabled) "Mute" else "Unmute",
+                                    tint = if (soundEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
+                                )
+                            }
+                        }
                     )
                 }
             ) { padding ->
@@ -677,10 +691,10 @@ class StudyScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             LumeCardRatingBar(
-                                onAgain = { playRatingSound(Rating.AGAIN); viewModel.rateCard(Rating.AGAIN) },
-                                onHard = { playRatingSound(Rating.HARD); viewModel.rateCard(Rating.HARD) },
-                                onGood = { playRatingSound(Rating.GOOD); viewModel.rateCard(Rating.GOOD) },
-                                onEasy = { playRatingSound(Rating.EASY); viewModel.rateCard(Rating.EASY) },
+                                onAgain = { if (soundEnabled) playRatingSound(Rating.AGAIN); viewModel.rateCard(Rating.AGAIN) },
+                                onHard = { if (soundEnabled) playRatingSound(Rating.HARD); viewModel.rateCard(Rating.HARD) },
+                                onGood = { if (soundEnabled) playRatingSound(Rating.GOOD); viewModel.rateCard(Rating.GOOD) },
+                                onEasy = { if (soundEnabled) playRatingSound(Rating.EASY); viewModel.rateCard(Rating.EASY) },
                                 strings = strings,
                             )
                         }
