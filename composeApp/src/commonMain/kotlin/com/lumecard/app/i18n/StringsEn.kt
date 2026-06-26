@@ -3,7 +3,6 @@ package com.lumecard.app.i18n
 object EnStrings : I18nStrings {
     override val appName = "LumeCard"
     override val navHome = "Home"
-    override val navDecks = "Decks"
     override val navSettings = "Settings"
     override val navStats = "Stats"
     override val actionBack = "Back"
@@ -60,7 +59,6 @@ object EnStrings : I18nStrings {
     override val modeTitle = "Study Mode"
     override val modeSelectDecks = "Select Decks"
     override val modeNoDecks = "No decks available"
-    override val modeCardsTotal = "Total Cards"
     override fun modeCardsCount(count: Int) = "$count cards"
     override val modeStartMixed = "Mixed Study"
     override val modeStartSingle = "Single Deck Study"

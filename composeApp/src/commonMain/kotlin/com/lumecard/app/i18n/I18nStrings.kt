@@ -4,7 +4,6 @@ interface I18nStrings {
     val appName: String get() = "LumeCard"
 
     val navHome: String
-    val navDecks: String
     val navSettings: String
     val navStats: String
 
@@ -62,7 +61,6 @@ interface I18nStrings {
     val modeTitle: String
     val modeSelectDecks: String
     val modeNoDecks: String
-    val modeCardsTotal: String
     fun modeCardsCount(count: Int): String
     val modeStartMixed: String
     val modeStartSingle: String

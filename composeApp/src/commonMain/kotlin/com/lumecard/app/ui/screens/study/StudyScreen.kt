@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -205,7 +206,7 @@ class StudyScreen(
                 strings.studyRandom(actual)
             }
             AlertDialog(
-                onDismissRequest = { scope.launch { delay(1); navigator.pop() } },
+                onDismissRequest = { scope.launch { withFrameNanos { navigator.pop() } } },
                 title = { Text(strings.studyModeTitle) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -244,7 +245,7 @@ class StudyScreen(
                         ) { Text(randomLabel()) }
                     }
                 },
-                confirmButton = { TextButton(onClick = { scope.launch { delay(1); navigator.pop() } }, interactionSource = null) { Text(strings.actionDone) } }
+                confirmButton = { TextButton(onClick = { scope.launch { withFrameNanos { navigator.pop() } } }, interactionSource = null) { Text(strings.actionDone) } }
             )
         }
 
@@ -264,7 +265,7 @@ class StudyScreen(
                 topBar = {
                     LumeCardTopBar(
                         title = "${strings.actionLearning}: $deckName",
-                        onBack = { scope.launch { delay(1); navigator.pop() } },
+                        onBack = { scope.launch { withFrameNanos { navigator.pop() } } },
                         action = {
                             IconButton(onClick = {
                                 soundEnabled = !soundEnabled
@@ -352,7 +353,7 @@ class StudyScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Spacer(Modifier.height(24.dp))
-                                    Button(onClick = { scope.launch { delay(1); navigator.pop() } }, interactionSource = null) {
+                                    Button(onClick = { scope.launch { withFrameNanos { navigator.pop() } } }, interactionSource = null) {
                                         Text(strings.actionBack)
                                     }
                                 }
@@ -634,14 +635,14 @@ class StudyScreen(
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
                                     OutlinedButton(
-                                        onClick = { scope.launch { delay(1); navigator.pop() } },
+                                        onClick = { scope.launch { withFrameNanos { navigator.pop() } } },
                                         interactionSource = null,
                                         modifier = Modifier.weight(1f),
                                     ) {
                                         Text(strings.actionDone)
                                     }
                                     Button(
-                                        onClick = { scope.launch { delay(1); navigator.pop() } },
+                                        onClick = { scope.launch { withFrameNanos { navigator.pop() } } },
                                         interactionSource = null,
                                         modifier = Modifier.weight(1f),
                                     ) {

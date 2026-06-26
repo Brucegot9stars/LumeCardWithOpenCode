@@ -3,7 +3,6 @@ package com.lumecard.app.i18n
 object ZhCnStrings : I18nStrings {
     override val appName = "灵记"
     override val navHome = "首页"
-    override val navDecks = "牌组"
     override val navSettings = "设置"
     override val navStats = "统计"
     override val actionBack = "返回"
@@ -60,7 +59,6 @@ object ZhCnStrings : I18nStrings {
     override val modeTitle = "学习模式"
     override val modeSelectDecks = "选择牌组"
     override val modeNoDecks = "暂无可用牌组"
-    override val modeCardsTotal = "共"
     override fun modeCardsCount(count: Int) = "共 $count 张卡片"
     override val modeStartMixed = "混合学习"
     override val modeStartSingle = "单牌组学习"

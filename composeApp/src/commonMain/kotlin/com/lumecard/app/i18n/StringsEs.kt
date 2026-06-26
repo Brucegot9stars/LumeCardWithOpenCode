@@ -3,7 +3,6 @@ package com.lumecard.app.i18n
 object EsStrings : I18nStrings {
     override val appName = "LumeCard"
     override val navHome = "Inicio"
-    override val navDecks = "Mazos"
     override val navSettings = "Ajustes"
     override val navStats = "Estadísticas"
     override val actionBack = "Atrás"
@@ -60,7 +59,6 @@ object EsStrings : I18nStrings {
     override val modeTitle = "Modo de estudio"
     override val modeSelectDecks = "Seleccionar mazos"
     override val modeNoDecks = "No hay mazos disponibles"
-    override val modeCardsTotal = "Total"
     override fun modeCardsCount(count: Int) = "Total $count tarjetas"
     override val modeStartMixed = "Estudio mixto"
     override val modeStartSingle = "Estudio de mazo único"

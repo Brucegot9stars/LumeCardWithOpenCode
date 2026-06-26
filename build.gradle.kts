@@ -11,11 +11,7 @@ plugins {
 subprojects {
     configurations.configureEach {
         resolutionStrategy {
-            force(
-                "androidx.lifecycle:lifecycle-runtime:2.8.7",
-                "androidx.lifecycle:lifecycle-runtime-compose:2.8.7",
-                "androidx.lifecycle:lifecycle-common:2.8.7",
-            )
+            force("androidx.lifecycle:lifecycle-runtime:2.8.7")
         }
     }
 }

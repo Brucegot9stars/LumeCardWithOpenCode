@@ -3,7 +3,6 @@ package com.lumecard.app.i18n
 object JaStrings : I18nStrings {
     override val appName = "LumeCard"
     override val navHome = "ホーム"
-    override val navDecks = "デッキ"
     override val navSettings = "設定"
     override val navStats = "統計"
     override val actionBack = "戻る"
@@ -60,7 +59,6 @@ object JaStrings : I18nStrings {
     override val modeTitle = "学習モード"
     override val modeSelectDecks = "デッキを選択"
     override val modeNoDecks = "利用可能なデッキがありません"
-    override val modeCardsTotal = "合計"
     override fun modeCardsCount(count: Int) = "合計 $count 枚"
     override val modeStartMixed = "ミックス学習"
     override val modeStartSingle = "単一デッキ学習"

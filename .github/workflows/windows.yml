@@ -26,6 +26,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
 
+      - name: Run unit tests
+        run: .\gradlew.bat :shared:desktopTest
+
       - name: Install WiX 7.0.0
         shell: pwsh
         run: |
@@ -39,6 +42,7 @@ jobs:
           } else {
             Write-Output "WiX 7 already present"
           }
+          if (-not (Test-Path "$wixDir\wix.exe")) { throw "WiX installation failed" }
 
       - name: Build all distributables
         run: .\gradlew.bat :composeApp:createDistributable :composeApp:packageExe :composeApp:packageMsi
@@ -62,20 +66,11 @@ jobs:
           Pop-Location
           Write-Output "Created composeApp/build/compose/binaries/main/app/LumeCard-$ver-portable.zip"
 
-      - name: Upload EXE installer to Release
+      - name: Upload all artifacts to Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          files: composeApp/build/compose/binaries/main/exe/*.exe
-
-      - name: Upload MSI installer to Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          files: composeApp/build/compose/binaries/main/msi/*.msi
-
-      - name: Upload portable ZIP to Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          files: composeApp/build/compose/binaries/main/app/LumeCard-*-portable.zip
+          files: |
+            composeApp/build/compose/binaries/main/exe/*.exe
+            composeApp/build/compose/binaries/main/msi/*.msi
+            composeApp/build/compose/binaries/main/app/LumeCard-*-portable.zip
