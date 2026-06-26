@@ -1,6 +1,7 @@
 package com.lumecard.app.ui.screens.card
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -213,6 +214,37 @@ private fun clozeAutoBack(front: String): String {
 }
 
 @Composable
+private fun ClozeQuickInsertButtons(
+    text: String,
+    onInsert: (String) -> Unit,
+) {
+    val clozeNumRegex = remember { Regex("\\{\\{c(\\d+)::") }
+    val existingNumbers = remember(text) {
+        clozeNumRegex.findAll(text).map { it.groupValues[1].toInt() }.toSet()
+    }
+    val maxExisting = existingNumbers.maxOrNull() ?: 0
+    val maxButton = (maxExisting + 5).coerceIn(3, 9)
+
+    Row(
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        (1..maxButton).forEach { n ->
+            val isUsed = n in existingNumbers
+            FilterChip(
+                selected = isUsed,
+                onClick = {
+                    if (!isUsed) {
+                        onInsert("{{c${n}::}}")
+                    }
+                },
+                label = { Text("c$n", style = MaterialTheme.typography.labelSmall) },
+            )
+        }
+    }
+}
+
+@Composable
 private fun CardTypeInput(
     type: CardType,
     front: String,
@@ -265,12 +297,19 @@ private fun CardTypeInput(
         CardType.CLOZE -> {
             Text(strings.cardClozeContent, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             Text(strings.cardClozeFormatHint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(8.dp))
+            val onClozeChange = { newFront: String ->
+                onFrontChange(newFront)
+                onBackChange(clozeAutoBack(newFront))
+            }
+            ClozeQuickInsertButtons(
+                text = front,
+                onInsert = { marker -> onClozeChange(front + marker) }
+            )
+            Spacer(Modifier.height(4.dp))
             OutlinedTextField(
                 value = front,
-                onValueChange = {
-                    onFrontChange(it)
-                    onBackChange(clozeAutoBack(it))
-                },
+                onValueChange = onClozeChange,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
                 placeholder = { Text(strings.cardClozePlaceholder) }
             )
