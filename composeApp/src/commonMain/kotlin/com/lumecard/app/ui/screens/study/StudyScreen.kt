@@ -41,6 +41,7 @@ import com.lumecard.shared.model.CardType
 import com.lumecard.shared.model.Rating
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
 import org.koin.compose.koinInject
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
@@ -405,7 +406,7 @@ class StudyScreen(
                                         detectHorizontalDragGestures(
                                             onDragStart = {
                                                 if (isAnimatingOut) return@detectHorizontalDragGestures
-                                                lastDragTime = System.currentTimeMillis()
+                                                lastDragTime = Clock.System.now().toEpochMilliseconds()
                                                 lastDragX = 0f
                                                 velocity = 0f
                                             },
@@ -444,7 +445,7 @@ class StudyScreen(
                                             onHorizontalDrag = { change, dragAmount ->
                                                 if (isAnimatingOut) return@detectHorizontalDragGestures
                                                 change.consume()
-                                                val now = System.currentTimeMillis()
+                                                val now = Clock.System.now().toEpochMilliseconds()
                                                 val dt = (now - lastDragTime).coerceAtLeast(1)
                                                 velocity = dragAmount / dt * 1000f
                                                 lastDragTime = now
