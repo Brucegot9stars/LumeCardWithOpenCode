@@ -5,6 +5,7 @@ import java.awt.Toolkit
 import javax.sound.sampled.AudioFormat
 import javax.sound.sampled.AudioSystem
 import kotlin.math.PI
+import kotlin.math.exp
 import kotlin.math.sin
 import java.awt.datatransfer.DataFlavor
 import java.awt.image.BufferedImage
@@ -148,19 +149,19 @@ private fun saveFile(mediaDir: String, fileName: String, bytes: ByteArray) {
 }
 
 actual fun playRatingSound(rating: Rating) {
-    val (freq, durationMs) = when (rating) {
-        Rating.AGAIN -> 220.0 to 150
-        Rating.HARD -> 330.0 to 150
-        Rating.GOOD -> 440.0 to 200
-        Rating.EASY -> 660.0 to 250
-    }
     Thread({
         try {
             val sampleRate = 22050f
+            val durationMs = 400
             val numSamples = (sampleRate * durationMs / 1000f).toInt()
+            val freq = 880.0
+            val harmonicFreq = 2640.0
             val samples = ShortArray(numSamples) { i ->
                 val t = i / sampleRate
-                (0.7 * Short.MAX_VALUE * sin(2.0 * PI * freq * t)).toInt().toShort()
+                val envelope = exp(-3.0 * t * sampleRate / numSamples)
+                val fundamental = sin(2.0 * PI * freq * t)
+                val harmonic = 0.3 * sin(2.0 * PI * harmonicFreq * t)
+                (0.6 * Short.MAX_VALUE * envelope * (fundamental + harmonic)).toInt().toShort()
             }
             val format = AudioFormat(sampleRate, 16, 1, true, false)
             val line = AudioSystem.getSourceDataLine(format)
