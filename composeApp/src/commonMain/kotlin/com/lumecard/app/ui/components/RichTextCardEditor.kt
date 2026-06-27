@@ -74,7 +74,11 @@ private fun buildAnnotated(text: String, spans: List<StyleSpan>) = buildAnnotate
 private fun mapPos(pos: Int, oldLen: Int, newLen: Int, prefix: Int, suffix: Int): Int = when {
     pos <= prefix -> pos
     pos >= oldLen - suffix -> pos + (newLen - oldLen)
-    else -> prefix
+    else -> {
+        val oldMid = (oldLen - prefix - suffix).coerceAtLeast(1)
+        val newMid = (newLen - prefix - suffix).coerceAtLeast(1)
+        prefix + ((pos - prefix) * newMid / oldMid)
+    }
 }
 
 private fun mergeSpans(spans: List<StyleSpan>): List<StyleSpan> {

@@ -3,11 +3,13 @@ package com.lumecard.app.ui.util
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.sp
 
 data class StyleSpan(
     val start: Int,
@@ -17,6 +19,7 @@ data class StyleSpan(
     val textDecoration: TextDecoration? = null,
     val color: Color? = null,
     val fontSize: TextUnit? = null,
+    val fontFamily: FontFamily? = null,
 ) {
     fun toSpanStyle(): SpanStyle = SpanStyle(
         fontWeight = fontWeight,
@@ -24,6 +27,7 @@ data class StyleSpan(
         textDecoration = textDecoration,
         color = color ?: Color.Unspecified,
         fontSize = fontSize ?: TextUnit.Unspecified,
+        fontFamily = fontFamily,
     )
 }
 
@@ -33,6 +37,7 @@ private data class TagStyle(
     val textDecoration: TextDecoration? = null,
     val color: Color = Color.Unspecified,
     val fontSize: TextUnit = TextUnit.Unspecified,
+    val fontFamily: FontFamily? = null,
 )
 
 fun parseHtmlToSpans(html: String): Pair<String, List<StyleSpan>> {
@@ -46,14 +51,16 @@ fun parseHtmlToSpans(html: String): Pair<String, List<StyleSpan>> {
         var d: TextDecoration? = null
         var c = Color.Unspecified
         var fs = TextUnit.Unspecified
+        var ff: FontFamily? = null
         for (ts in tagStack) {
             if (ts.fontWeight != null) w = ts.fontWeight
             if (ts.fontStyle != null) s = ts.fontStyle
             if (ts.textDecoration != null) d = ts.textDecoration
             if (ts.color != Color.Unspecified) c = ts.color
             if (ts.fontSize != TextUnit.Unspecified) fs = ts.fontSize
+            if (ts.fontFamily != null) ff = ts.fontFamily
         }
-        return TagStyle(w, s, d, c, fs)
+        return TagStyle(w, s, d, c, fs, ff)
     }
 
     val tagRegex = Regex("<(/?)($htmlTagPattern)((?:\\s[^>]*)?)\\s*/?>", RegexOption.IGNORE_CASE)
@@ -82,6 +89,7 @@ fun parseHtmlToSpans(html: String): Pair<String, List<StyleSpan>> {
                         textDecoration = ts.textDecoration ?: cs.textDecoration,
                         color = if (ts.color != Color.Unspecified) ts.color else cs.color,
                         fontSize = if (ts.fontSize != TextUnit.Unspecified) ts.fontSize else cs.fontSize,
+                        fontFamily = ts.fontFamily ?: cs.fontFamily,
                     )
                 )
             }
@@ -116,7 +124,7 @@ fun parseHtmlToSpans(html: String): Pair<String, List<StyleSpan>> {
         val ts = tagStack[i]
         val after = if (i > 0) {
             var w: FontWeight? = null; var s: FontStyle? = null; var d: TextDecoration? = null
-            var c = Color.Unspecified; var fs = TextUnit.Unspecified
+            var c = Color.Unspecified; var fs = TextUnit.Unspecified; var ff: FontFamily? = null
             for (j in 0 until i) {
                 val t = tagStack[j]
                 if (t.fontWeight != null) w = t.fontWeight
@@ -124,8 +132,9 @@ fun parseHtmlToSpans(html: String): Pair<String, List<StyleSpan>> {
                 if (t.textDecoration != null) d = t.textDecoration
                 if (t.color != Color.Unspecified) c = t.color
                 if (t.fontSize != TextUnit.Unspecified) fs = t.fontSize
+                if (t.fontFamily != null) ff = t.fontFamily
             }
-            TagStyle(w, s, d, c, fs)
+            TagStyle(w, s, d, c, fs, ff)
         } else TagStyle()
         spans.add(
             StyleSpan(
@@ -135,6 +144,7 @@ fun parseHtmlToSpans(html: String): Pair<String, List<StyleSpan>> {
                 textDecoration = ts.textDecoration ?: after.textDecoration,
                 color = if (ts.color != Color.Unspecified) ts.color else after.color,
                 fontSize = if (ts.fontSize != TextUnit.Unspecified) ts.fontSize else after.fontSize,
+                fontFamily = ts.fontFamily ?: after.fontFamily,
             )
         )
     }
@@ -164,8 +174,8 @@ private const val htmlTagPattern = "(?:b|strong|i|em|u|span|p|div|br|h[1-6]|ul|o
 private fun matchesTag(ts: TagStyle, tagName: String): Boolean = when (tagName) {
     "b", "strong" -> ts.fontWeight == FontWeight.Bold
     "i", "em" -> ts.fontStyle == FontStyle.Italic
-    "u" -> ts.textDecoration == TextDecoration.Underline
-    "span" -> true
+    "u", "a" -> ts.textDecoration == TextDecoration.Underline
+    "span", "code", "pre", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "sub", "sup" -> true
     else -> false
 }
 
@@ -174,8 +184,18 @@ private fun parseTagStyle(tagName: String, attrs: String): TagStyle? {
         "b", "strong" -> TagStyle(fontWeight = FontWeight.Bold)
         "i", "em" -> TagStyle(fontStyle = FontStyle.Italic)
         "u" -> TagStyle(textDecoration = TextDecoration.Underline)
-        "sub" -> TagStyle(fontSize = TextUnit.Unspecified) // placeholder
-        "sup" -> TagStyle(fontSize = TextUnit.Unspecified)
+        "a" -> TagStyle(textDecoration = TextDecoration.Underline, color = Color(0xFF1976D2))
+        "code" -> TagStyle(fontFamily = FontFamily.Monospace, fontSize = 14.sp)
+        "pre" -> TagStyle(fontFamily = FontFamily.Monospace)
+        "blockquote" -> TagStyle(fontStyle = FontStyle.Italic)
+        "sub" -> TagStyle(fontSize = 12.sp)
+        "sup" -> TagStyle(fontSize = 12.sp)
+        "h1" -> TagStyle(fontWeight = FontWeight.Bold, fontSize = 24.sp)
+        "h2" -> TagStyle(fontWeight = FontWeight.Bold, fontSize = 20.sp)
+        "h3" -> TagStyle(fontWeight = FontWeight.Bold, fontSize = 18.sp)
+        "h4" -> TagStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        "h5" -> TagStyle(fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        "h6" -> TagStyle(fontWeight = FontWeight.Bold, fontSize = 12.sp)
         "span" -> parseSpanAttrs(attrs)
         else -> null
     }
