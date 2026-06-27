@@ -51,6 +51,9 @@ import com.lumecard.app.platform.writeFileContent
 import com.lumecard.app.platform.installApk
 import com.lumecard.app.platform.getApkCacheDir
 import com.lumecard.app.platform.isDesktopPlatform
+import com.lumecard.app.font.FontInitializer
+import com.lumecard.app.font.FontRegistry
+import com.lumecard.app.font.registerFontFile
 import org.koin.compose.koinInject
 
 class SettingsScreen : Screen {
@@ -403,6 +406,70 @@ class SettingsScreen : Screen {
                             }
                         },
                     )
+                }
+
+                // === Fonts ===
+                Row(
+                    modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.TextFields, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(spacing.sm))
+                    Text(strings.settingsFontTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = radius.card,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                ) {
+                    val fonts = remember { FontRegistry.fonts }
+                    Column {
+                        fonts.groupBy { it.source }.forEach { (source, specs) ->
+                            val sourceLabel = when (source) {
+                                com.lumecard.app.font.FontSource.SYSTEM -> strings.settingsFontTitle
+                                com.lumecard.app.font.FontSource.BUNDLED -> strings.settingsFontTitle
+                                com.lumecard.app.font.FontSource.USER_IMPORTED -> strings.settingsFontTitle
+                            }
+                            specs.forEach { spec ->
+                                ListItem(
+                                    headlineContent = { Text(spec.displayName) },
+                                    supportingContent = { Text(spec.family.ifBlank { "-" }, style = MaterialTheme.typography.bodySmall) },
+                                    leadingContent = { Icon(Icons.Default.TextFields, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                                    trailingContent = {
+                                        if (spec.source == com.lumecard.app.font.FontSource.USER_IMPORTED) {
+                                            IconButton(onClick = {
+                                                FontRegistry.remove(spec.id)
+                                                FontInitializer.saveUserFonts()
+                                            }) {
+                                                Icon(Icons.Default.Delete, contentDescription = strings.actionDelete, tint = MaterialTheme.colorScheme.error)
+                                            }
+                                        }
+                                    },
+                                )
+                            }
+                        }
+                        HorizontalDivider()
+                        ListItem(
+                            headlineContent = { Text(strings.settingsFontImport) },
+                            leadingContent = { Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                            modifier = Modifier.clickable {
+                                scope.launch {
+                                    val path = pickOpenFile("application/x-font-ttf")
+                                    if (path != null) {
+                                        val ok = registerFontFile(path)
+                                        if (ok) {
+                                            val name = path.substringAfterLast("/").substringAfterLast("\\").substringBeforeLast(".")
+                                            FontRegistry.importFont(path, name)
+                                            FontInitializer.saveUserFonts()
+                                            snackbarHostState.showSnackbar(strings.settingsFontImportSuccess, duration = SnackbarDuration.Short)
+                                        } else {
+                                            snackbarHostState.showSnackbar(strings.settingsFontImportFailed, duration = SnackbarDuration.Short)
+                                        }
+                                    }
+                                }
+                            },
+                        )
+                    }
                 }
 
                 // === Notifications ===

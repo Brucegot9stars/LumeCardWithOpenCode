@@ -225,6 +225,11 @@ interface I18nStrings {
     val settingsDailyReminder: String
     val settingsDailyReminderDesc: String
     val settingsDataManagement: String
+    val settingsFontTitle: String
+    val settingsFontImport: String
+    val settingsFontImportSuccess: String
+    val settingsFontImportFailed: String
+    val settingsFontDeleteConfirm: String
     val settingsExport: String
     val settingsExportDesc: String
     fun settingsExportSuccess(length: Int): String
