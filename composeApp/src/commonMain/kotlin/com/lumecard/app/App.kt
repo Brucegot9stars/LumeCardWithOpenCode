@@ -42,10 +42,10 @@ var savedCrashLog: String? = null
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun App() {
-    FontInitializer.ensureInitialized()
+    val settingsRepository: SettingsRepository = koinInject()
+    FontInitializer.ensureInitialized(settingsRepository)
     val settingsStateHolder: SettingsStateHolder = koinInject()
     val i18nManager: I18nManager = koinInject()
-    val settingsRepository: SettingsRepository = koinInject()
     val strings = i18nManager.strings
 
     var crashLog by remember {
