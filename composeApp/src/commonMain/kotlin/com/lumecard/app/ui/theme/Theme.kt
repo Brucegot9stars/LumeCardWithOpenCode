@@ -66,10 +66,9 @@ fun LumeCardTheme(
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
-    val defaultFont = remember {
-        com.lumecard.app.font.FontRegistry.resolveFontFamily(com.lumecard.app.font.FontRegistry.defaultFontId)
-    }
-    val defaultTypography = remember(defaultFont) {
+    val fontId = com.lumecard.app.font.FontRegistry.defaultFontId
+    val defaultFont = com.lumecard.app.font.FontRegistry.resolveFontFamily(fontId)
+    val defaultTypography = remember(fontId) {
         val d = Typography()
         Typography(
             displayLarge = d.displayLarge.copy(fontFamily = defaultFont),

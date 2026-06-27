@@ -440,7 +440,7 @@ class SettingsScreen : Screen {
                                             text = { Text("Default") },
                                             onClick = {
                                                 settingsState.defaultFontFamily = ""
-                                                FontRegistry.setDefaultFontId("")
+                                                FontRegistry.defaultFontId = ""
                                                 showFontDropdown = false
                                                 settingsState.markDirty()
                                             },
@@ -450,7 +450,7 @@ class SettingsScreen : Screen {
                                                 text = { Text(spec.displayName) },
                                                 onClick = {
                                                     settingsState.defaultFontFamily = spec.id
-                                                    FontRegistry.setDefaultFontId(spec.id)
+                                                    FontRegistry.defaultFontId = spec.id
                                                     showFontDropdown = false
                                                     settingsState.markDirty()
                                                 },

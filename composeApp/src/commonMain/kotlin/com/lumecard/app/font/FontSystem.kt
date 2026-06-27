@@ -1,5 +1,8 @@
 package com.lumecard.app.font
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -32,13 +35,10 @@ private val fontJson = Json { ignoreUnknownKeys = true }
 private const val USER_FONTS_SETTINGS_KEY = "user_fonts"
 
 object FontRegistry {
-    var defaultFontId: String = ""
-        private set
+    var defaultFontId by mutableStateOf("")
     private val _fonts = mutableListOf<FontSpec>()
     private val _userFontPaths = mutableSetOf<String>()
     private val _fontFamilyCache = mutableMapOf<String, FontFamily>()
-
-    fun setDefaultFontId(id: String) { defaultFontId = id }
 
     val default: FontSpec get() = _fonts.firstOrNull() ?: FontSpec("default", "Default", "", FontSource.SYSTEM)
     val fonts: List<FontSpec> get() = _fonts.toList()
