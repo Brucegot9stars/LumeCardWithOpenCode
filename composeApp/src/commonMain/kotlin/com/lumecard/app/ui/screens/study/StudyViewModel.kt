@@ -89,6 +89,9 @@ class StudyViewModel(
     private var planBaselineCompleted: Map<String, Int> = emptyMap()
     private val ratedCardIds = mutableSetOf<String>()
 
+    private val _editRefreshTrigger = MutableStateFlow(0)
+    val editRefreshTrigger: StateFlow<Int> = _editRefreshTrigger
+
     private var _hasStartedStudying = false
 
     private val _allCardsCache = MutableStateFlow<List<Card>>(emptyList())
@@ -178,6 +181,25 @@ class StudyViewModel(
         _history.value = emptyList()
         _hasStartedStudying = false
         loadCards(activeDeckIds, activePlanIds, mode, limit)
+    }
+
+    fun signalEditOpened() {
+        _editRefreshTrigger.value++
+    }
+
+    fun refreshCurrentCard() {
+        val index = _currentCardIndex.value
+        val card = _cards.value.getOrNull(index) ?: return
+        screenModelScope.launch {
+            try {
+                val fresh = cardRepository.getById(card.id)
+                if (fresh != null) {
+                    val list = _cards.value.toMutableList()
+                    list[index] = fresh
+                    _cards.value = list
+                }
+            } catch (_: Exception) { }
+        }
     }
 
     private fun startTimerIfNeeded() {

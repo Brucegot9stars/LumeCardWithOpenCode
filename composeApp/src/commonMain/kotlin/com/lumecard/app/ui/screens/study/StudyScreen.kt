@@ -267,32 +267,43 @@ class StudyScreen(
             val screenWidth = maxWidth.value
             val threshold = screenWidth * SWIPE_THRESHOLD_RATIO
 
+            var pendingRefresh by remember { mutableStateOf(0) }
+            LaunchedEffect(pendingRefresh) {
+                if (pendingRefresh > 0) {
+                    viewModel.refreshCurrentCard()
+                    pendingRefresh = 0
+                }
+            }
+
             Scaffold(
                 topBar = {
                     LumeCardTopBar(
                         title = "${strings.actionLearning}: $deckName",
                         onBack = { scope.launch { withFrameNanos { navigator.pop() } } },
                         action = {
-                            if (currentCard != null) {
-                                IconButton(onClick = {
-                                    try {
-                                        navigator.push(CreateCardScreen(deckId = currentCard.deckId, deckName = deckName, editCard = currentCard))
-                                    } catch (e: Exception) {
-                                        println("[LumeCard ERROR] Study navigate edit: ${e.message}")
+                            Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+                                if (currentCard != null) {
+                                    IconButton(onClick = {
+                                        try {
+                                            pendingRefresh = 1
+                                            navigator.push(CreateCardScreen(deckId = currentCard.deckId, deckName = deckName, editCard = currentCard))
+                                        } catch (e: Exception) {
+                                            println("[LumeCard ERROR] Study navigate edit: ${e.message}")
+                                        }
+                                    }) {
+                                        Icon(Icons.Default.Edit, contentDescription = strings.actionEdit, tint = MaterialTheme.colorScheme.onSurface)
                                     }
-                                }) {
-                                    Icon(Icons.Default.Edit, contentDescription = strings.actionEdit, tint = MaterialTheme.colorScheme.onSurface)
                                 }
-                            }
-                            IconButton(onClick = {
-                                soundEnabled = !soundEnabled
-                                SoundSettings.enabled = soundEnabled
-                            }) {
-                                Icon(
-                                    Icons.Default.Notifications,
-                                    contentDescription = if (soundEnabled) "Mute" else "Unmute",
-                                    tint = if (soundEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
-                                )
+                                IconButton(onClick = {
+                                    soundEnabled = !soundEnabled
+                                    SoundSettings.enabled = soundEnabled
+                                }) {
+                                    Icon(
+                                        Icons.Default.Notifications,
+                                        contentDescription = if (soundEnabled) "Mute" else "Unmute",
+                                        tint = if (soundEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
+                                    )
+                                }
                             }
                         }
                     )
