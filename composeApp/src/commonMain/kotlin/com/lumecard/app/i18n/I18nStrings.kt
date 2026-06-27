@@ -147,6 +147,7 @@ interface I18nStrings {
     val cardTags: String
     val cardHorizontalCenter: String
     val cardVerticalCenter: String
+    val cardFont: String
     val cardFontSize: String
     val cardTagsPlaceholder: String
     val cardTagsHint: String

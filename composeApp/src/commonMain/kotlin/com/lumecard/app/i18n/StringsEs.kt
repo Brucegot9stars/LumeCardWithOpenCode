@@ -144,6 +144,7 @@ object EsStrings : I18nStrings {
     override val cardTags = "Etiquetas"
     override val cardHorizontalCenter = "Centrar horizontalmente"
     override val cardVerticalCenter = "Centrar verticalmente"
+    override val cardFont = "Fuente"
     override val cardFontSize = "Tamaño de fuente"
     override val cardTagsPlaceholder = "Separa las etiquetas con comas"
     override val cardTagsHint = "Ej: inglés, vocabulario, esencial"

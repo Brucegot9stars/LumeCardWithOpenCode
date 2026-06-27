@@ -144,6 +144,7 @@ object EnStrings : I18nStrings {
     override val cardTags = "Tags"
     override val cardHorizontalCenter = "Horizontal Center"
     override val cardVerticalCenter = "Vertical Center"
+    override val cardFont = "Font"
     override val cardFontSize = "Font Size"
     override val cardTagsPlaceholder = "Separate tags with commas"
     override val cardTagsHint = "e.g. English, vocabulary, core words"

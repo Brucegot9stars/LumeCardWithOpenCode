@@ -144,6 +144,7 @@ object JaStrings : I18nStrings {
     override val cardTags = "タグ"
     override val cardHorizontalCenter = "水平中央"
     override val cardVerticalCenter = "垂直中央"
+    override val cardFont = "フォント"
     override val cardFontSize = "フォントサイズ"
     override val cardTagsPlaceholder = "カンマで区切って複数のタグを入力"
     override val cardTagsHint = "例：英語, 単語, 必須語彙"

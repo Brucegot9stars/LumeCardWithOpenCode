@@ -144,6 +144,7 @@ object ZhCnStrings : I18nStrings {
     override val cardTags = "标签"
     override val cardHorizontalCenter = "水平居中"
     override val cardVerticalCenter = "垂直居中"
+    override val cardFont = "字体"
     override val cardFontSize = "字体大小"
     override val cardTagsPlaceholder = "用逗号分隔多个标签"
     override val cardTagsHint = "例如：英语, 单词, 核心词汇"

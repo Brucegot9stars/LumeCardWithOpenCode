@@ -50,6 +50,7 @@ class CreateCardScreen(
         var horizontalCenter by remember { mutableStateOf(editCard?.metadata?.get("hcenter")?.toBoolean() ?: false) }
         var verticalCenter by remember { mutableStateOf(editCard?.metadata?.get("vcenter")?.toBoolean() ?: false) }
         var fontSize by remember { mutableStateOf(editCard?.metadata?.get("fontSize")?.toIntOrNull() ?: 16) }
+        var fontFamily by remember { mutableStateOf(editCard?.metadata?.get("fontFamily") ?: "") }
         var showTypeMenu by remember { mutableStateOf(false) }
         var showTypeHelp by remember { mutableStateOf(true) }
         val isEditing = editCard != null
@@ -73,6 +74,7 @@ class CreateCardScreen(
                                         horizontalCenter = horizontalCenter,
                                         verticalCenter = verticalCenter,
                                         fontSize = fontSize,
+                                        fontFamily = fontFamily,
                                     )
                                 } else {
                                     viewModel.createCard(
@@ -84,6 +86,7 @@ class CreateCardScreen(
                                         horizontalCenter = horizontalCenter,
                                         verticalCenter = verticalCenter,
                                         fontSize = fontSize,
+                                        fontFamily = fontFamily,
                                     )
                                 }
                                 navigator.pop()
@@ -140,6 +143,8 @@ class CreateCardScreen(
                     onVerticalCenterChange = { verticalCenter = it },
                     fontSize = fontSize,
                     onFontSizeChange = { fontSize = it },
+                    fontFamily = fontFamily,
+                    onFontFamilyChange = { fontFamily = it },
                 )
 
                 OutlinedTextField(
@@ -257,6 +262,8 @@ private fun CardTypeInput(
     onVerticalCenterChange: ((Boolean) -> Unit)? = null,
     fontSize: Int = 16,
     onFontSizeChange: ((Int) -> Unit)? = null,
+    fontFamily: String = "",
+    onFontFamilyChange: ((String) -> Unit)? = null,
 ) {
     val strings = koinInject<I18nManager>().strings
     when (type) {
@@ -274,6 +281,8 @@ private fun CardTypeInput(
                 onVerticalCenterChange = onVerticalCenterChange,
                 fontSize = fontSize,
                 onFontSizeChange = onFontSizeChange,
+                fontFamily = fontFamily,
+                onFontFamilyChange = onFontFamilyChange,
             )
         }
         CardType.RICH_TEXT -> {
@@ -346,6 +355,8 @@ private fun BasicCardFields(
     onVerticalCenterChange: ((Boolean) -> Unit)? = null,
     fontSize: Int = 16,
     onFontSizeChange: ((Int) -> Unit)? = null,
+    fontFamily: String = "",
+    onFontFamilyChange: ((String) -> Unit)? = null,
 ) {
     val strings = koinInject<I18nManager>().strings
     Text(frontLabel, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
@@ -398,6 +409,34 @@ private fun BasicCardFields(
             )
             Spacer(Modifier.width(8.dp))
             Text("${fontSize}sp", style = MaterialTheme.typography.bodySmall)
+        }
+    }
+    if (onFontFamilyChange != null) {
+        val fontFamilyOptions = listOf(
+            "" to "Default", "serif" to "Serif", "sans-serif" to "Sans Serif",
+            "monospace" to "Monospace", "cursive" to "Cursive",
+        )
+        var expanded by remember { mutableStateOf(false) }
+        val selectedLabel = fontFamilyOptions.find { it.first == fontFamily }?.second ?: "Default"
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(strings.cardFont, style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.width(8.dp))
+            Box {
+                OutlinedButton(onClick = { expanded = true }) {
+                    Text(selectedLabel)
+                }
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    fontFamilyOptions.forEach { (value, label) ->
+                        DropdownMenuItem(
+                            text = { Text(label) },
+                            onClick = { onFontFamilyChange(value); expanded = false },
+                        )
+                    }
+                }
+            }
         }
     }
 }

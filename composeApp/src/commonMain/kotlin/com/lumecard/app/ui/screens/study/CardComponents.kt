@@ -30,6 +30,13 @@ import com.lumecard.app.ui.screens.settings.AnswerDisplayMode
 import org.koin.compose.koinInject
 
 private const val FLIP_DURATION_MS = 500
+internal val fontFamilyMap = mapOf(
+    "serif" to androidx.compose.ui.text.font.FontFamily.Serif,
+    "sans-serif" to androidx.compose.ui.text.font.FontFamily.SansSerif,
+    "monospace" to androidx.compose.ui.text.font.FontFamily.Monospace,
+    "cursive" to androidx.compose.ui.text.font.FontFamily.Cursive,
+)
+
 @Composable
 internal fun CardContent(
     card: Card,
@@ -38,6 +45,7 @@ internal fun CardContent(
     horizontalCenter: Boolean = false,
     verticalCenter: Boolean = false,
     fontSize: Int = 16,
+    fontFamily: androidx.compose.ui.text.font.FontFamily? = null,
     onConfirmChoice: (() -> Unit)? = null,
 ) {
     val strings = koinInject<I18nManager>().strings
@@ -47,8 +55,8 @@ internal fun CardContent(
                 key(card.id) {
                     FlipCard(
                         isFlipped = isFlipped,
-                        front = { CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice, horizontalCenter = horizontalCenter, fontSize = fontSize) },
-                        back = { CardFace(card, showBack = true, horizontalCenter = horizontalCenter, fontSize = fontSize) }
+                        front = { CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice, horizontalCenter = horizontalCenter, fontSize = fontSize, fontFamily = fontFamily) },
+                        back = { CardFace(card, showBack = true, horizontalCenter = horizontalCenter, fontSize = fontSize, fontFamily = fontFamily) }
                     )
                 }
             }
@@ -80,7 +88,7 @@ internal fun CardContent(
                         shape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
                     ) {
-                        CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice, horizontalCenter = horizontalCenter, fontSize = fontSize)
+                        CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice, horizontalCenter = horizontalCenter, fontSize = fontSize, fontFamily = fontFamily)
                     }
                     Spacer(Modifier.height(16.dp))
                     Surface(
@@ -109,10 +117,10 @@ internal fun CardContent(
                         shape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp),
                         color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.2f)
                     ) {
-                        CardFace(card, showBack = true, horizontalCenter = horizontalCenter, fontSize = fontSize)
+                        CardFace(card, showBack = true, horizontalCenter = horizontalCenter, fontSize = fontSize, fontFamily = fontFamily)
                     }
                 } else {
-                    CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice, horizontalCenter = horizontalCenter, fontSize = fontSize)
+                    CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice, horizontalCenter = horizontalCenter, fontSize = fontSize, fontFamily = fontFamily)
                 }
             }
         }
@@ -161,6 +169,7 @@ internal fun CardFace(
     onConfirmChoice: (() -> Unit)? = null,
     horizontalCenter: Boolean = false,
     fontSize: Int = 16,
+    fontFamily: androidx.compose.ui.text.font.FontFamily? = null,
 ) {
     val clozeRegex = remember { Regex("\\{\\{c\\d+::([^}]+)\\}\\}") }
     val clozeHintRegex = remember { Regex("\\{\\{c\\d+::([^}]+)::([^}]+)\\}\\}") }
@@ -171,11 +180,13 @@ internal fun CardFace(
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = align) {
         when (card.type) {
             CardType.BASIC, CardType.REVERSED -> {
+                val ff = fontFamily ?: card.metadata["fontFamily"]?.let { fontFamilyMap[it] }
                 Text(
                     text = if (showBack) card.back else card.front,
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = textAlign,
                     fontSize = fontSize.sp,
+                    fontFamily = ff ?: androidx.compose.ui.text.font.FontFamily.Default,
                 )
             }
             CardType.RICH_TEXT -> {
