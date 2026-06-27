@@ -34,6 +34,7 @@ import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.components.LumeCardRatingBar
 import com.lumecard.app.ui.components.ProgressRing
 import com.lumecard.app.ui.theme.LumeCardTheme
+import com.lumecard.app.ui.screens.card.CreateCardScreen
 import com.lumecard.app.ui.screens.settings.AnswerDisplayMode
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.i18n.I18nStrings
@@ -272,6 +273,17 @@ class StudyScreen(
                         title = "${strings.actionLearning}: $deckName",
                         onBack = { scope.launch { withFrameNanos { navigator.pop() } } },
                         action = {
+                            if (currentCard != null) {
+                                IconButton(onClick = {
+                                    try {
+                                        navigator.push(CreateCardScreen(deckId = currentCard.deckId, deckName = deckName, editCard = currentCard))
+                                    } catch (e: Exception) {
+                                        println("[LumeCard ERROR] Study navigate edit: ${e.message}")
+                                    }
+                                }) {
+                                    Icon(Icons.Default.Edit, contentDescription = strings.actionEdit, tint = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
                             IconButton(onClick = {
                                 soundEnabled = !soundEnabled
                                 SoundSettings.enabled = soundEnabled
