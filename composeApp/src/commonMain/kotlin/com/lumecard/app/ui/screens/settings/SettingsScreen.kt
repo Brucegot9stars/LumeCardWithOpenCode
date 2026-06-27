@@ -442,7 +442,7 @@ class SettingsScreen : Screen {
                                                 settingsState.defaultFontFamily = ""
                                                 FontRegistry.setDefaultFontId("")
                                                 showFontDropdown = false
-                                                settingsViewModel.saveSettings()
+                                                settingsState.markDirty()
                                             },
                                         )
                                         allFontSpecs.forEach { spec ->
@@ -452,7 +452,7 @@ class SettingsScreen : Screen {
                                                     settingsState.defaultFontFamily = spec.id
                                                     FontRegistry.setDefaultFontId(spec.id)
                                                     showFontDropdown = false
-                                                    settingsViewModel.saveSettings()
+                                                    settingsState.markDirty()
                                                 },
                                             )
                                         }

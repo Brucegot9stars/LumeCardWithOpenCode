@@ -4,18 +4,34 @@ import java.awt.GraphicsEnvironment
 import java.io.File
 
 actual fun detectSystemFonts(): List<FontSpec> {
+    val blocked = setOf(
+        "Segoe MDL2 Assets", "Segoe UI Emoji", "Segoe UI Historic", "Segoe UI Symbol",
+        "Segoe Fluent Icons", "Segoe Icons", "Webdings", "Wingdings", "Symbol",
+        "Marlett", "MS Outlook", "MS Reference Specialty", "MT Extra",
+        "Bookshelf Symbol 7", "Monotype Corsiva", "MS Gothic", "MS PGothic",
+        "MS UI Gothic", "MS Mincho", "MS PMincho", "Batang", "BatangChe",
+        "Dotum", "DotumChe", "Gulim", "GulimChe", "Gungsuh", "GungsuhChe",
+        "Angsana New", "AngsanaUPC", "Browallia New", "BrowalliaUPC",
+        "Cordia New", "CordiaUPC", "DFKai-SB", "Euphemia",
+        "Gautami", "Iskoola Pota", "Kalinga", "Kartika", "Kokila",
+        "Latha", "Mangal", "Narkisim", "Nyala",
+        "Raavi", "Shonar Bangla", "Shruti", "Tunga", "Urdu Typesetting",
+        "Vani", "Vijaya", "Plantagenet Cherokee",
+    )
     return try {
         val ge = GraphicsEnvironment.getLocalGraphicsEnvironment()
-        val names = ge.availableFontFamilyNames.distinct().sorted()
-        names.map { name ->
-            FontSpec(
-                id = "sys_${name.lowercase().replace(" ", "_")}",
-                displayName = name,
-                family = name,
-                source = FontSource.SYSTEM,
-            )
-        }
-        } catch (_: Exception) {
+        ge.availableFontFamilyNames
+            .filter { it !in blocked && !it.contains("HoloLens") && !it.contains("OneNote") }
+            .sorted()
+            .map { name ->
+                FontSpec(
+                    id = "sys_${name.lowercase().replace(" ", "_")}",
+                    displayName = name,
+                    family = name,
+                    source = FontSource.SYSTEM,
+                )
+            }
+    } catch (_: Exception) {
         emptyList()
     }
 }
