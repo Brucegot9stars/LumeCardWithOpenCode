@@ -56,6 +56,8 @@ class LearningPlanSelectionScreen : Screen {
         var dialogName by remember { mutableStateOf("") }
         var dialogDesc by remember { mutableStateOf("") }
         var deletePlanId by remember { mutableStateOf<String?>(null) }
+        var renamePlanId by remember { mutableStateOf<String?>(null) }
+        var renameText by remember { mutableStateOf("") }
         var errorMsg by remember { mutableStateOf<String?>(null) }
 
         LaunchedEffect(Unit) {
@@ -208,6 +210,9 @@ class LearningPlanSelectionScreen : Screen {
                                         }
                                     }
                                     Spacer(Modifier.width(spacing.xs))
+                                    IconButton(onClick = { renameText = plan.name; renamePlanId = plan.id }, modifier = Modifier.size(28.dp)) {
+                                        Icon(Icons.Default.Edit, contentDescription = strings.actionEdit, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                                    }
                                     IconButton(onClick = { deletePlanId = plan.id }, modifier = Modifier.size(28.dp)) {
                                         Icon(Icons.Default.Delete, contentDescription = strings.actionDelete, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                                     }
@@ -380,6 +385,50 @@ class LearningPlanSelectionScreen : Screen {
                 },
                 dismissButton = {
                     OutlinedButton(onClick = { deletePlanId = null }) {
+                        Text(strings.actionCancel)
+                    }
+                }
+            )
+        }
+
+        // Rename dialog
+        if (renamePlanId != null) {
+            AlertDialog(
+                onDismissRequest = { renamePlanId = null },
+                title = { Text(strings.planEdit) },
+                text = {
+                    OutlinedTextField(
+                        value = renameText,
+                        onValueChange = { renameText = it },
+                        label = { Text(strings.fieldName) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                val existing = viewModel.plans.value.find { it.id == renamePlanId }
+                                if (existing != null) {
+                                    viewModel.updatePlan(renamePlanId!!, renameText, existing.description, existing.knowledgeBaseIds, existing.deckIds, existing.cardIds, existing.isDefault)
+                                }
+                                val job = launch {
+                                    snackbarHostState.showSnackbar(strings.planUpdated, duration = SnackbarDuration.Indefinite)
+                                }
+                                delay(1000)
+                                job.cancel()
+                                snackbarHostState.currentSnackbarData?.dismiss()
+                                renamePlanId = null
+                            }
+                        },
+                        enabled = renameText.isNotBlank(),
+                    ) {
+                        Text(strings.actionSave)
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(onClick = { renamePlanId = null }) {
                         Text(strings.actionCancel)
                     }
                 }
