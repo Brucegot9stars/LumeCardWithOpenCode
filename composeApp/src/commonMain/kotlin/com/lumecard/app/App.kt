@@ -118,7 +118,7 @@ fun App() {
                         BottomNavItem.Dashboard -> DashboardScreen()
                         BottomNavItem.Stats -> StatsScreen()
                         BottomNavItem.Warehouse -> WarehouseScreen()
-                        BottomNavItem.Settings -> SettingsScreen()
+                        BottomNavItem.Settings -> SettingsScreen(onNavigateToHome = { currentTab = BottomNavItem.Dashboard })
                     }
                     val currentScreen = navigator.lastItemOrNull
                     if (currentScreen?.key != screen.key) {

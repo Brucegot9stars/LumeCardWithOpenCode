@@ -56,7 +56,9 @@ import com.lumecard.app.font.FontRegistry
 import com.lumecard.app.font.registerFontFile
 import org.koin.compose.koinInject
 
-class SettingsScreen : Screen {
+class SettingsScreen(
+    private val onNavigateToHome: (() -> Unit)? = null,
+) : Screen {
     override val key: ScreenKey = "Settings"
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -97,7 +99,10 @@ class SettingsScreen : Screen {
             topBar = {
                 LumeCardTopBar(
                     title = strings.settingsTitle,
-                    onBack = { navigator.replace(DashboardScreen()) },
+                    onBack = {
+                        if (onNavigateToHome != null) onNavigateToHome()
+                        else navigator.replace(DashboardScreen())
+                    },
                     action = {
                         if (settingsState.isDirty) {
                             FilledTonalButton(
