@@ -173,7 +173,10 @@ internal fun CardFace(
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = align) {
         when (card.type) {
             CardType.BASIC, CardType.REVERSED -> {
-                val ff = fontFamily ?: com.lumecard.app.font.FontRegistry.resolveFontFamily(card.metadata["fontFamily"] ?: "")
+                val fontId = card.metadata["fontFamily"] ?: ""
+                val ff = fontFamily ?: com.lumecard.app.font.FontRegistry.resolveFontFamily(
+                    if (fontId.isNotBlank()) fontId else com.lumecard.app.font.FontRegistry.defaultFontId
+                )
                 Text(
                     text = if (showBack) card.back else card.front,
                     modifier = Modifier.fillMaxWidth(),

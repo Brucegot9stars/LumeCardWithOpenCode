@@ -422,33 +422,46 @@ class SettingsScreen : Screen {
                     shape = radius.card,
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
                 ) {
-                    val fonts = remember { FontRegistry.fonts }
                     Column {
-                        fonts.groupBy { it.source }.forEach { (source, specs) ->
-                            val sourceLabel = when (source) {
-                                com.lumecard.app.font.FontSource.SYSTEM -> strings.settingsFontTitle
-                                com.lumecard.app.font.FontSource.BUNDLED -> strings.settingsFontTitle
-                                com.lumecard.app.font.FontSource.USER_IMPORTED -> strings.settingsFontTitle
-                            }
-                            specs.forEach { spec ->
-                                ListItem(
-                                    headlineContent = { Text(spec.displayName) },
-                                    supportingContent = { Text(spec.family.ifBlank { "-" }, style = MaterialTheme.typography.bodySmall) },
-                                    leadingContent = { Icon(Icons.Default.TextFields, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                                    trailingContent = {
-                                        if (spec.source == com.lumecard.app.font.FontSource.USER_IMPORTED) {
-                                            IconButton(onClick = {
-                                                FontRegistry.remove(spec.id)
-                                                FontInitializer.saveUserFonts()
-                                            }) {
-                                                Icon(Icons.Default.Delete, contentDescription = strings.actionDelete, tint = MaterialTheme.colorScheme.error)
-                                            }
+                        // Default font selector
+                        var showFontDropdown by remember { mutableStateOf(false) }
+                        val allFontSpecs = remember { FontRegistry.fonts }
+                        val currentFontName = allFontSpecs.find { it.id == settingsState.defaultFontFamily }?.displayName ?: "Default"
+                        ListItem(
+                            headlineContent = { Text(strings.cardFont) },
+                            trailingContent = {
+                                Box {
+                                    TextButton(onClick = { showFontDropdown = true }) {
+                                        Text(currentFontName, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                                    }
+                                    DropdownMenu(expanded = showFontDropdown, onDismissRequest = { showFontDropdown = false }) {
+                                        DropdownMenuItem(
+                                            text = { Text("Default") },
+                                            onClick = {
+                                                settingsState.defaultFontFamily = ""
+                                                FontRegistry.setDefaultFontId("")
+                                                showFontDropdown = false
+                                                settingsViewModel.saveSettings()
+                                            },
+                                        )
+                                        allFontSpecs.forEach { spec ->
+                                            DropdownMenuItem(
+                                                text = { Text(spec.displayName) },
+                                                onClick = {
+                                                    settingsState.defaultFontFamily = spec.id
+                                                    FontRegistry.setDefaultFontId(spec.id)
+                                                    showFontDropdown = false
+                                                    settingsViewModel.saveSettings()
+                                                },
+                                            )
                                         }
-                                    },
-                                )
-                            }
-                        }
+                                    }
+                                }
+                            },
+                        )
                         HorizontalDivider()
+                        // Import font
                         ListItem(
                             headlineContent = { Text(strings.settingsFontImport) },
                             leadingContent = { Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp)) },
@@ -469,6 +482,21 @@ class SettingsScreen : Screen {
                                 }
                             },
                         )
+                        // User imported fonts list (with delete)
+                        val userFonts = FontRegistry.fonts.filter { it.source == com.lumecard.app.font.FontSource.USER_IMPORTED }
+                        userFonts.forEach { spec ->
+                            ListItem(
+                                headlineContent = { Text(spec.displayName) },
+                                trailingContent = {
+                                    IconButton(onClick = {
+                                        FontRegistry.remove(spec.id)
+                                        FontInitializer.saveUserFonts()
+                                    }) {
+                                        Icon(Icons.Default.Delete, contentDescription = strings.actionDelete, tint = MaterialTheme.colorScheme.error)
+                                    }
+                                },
+                            )
+                        }
                     }
                 }
 

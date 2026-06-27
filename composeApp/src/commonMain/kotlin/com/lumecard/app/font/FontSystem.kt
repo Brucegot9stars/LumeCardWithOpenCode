@@ -32,9 +32,13 @@ private val fontJson = Json { ignoreUnknownKeys = true }
 private const val USER_FONTS_SETTINGS_KEY = "user_fonts"
 
 object FontRegistry {
+    var defaultFontId: String = ""
+        private set
     private val _fonts = mutableListOf<FontSpec>()
     private val _userFontPaths = mutableSetOf<String>()
     private val _fontFamilyCache = mutableMapOf<String, FontFamily>()
+
+    fun setDefaultFontId(id: String) { defaultFontId = id }
 
     val default: FontSpec get() = _fonts.firstOrNull() ?: FontSpec("default", "Default", "", FontSource.SYSTEM)
     val fonts: List<FontSpec> get() = _fonts.toList()

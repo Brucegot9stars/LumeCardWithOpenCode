@@ -28,6 +28,7 @@ class SettingsViewModel(
             state.autoSyncIntervalMinutes = settingsRepository.getInt("auto_sync_interval_minutes", 30)
             val langStr = settingsRepository.get("language") ?: AppLocale.SYSTEM.name
             state.language = try { AppLocale.valueOf(langStr) } catch (_: Exception) { AppLocale.SYSTEM }
+            state.defaultFontFamily = settingsRepository.get("defaultFontFamily") ?: ""
         }
     }
 
@@ -43,6 +44,7 @@ class SettingsViewModel(
             settingsRepository.set("auto_sync_enabled", state.autoSyncEnabled.toString())
             settingsRepository.set("auto_sync_interval_minutes", state.autoSyncIntervalMinutes.toString())
             settingsRepository.set("language", state.language.name)
+            settingsRepository.set("defaultFontFamily", state.defaultFontFamily)
             state.markClean()
             state.isSaving = false
         }

@@ -12,7 +12,11 @@ object FontInitializer {
         repository = repo
         FontRegistry.registerAll(builtinFonts)
         FontRegistry.registerAll(detectSystemFonts())
-        if (repo != null) FontRegistry.loadUserFonts(repo)
+        if (repo != null) {
+            FontRegistry.loadUserFonts(repo)
+            val defaultId = kotlinx.coroutines.runBlocking { repo.get("defaultFontFamily") } ?: ""
+            FontRegistry.setDefaultFontId(defaultId)
+        }
     }
     fun saveUserFonts() { repository?.let { FontRegistry.saveUserFonts(it) } }
 
