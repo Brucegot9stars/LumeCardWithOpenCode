@@ -182,7 +182,14 @@ internal fun CardFace(
                 val html = if (showBack) card.back else card.front
                 RichTextCardFace(html = html)
             }
-            CardType.REVERSED, CardType.MARKDOWN, CardType.AI_GENERATED -> {
+            CardType.REVERSED -> {
+                MarkdownText(
+                    markdown = if (showBack) card.back else card.front,
+                    modifier = Modifier.fillMaxWidth(),
+                    center = horizontalCenter,
+                )
+            }
+            CardType.MARKDOWN, CardType.AI_GENERATED -> {
                 MarkdownText(
                     markdown = if (showBack) card.back else card.front,
                     modifier = Modifier.fillMaxWidth(),

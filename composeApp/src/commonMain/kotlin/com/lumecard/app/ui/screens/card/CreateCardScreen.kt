@@ -260,12 +260,12 @@ private fun CardTypeInput(
 ) {
     val strings = koinInject<I18nManager>().strings
     when (type) {
-        CardType.BASIC -> {
+        CardType.BASIC, CardType.REVERSED -> {
             BasicCardFields(
                 front = front, onFrontChange = onFrontChange,
                 back = back, onBackChange = onBackChange,
-                frontLabel = strings.cardFrontLabel,
-                backLabel = strings.cardBackLabel,
+                frontLabel = if (type == CardType.REVERSED) strings.cardFrontLabelRev else strings.cardFrontLabel,
+                backLabel = if (type == CardType.REVERSED) strings.cardBackLabelRev else strings.cardBackLabel,
                 frontPlaceholder = strings.cardFrontPlaceholder,
                 backPlaceholder = strings.cardBackPlaceholder,
                 horizontalCenter = horizontalCenter,
@@ -284,12 +284,12 @@ private fun CardTypeInput(
                 backLabel = strings.cardBackLabel,
             )
         }
-        CardType.REVERSED, CardType.MARKDOWN, CardType.AI_GENERATED -> {
+        CardType.MARKDOWN, CardType.AI_GENERATED -> {
             BasicCardFields(
                 front = front, onFrontChange = onFrontChange,
                 back = back, onBackChange = onBackChange,
-                frontLabel = if (type == CardType.REVERSED) strings.cardFrontLabelRev else strings.cardFrontLabel,
-                backLabel = if (type == CardType.REVERSED) strings.cardBackLabelRev else strings.cardBackLabel,
+                frontLabel = strings.cardFrontLabel,
+                backLabel = strings.cardBackLabel,
                 frontPlaceholder = strings.cardFrontPlaceholder,
                 backPlaceholder = strings.cardBackPlaceholder
             )
