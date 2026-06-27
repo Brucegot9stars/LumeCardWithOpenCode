@@ -112,35 +112,6 @@ private fun rebuildSpans(oldText: String, newText: String, oldSpans: List<StyleS
     }
 }
 
-private fun parseInlineStyle(tag: String): StyleSpan {
-    val styleMatch = Regex("""style\s*=\s*"([^"]*)"""").find(tag)
-    val styles = styleMatch?.groupValues?.getOrNull(1) ?: return StyleSpan(start = 0, end = 0)
-    var fontWeight: FontWeight? = null
-    var fontStyle: FontStyle? = null
-    var textDecoration: TextDecoration? = null
-    var color: Color? = null
-    var fontSize: TextUnit? = null
-    for (decl in styles.split(";")) {
-        val parts = decl.trim().split(":", limit = 2)
-        if (parts.size != 2) continue
-        val prop = parts[0].trim().lowercase()
-        val value = parts[1].trim().lowercase()
-        when (prop) {
-            "font-weight" -> {
-                when (value) { "bold", "700", "800", "900" -> fontWeight = FontWeight.Bold; "600" -> fontWeight = FontWeight.SemiBold; "500" -> fontWeight = FontWeight.Medium; "400", "normal" -> fontWeight = FontWeight.Normal; "300" -> fontWeight = FontWeight.Light }
-            }
-            "font-style" -> { if (value == "italic") fontStyle = FontStyle.Italic }
-            "text-decoration" -> { if (value.contains("underline")) textDecoration = TextDecoration.Underline; if (value.contains("line-through")) textDecoration = TextDecoration.LineThrough }
-            "color" -> { color = parseHtmlColor(value) }
-            "font-size" -> {
-                val num = Regex("""(\d+(?:\.\d+)?)""").find(value)?.groupValues?.getOrNull(1)?.toFloatOrNull()
-                if (num != null) fontSize = num.sp
-            }
-        }
-    }
-    return StyleSpan(start = 0, end = 0, fontWeight = fontWeight, fontStyle = fontStyle, color = color, fontSize = fontSize)
-}
-
 private fun spansToHtml(text: String, spans: List<StyleSpan>): String {
     if (text.isEmpty()) return ""
     val sb = StringBuilder()
