@@ -116,29 +116,4 @@ fun MathBlock(mathContent: String) {
     }
 }
 
-@Composable
-fun MermaidBlock(diagram: String) {
-    val strings = koinInject<I18nManager>().strings
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = strings.mermaidChartTitle,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = diagram,
-                fontFamily = FontFamily.Monospace,
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-            )
-        }
-    }
-}
+
