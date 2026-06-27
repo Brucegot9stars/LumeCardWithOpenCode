@@ -226,7 +226,10 @@ class StudyViewModel(
 
         startTimerIfNeeded()
 
-        val updatedState = algorithm.schedule(state, rating)
+        val daysElapsed = currentCard.lastReviewedAt?.let {
+            ((Clock.System.now().toEpochMilliseconds() - it.toEpochMilliseconds()) / 86400000).toInt().coerceAtLeast(0)
+        } ?: 0
+        val updatedState = algorithm.schedule(state, rating, daysElapsed)
         _algorithmStates.update { it + (currentCard.id to updatedState) }
 
         val now = Clock.System.now()

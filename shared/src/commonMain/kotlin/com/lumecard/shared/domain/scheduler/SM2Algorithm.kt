@@ -16,7 +16,7 @@ class SM2Algorithm : ReviewAlgorithm {
         easeFactor = 2.5f
     )
 
-    override fun schedule(state: AlgorithmState, rating: Rating): AlgorithmState {
+    override fun schedule(state: AlgorithmState, rating: Rating, daysElapsed: Int): AlgorithmState {
         val ef = calculateEaseFactor(state.easeFactor, rating).coerceIn(1.3f, Float.MAX_VALUE)
 
         if (rating.value < 3) {
