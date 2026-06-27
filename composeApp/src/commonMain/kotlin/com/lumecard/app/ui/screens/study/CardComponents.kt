@@ -30,13 +30,6 @@ import com.lumecard.app.ui.screens.settings.AnswerDisplayMode
 import org.koin.compose.koinInject
 
 private const val FLIP_DURATION_MS = 500
-internal val fontFamilyMap = mapOf(
-    "serif" to androidx.compose.ui.text.font.FontFamily.Serif,
-    "sans-serif" to androidx.compose.ui.text.font.FontFamily.SansSerif,
-    "monospace" to androidx.compose.ui.text.font.FontFamily.Monospace,
-    "cursive" to androidx.compose.ui.text.font.FontFamily.Cursive,
-)
-
 @Composable
 internal fun CardContent(
     card: Card,
@@ -180,13 +173,13 @@ internal fun CardFace(
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = align) {
         when (card.type) {
             CardType.BASIC, CardType.REVERSED -> {
-                val ff = fontFamily ?: card.metadata["fontFamily"]?.let { fontFamilyMap[it] }
+                val ff = fontFamily ?: com.lumecard.app.font.FontRegistry.resolveFontFamily(card.metadata["fontFamily"] ?: "")
                 Text(
                     text = if (showBack) card.back else card.front,
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = textAlign,
                     fontSize = fontSize.sp,
-                    fontFamily = ff ?: androidx.compose.ui.text.font.FontFamily.Default,
+                    fontFamily = ff,
                 )
             }
             CardType.RICH_TEXT -> {

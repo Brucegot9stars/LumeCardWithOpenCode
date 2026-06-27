@@ -29,7 +29,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.platform.SoundSettings
 import com.lumecard.app.platform.playRatingSound
-import com.lumecard.app.ui.screens.study.fontFamilyMap
+import com.lumecard.app.font.FontRegistry
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.components.LumeCardRatingBar
 import com.lumecard.app.ui.components.ProgressRing
@@ -392,7 +392,7 @@ class StudyScreen(
                                         val nextHCenter = (nextCard.type == CardType.BASIC || nextCard.type == CardType.REVERSED) && nextCard.metadata["hcenter"].toBoolean()
                                         val nextVCenter = (nextCard.type == CardType.BASIC || nextCard.type == CardType.REVERSED) && nextCard.metadata["vcenter"].toBoolean()
                                         val nextFontSize = nextCard.metadata["fontSize"]?.toIntOrNull() ?: 16
-                                        val nextFontFamily = fontFamilyMap[nextCard.metadata["fontFamily"]]
+                                        val nextFontFamily = FontRegistry.resolveFontFamily(nextCard.metadata["fontFamily"] ?: "")
                                         CardContent(card = nextCard, isFlipped = false, displayMode = settingsState.answerDisplayMode, horizontalCenter = nextHCenter, verticalCenter = nextVCenter, fontSize = nextFontSize, fontFamily = nextFontFamily)
                                     }
                                 }
@@ -497,7 +497,7 @@ class StudyScreen(
                                         horizontalCenter = hCenter,
                                         verticalCenter = vCenter,
                                         fontSize = fontSize,
-                                        fontFamily = fontFamilyMap[currentCard.metadata["fontFamily"]],
+                                        fontFamily = FontRegistry.resolveFontFamily(currentCard.metadata["fontFamily"] ?: ""),
                                         onConfirmChoice = onConfirmChoice,
                                     )
                                 }

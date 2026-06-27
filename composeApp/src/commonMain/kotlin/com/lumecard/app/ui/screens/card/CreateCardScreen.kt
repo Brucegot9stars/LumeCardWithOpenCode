@@ -19,6 +19,8 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.lumecard.app.font.FontRegistry
+import com.lumecard.app.font.FontSpec
 import com.lumecard.app.ui.components.RichTextCardEditor
 import com.lumecard.app.ui.components.MarkdownText
 import com.lumecard.shared.model.Card
@@ -412,12 +414,10 @@ private fun BasicCardFields(
         }
     }
     if (onFontFamilyChange != null) {
-        val fontFamilyOptions = listOf(
-            "" to "Default", "serif" to "Serif", "sans-serif" to "Sans Serif",
-            "monospace" to "Monospace", "cursive" to "Cursive",
-        )
+        val fontOptions = remember { FontRegistry.fonts }
         var expanded by remember { mutableStateOf(false) }
-        val selectedLabel = fontFamilyOptions.find { it.first == fontFamily }?.second ?: "Default"
+        val selectedFont = fontOptions.find { it.id == fontFamily }
+        val selectedLabel = selectedFont?.displayName ?: fontOptions.firstOrNull()?.displayName ?: "Default"
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -429,10 +429,17 @@ private fun BasicCardFields(
                     Text(selectedLabel)
                 }
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                    fontFamilyOptions.forEach { (value, label) ->
+                    fontOptions.forEach { spec ->
                         DropdownMenuItem(
-                            text = { Text(label) },
-                            onClick = { onFontFamilyChange(value); expanded = false },
+                            text = {
+                                val prefix = when (spec.source) {
+                                    com.lumecard.app.font.FontSource.SYSTEM -> ""
+                                    com.lumecard.app.font.FontSource.BUNDLED -> ""
+                                    com.lumecard.app.font.FontSource.USER_IMPORTED -> ""
+                                }
+                                Text("$prefix${spec.displayName}")
+                            },
+                            onClick = { onFontFamilyChange(spec.id); expanded = false },
                         )
                     }
                 }

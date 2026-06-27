@@ -25,6 +25,7 @@ import com.lumecard.app.ui.screens.settings.SettingsScreen
 import com.lumecard.app.ui.screens.settings.SettingsStateHolder
 import com.lumecard.app.ui.screens.stats.StatsScreen
 import com.lumecard.app.ui.screens.warehouse.WarehouseScreen
+import com.lumecard.app.font.FontInitializer
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.shared.repository.SettingsRepository
 import org.koin.compose.koinInject
@@ -41,6 +42,7 @@ var savedCrashLog: String? = null
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun App() {
+    FontInitializer.ensureInitialized()
     val settingsStateHolder: SettingsStateHolder = koinInject()
     val i18nManager: I18nManager = koinInject()
     val settingsRepository: SettingsRepository = koinInject()
