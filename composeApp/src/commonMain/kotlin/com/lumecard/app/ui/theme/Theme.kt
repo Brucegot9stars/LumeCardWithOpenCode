@@ -4,7 +4,9 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 
 private val LightColorScheme = lightColorScheme(
     primary = Color(0xFF1B5E20),
@@ -64,6 +66,29 @@ fun LumeCardTheme(
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    val defaultFont = remember {
+        com.lumecard.app.font.FontRegistry.resolveFontFamily(com.lumecard.app.font.FontRegistry.defaultFontId)
+    }
+    val defaultTypography = remember(defaultFont) {
+        val d = Typography()
+        Typography(
+            displayLarge = d.displayLarge.copy(fontFamily = defaultFont),
+            displayMedium = d.displayMedium.copy(fontFamily = defaultFont),
+            displaySmall = d.displaySmall.copy(fontFamily = defaultFont),
+            headlineLarge = d.headlineLarge.copy(fontFamily = defaultFont),
+            headlineMedium = d.headlineMedium.copy(fontFamily = defaultFont),
+            headlineSmall = d.headlineSmall.copy(fontFamily = defaultFont),
+            titleLarge = d.titleLarge.copy(fontFamily = defaultFont),
+            titleMedium = d.titleMedium.copy(fontFamily = defaultFont),
+            titleSmall = d.titleSmall.copy(fontFamily = defaultFont),
+            bodyLarge = d.bodyLarge.copy(fontFamily = defaultFont),
+            bodyMedium = d.bodyMedium.copy(fontFamily = defaultFont),
+            bodySmall = d.bodySmall.copy(fontFamily = defaultFont),
+            labelLarge = d.labelLarge.copy(fontFamily = defaultFont),
+            labelMedium = d.labelMedium.copy(fontFamily = defaultFont),
+            labelSmall = d.labelSmall.copy(fontFamily = defaultFont),
+        )
+    }
 
     CompositionLocalProvider(
         LocalSpacing provides LumeCardSpacing(),
@@ -75,7 +100,7 @@ fun LumeCardTheme(
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = Typography(),
+            typography = defaultTypography,
             content = content,
         )
     }
