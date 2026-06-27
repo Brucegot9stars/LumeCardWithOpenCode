@@ -214,36 +214,6 @@ private fun clozeAutoBack(front: String): String {
 }
 
 @Composable
-private fun MarkdownToolbar(
-    front: String,
-    onFrontChange: (String) -> Unit,
-    back: String,
-    onBackChange: (String) -> Unit,
-) {
-    val mdChars = listOf(
-        "B" to "****", "I" to "**", "`" to "``", "~~" to "~~~~", "#" to "# ", "-" to "- "
-    )
-    val strings = koinInject<I18nManager>().strings
-    Row(
-        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text("MD:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        mdChars.forEach { (label, wrap) ->
-            FilterChip(
-                selected = false,
-                onClick = {
-                    onFrontChange("$front$wrap")
-                    onBackChange("$back$wrap")
-                },
-                label = { Text(label, style = MaterialTheme.typography.labelSmall) },
-            )
-        }
-    }
-}
-
-@Composable
 private fun ClozeQuickInsertButtons(
     text: String,
     onInsert: (String) -> Unit,
@@ -315,13 +285,6 @@ private fun CardTypeInput(
             )
         }
         CardType.REVERSED, CardType.MARKDOWN, CardType.AI_GENERATED -> {
-            if (type != CardType.REVERSED) {
-                MarkdownToolbar(
-                    front = front, onFrontChange = onFrontChange,
-                    back = back, onBackChange = onBackChange,
-                )
-                Spacer(Modifier.height(8.dp))
-            }
             BasicCardFields(
                 front = front, onFrontChange = onFrontChange,
                 back = back, onBackChange = onBackChange,
