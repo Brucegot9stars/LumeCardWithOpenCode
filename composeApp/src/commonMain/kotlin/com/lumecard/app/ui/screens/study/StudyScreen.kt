@@ -129,6 +129,7 @@ class StudyScreen(
         var lastDragX by remember { mutableFloatStateOf(0f) }
         var velocity by remember { mutableFloatStateOf(0f) }
 
+        var editSaveCount by remember { mutableIntStateOf(0) }
         var showStudyModeDialog by remember { mutableStateOf(false) }
         var soundEnabled by remember { mutableStateOf(SoundSettings.enabled) }
         var hasChosenMode by remember { mutableStateOf(false) }
@@ -191,12 +192,20 @@ class StudyScreen(
         }
 
         LaunchedEffect(deckIds) {
-            viewModel.loadCards(deckIds, planIds, initialMode)
+            if (viewModel.cards.value.isEmpty()) {
+                viewModel.loadCards(deckIds, planIds, initialMode)
+            }
         }
 
         LaunchedEffect(currentCard) {
             swipeOffset.snapTo(0f)
             isAnimatingOut = false
+        }
+
+        LaunchedEffect(editSaveCount) {
+            if (editSaveCount > 0) {
+                viewModel.refreshCurrentCard()
+            }
         }
 
         if (showStudyModeDialog) {
@@ -267,14 +276,6 @@ class StudyScreen(
             val screenWidth = maxWidth.value
             val threshold = screenWidth * SWIPE_THRESHOLD_RATIO
 
-            var pendingRefresh by remember { mutableStateOf(0) }
-            LaunchedEffect(pendingRefresh) {
-                if (pendingRefresh > 0) {
-                    viewModel.refreshCurrentCard()
-                    pendingRefresh = 0
-                }
-            }
-
             Scaffold(
                 topBar = {
                     LumeCardTopBar(
@@ -285,8 +286,12 @@ class StudyScreen(
                                 if (currentCard != null) {
                                     IconButton(onClick = {
                                         try {
-                                            pendingRefresh = 1
-                                            navigator.push(CreateCardScreen(deckId = currentCard.deckId, deckName = deckName, editCard = currentCard))
+                                            navigator.push(CreateCardScreen(
+                                                deckId = currentCard.deckId,
+                                                deckName = deckName,
+                                                editCard = currentCard,
+                                                onCardSaved = { editSaveCount++ }
+                                            ))
                                         } catch (e: Exception) {
                                             println("[LumeCard ERROR] Study navigate edit: ${e.message}")
                                         }

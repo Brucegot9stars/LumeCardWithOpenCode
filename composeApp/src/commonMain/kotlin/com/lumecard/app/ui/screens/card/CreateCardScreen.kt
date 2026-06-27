@@ -35,7 +35,8 @@ import org.koin.compose.koinInject
 class CreateCardScreen(
     private val deckId: String,
     private val deckName: String,
-    private val editCard: Card? = null
+    private val editCard: Card? = null,
+    private val onCardSaved: (() -> Unit)? = null,
 ) : Screen {
     override val key: ScreenKey = "CreateCard_${editCard?.id ?: deckId}"
 
@@ -66,17 +67,22 @@ class CreateCardScreen(
                             onClick = {
                                 val saveFront = front
                                 val saveBack = back
+                                val saveTags = tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
                                 if (isEditing) {
                                     viewModel.updateCard(
                                         card = editCard,
                                         front = saveFront,
                                         back = saveBack,
                                         type = cardType,
-                                        tags = tags.split(",").map { it.trim() }.filter { it.isNotBlank() },
+                                        tags = saveTags,
                                         horizontalCenter = horizontalCenter,
                                         verticalCenter = verticalCenter,
                                         fontSize = fontSize,
                                         fontFamily = fontFamily,
+                                        onComplete = {
+                                            onCardSaved?.invoke()
+                                            navigator.pop()
+                                        }
                                     )
                                 } else {
                                     viewModel.createCard(
@@ -84,14 +90,14 @@ class CreateCardScreen(
                                         front = saveFront,
                                         back = saveBack,
                                         type = cardType,
-                                        tags = tags.split(",").map { it.trim() }.filter { it.isNotBlank() },
+                                        tags = saveTags,
                                         horizontalCenter = horizontalCenter,
                                         verticalCenter = verticalCenter,
                                         fontSize = fontSize,
                                         fontFamily = fontFamily,
+                                        onComplete = { navigator.pop() }
                                     )
                                 }
-                                navigator.pop()
                             },
                             enabled = front.isNotBlank() && back.isNotBlank()
                         ) {

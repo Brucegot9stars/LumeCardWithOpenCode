@@ -94,6 +94,7 @@ class CardViewModel(
         verticalCenter: Boolean = false,
         fontSize: Int = 16,
         fontFamily: String = "",
+        onComplete: (() -> Unit)? = null,
     ) {
         if (front.isBlank() || back.isBlank()) return
 
@@ -113,6 +114,7 @@ class CardViewModel(
                 }
             )
             cardRepository.insert(card)
+            onComplete?.invoke()
         }
     }
 
@@ -126,6 +128,7 @@ class CardViewModel(
         verticalCenter: Boolean = false,
         fontSize: Int = 16,
         fontFamily: String = "",
+        onComplete: (() -> Unit)? = null,
     ) {
         screenModelScope.launch {
             val metadata = card.metadata + mutableMapOf<String, String>().apply {
@@ -143,6 +146,7 @@ class CardViewModel(
                 updatedAt = Clock.System.now()
             )
             cardRepository.update(updated)
+            onComplete?.invoke()
         }
     }
 
