@@ -170,7 +170,7 @@ internal fun CardFace(
     val textAlign = if (horizontalCenter) TextAlign.Center else TextAlign.Start
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = align) {
         when (card.type) {
-            CardType.BASIC -> {
+            CardType.BASIC, CardType.REVERSED -> {
                 Text(
                     text = if (showBack) card.back else card.front,
                     modifier = Modifier.fillMaxWidth(),
@@ -181,13 +181,6 @@ internal fun CardFace(
             CardType.RICH_TEXT -> {
                 val html = if (showBack) card.back else card.front
                 RichTextCardFace(html = html)
-            }
-            CardType.REVERSED -> {
-                MarkdownText(
-                    markdown = if (showBack) card.back else card.front,
-                    modifier = Modifier.fillMaxWidth(),
-                    center = horizontalCenter,
-                )
             }
             CardType.MARKDOWN, CardType.AI_GENERATED -> {
                 MarkdownText(

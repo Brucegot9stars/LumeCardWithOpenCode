@@ -388,8 +388,8 @@ class StudyScreen(
                                         modifier = Modifier.fillMaxSize().padding(20.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        val nextHCenter = nextCard.type == CardType.BASIC && nextCard.metadata["hcenter"].toBoolean()
-                                        val nextVCenter = nextCard.type == CardType.BASIC && nextCard.metadata["vcenter"].toBoolean()
+                                        val nextHCenter = (nextCard.type == CardType.BASIC || nextCard.type == CardType.REVERSED) && nextCard.metadata["hcenter"].toBoolean()
+                                        val nextVCenter = (nextCard.type == CardType.BASIC || nextCard.type == CardType.REVERSED) && nextCard.metadata["vcenter"].toBoolean()
                                         val nextFontSize = nextCard.metadata["fontSize"]?.toIntOrNull() ?: 16
                                         CardContent(card = nextCard, isFlipped = false, displayMode = settingsState.answerDisplayMode, horizontalCenter = nextHCenter, verticalCenter = nextVCenter, fontSize = nextFontSize)
                                     }
@@ -472,7 +472,7 @@ class StudyScreen(
                                     }
                                 )
                             ) {
-                                        val isBasicCard = currentCard.type == CardType.BASIC
+                                        val isBasicCard = currentCard.type == CardType.BASIC || currentCard.type == CardType.REVERSED
                                 val hCenter = isBasicCard && currentCard.metadata["hcenter"].toBoolean()
                                 val vCenter = isBasicCard && currentCard.metadata["vcenter"].toBoolean()
                                 val fontSize = currentCard.metadata["fontSize"]?.toIntOrNull() ?: 16

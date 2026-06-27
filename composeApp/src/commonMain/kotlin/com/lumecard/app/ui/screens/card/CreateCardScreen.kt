@@ -399,7 +399,7 @@ private fun BasicCardFields(
 @Composable
 private fun CardPreviewContent(text: String, cardType: CardType, fontSize: Int = 16) {
     when (cardType) {
-        CardType.BASIC -> Text(text, modifier = Modifier.fillMaxWidth(), fontSize = fontSize.sp)
+        CardType.BASIC, CardType.REVERSED -> Text(text, modifier = Modifier.fillMaxWidth(), fontSize = fontSize.sp)
         else -> MarkdownText(markdown = text, modifier = Modifier.fillMaxWidth())
     }
 }
