@@ -362,37 +362,43 @@ private fun BasicCardFields(
         modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
         placeholder = { Text(backPlaceholder) }
     )
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(strings.cardHorizontalCenter, style = MaterialTheme.typography.bodyMedium)
-        Switch(checked = horizontalCenter, onCheckedChange = onHorizontalCenterChange)
+    if (onHorizontalCenterChange != null) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(strings.cardHorizontalCenter, style = MaterialTheme.typography.bodyMedium)
+            Switch(checked = horizontalCenter, onCheckedChange = onHorizontalCenterChange)
+        }
     }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(strings.cardVerticalCenter, style = MaterialTheme.typography.bodyMedium)
-        Switch(checked = verticalCenter, onCheckedChange = onVerticalCenterChange)
+    if (onVerticalCenterChange != null) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(strings.cardVerticalCenter, style = MaterialTheme.typography.bodyMedium)
+            Switch(checked = verticalCenter, onCheckedChange = onVerticalCenterChange)
+        }
     }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(strings.cardFontSize, style = MaterialTheme.typography.bodyMedium)
-        Spacer(Modifier.width(8.dp))
-        Slider(
-            value = fontSize.toFloat(),
-            onValueChange = { onFontSizeChange?.invoke(it.roundToInt()) },
-            valueRange = 12f..120f,
-            steps = 107,
-            modifier = Modifier.weight(1f),
-        )
-        Spacer(Modifier.width(8.dp))
-        Text("${fontSize}sp", style = MaterialTheme.typography.bodySmall)
+    if (onFontSizeChange != null) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(strings.cardFontSize, style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.width(8.dp))
+            Slider(
+                value = fontSize.toFloat(),
+                onValueChange = { onFontSizeChange?.invoke(it.roundToInt()) },
+                valueRange = 12f..120f,
+                steps = 107,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text("${fontSize}sp", style = MaterialTheme.typography.bodySmall)
+        }
     }
 }
 
