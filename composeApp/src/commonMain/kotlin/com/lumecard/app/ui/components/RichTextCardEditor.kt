@@ -29,7 +29,9 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.lumecard.app.ui.util.StyleSpan
 import com.lumecard.app.ui.util.parseHtmlColor
+import com.lumecard.app.ui.util.parseHtmlToSpans
 import com.lumecard.app.i18n.I18nManager
 import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
@@ -59,24 +61,6 @@ private val presetColorNames = listOf(
 )
 
 private val presetFontSizes = listOf(12, 14, 16, 18, 20, 24, 30, 36)
-
-private data class StyleSpan(
-    val start: Int,
-    var end: Int,
-    val fontWeight: FontWeight? = null,
-    val fontStyle: FontStyle? = null,
-    val textDecoration: TextDecoration? = null,
-    val color: Color? = null,
-    val fontSize: TextUnit? = null,
-) {
-    fun toSpanStyle(): SpanStyle = SpanStyle(
-        fontWeight = fontWeight,
-        fontStyle = fontStyle,
-        textDecoration = textDecoration,
-        color = color ?: Color.Unspecified,
-        fontSize = fontSize ?: TextUnit.Unspecified,
-    )
-}
 
 private fun buildAnnotated(text: String, spans: List<StyleSpan>) = buildAnnotatedString {
     append(text)
@@ -128,82 +112,9 @@ private fun rebuildSpans(oldText: String, newText: String, oldSpans: List<StyleS
     }
 }
 
-private fun parseStyleSpans(html: String): Pair<String, List<StyleSpan>> {
-    if (html.isBlank()) return "" to emptyList()
-    if (!html.contains("<") || !html.contains(">")) return html to emptyList()
-    val sb = StringBuilder()
-    val spans = mutableListOf<StyleSpan>()
-    var i = 0
-    val tagStack = mutableListOf<StyleSpan>()
-    var textPos = 0
-    var endsWithNewline = false
-
-    while (i < html.length) {
-        if (html[i] == '<') {
-            val close = html.indexOf('>', i)
-            if (close == -1) { sb.append(html.substring(i)); textPos += html.length - i; break }
-            val tag = html.substring(i + 1, close).lowercase()
-            i = close + 1
-            when {
-                tag.startsWith("/") -> {
-                    val name = tag.substring(1).split(" ", ">").first()
-                    if (name in listOf("b", "strong", "i", "em", "u", "span", "p", "div") && tagStack.isNotEmpty()) {
-                        val closed = tagStack.removeAt(tagStack.lastIndex)
-                        if (closed.start < textPos) spans.add(closed.copy(end = textPos))
-                    }
-                    if (name == "p" || name == "div") endsWithNewline = false
-                }
-                tag.startsWith("br") -> { sb.append('\n'); textPos++; endsWithNewline = true }
-                tag.startsWith("p") || tag.startsWith("div") -> {
-                    if (!endsWithNewline && textPos > 0) { sb.append('\n'); textPos++ }
-                    tagStack.add(StyleSpan(start = textPos, end = textPos))
-                }
-                tag.startsWith("b") || tag.startsWith("strong") ->
-                    tagStack.add(StyleSpan(start = textPos, end = textPos, fontWeight = FontWeight.Bold))
-                tag.startsWith("i") || tag.startsWith("em") ->
-                    tagStack.add(StyleSpan(start = textPos, end = textPos, fontStyle = FontStyle.Italic))
-                tag.startsWith("u") ->
-                    tagStack.add(StyleSpan(start = textPos, end = textPos, textDecoration = TextDecoration.Underline))
-                tag.startsWith("span") -> {
-                    val attr = parseInlineStyle(tag)
-                    tagStack.add(StyleSpan(start = textPos, end = textPos, fontWeight = attr.fontWeight, fontStyle = attr.fontStyle, textDecoration = attr.textDecoration, color = attr.color, fontSize = attr.fontSize))
-                }
-            }
-            // Open tags: set end to current textPos (will be updated when closed)
-            for (s in tagStack) { s.end = textPos }
-        } else {
-            val next = html.indexOf('<', i)
-            val chunk = if (next == -1) html.substring(i) else html.substring(i, next)
-            i = if (next == -1) html.length else next
-            val cleaned = chunk.replace('\n', ' ').replace('\r', ' ')
-            if (cleaned.isNotEmpty()) {
-                sb.append(cleaned)
-                val segStart = textPos; val segEnd = textPos + cleaned.length
-                textPos = segEnd
-                endsWithNewline = cleaned.endsWith('\n')
-            }
-        }
-    }
-
-    val text = sb.toString()
-    // Fix up style spans with proper end positions
-    for (s in tagStack) {
-        s.end = text.length
-    }
-    return text to spans.filter { it.start < it.end }
-}
-
-private data class StyleAttr(
-    val fontWeight: FontWeight? = null,
-    val fontStyle: FontStyle? = null,
-    val textDecoration: TextDecoration? = null,
-    val color: Color? = null,
-    val fontSize: TextUnit? = null,
-)
-
-private fun parseInlineStyle(tag: String): StyleAttr {
+private fun parseInlineStyle(tag: String): StyleSpan {
     val styleMatch = Regex("""style\s*=\s*"([^"]*)"""").find(tag)
-    val styles = styleMatch?.groupValues?.getOrNull(1) ?: return StyleAttr()
+    val styles = styleMatch?.groupValues?.getOrNull(1) ?: return StyleSpan(start = 0, end = 0)
     var fontWeight: FontWeight? = null
     var fontStyle: FontStyle? = null
     var textDecoration: TextDecoration? = null
@@ -227,7 +138,7 @@ private fun parseInlineStyle(tag: String): StyleAttr {
             }
         }
     }
-    return StyleAttr(fontWeight, fontStyle, textDecoration, color, fontSize)
+    return StyleSpan(start = 0, end = 0, fontWeight = fontWeight, fontStyle = fontStyle, color = color, fontSize = fontSize)
 }
 
 private fun spansToHtml(text: String, spans: List<StyleSpan>): String {
@@ -261,15 +172,20 @@ private fun styleToOpen(s: SpanStyle): String {
     if (s.fontWeight == FontWeight.Bold) t.add("<strong>")
     if (s.fontStyle == FontStyle.Italic) t.add("<em>")
     if (s.textDecoration == TextDecoration.Underline) t.add("<u>")
-    if (s.color != Color.Unspecified) t.add("<span style=\"color:${colorToHex(s.color)}\">")
-    else if (s.fontSize != TextUnit.Unspecified) t.add("<span style=\"font-size:${s.fontSize.value.toInt()}px\">")
+    val hasColor = s.color != Color.Unspecified
+    val hasFontSize = s.fontSize != TextUnit.Unspecified
+    if (hasColor || hasFontSize) {
+        val attrs = mutableListOf<String>()
+        if (hasColor) attrs.add("color:${colorToHex(s.color)}")
+        if (hasFontSize) attrs.add("font-size:${s.fontSize.value.toInt()}px")
+        t.add("<span style=\"${attrs.joinToString(";")}\">")
+    }
     return t.joinToString("")
 }
 
 private fun styleToClose(s: SpanStyle): String {
     val t = mutableListOf<String>()
-    if (s.color != Color.Unspecified) t.add("</span>")
-    else if (s.fontSize != TextUnit.Unspecified) t.add("</span>")
+    if (s.color != Color.Unspecified || s.fontSize != TextUnit.Unspecified) t.add("</span>")
     if (s.textDecoration == TextDecoration.Underline) t.add("</u>")
     if (s.fontStyle == FontStyle.Italic) t.add("</em>")
     if (s.fontWeight == FontWeight.Bold) t.add("</strong>")
@@ -318,7 +234,7 @@ private fun RichEditField(initialHtml: String, onHtmlChange: (String) -> Unit) {
     val scope = rememberCoroutineScope()
     val focusRequester = remember { FocusRequester() }
 
-    val initialState = remember(initialHtml) { parseStyleSpans(initialHtml) }
+    val initialState = remember(initialHtml) { parseHtmlToSpans(initialHtml) }
     var text by remember { mutableStateOf(initialState.first) }
     var spans by remember { mutableStateOf(initialState.second) }
     var selection by remember { mutableStateOf(TextRange.Zero) }
@@ -448,9 +364,6 @@ private fun RichEditField(initialHtml: String, onHtmlChange: (String) -> Unit) {
                 }
             }
 
-            Spacer(Modifier.weight(1f))
-            ToolbarButton(onClick = { }, selected = false, icon = { Text("\u21A9", fontSize = 16.sp) })
-            ToolbarButton(onClick = { }, selected = false, icon = { Text("\u21AA", fontSize = 16.sp) })
         }
 
         BasicTextField(
