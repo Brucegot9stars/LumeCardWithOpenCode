@@ -736,7 +736,9 @@ class SettingsScreen : Screen {
                                     updateState = UpdateState.Error(strings.updateDownloadFailed)
                                 }
                             } catch (e: Exception) {
-                                updateState = UpdateState.Error("更新失败：${e.message ?: "未知错误"}")
+                                println("[LumeCard] Update error: ${e::class.simpleName} ${e.message}")
+                                e.printStackTrace()
+                                updateState = UpdateState.Error("更新失败：${e::class.simpleName}: ${e.message ?: "未知错误"}")
                             }
                         }
                     },
