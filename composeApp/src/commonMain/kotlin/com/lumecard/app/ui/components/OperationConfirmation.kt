@@ -6,8 +6,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.lumecard.app.i18n.I18nManager
 import com.lumecard.shared.data.EntityOperationType
 import kotlin.time.Clock
+import org.koin.compose.koinInject
 
 class OperationConfirmationManager {
     private val snoozeUntil = mutableMapOf<EntityOperationType, Long>()
@@ -32,6 +34,7 @@ fun ConfirmOperationDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val strings = koinInject<I18nManager>().strings
     var skipFor60s by remember { mutableStateOf(false) }
 
     AlertDialog(
@@ -57,12 +60,12 @@ fun ConfirmOperationDialog(
                 if (skipFor60s) confirmationManager.snooze(operationType)
                 onConfirm()
             }) {
-                Text("确认")
+                Text(strings.actionConfirm)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(strings.actionCancel)
             }
         },
     )

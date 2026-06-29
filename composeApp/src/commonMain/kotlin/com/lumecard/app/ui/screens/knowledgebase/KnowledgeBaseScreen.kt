@@ -178,9 +178,26 @@ class KnowledgeBaseScreen : Screen {
                                             val srcId = draggedKbId
                                             val tgtId = dropTargetKbId
                                             if (tgtId != null && srcId != null && tgtId != srcId) {
-                                                pendingMergeSourceId = srcId
-                                                pendingMergeTargetId = tgtId
-                                                showMergeConfirm = true
+                                                if (confirmManager.isConfirmationNeeded(EntityOperationType.KB_MERGE)) {
+                                                    pendingMergeSourceId = srcId
+                                                    pendingMergeTargetId = tgtId
+                                                    showMergeConfirm = true
+                                                } else {
+                                                    scope.launch {
+                                                        val result = withContext(Dispatchers.IO) {
+                                                            mergeManager.mergeKnowledgeBases(srcId, tgtId)
+                                                        }
+                                                        result.fold(
+                                                            onSuccess = { r ->
+                                                                mergeResultMessage = strings.moveMergeResult(r.itemsMoved, r.conflictsResolved)
+                                                            },
+                                                            onFailure = { e ->
+                                                                mergeResultMessage = e.message
+                                                            },
+                                                        )
+                                                        viewModel.loadKnowledgeBases()
+                                                    }
+                                                }
                                             }
                                             draggedKbId = null
                                             dragOffset = Offset.Zero

@@ -259,9 +259,26 @@ class DeckListScreen(
                                             val srcId = draggingDeckId
                                             val tgtId = dropTargetDeckId
                                             if (tgtId != null && srcId != null && tgtId != srcId) {
-                                                pendingMergeSourceId = srcId
-                                                pendingMergeTargetId = tgtId
-                                                showMergeConfirm = true
+                                                if (confirmManager.isConfirmationNeeded(EntityOperationType.DECK_MERGE)) {
+                                                    pendingMergeSourceId = srcId
+                                                    pendingMergeTargetId = tgtId
+                                                    showMergeConfirm = true
+                                                } else {
+                                                    scope.launch {
+                                                        val result = withContext(Dispatchers.IO) {
+                                                            mergeManager.mergeDecks(srcId, tgtId)
+                                                        }
+                                                        result.fold(
+                                                            onSuccess = { r ->
+                                                                mergeResultMessage = strings.moveMergeResult(r.itemsMoved, r.conflictsResolved)
+                                                            },
+                                                            onFailure = { e ->
+                                                                mergeResultMessage = e.message
+                                                            },
+                                                        )
+                                                        viewModel.loadDecks(knowledgeBaseId)
+                                                    }
+                                                }
                                             }
                                             draggingDeckId = null
                                             dragOffset = Offset.Zero
