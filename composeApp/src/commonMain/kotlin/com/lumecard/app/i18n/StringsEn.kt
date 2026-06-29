@@ -351,7 +351,7 @@ object EnStrings : I18nStrings {
     override val aiBaseUrl = "Base URL"
     override val aiSystemPrompt = "System Prompt"
     override val aiTemperature = "Temperature"
-    override val aiMaxTokens = "Max Tokens"
+    override val aiContextWindow = "Context Window"
     override val aiTopP = "Top P"
     override val aiFrequencyPenalty = "Frequency Penalty"
     override val aiPresencePenalty = "Presence Penalty"

@@ -385,10 +385,17 @@ class AiConfigScreen : Screen {
                                     onClick = {
                                         isFetchingModels = true
                                         scope.launch {
-                                            val config = buildEditConfig()
-                                            val fetched = withContext(Dispatchers.IO) { fetcher.fetchModels(config) }
-                                            fetchedModels = fetcher.mergeWithRegistry(fetched, editProvider)
-                                            isFetchingModels = false
+                                            try {
+                                                val config = buildEditConfig()
+                                                val fetched = withContext(Dispatchers.IO) { fetcher.fetchModels(config) }
+                                                fetchedModels = fetcher.mergeWithRegistry(fetched, editProvider)
+                                            } catch (_: Exception) {
+                                                if (fetchedModels == null) {
+                                                    fetchedModels = knownModels.map { it.id }
+                                                }
+                                            } finally {
+                                                isFetchingModels = false
+                                            }
                                         }
                                     },
                                     enabled = editApiKey.isNotBlank() && editBaseUrl.isNotBlank() && !isFetchingModels,
@@ -546,11 +553,13 @@ class AiConfigScreen : Screen {
                                     modifier = Modifier.fillMaxWidth(),
                                 )
 
-                                // Max Tokens
+                                // Context Window
+                                val knownModel = providerSpec?.modelById(editModel)
                                 OutlinedTextField(
                                     value = editMaxTokens,
                                     onValueChange = { editMaxTokens = it },
-                                    label = { Text(strings.aiMaxTokens) },
+                                    label = { Text(strings.aiContextWindow) },
+                                    placeholder = { Text(knownModel?.let { "${it.contextWindow / 1000}K" } ?: "") },
                                     singleLine = true,
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                     modifier = Modifier.fillMaxWidth(),

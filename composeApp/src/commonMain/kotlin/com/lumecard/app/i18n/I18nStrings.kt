@@ -356,7 +356,7 @@ interface I18nStrings {
     val aiBaseUrl: String
     val aiSystemPrompt: String
     val aiTemperature: String
-    val aiMaxTokens: String
+    val aiContextWindow: String
     val aiTopP: String
     val aiFrequencyPenalty: String
     val aiPresencePenalty: String

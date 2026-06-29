@@ -351,7 +351,7 @@ object ZhCnStrings : I18nStrings {
     override val aiBaseUrl = "Base URL"
     override val aiSystemPrompt = "System Prompt"
     override val aiTemperature = "Temperature"
-    override val aiMaxTokens = "Max Tokens"
+    override val aiContextWindow = "上下文窗口"
     override val aiTopP = "Top P"
     override val aiFrequencyPenalty = "Frequency Penalty"
     override val aiPresencePenalty = "Presence Penalty"
