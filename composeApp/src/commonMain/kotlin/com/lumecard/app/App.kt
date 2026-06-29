@@ -109,7 +109,7 @@ fun App() {
         )
     }
 
-    LumeCardTheme(darkTheme = settingsStateHolder.isDarkMode) {
+    LumeCardTheme(darkTheme = settingsStateHolder.isDarkMode, fontScale = settingsStateHolder.fontScale) {
             var currentTab by remember { mutableStateOf(BottomNavItem.Dashboard) }
 
             Navigator(DashboardScreen()) { navigator ->

@@ -6,6 +6,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import com.lumecard.shared.database.AndroidContextHolder
 import java.io.File
 import java.io.RandomAccessFile
 import java.nio.ByteBuffer
@@ -248,3 +249,26 @@ actual fun registerFontFile(filePath: String): Boolean {
         false
     }
 }
+
+actual fun getFontStorageDir(): String {
+    return "${AndroidContextHolder.context.filesDir.absolutePath}/fonts"
+}
+
+actual fun copyFontToStorage(sourcePath: String, fileName: String): Boolean {
+    return try {
+        val dir = File(getFontStorageDir())
+        if (!dir.exists()) dir.mkdirs()
+        val target = File(dir, fileName)
+        File(sourcePath).inputStream().use { input ->
+            target.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        }
+        true
+    } catch (e: Exception) {
+        Log.e("FontPlatform", "Failed to copy font to storage", e)
+        false
+    }
+}
+
+actual fun fontFileExists(filePath: String): Boolean = File(filePath).exists()

@@ -24,6 +24,8 @@ class SyncManager(
         private const val LEGACY_PATH = "lumecard_backup.json"
         private const val MEDIA_DIR = "$BACKUP_DIR/media"
         private const val MANIFEST_PATH = "$BACKUP_DIR/media_manifest.json"
+        private const val FONTS_DIR = "$BACKUP_DIR/fonts"
+        private const val FONT_MANIFEST_PATH = "$BACKUP_DIR/font_manifest.json"
 
         private const val HISTORY_DIR = "$BACKUP_DIR/history"
         private const val HISTORY_INDEX_FILENAME = "history_index.json"
@@ -175,6 +177,67 @@ class SyncManager(
             } else {
                 Result.failure(SyncException("Media not found: $relativePath"))
             }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun uploadFont(config: WebDavConfig, fileName: String, data: ByteArray): Result<Unit> {
+        return try {
+            ensureDir(config.url, config.username, config.password, FONTS_DIR)
+            val url = config.url.trimEnd('/') + "/" + FONTS_DIR + "/" + fileName
+            val response = client.put(url) {
+                basicAuth(config.username, config.password)
+                contentType(ContentType.Application.OctetStream)
+                setBody(data)
+            }
+            if (response.status.isSuccess()) Result.success(Unit)
+            else Result.failure(SyncException("Upload font failed: ${response.status}"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun downloadFont(config: WebDavConfig, fileName: String): Result<ByteArray> {
+        return try {
+            val url = config.url.trimEnd('/') + "/" + FONTS_DIR + "/" + fileName
+            val response = client.get(url) {
+                basicAuth(config.username, config.password)
+            }
+            if (response.status == HttpStatusCode.OK) {
+                Result.success(response.bodyAsChannel().readRemaining().readBytes())
+            } else {
+                Result.failure(SyncException("Font not found: $fileName"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun uploadFontManifest(config: WebDavConfig, manifestJson: String): Result<Unit> {
+        return try {
+            ensureDir(config.url, config.username, config.password, BACKUP_DIR)
+            val url = config.url.trimEnd('/') + "/" + FONT_MANIFEST_PATH
+            val response = client.put(url) {
+                basicAuth(config.username, config.password)
+                contentType(ContentType.Application.Json)
+                setBody(manifestJson)
+            }
+            if (response.status.isSuccess()) Result.success(Unit)
+            else Result.failure(SyncException("Upload font manifest failed: ${response.status}"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun downloadFontManifest(config: WebDavConfig): Result<String> {
+        return try {
+            val url = config.url.trimEnd('/') + "/" + FONT_MANIFEST_PATH
+            val response = client.get(url) {
+                basicAuth(config.username, config.password)
+            }
+            if (response.status == HttpStatusCode.OK) Result.success(response.bodyAsText())
+            else Result.failure(SyncException("No font manifest found"))
         } catch (e: Exception) {
             Result.failure(e)
         }

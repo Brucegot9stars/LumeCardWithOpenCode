@@ -50,6 +50,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlin.time.Clock
 import org.koin.compose.koinInject
 
@@ -113,7 +115,24 @@ class WebDavConfigScreen : Screen {
             }
         }
 
-        LaunchedEffect(Unit) { reloadConfigs() }
+        fun loadAutoSyncSettings() {
+            scope.launch {
+                autoSyncEnabled = settingsRepository.getBoolean("autoSyncEnabled", false)
+                autoSyncInterval = settingsRepository.getInt("autoSyncInterval", 30)
+            }
+        }
+
+        fun saveAutoSyncSettings() {
+            scope.launch {
+                settingsRepository.set("autoSyncEnabled", autoSyncEnabled.toString())
+                settingsRepository.set("autoSyncInterval", autoSyncInterval.toString())
+            }
+        }
+
+        LaunchedEffect(Unit) {
+            reloadConfigs()
+            loadAutoSyncSettings()
+        }
 
         Scaffold(
             topBar = {
@@ -523,9 +542,16 @@ class WebDavConfigScreen : Screen {
                                 )
                                 Switch(
                                     checked = autoSyncEnabled,
-                                    onCheckedChange = { autoSyncEnabled = it },
+                                    onCheckedChange = {
+                                        autoSyncEnabled = it
+                                        saveAutoSyncSettings()
+                                    },
                                 )
                             }
+                            // TODO: 实现定时自动同步调度逻辑
+                            //   - 用 LaunchedEffect + delay(autoSyncInterval * 60_000) 循环调用 syncIncrementalData
+                            //   - 在 autoSyncEnabled / autoSyncInterval 变化时重启协程
+                            //   - 需要持有 config / repositories 等依赖
                             if (autoSyncEnabled) {
                                 HorizontalDivider(modifier = Modifier.padding(horizontal = spacing.md))
                                 Row(
@@ -563,6 +589,7 @@ class WebDavConfigScreen : Screen {
                                                     onClick = {
                                                         autoSyncInterval = interval
                                                         showIntervalDropdown = false
+                                                        saveAutoSyncSettings()
                                                     },
                                                 )
                                             }
@@ -604,15 +631,16 @@ class WebDavConfigScreen : Screen {
                                 syncStatus = strings.settingsSyncing
                                 try {
                                     val config = defaultConfig ?: return@launch
+                                    val deckCount: Int
                                     withContext(Dispatchers.IO) {
-                                        syncIncrementalData(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager)
+                                        deckCount = syncIncrementalData(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager)
                                         val settings = settingsRepository.getAll()
                                         val configJson = exportManager.exportConfig(settings)
                                         syncManager.uploadConfig(config, configJson).getOrThrow()
                                         webDavConfigManager.updateLastSync(config.id)
                                     }
-                                    syncStatus = strings.settingsSyncSuccess(0)
-                                    snackbarHostState.showSnackbar(strings.settingsSyncSuccess(0))
+                                    syncStatus = strings.settingsSyncSuccess(deckCount)
+                                    snackbarHostState.showSnackbar(strings.settingsSyncSuccess(deckCount))
                                     reloadConfigs()
                                 } catch (e: Exception) {
                                     syncStatus = strings.settingsSyncError(e.message ?: strings.errorUnknown)
@@ -643,12 +671,13 @@ class WebDavConfigScreen : Screen {
                                     syncStatus = strings.settingsSyncing
                                     try {
                                         val config = defaultConfig ?: return@launch
+                                        val deckCount: Int
                                         withContext(Dispatchers.IO) {
-                                            syncIncrementalData(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager)
+                                            deckCount = syncIncrementalData(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager)
                                             webDavConfigManager.updateLastSync(config.id)
                                         }
-                                        syncStatus = strings.settingsSyncSuccess(0)
-                                        snackbarHostState.showSnackbar(strings.settingsSyncSuccess(0))
+                                        syncStatus = strings.settingsSyncSuccess(deckCount)
+                                        snackbarHostState.showSnackbar(strings.settingsSyncSuccess(deckCount))
                                     } catch (e: Exception) {
                                         syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
                                         snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
@@ -676,8 +705,8 @@ class WebDavConfigScreen : Screen {
                                             syncManager.uploadConfig(config, configJson).getOrThrow()
                                             webDavConfigManager.updateLastSync(config.id)
                                         }
-                                        syncStatus = strings.settingsSyncSuccess(0)
-                                        snackbarHostState.showSnackbar(strings.settingsSyncSuccess(0))
+                                        syncStatus = strings.settingsSyncConfigSuccess
+                                        snackbarHostState.showSnackbar(strings.settingsSyncConfigSuccess)
                                     } catch (e: Exception) {
                                         syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
                                         snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
@@ -816,14 +845,15 @@ class WebDavConfigScreen : Screen {
                                                             }
                                                             for (plan in remote.learningPlans) {
                                                                 planRepository.insert(plan.toLearningPlan())
-                                                            }
-                                                        }
                                                     }
-                                                    webDavConfigManager.updateLastSync(config.id)
-                                                    restoredDecks
                                                 }
-                                                syncStatus = strings.settingsSyncSuccess(result)
-                                                snackbarHostState.showSnackbar(strings.settingsSyncSuccess(result))
+                                            }
+                                            restoreSettingsAndFonts(config, syncManager, settingsRepository)
+                                            webDavConfigManager.updateLastSync(config.id)
+                                            restoredDecks
+                                        }
+                                        syncStatus = strings.settingsSyncSuccess(result)
+                                        snackbarHostState.showSnackbar(strings.settingsSyncSuccess(result))
                                                 reloadConfigs()
                                             } catch (e: Exception) {
                                                 syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
@@ -902,6 +932,7 @@ class WebDavConfigScreen : Screen {
                                             }
                                         }
                                     }
+                                    restoreSettingsAndFonts(config, syncManager, settingsRepository)
                                     webDavConfigManager.updateLastSync(config.id)
                                     restoredDecks
                                 }
@@ -925,6 +956,8 @@ class WebDavConfigScreen : Screen {
     }
 }
 
+private val fontManifestJson = Json { ignoreUnknownKeys = true }
+
 private suspend fun syncIncrementalData(
     config: WebDavConfig,
     kbRepository: KnowledgeBaseRepository,
@@ -934,8 +967,8 @@ private suspend fun syncIncrementalData(
     planRepository: LearningPlanRepository,
     exportManager: ExportManager,
     syncManager: SyncManager,
-    mediaManager: MediaManager
-) {
+    mediaManager: MediaManager,
+): Int {
     val now = Clock.System.now()
 
     syncManager.archiveCurrentSnapshot(config)
@@ -985,4 +1018,90 @@ private suspend fun syncIncrementalData(
             } catch (_: Exception) { }
         }
     }
+
+    // Font sync: sync user-imported font files across devices
+    try {
+        val fontDir = com.lumecard.app.font.getFontStorageDir()
+        val fontDirFile = java.io.File(fontDir)
+        val localFontFiles = fontDirFile.listFiles()?.filter { it.isFile }.orEmpty()
+
+        val remoteListResult = syncManager.downloadFontManifest(config)
+        val remoteFontNames = if (remoteListResult.isSuccess) {
+            try {
+                fontManifestJson.decodeFromString<List<String>>(remoteListResult.getOrThrow())
+            } catch (_: Exception) { emptyList() }
+        } else emptyList()
+
+        val localFontNames = localFontFiles.map { it.name }.toSet()
+
+        for (file in localFontFiles) {
+            if (file.name !in remoteFontNames) {
+                try {
+                    syncManager.uploadFont(config, file.name, file.readBytes())
+                } catch (_: Exception) { }
+            }
+        }
+
+        for (name in remoteFontNames) {
+            if (name !in localFontNames) {
+                try {
+                    val data = syncManager.downloadFont(config, name).getOrNull()
+                    if (data != null) {
+                        java.io.File(fontDirFile, name).writeBytes(data)
+                    }
+                } catch (_: Exception) { }
+            }
+        }
+
+        val currentNames = fontDirFile.listFiles()?.map { it.name }.orEmpty()
+        syncManager.uploadFontManifest(config, fontManifestJson.encodeToString(currentNames))
+    } catch (_: Exception) { }
+
+    return allDecks.size
+}
+
+private suspend fun restoreSettingsAndFonts(
+    config: WebDavConfig,
+    syncManager: SyncManager,
+    settingsRepository: SettingsRepository,
+) {
+    try {
+        val configResult = syncManager.downloadConfig(config)
+        if (configResult.isSuccess) {
+            val remoteSettings = try {
+                fontManifestJson.decodeFromString<Map<String, String>>(configResult.getOrThrow())
+            } catch (_: Exception) { null }
+            if (remoteSettings != null) {
+                for ((key, value) in remoteSettings) {
+                    settingsRepository.set(key, value)
+                }
+            }
+        }
+
+        val fontDir = com.lumecard.app.font.getFontStorageDir()
+        val fontDirFile = java.io.File(fontDir)
+        if (!fontDirFile.exists()) fontDirFile.mkdirs()
+
+        val remoteListResult = syncManager.downloadFontManifest(config)
+        val remoteFontNames = if (remoteListResult.isSuccess) {
+            try {
+                fontManifestJson.decodeFromString<List<String>>(remoteListResult.getOrThrow())
+            } catch (_: Exception) { emptyList() }
+        } else emptyList()
+
+        val localFontNames = fontDirFile.listFiles()?.map { it.name }.orEmpty().toSet()
+
+        for (name in remoteFontNames) {
+            if (name !in localFontNames) {
+                try {
+                    val data = syncManager.downloadFont(config, name).getOrNull()
+                    if (data != null) {
+                        java.io.File(fontDirFile, name).writeBytes(data)
+                    }
+                } catch (_: Exception) { }
+            }
+        }
+
+        com.lumecard.app.font.FontRegistry.loadUserFonts(settingsRepository)
+    } catch (_: Exception) { }
 }

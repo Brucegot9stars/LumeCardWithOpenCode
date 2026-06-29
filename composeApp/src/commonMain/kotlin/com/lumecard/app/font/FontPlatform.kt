@@ -11,3 +11,9 @@ expect fun resolveFontFamily(familyName: String): FontFamily
 expect fun readFontFamilyName(filePath: String): String?
 
 expect fun createFileFontFamily(filePath: String): FontFamily?
+
+expect fun getFontStorageDir(): String
+
+expect fun copyFontToStorage(sourcePath: String, fileName: String): Boolean
+
+expect fun fontFileExists(filePath: String): Boolean

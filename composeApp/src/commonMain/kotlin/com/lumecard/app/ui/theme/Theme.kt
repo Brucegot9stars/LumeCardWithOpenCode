@@ -63,29 +63,32 @@ private val DarkColorScheme = darkColorScheme(
 @Composable
 fun LumeCardTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    fontScale: Float = 1.0f,
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
     val fontId = com.lumecard.app.font.FontRegistry.defaultFontId
     val defaultFont = com.lumecard.app.font.FontRegistry.resolveFontFamily(fontId)
-    val defaultTypography = remember(fontId) {
+    val defaultTypography = remember(fontId, fontScale) {
         val d = Typography()
+        fun scale(s: androidx.compose.ui.unit.TextUnit): androidx.compose.ui.unit.TextUnit =
+            s * fontScale
         Typography(
-            displayLarge = d.displayLarge.copy(fontFamily = defaultFont),
-            displayMedium = d.displayMedium.copy(fontFamily = defaultFont),
-            displaySmall = d.displaySmall.copy(fontFamily = defaultFont),
-            headlineLarge = d.headlineLarge.copy(fontFamily = defaultFont),
-            headlineMedium = d.headlineMedium.copy(fontFamily = defaultFont),
-            headlineSmall = d.headlineSmall.copy(fontFamily = defaultFont),
-            titleLarge = d.titleLarge.copy(fontFamily = defaultFont),
-            titleMedium = d.titleMedium.copy(fontFamily = defaultFont),
-            titleSmall = d.titleSmall.copy(fontFamily = defaultFont),
-            bodyLarge = d.bodyLarge.copy(fontFamily = defaultFont),
-            bodyMedium = d.bodyMedium.copy(fontFamily = defaultFont),
-            bodySmall = d.bodySmall.copy(fontFamily = defaultFont),
-            labelLarge = d.labelLarge.copy(fontFamily = defaultFont),
-            labelMedium = d.labelMedium.copy(fontFamily = defaultFont),
-            labelSmall = d.labelSmall.copy(fontFamily = defaultFont),
+            displayLarge = d.displayLarge.copy(fontFamily = defaultFont, fontSize = scale(d.displayLarge.fontSize)),
+            displayMedium = d.displayMedium.copy(fontFamily = defaultFont, fontSize = scale(d.displayMedium.fontSize)),
+            displaySmall = d.displaySmall.copy(fontFamily = defaultFont, fontSize = scale(d.displaySmall.fontSize)),
+            headlineLarge = d.headlineLarge.copy(fontFamily = defaultFont, fontSize = scale(d.headlineLarge.fontSize)),
+            headlineMedium = d.headlineMedium.copy(fontFamily = defaultFont, fontSize = scale(d.headlineMedium.fontSize)),
+            headlineSmall = d.headlineSmall.copy(fontFamily = defaultFont, fontSize = scale(d.headlineSmall.fontSize)),
+            titleLarge = d.titleLarge.copy(fontFamily = defaultFont, fontSize = scale(d.titleLarge.fontSize)),
+            titleMedium = d.titleMedium.copy(fontFamily = defaultFont, fontSize = scale(d.titleMedium.fontSize)),
+            titleSmall = d.titleSmall.copy(fontFamily = defaultFont, fontSize = scale(d.titleSmall.fontSize)),
+            bodyLarge = d.bodyLarge.copy(fontFamily = defaultFont, fontSize = scale(d.bodyLarge.fontSize)),
+            bodyMedium = d.bodyMedium.copy(fontFamily = defaultFont, fontSize = scale(d.bodyMedium.fontSize)),
+            bodySmall = d.bodySmall.copy(fontFamily = defaultFont, fontSize = scale(d.bodySmall.fontSize)),
+            labelLarge = d.labelLarge.copy(fontFamily = defaultFont, fontSize = scale(d.labelLarge.fontSize)),
+            labelMedium = d.labelMedium.copy(fontFamily = defaultFont, fontSize = scale(d.labelMedium.fontSize)),
+            labelSmall = d.labelSmall.copy(fontFamily = defaultFont, fontSize = scale(d.labelSmall.fontSize)),
         )
     }
 

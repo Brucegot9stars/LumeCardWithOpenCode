@@ -420,7 +420,7 @@ private fun BasicCardFields(
         }
     }
     if (onFontFamilyChange != null) {
-        val fontOptions = remember { FontRegistry.fonts }
+        val fontOptions = FontRegistry.fonts
         var expanded by remember { mutableStateOf(false) }
         val selectedFont = fontOptions.find { it.id == fontFamily }
         val selectedLabel = selectedFont?.displayName ?: fontOptions.firstOrNull()?.displayName ?: "Default"
@@ -438,12 +438,18 @@ private fun BasicCardFields(
                     fontOptions.forEach { spec ->
                         DropdownMenuItem(
                             text = {
-                                val prefix = when (spec.source) {
-                                    com.lumecard.app.font.FontSource.SYSTEM -> ""
-                                    com.lumecard.app.font.FontSource.BUNDLED -> ""
-                                    com.lumecard.app.font.FontSource.USER_IMPORTED -> ""
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(spec.displayName)
+                                    if (spec.source == com.lumecard.app.font.FontSource.USER_IMPORTED) {
+                                        Spacer(Modifier.width(6.dp))
+                                        Icon(
+                                            Icons.Default.Download,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
                                 }
-                                Text("$prefix${spec.displayName}")
                             },
                             onClick = { onFontFamilyChange(spec.id); expanded = false },
                         )

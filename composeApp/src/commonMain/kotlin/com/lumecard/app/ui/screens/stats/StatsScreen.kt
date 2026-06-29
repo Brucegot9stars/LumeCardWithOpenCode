@@ -1,5 +1,6 @@
 package com.lumecard.app.ui.screens.stats
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -8,7 +9,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
@@ -175,64 +180,6 @@ class StatsScreen : Screen {
                 HorizontalDivider()
 
                 Text(
-                    strings.statsCardDistribution,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-
-                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors()) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    "${stats.newCardsCount}",
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Text(
-                                    strings.statsNewCards,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    "${stats.dueCardsCount}",
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    color = MaterialTheme.colorScheme.tertiary
-                                )
-                                Text(
-                                    strings.statsDueCards,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    "${stats.upcomingCardsCount}",
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    color = MaterialTheme.colorScheme.secondary
-                                )
-                                Text(
-                                    strings.statsUpcomingCards,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
-
-                HorizontalDivider()
-
-                Text(
                     strings.statsTimeStats,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary
@@ -288,10 +235,357 @@ class StatsScreen : Screen {
                     }
                 }
 
+                HorizontalDivider()
+
+                ForecastSection(stats, strings)
+                HorizontalDivider()
+
+                ReviewIntervalsSection(stats, strings)
+                HorizontalDivider()
+
+                RetentionSection(stats, strings)
+                HorizontalDivider()
+
+                CardCountsSection(stats, strings)
+
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
+}
+
+@Composable
+private fun ForecastSection(stats: AppStats, strings: com.lumecard.app.i18n.I18nStrings) {
+    Text(
+        strings.statsForecast,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.primary
+    )
+
+    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            if (stats.forecast.haveBacklog) {
+                StatRow(
+                    strings.statsForecastBacklog,
+                    strings.statsForecastBacklogValue(stats.forecast.backlogCount)
+                )
+            }
+
+            val bucketLabels = mapOf(
+                "today" to strings.statsForecastDueToday,
+                "1mo" to strings.statsForecastDue1Month,
+                "3mo" to strings.statsForecastDue3Months,
+                "6mo" to strings.statsForecastDue6Months,
+                "1yr" to strings.statsForecastDue1Year,
+                "all" to strings.statsForecastDueAllTime
+            )
+
+            if (stats.forecast.buckets.isNotEmpty()) {
+                val maxCount = stats.forecast.buckets.maxOf { it.count }.coerceAtLeast(1)
+                val barColor = MaterialTheme.colorScheme.primary
+
+                stats.forecast.buckets.forEach { bucket ->
+                    val label = bucketLabels[bucket.labelKey] ?: bucket.labelKey
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.widthIn(max = 80.dp)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(12.dp)
+                        ) {
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                val barWidth = (bucket.count.toFloat() / maxCount) * size.width
+                                drawRoundRect(
+                                    color = barColor.copy(alpha = 0.3f),
+                                    topLeft = Offset.Zero,
+                                    size = Size(size.width, size.height),
+                                    cornerRadius = CornerRadius(6f, 6f)
+                                )
+                                drawRoundRect(
+                                    color = barColor,
+                                    topLeft = Offset.Zero,
+                                    size = Size(barWidth, size.height),
+                                    cornerRadius = CornerRadius(6f, 6f)
+                                )
+                            }
+                        }
+                        Text(
+                            "${bucket.count}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            if (!stats.forecast.haveBacklog && stats.forecast.buckets.isEmpty()) {
+                Text(
+                    "${0}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReviewIntervalsSection(stats: AppStats, strings: com.lumecard.app.i18n.I18nStrings) {
+    Text(
+        strings.statsReviewIntervals,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.primary
+    )
+
+    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (stats.intervals.totalCardsWithInterval > 0) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            strings.statsReviewIntervalAvg,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            strings.statsReviewIntervalAvgValue(stats.intervals.averageInterval),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            strings.statsReviewIntervalMax,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            strings.statsReviewIntervalMaxValue(stats.intervals.maxInterval),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(4.dp))
+
+                val maxCount = stats.intervals.buckets.maxOfOrNull { it.count }?.coerceAtLeast(1) ?: 1
+                val barColor = MaterialTheme.colorScheme.secondary
+
+                stats.intervals.buckets.forEach { bucket ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            bucket.label,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.widthIn(max = 60.dp)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(14.dp)
+                        ) {
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                val barWidth = (bucket.count.toFloat() / maxCount) * size.width
+                                drawRoundRect(
+                                    color = barColor.copy(alpha = 0.3f),
+                                    topLeft = Offset.Zero,
+                                    size = Size(size.width, size.height),
+                                    cornerRadius = CornerRadius(7f, 7f)
+                                )
+                                drawRoundRect(
+                                    color = barColor,
+                                    topLeft = Offset.Zero,
+                                    size = Size(barWidth, size.height),
+                                    cornerRadius = CornerRadius(7f, 7f)
+                                )
+                            }
+                        }
+                        Text(
+                            "${bucket.count}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else {
+                Text(
+                    "${0}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RetentionSection(stats: AppStats, strings: com.lumecard.app.i18n.I18nStrings) {
+    Text(
+        strings.statsRetention,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.primary
+    )
+
+    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    "",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.width(70.dp)
+                )
+                Text(
+                    strings.statsRetentionYoung,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.width(60.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                Text(
+                    strings.statsRetentionMature,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.width(60.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                Text(
+                    strings.statsRetentionOverall,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.width(60.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
+
+            val periodLabelMap = mapOf(
+                "today" to strings.statsRetentionPeriodToday,
+                "yesterday" to strings.statsRetentionPeriodYesterday,
+                "week" to strings.statsRetentionPeriodWeek,
+                "month" to strings.statsRetentionPeriodMonth,
+                "year" to strings.statsRetentionPeriodYear,
+                "all_time" to strings.statsRetentionPeriodAllTime
+            )
+
+            stats.retention.periods.forEach { period ->
+                val label = periodLabelMap[period.label] ?: period.label
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        fmtPct(period.youngRate),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.width(60.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Text(
+                        fmtPct(period.matureRate),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.width(60.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Text(
+                        fmtPct(period.overallRate),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.width(60.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CardCountsSection(stats: AppStats, strings: com.lumecard.app.i18n.I18nStrings) {
+    Text(
+        strings.statsCardDistribution,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.primary
+    )
+
+    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                CardCountItem(stats.cardCounts.newCards, strings.statsCardCountsNew, MaterialTheme.colorScheme.primary)
+                CardCountItem(stats.cardCounts.learning, strings.statsCardCountsLearning, MaterialTheme.colorScheme.tertiary)
+                CardCountItem(stats.cardCounts.young, strings.statsCardCountsYoung, MaterialTheme.colorScheme.secondary)
+                CardCountItem(stats.cardCounts.mature, strings.statsCardCountsMature, MaterialTheme.colorScheme.error)
+            }
+        }
+    }
+}
+
+@Composable
+private fun CardCountItem(count: Int, label: String, color: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            "$count",
+            style = MaterialTheme.typography.titleLarge,
+            color = color
+        )
+        Text(
+            label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+private fun fmtPct(rate: Double): String {
+    return "${"%.0f".format(rate * 100)}%"
 }
 
 @Suppress("OverloadResolutionAmbiguity")
@@ -346,6 +640,3 @@ private fun StatRow(label: String, value: String) {
         )
     }
 }
-
-
-

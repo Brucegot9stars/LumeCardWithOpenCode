@@ -289,6 +289,7 @@ interface I18nStrings {
     val settingsSyncing: String
     fun settingsSyncSuccess(decksCount: Int): String
     fun settingsSyncError(msg: String): String
+    val settingsSyncConfigSuccess: String
     val settingsSyncAddConfig: String
     val settingsSyncConfigName: String
     val settingsSyncConfigNamePlaceholder: String
@@ -341,6 +342,7 @@ interface I18nStrings {
     val webdavProviderSyncthing: String
     val settingsLanguage: String
     val settingsLanguageDesc: String
+    val settingsFontScale: String
 
     val kbTitle: String
     val kbCreate: String
@@ -421,8 +423,34 @@ interface I18nStrings {
     val statsStreakDays: String
     val statsCardDistribution: String
     val statsNewCards: String
-    val statsDueCards: String
-    val statsUpcomingCards: String
+    val statsForecast: String
+    val statsForecastBacklog: String
+    fun statsForecastBacklogValue(count: Int): String
+    val statsForecastDueToday: String
+    val statsForecastDue1Month: String
+    val statsForecastDue3Months: String
+    val statsForecastDue6Months: String
+    val statsForecastDue1Year: String
+    val statsForecastDueAllTime: String
+    val statsReviewIntervals: String
+    val statsReviewIntervalAvg: String
+    fun statsReviewIntervalAvgValue(days: Double): String
+    val statsReviewIntervalMax: String
+    fun statsReviewIntervalMaxValue(days: Int): String
+    val statsRetention: String
+    val statsRetentionYoung: String
+    val statsRetentionMature: String
+    val statsRetentionOverall: String
+    val statsRetentionPeriodToday: String
+    val statsRetentionPeriodYesterday: String
+    val statsRetentionPeriodWeek: String
+    val statsRetentionPeriodMonth: String
+    val statsRetentionPeriodYear: String
+    val statsRetentionPeriodAllTime: String
+    val statsCardCountsNew: String
+    val statsCardCountsLearning: String
+    val statsCardCountsYoung: String
+    val statsCardCountsMature: String
 
     val algoFsrs: String
     val algoFsrsDesc: String

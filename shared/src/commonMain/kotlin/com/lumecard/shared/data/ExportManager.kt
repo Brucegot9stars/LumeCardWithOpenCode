@@ -294,12 +294,20 @@ class ExportManager {
         settings: Map<String, String>,
         deviceId: String? = null
     ): String {
+        val cleaned = settings.filterKeys { it !in DEPRECATED_SETTINGS_KEYS }
         val export = ConfigExport(
             exportDate = Clock.System.now().toString(),
             deviceId = deviceId,
-            settings = settings
+            settings = cleaned
         )
         return json.encodeToString(ConfigExport.serializer(), export)
+    }
+
+    companion object {
+        private val DEPRECATED_SETTINGS_KEYS = setOf(
+            "contentHorizontalCenter",
+            "contentVerticalCenter",
+        )
     }
 
     /** Full backup import. Also accepts share-format files (converts to DataExport). */

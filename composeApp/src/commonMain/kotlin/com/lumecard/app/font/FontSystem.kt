@@ -1,6 +1,7 @@
 package com.lumecard.app.font
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.ExperimentalTextApi
@@ -36,7 +37,7 @@ private const val USER_FONTS_SETTINGS_KEY = "user_fonts"
 
 object FontRegistry {
     var defaultFontId by mutableStateOf("")
-    private val _fonts = mutableListOf<FontSpec>()
+    private val _fonts = mutableStateListOf<FontSpec>()
     private val _userFontPaths = mutableSetOf<String>()
     private val _fontFamilyCache = mutableMapOf<String, FontFamily>()
 
@@ -88,6 +89,8 @@ object FontRegistry {
         _fontFamilyCache.clear()
     }
 
+    fun findById(id: String): FontSpec? = _fonts.find { it.id == id }
+
     fun findByFamily(family: String): FontSpec? = _fonts.find { it.family == family }
 
     fun saveUserFonts(repository: com.lumecard.shared.repository.SettingsRepository) {
@@ -104,7 +107,9 @@ object FontRegistry {
         try {
             val persisted = fontJson.decodeFromString<List<PersistedUserFont>>(raw)
             persisted.forEach { p ->
-                register(FontSpec(p.id, p.displayName, p.family, FontSource.USER_IMPORTED, filePath = p.filePath))
+                if (fontFileExists(p.filePath)) {
+                    register(FontSpec(p.id, p.displayName, p.family, FontSource.USER_IMPORTED, filePath = p.filePath))
+                }
             }
         } catch (_: Exception) { }
     }
@@ -112,8 +117,12 @@ object FontRegistry {
     fun importFont(filePath: String, displayName: String): FontSpec? {
         val actualFamily = readFontFamilyName(filePath) ?: displayName
         val id = "user_${(actualFamily).lowercase().replace(" ", "_")}"
-        if (!registerFontFile(filePath)) return null
-        val spec = FontSpec(id, displayName, actualFamily, FontSource.USER_IMPORTED, filePath = filePath)
+        val ext = filePath.substringAfterLast(".", "ttf")
+        val fileName = "${id}.$ext"
+        if (!copyFontToStorage(filePath, fileName)) return null
+        val storagePath = "${getFontStorageDir()}/$fileName"
+        if (!registerFontFile(storagePath)) return null
+        val spec = FontSpec(id, actualFamily, actualFamily, FontSource.USER_IMPORTED, filePath = storagePath)
         register(spec)
         return spec
     }

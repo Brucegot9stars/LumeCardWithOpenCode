@@ -2,6 +2,7 @@ package com.lumecard.app.platform
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -51,7 +52,7 @@ actual suspend fun pickSaveFile(suggestedName: String, mimeType: String): String
     }
 }
 
-actual suspend fun pickOpenFile(mimeType: String): String? {
+actual suspend fun pickOpenFile(mimeType: String, initialDirectory: String?): String? {
     return suspendCancellableCoroutine { cont ->
         val prev = FilePickerState.waitingContinuation
         if (prev != null) prev.resume(null)
@@ -66,6 +67,12 @@ actual suspend fun pickOpenFile(mimeType: String): String? {
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
                 type = if (mimeType == "*/*") "application/json" else mimeType
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && initialDirectory != null) {
+                    try {
+                        val uri = Uri.parse(initialDirectory)
+                        putExtra(android.provider.DocumentsContract.EXTRA_INITIAL_URI, uri)
+                    } catch (_: Exception) { }
+                }
             }
             launcher.launch(intent)
         } catch (e: Exception) {
@@ -111,4 +118,17 @@ actual fun writeFileContent(path: String, content: String): Boolean {
     } catch (e: Exception) {
         false
     }
+}
+
+actual fun fileParentDirectory(filePath: String): String? {
+    return try {
+        val uri = Uri.parse(filePath)
+        if (uri.scheme == "file") {
+            java.io.File(uri.path ?: return null).parentFile?.absolutePath
+        } else if (uri.scheme == "content") {
+            filePath.substringBeforeLast("/")
+        } else {
+            java.io.File(filePath).parentFile?.absolutePath
+        }
+    } catch (_: Exception) { null }
 }

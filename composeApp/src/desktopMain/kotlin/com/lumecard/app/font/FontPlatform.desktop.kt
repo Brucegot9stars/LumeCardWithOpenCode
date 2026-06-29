@@ -2,6 +2,9 @@ package com.lumecard.app.font
 
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.platform.FileFont
 import java.awt.GraphicsEnvironment
 import java.io.File
 
@@ -70,8 +73,32 @@ actual fun readFontFamilyName(filePath: String): String? {
     }
 }
 
-@OptIn(ExperimentalTextApi::class)
 actual fun createFileFontFamily(filePath: String): FontFamily? {
-    val name = readFontFamilyName(filePath) ?: return null
-    return FontFamily(name)
+    return try {
+        FontFamily(
+            FileFont(file = File(filePath), weight = FontWeight.Normal, style = FontStyle.Normal)
+        )
+    } catch (_: Exception) { null }
 }
+
+actual fun getFontStorageDir(): String {
+    val dir = "${System.getProperty("user.home")}/.lumecard/fonts"
+    File(dir).mkdirs()
+    return dir
+}
+
+actual fun copyFontToStorage(sourcePath: String, fileName: String): Boolean {
+    return try {
+        val dir = File(getFontStorageDir())
+        if (!dir.exists()) dir.mkdirs()
+        val target = File(dir, fileName)
+        java.nio.file.Files.copy(
+            File(sourcePath).toPath(),
+            target.toPath(),
+            java.nio.file.StandardCopyOption.REPLACE_EXISTING
+        )
+        true
+    } catch (_: Exception) { false }
+}
+
+actual fun fontFileExists(filePath: String): Boolean = File(filePath).exists()
