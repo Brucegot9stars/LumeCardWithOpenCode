@@ -83,7 +83,7 @@ private data class OpenAiError(val message: String, val type: String? = null, va
 @Serializable
 private data class OpenAiErrorBody(val error: OpenAiError)
 
-class OpenAiChatProtocol : AiProtocol {
+open class OpenAiChatProtocol : AiProtocol {
     override val id: String = "openai_chat"
     override val displayName: String = "OpenAI Chat Completions"
 
@@ -511,6 +511,18 @@ class GoogleGenAiProtocol : AiProtocol {
     }
 }
 
+// ─── OpenAI Compatible ──────────────────────────────────────────────
+
+class OpenAiCompatibleProtocol : OpenAiChatProtocol() {
+    override val id: String = "openai_compatible"
+    override val displayName: String = "OpenAI Compatible"
+
+    override fun headers(config: AiConfig): Map<String, String> = mapOf(
+        "Authorization" to "Bearer ${config.apiKey}",
+        "Content-Type" to "application/json",
+    )
+}
+
 // ─── Protocol Registry ─────────────────────────────────────────────────
 
 object AiProtocols {
@@ -519,6 +531,7 @@ object AiProtocols {
         OpenAiResponsesProtocol(),
         AnthropicMessagesProtocol(),
         GoogleGenAiProtocol(),
+        OpenAiCompatibleProtocol(),
     ).associateBy { it.id }
 
     val all: List<AiProtocol> get() = registry.values.toList()

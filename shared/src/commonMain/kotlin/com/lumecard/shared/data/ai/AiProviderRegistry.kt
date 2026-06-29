@@ -33,8 +33,8 @@ object AiProviderRegistry {
                 id = "mimo",
                 displayName = "小米 MiMo",
                 defaultBaseUrl = "https://api.xiaomimimo.com/v1",
-                supportedProtocols = listOf("openai_chat", "openai_responses", "anthropic_messages"),
-                defaultProtocol = "openai_chat",
+                supportedProtocols = listOf("openai_compatible", "openai_responses", "anthropic_messages"),
+                defaultProtocol = "openai_compatible",
             )
         )
         register(
@@ -51,8 +51,8 @@ object AiProviderRegistry {
                 id = "deepseek",
                 displayName = "DeepSeek",
                 defaultBaseUrl = "https://api.deepseek.com",
-                supportedProtocols = listOf("openai_chat"),
-                defaultProtocol = "openai_chat",
+                supportedProtocols = listOf("openai_compatible"),
+                defaultProtocol = "openai_compatible",
             )
         )
         register(
@@ -69,7 +69,7 @@ object AiProviderRegistry {
                 id = "gemini",
                 displayName = "Gemini",
                 defaultBaseUrl = "https://generativelanguage.googleapis.com/v1beta",
-                supportedProtocols = listOf("google_genai", "openai_chat"),
+                supportedProtocols = listOf("google_genai", "openai_compatible"),
                 defaultProtocol = "google_genai",
             )
         )
@@ -78,8 +78,8 @@ object AiProviderRegistry {
                 id = "openrouter",
                 displayName = "OpenRouter",
                 defaultBaseUrl = "https://openrouter.ai/api/v1",
-                supportedProtocols = listOf("openai_chat"),
-                defaultProtocol = "openai_chat",
+                supportedProtocols = listOf("openai_compatible"),
+                defaultProtocol = "openai_compatible",
             )
         )
         register(
@@ -87,8 +87,8 @@ object AiProviderRegistry {
                 id = "azure_openai",
                 displayName = "Azure OpenAI",
                 defaultBaseUrl = "https://{resource}.openai.azure.com",
-                supportedProtocols = listOf("openai_chat"),
-                defaultProtocol = "openai_chat",
+                supportedProtocols = listOf("openai_compatible"),
+                defaultProtocol = "openai_compatible",
             )
         )
         register(
@@ -96,8 +96,8 @@ object AiProviderRegistry {
                 id = "custom",
                 displayName = "Custom",
                 defaultBaseUrl = "",
-                supportedProtocols = listOf("openai_chat", "openai_responses", "anthropic_messages", "google_genai"),
-                defaultProtocol = "openai_chat",
+                supportedProtocols = listOf("openai_compatible", "openai_responses", "anthropic_messages", "google_genai"),
+                defaultProtocol = "openai_compatible",
             )
         )
     }
