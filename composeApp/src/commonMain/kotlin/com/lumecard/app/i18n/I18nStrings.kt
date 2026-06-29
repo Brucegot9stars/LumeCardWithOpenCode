@@ -351,6 +351,7 @@ interface I18nStrings {
     val aiProviderCustom: String
     val aiProtocol: String
     val aiModel: String
+    val aiFetchModels: String
     val aiApiKey: String
     val aiBaseUrl: String
     val aiSystemPrompt: String

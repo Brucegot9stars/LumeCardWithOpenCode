@@ -346,6 +346,7 @@ object EnStrings : I18nStrings {
     override val aiProviderCustom = "Custom"
     override val aiProtocol = "API Protocol"
     override val aiModel = "Model"
+    override val aiFetchModels = "Fetch Models"
     override val aiApiKey = "API Key"
     override val aiBaseUrl = "Base URL"
     override val aiSystemPrompt = "System Prompt"

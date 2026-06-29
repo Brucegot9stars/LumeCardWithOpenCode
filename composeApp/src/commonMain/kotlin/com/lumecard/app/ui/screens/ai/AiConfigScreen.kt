@@ -347,87 +347,92 @@ class AiConfigScreen : Screen {
                             val knownModels = providerSpec?.models ?: emptyList()
                             val modelList = fetchedModels ?: knownModels.map { it.id }
 
-                            OutlinedTextField(
-                                value = editModel,
-                                onValueChange = { editModel = it },
-                                label = { Text(strings.aiModel) },
-                                singleLine = true,
-                                trailingIcon = {
-                                    IconButton(onClick = {
-                                        if (fetchedModels == null) {
-                                            isFetchingModels = true
-                                            scope.launch {
-                                                val config = AiConfig(
-                                                    id = editConfig?.id ?: "",
-                                                    name = editName,
-                                                    provider = editProvider,
-                                                    protocol = editProtocol,
-                                                    baseUrl = editBaseUrl,
-                                                    apiKey = editApiKey,
-                                                    model = editModel,
-                                                    systemPrompt = editSystemPrompt,
-                                                    temperature = editTemperature.toFloatOrNull() ?: 0.7f,
-                                                    maxTokens = editMaxTokens.toIntOrNull() ?: 2048,
-                                                    topP = editTopP.toFloatOrNull() ?: 1.0f,
-                                                    frequencyPenalty = editFrequencyPenalty.toFloatOrNull() ?: 0.0f,
-                                                    presencePenalty = editPresencePenalty.toFloatOrNull() ?: 0.0f,
-                                                    fallbackConfigId = editFallbackConfigId,
-                                                )
-                                                val fetched = withContext(Dispatchers.IO) { fetcher.fetchModels(config) }
-                                                fetchedModels = fetcher.mergeWithRegistry(fetched, editProvider)
-                                                isFetchingModels = false
-                                            }
-                                        }
-                                        showModelMenu = true
-                                    }) {
-                                        Icon(Icons.Default.ArrowDropDown, contentDescription = strings.aiModel)
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth(),
+                            fun buildEditConfig(): AiConfig = AiConfig(
+                                id = editConfig?.id ?: "",
+                                name = editName,
+                                provider = editProvider,
+                                protocol = editProtocol,
+                                baseUrl = editBaseUrl,
+                                apiKey = editApiKey,
+                                model = editModel,
+                                systemPrompt = editSystemPrompt,
+                                temperature = editTemperature.toFloatOrNull() ?: 0.7f,
+                                maxTokens = editMaxTokens.toIntOrNull() ?: 2048,
+                                topP = editTopP.toFloatOrNull() ?: 1.0f,
+                                frequencyPenalty = editFrequencyPenalty.toFloatOrNull() ?: 0.0f,
+                                presencePenalty = editPresencePenalty.toFloatOrNull() ?: 0.0f,
+                                fallbackConfigId = editFallbackConfigId,
                             )
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                OutlinedTextField(
+                                    value = editModel,
+                                    onValueChange = { editModel = it },
+                                    label = { Text(strings.aiModel) },
+                                    singleLine = true,
+                                    trailingIcon = {
+                                        IconButton(onClick = { showModelMenu = true }) {
+                                            Icon(Icons.Default.ArrowDropDown, contentDescription = strings.aiModel)
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Spacer(Modifier.width(spacing.sm))
+                                OutlinedButton(
+                                    onClick = {
+                                        isFetchingModels = true
+                                        scope.launch {
+                                            val config = buildEditConfig()
+                                            val fetched = withContext(Dispatchers.IO) { fetcher.fetchModels(config) }
+                                            fetchedModels = fetcher.mergeWithRegistry(fetched, editProvider)
+                                            isFetchingModels = false
+                                        }
+                                    },
+                                    enabled = editApiKey.isNotBlank() && editBaseUrl.isNotBlank() && !isFetchingModels,
+                                    interactionSource = null,
+                                ) {
+                                    if (isFetchingModels) {
+                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                    } else {
+                                        Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    }
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(strings.aiFetchModels, style = MaterialTheme.typography.bodySmall)
+                                }
+                            }
                             DropdownMenu(
                                 expanded = showModelMenu,
                                 onDismissRequest = { showModelMenu = false },
                             ) {
-                                if (isFetchingModels) {
+                                modelList.forEach { modelId ->
+                                    val modelSpec = knownModels.find { it.id == modelId }
                                     DropdownMenuItem(
                                         text = {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                                                Spacer(Modifier.width(8.dp))
-                                                Text("Fetching models...")
+                                            Column {
+                                                Text(modelSpec?.name ?: modelId, style = MaterialTheme.typography.bodyMedium)
+                                                if (modelSpec != null) {
+                                                    Text(
+                                                        "${modelSpec.contextWindow / 1000}K context",
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    )
+                                                }
                                             }
                                         },
-                                        onClick = {},
+                                        onClick = {
+                                            editModel = modelId
+                                            showModelMenu = false
+                                        },
                                     )
-                                } else {
-                                    modelList.forEach { modelId ->
-                                        val modelSpec = knownModels.find { it.id == modelId }
-                                        DropdownMenuItem(
-                                            text = {
-                                                Column {
-                                                    Text(modelSpec?.name ?: modelId, style = MaterialTheme.typography.bodyMedium)
-                                                    if (modelSpec != null) {
-                                                        Text(
-                                                            "${modelSpec.contextWindow / 1000}K context",
-                                                            style = MaterialTheme.typography.bodySmall,
-                                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                        )
-                                                    }
-                                                }
-                                            },
-                                            onClick = {
-                                                editModel = modelId
-                                                showModelMenu = false
-                                            },
-                                        )
-                                    }
-                                    if (modelList.isEmpty()) {
-                                        DropdownMenuItem(
-                                            text = { Text("No models available — type a model name manually") },
-                                            onClick = { showModelMenu = false },
-                                        )
-                                    }
+                                }
+                                if (modelList.isEmpty()) {
+                                    DropdownMenuItem(
+                                        text = { Text("No models available — type a model name manually") },
+                                        onClick = { showModelMenu = false },
+                                    )
                                 }
                             }
 

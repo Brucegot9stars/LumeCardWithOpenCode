@@ -346,6 +346,7 @@ object JaStrings : I18nStrings {
     override val aiProviderCustom = "カスタム"
     override val aiProtocol = "API プロトコル"
     override val aiModel = "モデル"
+    override val aiFetchModels = "モデルを取得"
     override val aiApiKey = "API Key"
     override val aiBaseUrl = "Base URL"
     override val aiSystemPrompt = "System Prompt"

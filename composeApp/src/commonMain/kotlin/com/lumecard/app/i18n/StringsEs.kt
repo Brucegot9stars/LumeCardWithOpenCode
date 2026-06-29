@@ -346,6 +346,7 @@ object EsStrings : I18nStrings {
     override val aiProviderCustom = "Personalizado"
     override val aiProtocol = "Protocolo API"
     override val aiModel = "Modelo"
+    override val aiFetchModels = "Obtener modelos"
     override val aiApiKey = "API Key"
     override val aiBaseUrl = "Base URL"
     override val aiSystemPrompt = "System Prompt"
