@@ -2,8 +2,14 @@ package com.lumecard.app.font
 
 import android.os.Build
 import android.util.Log
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import java.io.File
+import java.io.RandomAccessFile
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.util.Locale
 
 actual fun resolveFontFamily(familyName: String): FontFamily = when {
@@ -146,6 +152,89 @@ private fun tryDetectCustomFonts(result: MutableList<FontSpec>, seen: MutableSet
             }
         }
     } catch (_: Exception) { }
+}
+
+actual fun readFontFamilyName(filePath: String): String? {
+    return try {
+        val file = java.io.File(filePath)
+        if (!file.exists()) return null
+        val bytes = file.readBytes()
+        if (bytes.size < 12) return null
+        val buf = ByteBuffer.wrap(bytes).order(ByteOrder.BIG_ENDIAN)
+        val numTables = buf.getShort(4).toInt() and 0xFFFF
+
+        var nameOffset = -1
+        var nameLen = -1
+        for (i in 0 until numTables) {
+            val entryPos = 12 + i * 16
+            if (entryPos + 16 > bytes.size) break
+            val tag = String(bytes, entryPos, 4, Charsets.US_ASCII)
+            if (tag != "name") continue
+            nameOffset = java.io.DataInputStream(java.io.ByteArrayInputStream(bytes, entryPos + 8, 4)).readInt()
+            nameLen = java.io.DataInputStream(java.io.ByteArrayInputStream(bytes, entryPos + 12, 4)).readInt()
+            break
+        }
+        if (nameOffset < 0 || nameOffset + 6 > bytes.size) return null
+
+        val nameBuf = ByteBuffer.wrap(bytes, nameOffset, bytes.size - nameOffset).order(ByteOrder.BIG_ENDIAN)
+        // skip format
+        nameBuf.getShort()
+        val count = nameBuf.getShort().toInt() and 0xFFFF
+        val strOffset = nameBuf.getShort().toInt() and 0xFFFF
+
+        var best: String? = null
+        var bestScore = -1
+
+        for (i in 0 until count) {
+            if (nameBuf.position() + 12 > bytes.size - nameOffset) break
+            val platformID = nameBuf.getShort().toInt() and 0xFFFF
+            val encodingID = nameBuf.getShort().toInt() and 0xFFFF
+            val languageID = nameBuf.getShort().toInt() and 0xFFFF
+            val nameID = nameBuf.getShort().toInt() and 0xFFFF
+            val len = nameBuf.getShort().toInt() and 0xFFFF
+            val off = nameBuf.getShort().toInt() and 0xFFFF
+
+            if (nameID != 1) continue
+
+            val absOff = nameOffset + strOffset + off
+            if (absOff + len > bytes.size) continue
+
+            val raw = bytes.copyOfRange(absOff, absOff + len)
+            val decoded = when (platformID) {
+                1 -> String(raw, Charsets.UTF_8)
+                0, 3 -> {
+                    val str = String(raw, Charsets.UTF_16BE)
+                    str.trim('\u0000')
+                }
+                else -> continue
+            }
+            val score = when {
+                platformID == 3 && encodingID == 1 && languageID == 0x0409 -> 4
+                platformID == 3 && encodingID == 10 -> 3
+                platformID == 3 -> 2
+                platformID == 1 -> 1
+                else -> 0
+            }
+            if (score > bestScore) {
+                best = decoded
+                bestScore = score
+            }
+        }
+        best?.takeIf { it.isNotBlank() }
+    } catch (e: Exception) {
+        Log.d("FontPlatform", "readFontFamilyName failed for $filePath: ${e.message}")
+        null
+    }
+}
+
+actual fun createFileFontFamily(filePath: String): FontFamily? {
+    return try {
+        val file = File(filePath)
+        FontFamily(Font(file = file))
+    } catch (e: Exception) {
+        Log.e("FontPlatform", "createFileFontFamily failed for $filePath", e)
+        null
+    }
 }
 
 actual fun registerFontFile(filePath: String): Boolean {

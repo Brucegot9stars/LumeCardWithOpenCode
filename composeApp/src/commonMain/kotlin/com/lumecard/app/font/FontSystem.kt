@@ -48,7 +48,10 @@ object FontRegistry {
         _fonts.removeAll { it.id == spec.id }
         _fonts.add(spec)
         _fontFamilyCache.remove(spec.id)
-        if (spec.filePath != null) _userFontPaths.add(spec.filePath)
+        if (spec.filePath != null) {
+            _userFontPaths.add(spec.filePath)
+            registerFontFile(spec.filePath)
+        }
     }
 
     fun registerAll(specs: List<FontSpec>) {
@@ -64,8 +67,12 @@ object FontRegistry {
 
     @OptIn(ExperimentalTextApi::class)
     fun getFontFamily(spec: FontSpec): FontFamily {
-        return if (spec.family.isBlank()) FontFamily.Default
-        else _fontFamilyCache.getOrPut(spec.id) { resolveFontFamily(spec.family) }
+        if (spec.family.isBlank()) return FontFamily.Default
+        _fontFamilyCache[spec.id]?.let { return it }
+        val ff = spec.filePath?.let { createFileFontFamily(it) }
+            ?: resolveFontFamily(spec.family)
+        _fontFamilyCache[spec.id] = ff
+        return ff
     }
 
     @OptIn(ExperimentalTextApi::class)
@@ -102,9 +109,11 @@ object FontRegistry {
         } catch (_: Exception) { }
     }
 
-    fun importFont(filePath: String, displayName: String): FontSpec {
-        val id = "user_${displayName.lowercase().replace(" ", "_")}"
-        val spec = FontSpec(id, displayName, displayName, FontSource.USER_IMPORTED, filePath = filePath)
+    fun importFont(filePath: String, displayName: String): FontSpec? {
+        val actualFamily = readFontFamilyName(filePath) ?: displayName
+        val id = "user_${(actualFamily).lowercase().replace(" ", "_")}"
+        if (!registerFontFile(filePath)) return null
+        val spec = FontSpec(id, displayName, actualFamily, FontSource.USER_IMPORTED, filePath = filePath)
         register(spec)
         return spec
     }

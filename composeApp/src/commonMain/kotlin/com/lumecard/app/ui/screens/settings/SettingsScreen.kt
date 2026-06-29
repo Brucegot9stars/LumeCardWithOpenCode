@@ -474,10 +474,9 @@ class SettingsScreen(
                                 scope.launch {
                                     val path = pickOpenFile("application/x-font-ttf")
                                     if (path != null) {
-                                        val ok = registerFontFile(path)
-                                        if (ok) {
-                                            val name = path.substringAfterLast("/").substringAfterLast("\\").substringBeforeLast(".")
-                                            FontRegistry.importFont(path, name)
+                                        val name = path.substringAfterLast("/").substringAfterLast("\\").substringBeforeLast(".")
+                                        val spec = FontRegistry.importFont(path, name)
+                                        if (spec != null) {
                                             FontInitializer.saveUserFonts()
                                             snackbarHostState.showSnackbar(strings.settingsFontImportSuccess, duration = SnackbarDuration.Short)
                                         } else {

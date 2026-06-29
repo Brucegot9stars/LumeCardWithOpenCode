@@ -57,3 +57,21 @@ actual fun registerFontFile(filePath: String): Boolean {
         } catch (_: Exception) { false }
     }
 }
+
+actual fun readFontFamilyName(filePath: String): String? {
+    return try {
+        val font = java.awt.Font.createFont(java.awt.Font.TRUETYPE_FONT, File(filePath))
+        font.getFamily()
+    } catch (_: Exception) {
+        try {
+            val font = java.awt.Font.createFont(java.awt.Font.TYPE1_FONT, File(filePath))
+            font.getFamily()
+        } catch (_: Exception) { null }
+    }
+}
+
+@OptIn(ExperimentalTextApi::class)
+actual fun createFileFontFamily(filePath: String): FontFamily? {
+    val name = readFontFamilyName(filePath) ?: return null
+    return FontFamily(name)
+}
