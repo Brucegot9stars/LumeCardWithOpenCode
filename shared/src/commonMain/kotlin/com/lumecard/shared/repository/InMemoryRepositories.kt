@@ -17,6 +17,10 @@ class InMemoryKnowledgeBaseRepository : KnowledgeBaseRepository {
         return knowledgeBases.value.find { it.id == id && it.deletedAt == null }
     }
 
+    override suspend fun getByName(name: String): KnowledgeBase? {
+        return knowledgeBases.value.find { it.name == name && it.deletedAt == null }
+    }
+
     override suspend fun insert(knowledgeBase: KnowledgeBase) {
         knowledgeBases.update { it + knowledgeBase }
     }
@@ -51,6 +55,10 @@ class InMemoryDeckRepository : DeckRepository {
 
     override suspend fun getById(id: String): Deck? {
         return decks.value.find { it.id == id && it.deletedAt == null }
+    }
+
+    override suspend fun getByNameInKnowledgeBase(knowledgeBaseId: String, name: String): Deck? {
+        return decks.value.find { it.knowledgeBaseId == knowledgeBaseId && it.name == name && it.deletedAt == null }
     }
 
     override suspend fun insert(deck: Deck) {

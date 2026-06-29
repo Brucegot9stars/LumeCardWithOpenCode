@@ -97,6 +97,9 @@ SELECT * FROM KnowledgeBase WHERE deleted_at IS NULL ORDER BY created_at ASC;
 selectKnowledgeBaseById:
 SELECT * FROM KnowledgeBase WHERE id = ?;
 
+selectKnowledgeBaseByName:
+SELECT * FROM KnowledgeBase WHERE name = ? AND deleted_at IS NULL;
+
 selectAllDecks:
 SELECT * FROM Deck WHERE deleted_at IS NULL ORDER BY created_at ASC;
 
@@ -105,6 +108,9 @@ SELECT * FROM Deck WHERE knowledge_base_id = ? AND deleted_at IS NULL ORDER BY c
 
 selectDeckById:
 SELECT * FROM Deck WHERE id = ?;
+
+selectDeckByNameAndKnowledgeBase:
+SELECT * FROM Deck WHERE knowledge_base_id = ? AND name = ? AND deleted_at IS NULL;
 
 selectAllCards:
 SELECT * FROM Card WHERE deleted_at IS NULL ORDER BY created_at ASC;

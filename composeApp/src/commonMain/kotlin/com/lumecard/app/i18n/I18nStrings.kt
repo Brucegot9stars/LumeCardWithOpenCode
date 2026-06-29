@@ -344,6 +344,99 @@ interface I18nStrings {
     val settingsLanguageDesc: String
     val settingsFontScale: String
 
+    val aiTitle: String
+    val aiConfig: String
+    val aiConfigDesc: String
+    val aiProvider: String
+    val aiProviderCustom: String
+    val aiProtocol: String
+    val aiModel: String
+    val aiApiKey: String
+    val aiBaseUrl: String
+    val aiSystemPrompt: String
+    val aiTemperature: String
+    val aiMaxTokens: String
+    val aiTopP: String
+    val aiFrequencyPenalty: String
+    val aiPresencePenalty: String
+    val aiTestConnection: String
+    val aiTestSuccess: String
+    fun aiTestError(msg: String): String
+    val aiAddConfig: String
+    val aiConfigName: String
+    val aiConfigNamePlaceholder: String
+    val aiDeleteConfirm: String
+    val aiSetDefault: String
+    val aiDefault: String
+    val aiNotConfigured: String
+    val aiConnectionStatus: String
+    val aiConnected: String
+    val aiDisconnected: String
+    val aiSaveSuccess: String
+    val aiDeleteSuccess: String
+
+    // AI Card Generation
+    val aiCardGeneration: String
+    val aiCardGenerationDesc: String
+    val aiCardModeAuto: String
+    val aiCardModeAutoDesc: String
+    val aiCardModeKb: String
+    val aiCardModeKbDesc: String
+    val aiCardModeBoth: String
+    val aiCardModeBothDesc: String
+    val aiCardSelectKb: String
+    val aiCardSelectDeck: String
+    val aiCardNoConfig: String
+    val aiCardNoKb: String
+    val aiCardNoDeck: String
+    val aiCardMaterials: String
+    val aiCardMaterialsPlaceholder: String
+    val aiCardImportFile: String
+    val aiCardSupportedFormats: String
+    val aiCardCount: String
+    val aiCardCountDesc: String
+    fun aiCardLargeCountConfirm(count: Int): String
+    val aiCardPrompt: String
+    val aiCardPromptCopy: String
+    val aiCardPromptCopied: String
+    val aiCardPromptRestore: String
+    val aiCardPromptRestoreConfirm: String
+    val aiCardPromptRestored: String
+    val aiCardGenerate: String
+    val aiCardGenerating: String
+    fun aiCardResultCreated(count: Int): String
+    val aiCardResultDesc: String
+    val aiCardConfirmLargeCountTitle: String
+    val aiCardErrorNoConfig: String
+    val aiCardErrorConnection: String
+    val aiCardErrorAuth: String
+    val aiCardErrorApi: String
+    val aiCardErrorParse: String
+    val aiCardErrorRateLimit: String
+    val aiCardErrorNoContent: String
+
+    // Move / Merge
+    val actionMove: String
+    val actionMerge: String
+    val moveDeckTitle: String
+    val moveCardTitle: String
+    val mergeKbTitle: String
+    val mergeDeckTitle: String
+    fun mergeKbConfirm(source: String, target: String): String
+    fun mergeDeckConfirm(source: String, target: String): String
+    fun moveDeckConfirm(deck: String, targetKb: String): String
+    fun moveCardConfirm(card: String, targetDeck: String): String
+    val moveMergeSuccess: String
+    fun moveMergeResult(items: Int, conflicts: Int): String
+    val mergeDeckConflictDesc: String
+    val mergeKbConflictDesc: String
+    val confirmNoPrompt60s: String
+    val moveDeckNoTarget: String
+    val selectTargetKb: String
+    val selectTargetDeck: String
+    val operationMove: String
+    val operationMerge: String
+
     val kbTitle: String
     val kbCreate: String
     val kbEdit: String
