@@ -82,4 +82,15 @@ class AiModelListFetcher(
         val combined = (registryModels + fetchedModels).distinct()
         return combined
     }
+
+    suspend fun removeFromCache(configId: String, modelId: String) {
+        val cached = getCachedModels(configId)?.toMutableList() ?: return
+        if (cached.remove(modelId)) {
+            if (cached.isEmpty()) {
+                settingsRepository.delete("$cachePrefix$configId")
+            } else {
+                settingsRepository.set("$cachePrefix$configId", json.encodeToString(cached))
+            }
+        }
+    }
 }

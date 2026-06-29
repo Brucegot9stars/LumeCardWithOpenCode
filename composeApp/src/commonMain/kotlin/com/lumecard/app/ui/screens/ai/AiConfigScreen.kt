@@ -79,6 +79,7 @@ class AiConfigScreen : Screen {
         var showFallbackMenu by remember { mutableStateOf(false) }
         var fetchedModels by remember { mutableStateOf<List<String>?>(null) }
         var isFetchingModels by remember { mutableStateOf(false) }
+        var rawFetchedModels by remember { mutableStateOf<List<String>>(emptyList()) }
         val fetcher: AiModelListFetcher = koinInject()
 
         fun reloadConfigs() {
@@ -388,6 +389,7 @@ class AiConfigScreen : Screen {
                                             try {
                                                 val config = buildEditConfig()
                                                 val fetched = withContext(Dispatchers.IO) { fetcher.fetchModels(config) }
+                                                rawFetchedModels = fetched
                                                 fetchedModels = fetcher.mergeWithRegistry(fetched, editProvider)
                                             } catch (_: Exception) {
                                                 if (fetchedModels == null) {
@@ -416,16 +418,42 @@ class AiConfigScreen : Screen {
                             ) {
                                 modelList.forEach { modelId ->
                                     val modelSpec = knownModels.find { it.id == modelId }
+                                    val isDeletable = modelId in rawFetchedModels && modelSpec == null
                                     DropdownMenuItem(
                                         text = {
-                                            Column {
-                                                Text(modelSpec?.name ?: modelId, style = MaterialTheme.typography.bodyMedium)
-                                                if (modelSpec != null) {
-                                                    Text(
-                                                        "${modelSpec.contextWindow / 1000}K context",
-                                                        style = MaterialTheme.typography.bodySmall,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    )
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier.fillMaxWidth(),
+                                            ) {
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(modelSpec?.name ?: modelId, style = MaterialTheme.typography.bodyMedium)
+                                                    if (modelSpec != null) {
+                                                        Text(
+                                                            "${modelSpec.contextWindow / 1000}K context",
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        )
+                                                    }
+                                                }
+                                                if (isDeletable) {
+                                                    IconButton(
+                                                        onClick = {
+                                                            scope.launch {
+                                                                val config = buildEditConfig()
+                                                                withContext(Dispatchers.IO) { fetcher.removeFromCache(config.id, modelId) }
+                                                                rawFetchedModels = rawFetchedModels - modelId
+                                                                fetchedModels = fetcher.mergeWithRegistry(rawFetchedModels, editProvider)
+                                                            }
+                                                        },
+                                                        interactionSource = null,
+                                                    ) {
+                                                        Icon(
+                                                            Icons.Default.Delete,
+                                                            contentDescription = "Delete model",
+                                                            tint = MaterialTheme.colorScheme.error,
+                                                            modifier = Modifier.size(18.dp),
+                                                        )
+                                                    }
                                                 }
                                             }
                                         },
