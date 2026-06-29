@@ -10,6 +10,7 @@ import com.lumecard.shared.data.UpdateManager
 import com.lumecard.shared.data.WebDavConfigManager
 import com.lumecard.shared.data.ai.AiClientAdapter
 import com.lumecard.shared.data.ai.AiFallbackManager
+import com.lumecard.shared.data.ai.AiModelListFetcher
 import com.lumecard.shared.data.ai.ProviderAdapter
 import com.lumecard.shared.database.LumeCardDatabase
 import com.lumecard.shared.domain.scheduler.*
@@ -53,6 +54,7 @@ val sharedModule = module {
     single<AiConfigManager> { AiConfigManager(get(), get()) }
     single { AiCardPromptManager(get()) }
     single { AiFallbackManager(get(), get()) }
+    single { AiModelListFetcher(get(), get()) }
     single { AiCardGenerator(get(), get(), get(), get(), get(), get()) }
 
     // Algorithm implementations

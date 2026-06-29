@@ -28,6 +28,7 @@ import com.lumecard.shared.data.AiConfigManager
 import com.lumecard.shared.data.AiProviders
 import com.lumecard.shared.data.AiProtocols
 import com.lumecard.shared.data.ai.AiCapability
+import com.lumecard.shared.data.ai.AiModelListFetcher
 import com.lumecard.shared.data.ai.AiProviderRegistry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -76,6 +77,9 @@ class AiConfigScreen : Screen {
         var fallbackConfigs by remember { mutableStateOf<List<AiConfig>>(emptyList()) }
         var showModelMenu by remember { mutableStateOf(false) }
         var showFallbackMenu by remember { mutableStateOf(false) }
+        var fetchedModels by remember { mutableStateOf<List<String>?>(null) }
+        var isFetchingModels by remember { mutableStateOf(false) }
+        val fetcher: AiModelListFetcher = koinInject()
 
         fun reloadConfigs() {
             scope.launch {
@@ -338,9 +342,10 @@ class AiConfigScreen : Screen {
                                 modifier = Modifier.fillMaxWidth(),
                             )
 
-                            // Model selector (from registry + custom input)
+                            // Model selector (from registry + fetched + custom input)
                             val providerSpec = AiProviderRegistry.findById(editProvider)
                             val knownModels = providerSpec?.models ?: emptyList()
+                            val modelList = fetchedModels ?: knownModels.map { it.id }
 
                             OutlinedTextField(
                                 value = editModel,
@@ -348,10 +353,34 @@ class AiConfigScreen : Screen {
                                 label = { Text(strings.aiModel) },
                                 singleLine = true,
                                 trailingIcon = {
-                                    if (knownModels.isNotEmpty()) {
-                                        IconButton(onClick = { showModelMenu = true }) {
-                                            Icon(Icons.Default.ArrowDropDown, contentDescription = strings.aiModel)
+                                    IconButton(onClick = {
+                                        if (fetchedModels == null) {
+                                            isFetchingModels = true
+                                            scope.launch {
+                                                val config = AiConfig(
+                                                    id = editConfig?.id ?: "",
+                                                    name = editName,
+                                                    provider = editProvider,
+                                                    protocol = editProtocol,
+                                                    baseUrl = editBaseUrl,
+                                                    apiKey = editApiKey,
+                                                    model = editModel,
+                                                    systemPrompt = editSystemPrompt,
+                                                    temperature = editTemperature.toFloatOrNull() ?: 0.7f,
+                                                    maxTokens = editMaxTokens.toIntOrNull() ?: 2048,
+                                                    topP = editTopP.toFloatOrNull() ?: 1.0f,
+                                                    frequencyPenalty = editFrequencyPenalty.toFloatOrNull() ?: 0.0f,
+                                                    presencePenalty = editPresencePenalty.toFloatOrNull() ?: 0.0f,
+                                                    fallbackConfigId = editFallbackConfigId,
+                                                )
+                                                val fetched = withContext(Dispatchers.IO) { fetcher.fetchModels(config) }
+                                                fetchedModels = fetcher.mergeWithRegistry(fetched, editProvider)
+                                                isFetchingModels = false
+                                            }
                                         }
+                                        showModelMenu = true
+                                    }) {
+                                        Icon(Icons.Default.ArrowDropDown, contentDescription = strings.aiModel)
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
@@ -360,23 +389,45 @@ class AiConfigScreen : Screen {
                                 expanded = showModelMenu,
                                 onDismissRequest = { showModelMenu = false },
                             ) {
-                                knownModels.forEach { m ->
+                                if (isFetchingModels) {
                                     DropdownMenuItem(
                                         text = {
-                                            Column {
-                                                Text(m.name, style = MaterialTheme.typography.bodyMedium)
-                                                Text(
-                                                    "${m.contextWindow / 1000}K context",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                )
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                                Spacer(Modifier.width(8.dp))
+                                                Text("Fetching models...")
                                             }
                                         },
-                                        onClick = {
-                                            editModel = m.id
-                                            showModelMenu = false
-                                        },
+                                        onClick = {},
                                     )
+                                } else {
+                                    modelList.forEach { modelId ->
+                                        val modelSpec = knownModels.find { it.id == modelId }
+                                        DropdownMenuItem(
+                                            text = {
+                                                Column {
+                                                    Text(modelSpec?.name ?: modelId, style = MaterialTheme.typography.bodyMedium)
+                                                    if (modelSpec != null) {
+                                                        Text(
+                                                            "${modelSpec.contextWindow / 1000}K context",
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        )
+                                                    }
+                                                }
+                                            },
+                                            onClick = {
+                                                editModel = modelId
+                                                showModelMenu = false
+                                            },
+                                        )
+                                    }
+                                    if (modelList.isEmpty()) {
+                                        DropdownMenuItem(
+                                            text = { Text("No models available — type a model name manually") },
+                                            onClick = { showModelMenu = false },
+                                        )
+                                    }
                                 }
                             }
 
