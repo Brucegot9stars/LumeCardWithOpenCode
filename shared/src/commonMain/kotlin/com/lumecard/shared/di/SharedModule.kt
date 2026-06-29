@@ -8,6 +8,9 @@ import com.lumecard.shared.data.MediaManager
 import com.lumecard.shared.data.SyncManager
 import com.lumecard.shared.data.UpdateManager
 import com.lumecard.shared.data.WebDavConfigManager
+import com.lumecard.shared.data.ai.AiClientAdapter
+import com.lumecard.shared.data.ai.AiFallbackManager
+import com.lumecard.shared.data.ai.ProviderAdapter
 import com.lumecard.shared.database.LumeCardDatabase
 import com.lumecard.shared.domain.scheduler.*
 import com.lumecard.shared.repository.*
@@ -46,9 +49,11 @@ val sharedModule = module {
     single { WebDavConfigManager(get(), get()) }
     single { UpdateManager(get()) }
     single<AiClient> { AiClient(get()) }
+    single<ProviderAdapter> { AiClientAdapter(get()) }
     single<AiConfigManager> { AiConfigManager(get(), get()) }
     single { AiCardPromptManager(get()) }
-    single { AiCardGenerator(get(), get(), get(), get(), get()) }
+    single { AiFallbackManager(get(), get()) }
+    single { AiCardGenerator(get(), get(), get(), get(), get(), get()) }
 
     // Algorithm implementations
     single { FSRSAlgorithm() }

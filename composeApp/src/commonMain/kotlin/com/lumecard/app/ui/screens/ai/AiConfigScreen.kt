@@ -27,6 +27,8 @@ import com.lumecard.shared.data.AiConfig
 import com.lumecard.shared.data.AiConfigManager
 import com.lumecard.shared.data.AiProviders
 import com.lumecard.shared.data.AiProtocols
+import com.lumecard.shared.data.ai.AiCapability
+import com.lumecard.shared.data.ai.AiProviderRegistry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -70,6 +72,10 @@ class AiConfigScreen : Screen {
         var testResult by remember { mutableStateOf<String?>(null) }
         var deleteConfirmId by remember { mutableStateOf<String?>(null) }
         var defaultConfig by remember { mutableStateOf<AiConfig?>(null) }
+        var editFallbackConfigId by remember { mutableStateOf<String?>(null) }
+        var fallbackConfigs by remember { mutableStateOf<List<AiConfig>>(emptyList()) }
+        var showModelMenu by remember { mutableStateOf(false) }
+        var showFallbackMenu by remember { mutableStateOf(false) }
 
         fun reloadConfigs() {
             scope.launch {
@@ -96,6 +102,7 @@ class AiConfigScreen : Screen {
                 editTopP = config.topP.toString()
                 editFrequencyPenalty = config.frequencyPenalty.toString()
                 editPresencePenalty = config.presencePenalty.toString()
+                editFallbackConfigId = config.fallbackConfigId
             } else {
                 val first = AiProviders.all.first()
                 editConfig = null
@@ -111,9 +118,14 @@ class AiConfigScreen : Screen {
                 editTopP = "1.0"
                 editFrequencyPenalty = "0.0"
                 editPresencePenalty = "0.0"
+                editFallbackConfigId = null
             }
             testResult = null
             isEditing = true
+            scope.launch {
+                fallbackConfigs = withContext(Dispatchers.IO) { aiConfigManager.getAll() }
+                    .filter { it.id != (editConfig?.id ?: "") }
+            }
         }
 
         fun resetEdit() {
@@ -326,14 +338,69 @@ class AiConfigScreen : Screen {
                                 modifier = Modifier.fillMaxWidth(),
                             )
 
-                            // Model
+                            // Model selector (from registry + custom input)
+                            val providerSpec = AiProviderRegistry.findById(editProvider)
+                            val knownModels = providerSpec?.models ?: emptyList()
+
                             OutlinedTextField(
                                 value = editModel,
                                 onValueChange = { editModel = it },
                                 label = { Text(strings.aiModel) },
                                 singleLine = true,
+                                trailingIcon = {
+                                    if (knownModels.isNotEmpty()) {
+                                        IconButton(onClick = { showModelMenu = true }) {
+                                            Icon(Icons.Default.ArrowDropDown, contentDescription = strings.aiModel)
+                                        }
+                                    }
+                                },
                                 modifier = Modifier.fillMaxWidth(),
                             )
+                            DropdownMenu(
+                                expanded = showModelMenu,
+                                onDismissRequest = { showModelMenu = false },
+                            ) {
+                                knownModels.forEach { m ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Column {
+                                                Text(m.name, style = MaterialTheme.typography.bodyMedium)
+                                                Text(
+                                                    "${m.contextWindow / 1000}K context",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                            }
+                                        },
+                                        onClick = {
+                                            editModel = m.id
+                                            showModelMenu = false
+                                        },
+                                    )
+                                }
+                            }
+
+                            // Capability tags
+                            val selectedModel = knownModels.find { it.id == editModel }
+                            if (selectedModel != null && selectedModel.capabilities.isNotEmpty()) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    selectedModel.capabilities.forEach { cap ->
+                                        Surface(
+                                            shape = MaterialTheme.shapes.extraSmall,
+                                            color = MaterialTheme.colorScheme.secondaryContainer,
+                                        ) {
+                                            Text(
+                                                cap.displayName,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                            )
+                                        }
+                                    }
+                                }
+                            }
 
                             // Request parameters
                             var showParams by remember { mutableStateOf(false) }
@@ -351,6 +418,58 @@ class AiConfigScreen : Screen {
                             }
 
                             if (showParams) {
+                                // Fallback config selector
+                                if (fallbackConfigs.isNotEmpty()) {
+                                    val fallbackName = if (editFallbackConfigId != null) {
+                                        fallbackConfigs.find { it.id == editFallbackConfigId }?.name ?: strings.aiNotConfigured
+                                    } else strings.aiNotConfigured
+                                    Box {
+                                        OutlinedTextField(
+                                            value = fallbackName,
+                                            onValueChange = {},
+                                            label = { Text("Fallback Config") },
+                                            readOnly = true,
+                                            trailingIcon = {
+                                                IconButton(onClick = { showFallbackMenu = true }) {
+                                                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                                                }
+                                            },
+                                            modifier = Modifier.fillMaxWidth(),
+                                        )
+                                        DropdownMenu(
+                                            expanded = showFallbackMenu,
+                                            onDismissRequest = { showFallbackMenu = false },
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text("No fallback") },
+                                                onClick = {
+                                                    editFallbackConfigId = null
+                                                    showFallbackMenu = false
+                                                },
+                                            )
+                                            fallbackConfigs.forEach { fc ->
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Column {
+                                                            Text(fc.name)
+                                                            Text(
+                                                                "${fc.provider} · ${fc.model}",
+                                                                style = MaterialTheme.typography.bodySmall,
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                            )
+                                                        }
+                                                    },
+                                                    onClick = {
+                                                        editFallbackConfigId = fc.id
+                                                        showFallbackMenu = false
+                                                    },
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(spacing.sm))
+                                }
+
                                 // System Prompt
                                 OutlinedTextField(
                                     value = editSystemPrompt,
@@ -446,6 +565,7 @@ class AiConfigScreen : Screen {
                                                 frequencyPenalty = editFrequencyPenalty.toFloatOrNull() ?: 0.0f,
                                                 presencePenalty = editPresencePenalty.toFloatOrNull() ?: 0.0f,
                                                 isDefault = editConfig?.isDefault ?: configs.isEmpty(),
+                                                fallbackConfigId = editFallbackConfigId,
                                             )
                                             val result = withContext(Dispatchers.IO) { aiConfigManager.testConnection(config) }
                                             testResult = result.fold(
@@ -479,6 +599,7 @@ class AiConfigScreen : Screen {
                                                     frequencyPenalty = editFrequencyPenalty.toFloatOrNull() ?: 0.0f,
                                                     presencePenalty = editPresencePenalty.toFloatOrNull() ?: 0.0f,
                                                     isDefault = editConfig?.isDefault ?: configs.isEmpty(),
+                                                    fallbackConfigId = editFallbackConfigId,
                                                 )
                                                 withContext(Dispatchers.IO) { aiConfigManager.save(config) }
                                                 snackbarHostState.showSnackbar(strings.aiSaveSuccess)

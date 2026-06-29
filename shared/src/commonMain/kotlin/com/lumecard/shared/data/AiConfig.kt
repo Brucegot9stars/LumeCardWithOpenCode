@@ -19,4 +19,5 @@ data class AiConfig(
     val presencePenalty: Float = 0.0f,
     val isDefault: Boolean = false,
     val lastSyncAt: String? = null,
+    val fallbackConfigId: String? = null,
 )

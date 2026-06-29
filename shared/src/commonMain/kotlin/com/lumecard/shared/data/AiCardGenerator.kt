@@ -1,5 +1,7 @@
 package com.lumecard.shared.data
 
+import com.lumecard.shared.data.ai.AiFallbackManager
+import com.lumecard.shared.data.ai.ProviderAdapter
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
 import com.lumecard.shared.model.Deck
@@ -13,7 +15,8 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 class AiCardGenerator(
-    private val aiClient: AiClient,
+    private val adapter: ProviderAdapter,
+    private val fallbackManager: AiFallbackManager,
     private val promptManager: AiCardPromptManager,
     private val knowledgeBaseRepository: KnowledgeBaseRepository,
     private val deckRepository: DeckRepository,
@@ -28,7 +31,7 @@ class AiCardGenerator(
             val systemPrompt = promptTemplate.replace("{card_count}", request.cardCount.toString())
             val userMessage = buildUserMessage(request)
 
-            val response = aiClient.sendChatCompletion(
+            val response = fallbackManager.sendWithFallback(
                 config = request.config,
                 systemPrompt = systemPrompt,
                 userMessage = userMessage,
