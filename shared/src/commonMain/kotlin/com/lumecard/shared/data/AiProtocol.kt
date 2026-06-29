@@ -16,7 +16,7 @@ interface AiProtocol {
     val displayName: String
 
     /** Relative URL path for the test endpoint (e.g. "/chat/completions"). */
-    fun endpoint(): String
+    fun endpoint(config: AiConfig? = null): String
 
     /** HTTP headers required by this protocol (auth, content-type, version headers). */
     fun headers(config: AiConfig): Map<String, String>
@@ -87,7 +87,7 @@ class OpenAiChatProtocol : AiProtocol {
     override val id: String = "openai_chat"
     override val displayName: String = "OpenAI Chat Completions"
 
-    override fun endpoint(): String = "/chat/completions"
+    override fun endpoint(config: AiConfig?): String = "/chat/completions"
 
     override fun headers(config: AiConfig): Map<String, String> = mapOf(
         "Authorization" to "Bearer ${config.apiKey}",
@@ -206,7 +206,7 @@ class OpenAiResponsesProtocol : AiProtocol {
     override val id: String = "openai_responses"
     override val displayName: String = "OpenAI Responses API"
 
-    override fun endpoint(): String = "/responses"
+    override fun endpoint(config: AiConfig?): String = "/responses"
 
     override fun headers(config: AiConfig): Map<String, String> = mapOf(
         "Authorization" to "Bearer ${config.apiKey}",
@@ -297,7 +297,7 @@ class AnthropicMessagesProtocol : AiProtocol {
     override val id: String = "anthropic_messages"
     override val displayName: String = "Anthropic Messages API"
 
-    override fun endpoint(): String = "/messages"
+    override fun endpoint(config: AiConfig?): String = "/messages"
 
     override fun headers(config: AiConfig): Map<String, String> = mapOf(
         "x-api-key" to config.apiKey,
@@ -371,6 +371,146 @@ class AnthropicMessagesProtocol : AiProtocol {
     }
 }
 
+// ─── Google Generative AI ────────────────────────────────────────────
+
+@Serializable
+private data class GoogleGenAiContent(
+    val role: String = "user",
+    val parts: List<GoogleGenAiPart>,
+)
+
+@Serializable
+private data class GoogleGenAiPart(val text: String)
+
+@Serializable
+private data class GoogleGenAiRequest(
+    val contents: List<GoogleGenAiContent>,
+    val generationConfig: GoogleGenAiConfig = GoogleGenAiConfig(),
+)
+
+@Serializable
+private data class GoogleGenAiConfig(
+    val maxOutputTokens: Int = 2,
+    val temperature: Double = 0.0,
+)
+
+@Serializable
+private data class GoogleGenAiFullRequest(
+    val contents: List<GoogleGenAiContent>,
+    val systemInstruction: GoogleGenAiContent? = null,
+    val generationConfig: GoogleGenAiFullConfig = GoogleGenAiFullConfig(),
+)
+
+@Serializable
+private data class GoogleGenAiFullConfig(
+    val temperature: Double = 0.7,
+    val maxOutputTokens: Int = 4096,
+)
+
+@Serializable
+private data class GoogleGenAiCandidate(
+    val content: GoogleGenAiContent? = null,
+    val finishReason: String? = null,
+)
+
+@Serializable
+private data class GoogleGenAiUsage(val promptTokenCount: Int, val candidatesTokenCount: Int)
+
+@Serializable
+private data class GoogleGenAiResponse(
+    val candidates: List<GoogleGenAiCandidate>? = null,
+    val usageMetadata: GoogleGenAiUsage? = null,
+    val error: GoogleGenAiErrorBody? = null,
+)
+
+@Serializable
+private data class GoogleGenAiError(val message: String, val code: Int? = null, val status: String? = null)
+
+@Serializable
+private data class GoogleGenAiErrorBody(val error: GoogleGenAiError? = null)
+
+class GoogleGenAiProtocol : AiProtocol {
+    override val id: String = "google_genai"
+    override val displayName: String = "Google Generative AI"
+
+    override fun endpoint(config: AiConfig?): String {
+        val model = config?.model?.takeIf { it.isNotBlank() } ?: "gemini-2.0-flash"
+        return "/models/$model:generateContent"
+    }
+
+    override fun headers(config: AiConfig): Map<String, String> = mapOf(
+        "x-goog-api-key" to config.apiKey,
+        "Content-Type" to "application/json",
+    )
+
+    override fun buildTestRequestBody(config: AiConfig): String = json.encodeToString(
+        GoogleGenAiRequest.serializer(), GoogleGenAiRequest(
+            contents = listOf(GoogleGenAiContent(parts = listOf(GoogleGenAiPart("Hello")))),
+        )
+    )
+
+    override fun parseTestResponse(responseBody: String): Result<String> {
+        return try {
+            val resp = json.decodeFromString(GoogleGenAiResponse.serializer(), responseBody)
+            if (resp.error != null) {
+                return Result.failure(AiException(resp.error.error?.message ?: "API error"))
+            }
+            val candidate = resp.candidates?.firstOrNull()
+                ?: return Result.failure(AiException("No candidates returned"))
+            val text = candidate.content?.parts?.firstOrNull()?.text ?: ""
+            val tokens = resp.usageMetadata?.let { "${it.promptTokenCount}+${it.candidatesTokenCount}" } ?: "?"
+            Result.success("OK ($tokens tokens)")
+        } catch (e: Exception) {
+            Result.failure(AiException("Parse error: ${e.message}"))
+        }
+    }
+
+    override fun extractError(responseBody: String, statusCode: Int): String {
+        return try {
+            val err = json.decodeFromString(GoogleGenAiErrorBody.serializer(), responseBody)
+            val e = err.error
+            if (e != null) {
+                listOfNotNull(e.code?.toString(), e.status, e.message).joinToString(" — ")
+            } else "HTTP $statusCode"
+        } catch (_: Exception) {
+            "HTTP $statusCode"
+        }
+    }
+
+    override fun buildChatRequest(config: AiConfig, systemPrompt: String, userMessage: String): String {
+        return json.encodeToString(
+            GoogleGenAiFullRequest.serializer(),
+            GoogleGenAiFullRequest(
+                contents = listOf(
+                    GoogleGenAiContent(parts = listOf(GoogleGenAiPart(userMessage))),
+                ),
+                systemInstruction = GoogleGenAiContent(
+                    role = "user",
+                    parts = listOf(GoogleGenAiPart(systemPrompt)),
+                ),
+                generationConfig = GoogleGenAiFullConfig(
+                    temperature = config.temperature.toDouble(),
+                    maxOutputTokens = config.maxTokens.coerceIn(256, 8192),
+                ),
+            )
+        )
+    }
+
+    override fun parseChatResponse(responseBody: String): Result<String> {
+        return try {
+            val resp = json.decodeFromString(GoogleGenAiResponse.serializer(), responseBody)
+            if (resp.error != null) {
+                return Result.failure(AiException(resp.error.error?.message ?: "API error"))
+            }
+            val text = resp.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
+                ?: return Result.failure(AiException("No text content in response"))
+            Result.success(text)
+        } catch (e: Exception) {
+            Result.failure(AiException("Parse error: ${e.message}"))
+        }
+    }
+}
+
 // ─── Protocol Registry ─────────────────────────────────────────────────
 
 object AiProtocols {
@@ -378,6 +518,7 @@ object AiProtocols {
         OpenAiChatProtocol(),
         OpenAiResponsesProtocol(),
         AnthropicMessagesProtocol(),
+        GoogleGenAiProtocol(),
     ).associateBy { it.id }
 
     val all: List<AiProtocol> get() = registry.values.toList()

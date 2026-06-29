@@ -69,8 +69,8 @@ object AiProviderRegistry {
                 id = "gemini",
                 displayName = "Gemini",
                 defaultBaseUrl = "https://generativelanguage.googleapis.com/v1beta",
-                supportedProtocols = listOf("openai_chat"),
-                defaultProtocol = "openai_chat",
+                supportedProtocols = listOf("google_genai", "openai_chat"),
+                defaultProtocol = "google_genai",
             )
         )
         register(
@@ -96,7 +96,7 @@ object AiProviderRegistry {
                 id = "custom",
                 displayName = "Custom",
                 defaultBaseUrl = "",
-                supportedProtocols = listOf("openai_chat", "openai_responses", "anthropic_messages"),
+                supportedProtocols = listOf("openai_chat", "openai_responses", "anthropic_messages", "google_genai"),
                 defaultProtocol = "openai_chat",
             )
         )

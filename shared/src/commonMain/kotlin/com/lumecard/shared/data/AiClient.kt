@@ -18,7 +18,7 @@ class AiClient(private val client: HttpClient) {
             if (config.model.isBlank()) return Result.failure(AiException("Model is empty"))
 
             val body = protocol.buildTestRequestBody(config)
-            val response = client.post("$baseUrl${protocol.endpoint()}") {
+            val response = client.post("$baseUrl${protocol.endpoint(config)}") {
                 protocol.headers(config).forEach { (k, v) -> header(k, v) }
                 setBody(body)
             }
@@ -64,7 +64,7 @@ class AiClient(private val client: HttpClient) {
             if (config.model.isBlank()) return Result.failure(AiException("Model is empty"))
 
             val body = protocol.buildChatRequest(config, systemPrompt, userMessage)
-            val response = client.post("$baseUrl${protocol.endpoint()}") {
+            val response = client.post("$baseUrl${protocol.endpoint(config)}") {
                 protocol.headers(config).forEach { (k, v) -> header(k, v) }
                 setBody(body)
             }
