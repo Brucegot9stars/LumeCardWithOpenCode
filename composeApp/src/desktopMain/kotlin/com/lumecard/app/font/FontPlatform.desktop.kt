@@ -1,5 +1,7 @@
 package com.lumecard.app.font
 
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.font.FontFamily
 import java.awt.GraphicsEnvironment
 import java.io.File
 
@@ -35,6 +37,9 @@ actual fun detectSystemFonts(): List<FontSpec> {
         emptyList()
     }
 }
+
+@OptIn(ExperimentalTextApi::class)
+actual fun resolveFontFamily(familyName: String): FontFamily = FontFamily(familyName)
 
 actual fun registerFontFile(filePath: String): Boolean {
     return try {

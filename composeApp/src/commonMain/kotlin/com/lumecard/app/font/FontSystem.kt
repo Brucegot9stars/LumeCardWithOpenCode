@@ -65,14 +65,14 @@ object FontRegistry {
     @OptIn(ExperimentalTextApi::class)
     fun getFontFamily(spec: FontSpec): FontFamily {
         return if (spec.family.isBlank()) FontFamily.Default
-        else _fontFamilyCache.getOrPut(spec.id) { FontFamily(spec.family) }
+        else _fontFamilyCache.getOrPut(spec.id) { resolveFontFamily(spec.family) }
     }
 
     @OptIn(ExperimentalTextApi::class)
     fun resolveFontFamily(name: String): FontFamily {
         if (name.isBlank()) return FontFamily.Default
         val spec = _fonts.find { it.id == name || it.family == name }
-        return if (spec != null) getFontFamily(spec) else FontFamily(name)
+        return if (spec != null) getFontFamily(spec) else com.lumecard.app.font.resolveFontFamily(name)
     }
 
     fun clear() {
