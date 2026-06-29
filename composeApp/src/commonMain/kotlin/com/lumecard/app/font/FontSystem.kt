@@ -70,7 +70,7 @@ object FontRegistry {
         if (spec.family.isBlank()) return FontFamily.Default
         _fontFamilyCache[spec.id]?.let { return it }
         val ff = spec.filePath?.let { createFileFontFamily(it) }
-            ?: resolveFontFamily(spec.family)
+            ?: com.lumecard.app.font.resolveFontFamily(spec.family)
         _fontFamilyCache[spec.id] = ff
         return ff
     }
