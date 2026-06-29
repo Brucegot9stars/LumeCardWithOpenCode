@@ -6,7 +6,6 @@ data class AiProviderInfo(
     val id: String,
     val displayName: String,
     val defaultBaseUrl: String,
-    val defaultModel: String,
     val supportedProtocols: List<String>,
     val defaultProtocol: String,
 )
@@ -26,7 +25,6 @@ private fun com.lumecard.shared.data.ai.AiProviderSpec.toProviderInfo() = AiProv
     id = id,
     displayName = displayName,
     defaultBaseUrl = defaultBaseUrl,
-    defaultModel = defaultModel,
     supportedProtocols = supportedProtocols,
     defaultProtocol = defaultProtocol,
 )

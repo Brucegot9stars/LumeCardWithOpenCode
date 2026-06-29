@@ -116,7 +116,7 @@ class AiConfigScreen : Screen {
                 editProtocol = first.defaultProtocol
                 editBaseUrl = first.defaultBaseUrl
                 editApiKey = ""
-                editModel = first.defaultModel
+                editModel = ""
                 editSystemPrompt = ""
                 editTemperature = "0.7"
                 editMaxTokens = "2048"
@@ -266,7 +266,7 @@ class AiConfigScreen : Screen {
                                                         editBaseUrl = p.defaultBaseUrl
                                                     }
                                                     if (editModel.isBlank() || editConfig?.provider != p.id) {
-                                                        editModel = p.defaultModel
+                                                        editModel = ""
                                                     }
                                                     editProtocol = p.defaultProtocol
                                                 }
@@ -344,8 +344,6 @@ class AiConfigScreen : Screen {
                             )
 
                             // Model selector (fetched from API + custom input)
-                            val providerSpec = AiProviderRegistry.findById(editProvider)
-                            val knownModels = providerSpec?.models ?: emptyList()
                             val modelList = if (fetchedModels != null) rawFetchedModels else emptyList()
 
                             fun buildEditConfig(): AiConfig = AiConfig(
@@ -418,23 +416,13 @@ class AiConfigScreen : Screen {
                                 onDismissRequest = { showModelMenu = false },
                             ) {
                                 modelList.forEach { modelId ->
-                                    val modelSpec = knownModels.find { it.id == modelId }
                                     DropdownMenuItem(
                                         text = {
                                             Row(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 modifier = Modifier.fillMaxWidth(),
                                             ) {
-                                                Column(modifier = Modifier.weight(1f)) {
-                                                    Text(modelSpec?.name ?: modelId, style = MaterialTheme.typography.bodyMedium)
-                                                    if (modelSpec != null) {
-                                                        Text(
-                                                            "${modelSpec.contextWindow / 1000}K context",
-                                                            style = MaterialTheme.typography.bodySmall,
-                                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                        )
-                                                    }
-                                                }
+                                                Text(modelId, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                                                 IconButton(
                                                     onClick = {
                                                         scope.launch {
@@ -466,28 +454,6 @@ class AiConfigScreen : Screen {
                                         text = { Text("No models available — type a model name manually") },
                                         onClick = { showModelMenu = false },
                                     )
-                                }
-                            }
-
-                            // Capability tags
-                            val selectedModel = knownModels.find { it.id == editModel }
-                            if (selectedModel != null && selectedModel.capabilities.isNotEmpty()) {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    selectedModel.capabilities.forEach { cap ->
-                                        Surface(
-                                            shape = MaterialTheme.shapes.extraSmall,
-                                            color = MaterialTheme.colorScheme.secondaryContainer,
-                                        ) {
-                                            Text(
-                                                cap.displayName,
-                                                style = MaterialTheme.typography.labelSmall,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                            )
-                                        }
-                                    }
                                 }
                             }
 
@@ -580,12 +546,10 @@ class AiConfigScreen : Screen {
                                 )
 
                                 // Context Window
-                                val knownModel = providerSpec?.modelById(editModel)
                                 OutlinedTextField(
                                     value = editMaxTokens,
                                     onValueChange = { editMaxTokens = it },
                                     label = { Text(strings.aiContextWindow) },
-                                    placeholder = { Text(knownModel?.let { "${it.contextWindow / 1000}K" } ?: "") },
                                     singleLine = true,
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                     modifier = Modifier.fillMaxWidth(),
