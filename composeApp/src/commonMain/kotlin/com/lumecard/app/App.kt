@@ -56,6 +56,7 @@ fun App() {
 
     LaunchedEffect(Unit) {
         settingsStateHolder.isDarkMode = settingsRepository.getBoolean("isDarkMode", false)
+        settingsStateHolder.fontScale = settingsRepository.get("fontScale")?.toFloatOrNull() ?: 1.0f
         val langStr = settingsRepository.get("language") ?: AppLocale.SYSTEM.name
         val savedLang = try { AppLocale.valueOf(langStr) } catch (_: Exception) { AppLocale.SYSTEM }
         settingsStateHolder.language = savedLang
