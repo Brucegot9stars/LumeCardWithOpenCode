@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
@@ -17,7 +18,6 @@ import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.components.LumeCardTextField
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.theme.LumeCardTheme
-import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 class LearningPlanScreen(
@@ -32,11 +32,47 @@ class LearningPlanScreen(
         val viewModel: LearningPlanViewModel = koinInject()
         val strings = koinInject<I18nManager>().strings
         val spacing = LumeCardTheme.spacing
-        val scope = rememberCoroutineScope()
 
         var name by remember { mutableStateOf("") }
         var description by remember { mutableStateOf("") }
         var isDefault by remember { mutableStateOf(false) }
+        val canSave = name.isNotBlank()
+        var showSuccess by remember { mutableStateOf(false) }
+        var showError by remember { mutableStateOf(false) }
+        var saveTrigger by remember { mutableStateOf(0) }
+
+        LaunchedEffect(saveTrigger) {
+            if (saveTrigger <= 0) return@LaunchedEffect
+            val saved = try {
+                if (editPlanId != null) {
+                    val existing = viewModel.plans.value.find { it.id == editPlanId }
+                    if (existing != null) {
+                        viewModel.updatePlan(
+                            id = editPlanId,
+                            name = name,
+                            description = description.ifBlank { null },
+                            knowledgeBaseIds = existing.knowledgeBaseIds,
+                            deckIds = existing.deckIds,
+                            cardIds = existing.cardIds,
+                            isDefault = isDefault
+                        )
+                    }
+                } else {
+                    viewModel.createPlan(
+                        name = name,
+                        description = description.ifBlank { null },
+                        knowledgeBaseIds = emptyList(),
+                        deckIds = emptyList(),
+                        cardIds = emptyList(),
+                        isDefault = isDefault
+                    )
+                }
+                true
+            } catch (_: Exception) {
+                false
+            }
+            if (saved) showSuccess = true else showError = true
+        }
 
         LaunchedEffect(editPlanId) {
             if (editPlanId != null) {
@@ -86,40 +122,39 @@ class LearningPlanScreen(
                 }
                 Spacer(Modifier.height(spacing.md))
                 Button(
-                    onClick = {
-                        scope.launch {
-                            if (editPlanId != null) {
-                                val existing = viewModel.plans.value.find { it.id == editPlanId }
-                                if (existing != null) {
-                                    viewModel.updatePlan(
-                                        id = editPlanId,
-                                        name = name,
-                                        description = description.ifBlank { null },
-                                        knowledgeBaseIds = existing.knowledgeBaseIds,
-                                        deckIds = existing.deckIds,
-                                        cardIds = existing.cardIds,
-                                        isDefault = isDefault
-                                    )
-                                }
-                            } else {
-                                viewModel.createPlan(
-                                    name = name,
-                                    description = description.ifBlank { null },
-                                    knowledgeBaseIds = emptyList(),
-                                    deckIds = emptyList(),
-                                    cardIds = emptyList(),
-                                    isDefault = isDefault
-                                )
-                            }
-                            navigator.pop()
-                        }
-                    },
+                    onClick = { saveTrigger++ },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = name.isNotBlank()
+                    enabled = canSave && !showSuccess && !showError,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (canSave && !showSuccess && !showError) Color(0xFF4CAF50) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        contentColor = if (canSave && !showSuccess && !showError) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                    )
                 ) {
                     Text(strings.actionSave)
                 }
+
             }
+        }
+        if (showSuccess) {
+            AlertDialog(
+                onDismissRequest = { showSuccess = false },
+                title = { Text(if (editPlanId != null) strings.planUpdated else strings.planCreated) },
+                text = { Text(if (editPlanId != null) strings.planSavedDescUpdate else strings.planSavedDescCreate) },
+                confirmButton = {
+                    Button(onClick = {
+                        showSuccess = false
+                        navigator.pop()
+                    }) { Text(strings.actionOk) }
+                }
+            )
+        }
+        if (showError) {
+            AlertDialog(
+                onDismissRequest = { showError = false },
+                title = { Text(strings.errorTitle) },
+                text = { Text(strings.errorDesc) },
+                confirmButton = { Button(onClick = { showError = false }) { Text(strings.actionOk) } }
+            )
         }
     }
 }

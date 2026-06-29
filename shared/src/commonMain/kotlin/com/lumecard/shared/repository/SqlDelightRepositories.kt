@@ -390,10 +390,15 @@ private fun com.lumecard.shared.database.SelectDueCards.toDomain() = Card(
     front = front,
     back = back,
     tags = parseStringList(tags),
+    media = try { if (media.isNullOrBlank()) emptyList() else Json.decodeFromString(media) } catch (_: Exception) { emptyList() },
+    metadata = try { if (metadata.isNullOrBlank()) emptyMap() else Json.decodeFromString(metadata) } catch (_: Exception) { emptyMap() },
     createdAt = safeInstant(created_at),
     updatedAt = safeInstant(updated_at),
     lastReviewedAt = safeInstantOrNull(last_reviewed_at),
-    nextReviewAt = safeInstant(next_review_at)
+    nextReviewAt = safeInstant(next_review_at),
+    version = version,
+    deletedAt = safeInstantOrNull(deleted_at),
+    syncedAt = safeInstantOrNull(synced_at)
 )
 
 private fun com.lumecard.shared.database.Card.toDomain() = Card(

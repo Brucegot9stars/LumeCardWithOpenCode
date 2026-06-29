@@ -38,17 +38,20 @@ internal fun CardContent(
     horizontalCenter: Boolean = false,
     verticalCenter: Boolean = false,
     fontSize: Int = 16,
+    fontFamily: androidx.compose.ui.text.font.FontFamily? = null,
     onConfirmChoice: (() -> Unit)? = null,
 ) {
     val strings = koinInject<I18nManager>().strings
     Column(modifier = Modifier.fillMaxWidth()) {
         when (displayMode) {
             AnswerDisplayMode.FLIP -> {
-                FlipCard(
-                    isFlipped = isFlipped,
-                    front = { CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice, horizontalCenter = horizontalCenter, fontSize = fontSize) },
-                    back = { CardFace(card, showBack = true, horizontalCenter = horizontalCenter, fontSize = fontSize) }
-                )
+                key(card.id) {
+                    FlipCard(
+                        isFlipped = isFlipped,
+                        front = { CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice, horizontalCenter = horizontalCenter, fontSize = fontSize, fontFamily = fontFamily) },
+                        back = { CardFace(card, showBack = true, horizontalCenter = horizontalCenter, fontSize = fontSize, fontFamily = fontFamily) }
+                    )
+                }
             }
             AnswerDisplayMode.SPLIT -> {
                 if (isFlipped) {
@@ -78,7 +81,7 @@ internal fun CardContent(
                         shape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
                     ) {
-                        CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice, horizontalCenter = horizontalCenter, fontSize = fontSize)
+                        CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice, horizontalCenter = horizontalCenter, fontSize = fontSize, fontFamily = fontFamily)
                     }
                     Spacer(Modifier.height(16.dp))
                     Surface(
@@ -107,10 +110,10 @@ internal fun CardContent(
                         shape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp),
                         color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.2f)
                     ) {
-                        CardFace(card, showBack = true, horizontalCenter = horizontalCenter, fontSize = fontSize)
+                        CardFace(card, showBack = true, horizontalCenter = horizontalCenter, fontSize = fontSize, fontFamily = fontFamily)
                     }
                 } else {
-                    CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice, horizontalCenter = horizontalCenter, fontSize = fontSize)
+                    CardFace(card, showBack = false, onConfirmChoice = onConfirmChoice, horizontalCenter = horizontalCenter, fontSize = fontSize, fontFamily = fontFamily)
                 }
             }
         }
@@ -159,29 +162,34 @@ internal fun CardFace(
     onConfirmChoice: (() -> Unit)? = null,
     horizontalCenter: Boolean = false,
     fontSize: Int = 16,
+    fontFamily: androidx.compose.ui.text.font.FontFamily? = null,
 ) {
     val clozeRegex = remember { Regex("\\{\\{c\\d+::([^}]+)\\}\\}") }
     val clozeHintRegex = remember { Regex("\\{\\{c\\d+::([^}]+)::([^}]+)\\}\\}") }
-    val clozeAnswerRegex = remember { Regex("\\{\\{c\\d+::([^:}]+)(?:::([^}]+))?\\}\\}") }
 
     val strings = koinInject<I18nManager>().strings
     val align = if (horizontalCenter) Alignment.CenterHorizontally else Alignment.Start
     val textAlign = if (horizontalCenter) TextAlign.Center else TextAlign.Start
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = align) {
         when (card.type) {
-            CardType.BASIC -> {
+            CardType.BASIC, CardType.REVERSED -> {
+                val fontId = card.metadata["fontFamily"] ?: ""
+                val ff = fontFamily ?: com.lumecard.app.font.FontRegistry.resolveFontFamily(
+                    if (fontId.isNotBlank()) fontId else com.lumecard.app.font.FontRegistry.defaultFontId
+                )
                 Text(
                     text = if (showBack) card.back else card.front,
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = textAlign,
                     fontSize = fontSize.sp,
+                    fontFamily = ff,
                 )
             }
             CardType.RICH_TEXT -> {
                 val html = if (showBack) card.back else card.front
                 RichTextCardFace(html = html)
             }
-            CardType.REVERSED, CardType.MARKDOWN, CardType.AI_GENERATED -> {
+            CardType.MARKDOWN, CardType.AI_GENERATED -> {
                 MarkdownText(
                     markdown = if (showBack) card.back else card.front,
                     modifier = Modifier.fillMaxWidth(),
@@ -191,18 +199,18 @@ internal fun CardFace(
             CardType.CLOZE -> {
                 if (!showBack) {
                     val displayText = card.front.replace(clozeHintRegex, "____").replace(clozeRegex, "____")
-                    Text(displayText, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.fillMaxWidth())
+                    Text(displayText, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.fillMaxWidth(), textAlign = textAlign, fontSize = fontSize.sp)
                     Spacer(Modifier.height(8.dp))
                     Text(strings.studyClozeHint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth())
                 } else {
                     val annotated = buildAnnotatedString {
                         var pos = 0
-                        for (match in clozeAnswerRegex.findAll(card.front)) {
+                        for (match in clozeRegex.findAll(card.front)) {
                             if (pos < match.range.first) {
                                 append(card.front.substring(pos, match.range.first))
                             }
                             withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold, color = Color.Red)) {
-                                append(match.groupValues[1])
+                                append(match.groupValues[1].substringBefore("::"))
                             }
                             pos = match.range.last + 1
                         }
@@ -210,7 +218,7 @@ internal fun CardFace(
                             append(card.front.substring(pos))
                         }
                     }
-                    Text(annotated, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.fillMaxWidth())
+                    Text(annotated, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.fillMaxWidth(), textAlign = textAlign, fontSize = fontSize.sp)
                 }
             }
             CardType.MULTIPLE_CHOICE -> {

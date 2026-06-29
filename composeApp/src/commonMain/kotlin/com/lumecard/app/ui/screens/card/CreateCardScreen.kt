@@ -1,6 +1,7 @@
 package com.lumecard.app.ui.screens.card
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -18,6 +19,8 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.lumecard.app.font.FontRegistry
+import com.lumecard.app.font.FontSpec
 import com.lumecard.app.ui.components.RichTextCardEditor
 import com.lumecard.app.ui.components.MarkdownText
 import com.lumecard.shared.model.Card
@@ -32,7 +35,8 @@ import org.koin.compose.koinInject
 class CreateCardScreen(
     private val deckId: String,
     private val deckName: String,
-    private val editCard: Card? = null
+    private val editCard: Card? = null,
+    private val onCardSaved: (() -> Unit)? = null,
 ) : Screen {
     override val key: ScreenKey = "CreateCard_${editCard?.id ?: deckId}"
 
@@ -49,6 +53,7 @@ class CreateCardScreen(
         var horizontalCenter by remember { mutableStateOf(editCard?.metadata?.get("hcenter")?.toBoolean() ?: false) }
         var verticalCenter by remember { mutableStateOf(editCard?.metadata?.get("vcenter")?.toBoolean() ?: false) }
         var fontSize by remember { mutableStateOf(editCard?.metadata?.get("fontSize")?.toIntOrNull() ?: 16) }
+        var fontFamily by remember { mutableStateOf(editCard?.metadata?.get("fontFamily") ?: "") }
         var showTypeMenu by remember { mutableStateOf(false) }
         var showTypeHelp by remember { mutableStateOf(true) }
         val isEditing = editCard != null
@@ -62,16 +67,22 @@ class CreateCardScreen(
                             onClick = {
                                 val saveFront = front
                                 val saveBack = back
+                                val saveTags = tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
                                 if (isEditing) {
                                     viewModel.updateCard(
                                         card = editCard,
                                         front = saveFront,
                                         back = saveBack,
                                         type = cardType,
-                                        tags = tags.split(",").map { it.trim() }.filter { it.isNotBlank() },
+                                        tags = saveTags,
                                         horizontalCenter = horizontalCenter,
                                         verticalCenter = verticalCenter,
                                         fontSize = fontSize,
+                                        fontFamily = fontFamily,
+                                        onComplete = {
+                                            onCardSaved?.invoke()
+                                            navigator.pop()
+                                        }
                                     )
                                 } else {
                                     viewModel.createCard(
@@ -79,13 +90,14 @@ class CreateCardScreen(
                                         front = saveFront,
                                         back = saveBack,
                                         type = cardType,
-                                        tags = tags.split(",").map { it.trim() }.filter { it.isNotBlank() },
+                                        tags = saveTags,
                                         horizontalCenter = horizontalCenter,
                                         verticalCenter = verticalCenter,
                                         fontSize = fontSize,
+                                        fontFamily = fontFamily,
+                                        onComplete = { navigator.pop() }
                                     )
                                 }
-                                navigator.pop()
                             },
                             enabled = front.isNotBlank() && back.isNotBlank()
                         ) {
@@ -139,6 +151,8 @@ class CreateCardScreen(
                     onVerticalCenterChange = { verticalCenter = it },
                     fontSize = fontSize,
                     onFontSizeChange = { fontSize = it },
+                    fontFamily = fontFamily,
+                    onFontFamilyChange = { fontFamily = it },
                 )
 
                 OutlinedTextField(
@@ -213,6 +227,37 @@ private fun clozeAutoBack(front: String): String {
 }
 
 @Composable
+private fun ClozeQuickInsertButtons(
+    text: String,
+    onInsert: (String) -> Unit,
+) {
+    val clozeNumRegex = remember { Regex("\\{\\{c(\\d+)::") }
+    val existingNumbers = remember(text) {
+        clozeNumRegex.findAll(text).map { it.groupValues[1].toInt() }.toSet()
+    }
+    val maxExisting = existingNumbers.maxOrNull() ?: 0
+    val maxButton = (maxExisting + 5).coerceIn(3, 9)
+
+    Row(
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        (1..maxButton).forEach { n ->
+            val isUsed = n in existingNumbers
+            FilterChip(
+                selected = isUsed,
+                onClick = {
+                    if (!isUsed) {
+                        onInsert("{{c${n}::}}")
+                    }
+                },
+                label = { Text("c$n", style = MaterialTheme.typography.labelSmall) },
+            )
+        }
+    }
+}
+
+@Composable
 private fun CardTypeInput(
     type: CardType,
     front: String,
@@ -225,15 +270,17 @@ private fun CardTypeInput(
     onVerticalCenterChange: ((Boolean) -> Unit)? = null,
     fontSize: Int = 16,
     onFontSizeChange: ((Int) -> Unit)? = null,
+    fontFamily: String = "",
+    onFontFamilyChange: ((String) -> Unit)? = null,
 ) {
     val strings = koinInject<I18nManager>().strings
     when (type) {
-        CardType.BASIC -> {
+        CardType.BASIC, CardType.REVERSED -> {
             BasicCardFields(
                 front = front, onFrontChange = onFrontChange,
                 back = back, onBackChange = onBackChange,
-                frontLabel = strings.cardFrontLabel,
-                backLabel = strings.cardBackLabel,
+                frontLabel = if (type == CardType.REVERSED) strings.cardFrontLabelRev else strings.cardFrontLabel,
+                backLabel = if (type == CardType.REVERSED) strings.cardBackLabelRev else strings.cardBackLabel,
                 frontPlaceholder = strings.cardFrontPlaceholder,
                 backPlaceholder = strings.cardBackPlaceholder,
                 horizontalCenter = horizontalCenter,
@@ -242,6 +289,8 @@ private fun CardTypeInput(
                 onVerticalCenterChange = onVerticalCenterChange,
                 fontSize = fontSize,
                 onFontSizeChange = onFontSizeChange,
+                fontFamily = fontFamily,
+                onFontFamilyChange = onFontFamilyChange,
             )
         }
         CardType.RICH_TEXT -> {
@@ -252,12 +301,12 @@ private fun CardTypeInput(
                 backLabel = strings.cardBackLabel,
             )
         }
-        CardType.REVERSED, CardType.MARKDOWN, CardType.AI_GENERATED -> {
+        CardType.MARKDOWN, CardType.AI_GENERATED -> {
             BasicCardFields(
                 front = front, onFrontChange = onFrontChange,
                 back = back, onBackChange = onBackChange,
-                frontLabel = if (type == CardType.REVERSED) strings.cardFrontLabelRev else strings.cardFrontLabel,
-                backLabel = if (type == CardType.REVERSED) strings.cardBackLabelRev else strings.cardBackLabel,
+                frontLabel = strings.cardFrontLabel,
+                backLabel = strings.cardBackLabel,
                 frontPlaceholder = strings.cardFrontPlaceholder,
                 backPlaceholder = strings.cardBackPlaceholder
             )
@@ -265,12 +314,19 @@ private fun CardTypeInput(
         CardType.CLOZE -> {
             Text(strings.cardClozeContent, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             Text(strings.cardClozeFormatHint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(8.dp))
+            val onClozeChange = { newFront: String ->
+                onFrontChange(newFront)
+                onBackChange(clozeAutoBack(newFront))
+            }
+            ClozeQuickInsertButtons(
+                text = front,
+                onInsert = { marker -> onClozeChange(front + marker) }
+            )
+            Spacer(Modifier.height(4.dp))
             OutlinedTextField(
                 value = front,
-                onValueChange = {
-                    onFrontChange(it)
-                    onBackChange(clozeAutoBack(it))
-                },
+                onValueChange = onClozeChange,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
                 placeholder = { Text(strings.cardClozePlaceholder) }
             )
@@ -307,6 +363,8 @@ private fun BasicCardFields(
     onVerticalCenterChange: ((Boolean) -> Unit)? = null,
     fontSize: Int = 16,
     onFontSizeChange: ((Int) -> Unit)? = null,
+    fontFamily: String = "",
+    onFontFamilyChange: ((String) -> Unit)? = null,
 ) {
     val strings = koinInject<I18nManager>().strings
     Text(frontLabel, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
@@ -323,44 +381,89 @@ private fun BasicCardFields(
         modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
         placeholder = { Text(backPlaceholder) }
     )
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(strings.cardHorizontalCenter, style = MaterialTheme.typography.bodyMedium)
-        Switch(checked = horizontalCenter, onCheckedChange = onHorizontalCenterChange)
+    if (onHorizontalCenterChange != null) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(strings.cardHorizontalCenter, style = MaterialTheme.typography.bodyMedium)
+            Switch(checked = horizontalCenter, onCheckedChange = onHorizontalCenterChange)
+        }
     }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(strings.cardVerticalCenter, style = MaterialTheme.typography.bodyMedium)
-        Switch(checked = verticalCenter, onCheckedChange = onVerticalCenterChange)
+    if (onVerticalCenterChange != null) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(strings.cardVerticalCenter, style = MaterialTheme.typography.bodyMedium)
+            Switch(checked = verticalCenter, onCheckedChange = onVerticalCenterChange)
+        }
     }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(strings.cardFontSize, style = MaterialTheme.typography.bodyMedium)
-        Spacer(Modifier.width(8.dp))
-        Slider(
-            value = fontSize.toFloat(),
-            onValueChange = { onFontSizeChange?.invoke(it.roundToInt()) },
-            valueRange = 12f..120f,
-            steps = 107,
-            modifier = Modifier.weight(1f),
-        )
-        Spacer(Modifier.width(8.dp))
-        Text("${fontSize}sp", style = MaterialTheme.typography.bodySmall)
+    if (onFontSizeChange != null) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(strings.cardFontSize, style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.width(8.dp))
+            Slider(
+                value = fontSize.toFloat(),
+                onValueChange = { onFontSizeChange?.invoke(it.roundToInt()) },
+                valueRange = 12f..120f,
+                steps = 107,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text("${fontSize}sp", style = MaterialTheme.typography.bodySmall)
+        }
+    }
+    if (onFontFamilyChange != null) {
+        val fontOptions = FontRegistry.fonts
+        var expanded by remember { mutableStateOf(false) }
+        val selectedFont = fontOptions.find { it.id == fontFamily }
+        val selectedLabel = selectedFont?.displayName ?: fontOptions.firstOrNull()?.displayName ?: "Default"
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(strings.cardFont, style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.width(8.dp))
+            Box {
+                OutlinedButton(onClick = { expanded = true }) {
+                    Text(selectedLabel)
+                }
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    fontOptions.forEach { spec ->
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(spec.displayName)
+                                    if (spec.source == com.lumecard.app.font.FontSource.USER_IMPORTED) {
+                                        Spacer(Modifier.width(6.dp))
+                                        Icon(
+                                            Icons.Default.Download,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            },
+                            onClick = { onFontFamilyChange(spec.id); expanded = false },
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
 @Composable
 private fun CardPreviewContent(text: String, cardType: CardType, fontSize: Int = 16) {
     when (cardType) {
-        CardType.BASIC -> Text(text, modifier = Modifier.fillMaxWidth(), fontSize = fontSize.sp)
+        CardType.BASIC, CardType.REVERSED -> Text(text, modifier = Modifier.fillMaxWidth(), fontSize = fontSize.sp)
         else -> MarkdownText(markdown = text, modifier = Modifier.fillMaxWidth())
     }
 }

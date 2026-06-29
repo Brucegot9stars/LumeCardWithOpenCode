@@ -6,14 +6,18 @@ import android.content.Context
 import com.lumecard.shared.database.AndroidContextHolder
 
 actual fun copyToClipboard(text: String, label: String) {
-    val context = AndroidContextHolder.context ?: return
-    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    val clip = ClipData.newPlainText(label, text)
-    clipboard.setPrimaryClip(clip)
+    try {
+        val context = AndroidContextHolder.context
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText(label, text)
+        clipboard.setPrimaryClip(clip)
+    } catch (_: Exception) { }
 }
 
 actual fun getClipboardText(): String? {
-    val context = AndroidContextHolder.context ?: return null
-    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    return clipboard.primaryClip?.getItemAt(0)?.text?.toString()
+    return try {
+        val context = AndroidContextHolder.context
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.primaryClip?.getItemAt(0)?.text?.toString()
+    } catch (_: Exception) { null }
 }

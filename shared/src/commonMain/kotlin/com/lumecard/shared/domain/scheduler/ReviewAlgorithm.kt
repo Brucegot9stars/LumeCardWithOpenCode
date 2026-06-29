@@ -26,5 +26,5 @@ data class AlgorithmState(
 interface ReviewAlgorithm {
     val mode: ReviewMode
     fun initCard(): AlgorithmState
-    fun schedule(state: AlgorithmState, rating: Rating): AlgorithmState
+    fun schedule(state: AlgorithmState, rating: Rating, daysElapsed: Int = 0): AlgorithmState
 }

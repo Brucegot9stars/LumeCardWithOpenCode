@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -26,10 +27,14 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.lumecard.app.platform.SoundSettings
+import com.lumecard.app.platform.playRatingSound
+import com.lumecard.app.font.FontRegistry
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.components.LumeCardRatingBar
 import com.lumecard.app.ui.components.ProgressRing
 import com.lumecard.app.ui.theme.LumeCardTheme
+import com.lumecard.app.ui.screens.card.CreateCardScreen
 import com.lumecard.app.ui.screens.settings.AnswerDisplayMode
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.i18n.I18nStrings
@@ -37,7 +42,9 @@ import com.lumecard.app.ui.screens.settings.SettingsStateHolder
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
 import com.lumecard.shared.model.Rating
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
 import org.koin.compose.koinInject
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
@@ -50,7 +57,8 @@ private const val SWIPE_THRESHOLD_RATIO = 0.2f
 class StudyScreen(
     private val deckIds: List<String>,
     private val deckName: String,
-    private val planIds: List<String> = emptyList()
+    private val planIds: List<String> = emptyList(),
+    private val initialMode: CardsStudyMode = CardsStudyMode.DUE_FIRST,
 ) : Screen {
     constructor(deckId: String, deckName: String) : this(listOf(deckId), deckName)
 
@@ -121,7 +129,9 @@ class StudyScreen(
         var lastDragX by remember { mutableFloatStateOf(0f) }
         var velocity by remember { mutableFloatStateOf(0f) }
 
+        var editSaveCount by remember { mutableIntStateOf(0) }
         var showStudyModeDialog by remember { mutableStateOf(false) }
+        var soundEnabled by remember { mutableStateOf(SoundSettings.enabled) }
         var hasChosenMode by remember { mutableStateOf(false) }
         val allDone = cards.isNotEmpty() && currentIndex >= cards.size
         LaunchedEffect(allDone, cards.isEmpty()) {
@@ -182,12 +192,20 @@ class StudyScreen(
         }
 
         LaunchedEffect(deckIds) {
-            viewModel.loadCards(deckIds, planIds)
+            if (viewModel.cards.value.isEmpty()) {
+                viewModel.loadCards(deckIds, planIds, initialMode)
+            }
         }
 
         LaunchedEffect(currentCard) {
             swipeOffset.snapTo(0f)
             isAnimatingOut = false
+        }
+
+        LaunchedEffect(editSaveCount) {
+            if (editSaveCount > 0) {
+                viewModel.refreshCurrentCard()
+            }
         }
 
         if (showStudyModeDialog) {
@@ -200,7 +218,7 @@ class StudyScreen(
                 strings.studyRandom(actual)
             }
             AlertDialog(
-                onDismissRequest = { navigator.pop() },
+                onDismissRequest = { scope.launch { withFrameNanos { navigator.pop() } } },
                 title = { Text(strings.studyModeTitle) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -239,12 +257,15 @@ class StudyScreen(
                         ) { Text(randomLabel()) }
                     }
                 },
-                confirmButton = { TextButton(onClick = { navigator.pop() }, interactionSource = null) { Text(strings.actionDone) } }
+                confirmButton = { TextButton(onClick = { scope.launch { withFrameNanos { navigator.pop() } } }, interactionSource = null) { Text(strings.actionDone) } }
             )
         }
 
         DisposableEffect(Unit) {
-            onDispose { viewModel.stopTimer() }
+            onDispose {
+                viewModel.savePlanProgress()
+                viewModel.stopTimer()
+            }
         }
 
 
@@ -259,7 +280,37 @@ class StudyScreen(
                 topBar = {
                     LumeCardTopBar(
                         title = "${strings.actionLearning}: $deckName",
-                        onBack = { navigator.pop() }
+                        onBack = { scope.launch { withFrameNanos { navigator.pop() } } },
+                        action = {
+                            Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+                                if (currentCard != null) {
+                                    IconButton(onClick = {
+                                        try {
+                                            navigator.push(CreateCardScreen(
+                                                deckId = currentCard.deckId,
+                                                deckName = deckName,
+                                                editCard = currentCard,
+                                                onCardSaved = { editSaveCount++ }
+                                            ))
+                                        } catch (e: Exception) {
+                                            println("[LumeCard ERROR] Study navigate edit: ${e.message}")
+                                        }
+                                    }) {
+                                        Icon(Icons.Default.Edit, contentDescription = strings.actionEdit, tint = MaterialTheme.colorScheme.onSurface)
+                                    }
+                                }
+                                IconButton(onClick = {
+                                    soundEnabled = !soundEnabled
+                                    SoundSettings.enabled = soundEnabled
+                                }) {
+                                    Icon(
+                                        Icons.Default.Notifications,
+                                        contentDescription = if (soundEnabled) "Mute" else "Unmute",
+                                        tint = if (soundEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
+                                    )
+                                }
+                            }
+                        }
                     )
                 }
             ) { padding ->
@@ -335,7 +386,7 @@ class StudyScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Spacer(Modifier.height(24.dp))
-                                    Button(onClick = { navigator.pop() }, interactionSource = null) {
+                                    Button(onClick = { scope.launch { withFrameNanos { navigator.pop() } } }, interactionSource = null) {
                                         Text(strings.actionBack)
                                     }
                                 }
@@ -366,10 +417,11 @@ class StudyScreen(
                                         modifier = Modifier.fillMaxSize().padding(20.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        val nextHCenter = nextCard.type == CardType.BASIC && nextCard.metadata["hcenter"].toBoolean()
-                                        val nextVCenter = nextCard.type == CardType.BASIC && nextCard.metadata["vcenter"].toBoolean()
+                                        val nextHCenter = (nextCard.type == CardType.BASIC || nextCard.type == CardType.REVERSED) && nextCard.metadata["hcenter"].toBoolean()
+                                        val nextVCenter = (nextCard.type == CardType.BASIC || nextCard.type == CardType.REVERSED) && nextCard.metadata["vcenter"].toBoolean()
                                         val nextFontSize = nextCard.metadata["fontSize"]?.toIntOrNull() ?: 16
-                                        CardContent(card = nextCard, isFlipped = false, displayMode = settingsState.answerDisplayMode, horizontalCenter = nextHCenter, verticalCenter = nextVCenter, fontSize = nextFontSize)
+                                        val nextFontFamily = FontRegistry.resolveFontFamily(nextCard.metadata["fontFamily"] ?: "")
+                                        CardContent(card = nextCard, isFlipped = false, displayMode = settingsState.answerDisplayMode, horizontalCenter = nextHCenter, verticalCenter = nextVCenter, fontSize = nextFontSize, fontFamily = nextFontFamily)
                                     }
                                 }
                             }
@@ -389,7 +441,7 @@ class StudyScreen(
                                         detectHorizontalDragGestures(
                                             onDragStart = {
                                                 if (isAnimatingOut) return@detectHorizontalDragGestures
-                                                lastDragTime = System.currentTimeMillis()
+                                                lastDragTime = Clock.System.now().toEpochMilliseconds()
                                                 lastDragX = 0f
                                                 velocity = 0f
                                             },
@@ -428,7 +480,7 @@ class StudyScreen(
                                             onHorizontalDrag = { change, dragAmount ->
                                                 if (isAnimatingOut) return@detectHorizontalDragGestures
                                                 change.consume()
-                                                val now = System.currentTimeMillis()
+                                                val now = Clock.System.now().toEpochMilliseconds()
                                                 val dt = (now - lastDragTime).coerceAtLeast(1)
                                                 velocity = dragAmount / dt * 1000f
                                                 lastDragTime = now
@@ -450,7 +502,7 @@ class StudyScreen(
                                     }
                                 )
                             ) {
-                                        val isBasicCard = currentCard.type == CardType.BASIC
+                                        val isBasicCard = currentCard.type == CardType.BASIC || currentCard.type == CardType.REVERSED
                                 val hCenter = isBasicCard && currentCard.metadata["hcenter"].toBoolean()
                                 val vCenter = isBasicCard && currentCard.metadata["vcenter"].toBoolean()
                                 val fontSize = currentCard.metadata["fontSize"]?.toIntOrNull() ?: 16
@@ -473,6 +525,7 @@ class StudyScreen(
                                         horizontalCenter = hCenter,
                                         verticalCenter = vCenter,
                                         fontSize = fontSize,
+                                        fontFamily = FontRegistry.resolveFontFamily(currentCard.metadata["fontFamily"] ?: ""),
                                         onConfirmChoice = onConfirmChoice,
                                     )
                                 }
@@ -617,14 +670,14 @@ class StudyScreen(
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
                                     OutlinedButton(
-                                        onClick = { navigator.pop() },
+                                        onClick = { scope.launch { withFrameNanos { navigator.pop() } } },
                                         interactionSource = null,
                                         modifier = Modifier.weight(1f),
                                     ) {
                                         Text(strings.actionDone)
                                     }
                                     Button(
-                                        onClick = { navigator.pop() },
+                                        onClick = { scope.launch { withFrameNanos { navigator.pop() } } },
                                         interactionSource = null,
                                         modifier = Modifier.weight(1f),
                                     ) {
@@ -675,10 +728,10 @@ class StudyScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             LumeCardRatingBar(
-                                onAgain = { viewModel.rateCard(Rating.AGAIN) },
-                                onHard = { viewModel.rateCard(Rating.HARD) },
-                                onGood = { viewModel.rateCard(Rating.GOOD) },
-                                onEasy = { viewModel.rateCard(Rating.EASY) },
+                                onAgain = { if (soundEnabled) playRatingSound(Rating.AGAIN); viewModel.rateCard(Rating.AGAIN) },
+                                onHard = { if (soundEnabled) playRatingSound(Rating.HARD); viewModel.rateCard(Rating.HARD) },
+                                onGood = { if (soundEnabled) playRatingSound(Rating.GOOD); viewModel.rateCard(Rating.GOOD) },
+                                onEasy = { if (soundEnabled) playRatingSound(Rating.EASY); viewModel.rateCard(Rating.EASY) },
                                 strings = strings,
                             )
                         }

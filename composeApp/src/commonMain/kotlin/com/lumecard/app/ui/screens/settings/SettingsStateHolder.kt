@@ -16,6 +16,8 @@ class SettingsStateHolder {
     var autoSyncEnabled by mutableStateOf(false)
     var autoSyncIntervalMinutes by mutableStateOf(30)
     var language by mutableStateOf(AppLocale.SYSTEM)
+    var defaultFontFamily by mutableStateOf("")
+    var fontScale by mutableStateOf(1.0f)
     var isDirty by mutableStateOf(false)
     var isSaving by mutableStateOf(false)
 

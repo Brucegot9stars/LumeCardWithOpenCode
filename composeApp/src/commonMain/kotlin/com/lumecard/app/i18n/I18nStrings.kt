@@ -4,7 +4,6 @@ interface I18nStrings {
     val appName: String get() = "LumeCard"
 
     val navHome: String
-    val navDecks: String
     val navSettings: String
     val navStats: String
 
@@ -37,6 +36,10 @@ interface I18nStrings {
 
     val dashStartLearning: String
     fun dashActivePlans(count: Int): String
+    val dashPendingReview: String
+    fun dashDuePlans(count: Int): String
+    val dashDueCardsLabel: String
+    fun dashDueCardsCount(count: Int): String
     fun dashKBCount(count: Int): String
     val dashManageDecks: String
     val dashQuickActions: String
@@ -62,7 +65,6 @@ interface I18nStrings {
     val modeTitle: String
     val modeSelectDecks: String
     val modeNoDecks: String
-    val modeCardsTotal: String
     fun modeCardsCount(count: Int): String
     val modeStartMixed: String
     val modeStartSingle: String
@@ -145,6 +147,7 @@ interface I18nStrings {
     val cardTags: String
     val cardHorizontalCenter: String
     val cardVerticalCenter: String
+    val cardFont: String
     val cardFontSize: String
     val cardTagsPlaceholder: String
     val cardTagsHint: String
@@ -222,6 +225,11 @@ interface I18nStrings {
     val settingsDailyReminder: String
     val settingsDailyReminderDesc: String
     val settingsDataManagement: String
+    val settingsFontTitle: String
+    val settingsFontImport: String
+    val settingsFontImportSuccess: String
+    val settingsFontImportFailed: String
+    val settingsFontDeleteConfirm: String
     val settingsExport: String
     val settingsExportDesc: String
     fun settingsExportSuccess(length: Int): String
@@ -281,6 +289,7 @@ interface I18nStrings {
     val settingsSyncing: String
     fun settingsSyncSuccess(decksCount: Int): String
     fun settingsSyncError(msg: String): String
+    val settingsSyncConfigSuccess: String
     val settingsSyncAddConfig: String
     val settingsSyncConfigName: String
     val settingsSyncConfigNamePlaceholder: String
@@ -333,6 +342,7 @@ interface I18nStrings {
     val webdavProviderSyncthing: String
     val settingsLanguage: String
     val settingsLanguageDesc: String
+    val settingsFontScale: String
 
     val kbTitle: String
     val kbCreate: String
@@ -344,6 +354,10 @@ interface I18nStrings {
     val planTitle: String
     val planCreate: String
     val planEdit: String
+    val planCreated: String
+    val planUpdated: String
+    val planSavedDescCreate: String
+    val planSavedDescUpdate: String
     val planEmpty: String
     val planDeleteConfirm: String
     val planDeleteConfirmDesc: String
@@ -351,12 +365,18 @@ interface I18nStrings {
     val planStatusInProgress: String
     val planStatusCompleted: String
     val planDefault: String
+    fun planAutoName(deckCount: Int): String
     val planRandom: String
     val planRandomDesc: String
     val planSelectToStart: String
     val planProgress: String
     val planResetConfirm: String
     val planResetConfirmDesc: String
+    val planReview: String
+    val planLearn: String
+    val planAllDoneTitle: String
+    val planAllDoneDesc: String
+    val planReviewAgain: String
     fun planCardsCount(count: Int): String
 
     val fieldName: String
@@ -403,8 +423,34 @@ interface I18nStrings {
     val statsStreakDays: String
     val statsCardDistribution: String
     val statsNewCards: String
-    val statsDueCards: String
-    val statsUpcomingCards: String
+    val statsForecast: String
+    val statsForecastBacklog: String
+    fun statsForecastBacklogValue(count: Int): String
+    val statsForecastDueToday: String
+    val statsForecastDue1Month: String
+    val statsForecastDue3Months: String
+    val statsForecastDue6Months: String
+    val statsForecastDue1Year: String
+    val statsForecastDueAllTime: String
+    val statsReviewIntervals: String
+    val statsReviewIntervalAvg: String
+    fun statsReviewIntervalAvgValue(days: Double): String
+    val statsReviewIntervalMax: String
+    fun statsReviewIntervalMaxValue(days: Int): String
+    val statsRetention: String
+    val statsRetentionYoung: String
+    val statsRetentionMature: String
+    val statsRetentionOverall: String
+    val statsRetentionPeriodToday: String
+    val statsRetentionPeriodYesterday: String
+    val statsRetentionPeriodWeek: String
+    val statsRetentionPeriodMonth: String
+    val statsRetentionPeriodYear: String
+    val statsRetentionPeriodAllTime: String
+    val statsCardCountsNew: String
+    val statsCardCountsLearning: String
+    val statsCardCountsYoung: String
+    val statsCardCountsMature: String
 
     val algoFsrs: String
     val algoFsrsDesc: String
@@ -446,6 +492,8 @@ interface I18nStrings {
     fun editorFontSizePx(size: Int): String
     val mermaidChartTitle: String
     fun deckNameLabel(name: String): String
+    fun deckListTitle(name: String): String
+    fun cardListTitle(name: String): String
 
     val noteMarkdownSupport: String
     val noteOptional: String

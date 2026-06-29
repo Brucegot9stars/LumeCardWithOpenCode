@@ -14,9 +14,9 @@ class FSRSAlgorithmAdapter(private val inner: FSRSAlgorithm) : ReviewAlgorithm {
         return card.toAlgorithmState()
     }
 
-    override fun schedule(state: AlgorithmState, rating: Rating): AlgorithmState {
-        val fsrsCard = state.toFSRSCard()
-        val updated = inner.schedule(fsrsCard, rating)
+    override fun schedule(state: AlgorithmState, rating: Rating, daysElapsed: Int): AlgorithmState {
+        val fsrsCard = state.toFSRSCard().copy(elapsedDays = daysElapsed)
+        val updated = inner.schedule(fsrsCard, rating, daysElapsed)
         return updated.toAlgorithmState()
     }
 

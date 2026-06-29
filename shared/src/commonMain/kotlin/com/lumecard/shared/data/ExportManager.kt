@@ -71,7 +71,8 @@ data class ExportKnowledgeBase(
     val createdAt: String,
     val updatedAt: String,
     val version: Long = 1,
-    val deletedAt: String? = null
+    val deletedAt: String? = null,
+    val syncedAt: String? = null
 )
 
 @Serializable
@@ -86,7 +87,8 @@ data class ExportDeck(
     val createdAt: String,
     val updatedAt: String,
     val version: Long = 1,
-    val deletedAt: String? = null
+    val deletedAt: String? = null,
+    val syncedAt: String? = null
 )
 
 @Serializable
@@ -97,12 +99,15 @@ data class ExportCard(
     val front: String,
     val back: String,
     val tags: List<String>,
+    val media: List<com.lumecard.shared.model.Media> = emptyList(),
+    val metadata: Map<String, String> = emptyMap(),
     val createdAt: String,
     val updatedAt: String,
     val lastReviewedAt: String? = null,
     val nextReviewAt: String? = null,
     val version: Long = 1,
-    val deletedAt: String? = null
+    val deletedAt: String? = null,
+    val syncedAt: String? = null
 )
 
 @Serializable
@@ -117,7 +122,8 @@ data class ExportReviewLog(
     val lapseCount: Int,
     val reviewedAt: String,
     val version: Long = 1,
-    val deletedAt: String? = null
+    val deletedAt: String? = null,
+    val syncedAt: String? = null
 )
 
 /** A snapshot entry in the sync history archive. */
@@ -149,7 +155,8 @@ data class ExportLearningPlan(
     val createdAt: String,
     val updatedAt: String,
     val version: Long = 1,
-    val deletedAt: String? = null
+    val deletedAt: String? = null,
+    val syncedAt: String? = null
 )
 
 class ExportManager {
@@ -162,7 +169,8 @@ class ExportManager {
         ExportKnowledgeBase(
             id = kb.id, name = kb.name, description = kb.description,
             createdAt = kb.createdAt.toString(), updatedAt = kb.updatedAt.toString(),
-            version = kb.version, deletedAt = kb.deletedAt?.toString()
+            version = kb.version, deletedAt = kb.deletedAt?.toString(),
+            syncedAt = kb.syncedAt?.toString()
         )
     }
 
@@ -172,7 +180,7 @@ class ExportManager {
             description = d.description, color = d.color, icon = d.icon,
             parentId = d.parentId, createdAt = d.createdAt.toString(),
             updatedAt = d.updatedAt.toString(), version = d.version,
-            deletedAt = d.deletedAt?.toString()
+            deletedAt = d.deletedAt?.toString(), syncedAt = d.syncedAt?.toString()
         )
     }
 
@@ -180,10 +188,12 @@ class ExportManager {
         ExportCard(
             id = c.id, deckId = c.deckId, type = c.type.name,
             front = c.front, back = c.back, tags = c.tags,
+            media = c.media, metadata = c.metadata,
             createdAt = c.createdAt.toString(), updatedAt = c.updatedAt.toString(),
             lastReviewedAt = c.lastReviewedAt?.toString(),
             nextReviewAt = c.nextReviewAt?.toString(),
-            version = c.version, deletedAt = c.deletedAt?.toString()
+            version = c.version, deletedAt = c.deletedAt?.toString(),
+            syncedAt = c.syncedAt?.toString()
         )
     }
 
@@ -193,7 +203,8 @@ class ExportManager {
             reviewTime = l.reviewTime, interval = l.interval,
             easeFactor = l.easeFactor, repetitions = l.repetitions,
             lapseCount = l.lapseCount, reviewedAt = l.reviewedAt.toString(),
-            version = l.version, deletedAt = l.deletedAt?.toString()
+            version = l.version, deletedAt = l.deletedAt?.toString(),
+            syncedAt = l.syncedAt?.toString()
         )
     }
 
@@ -205,7 +216,8 @@ class ExportManager {
             cardIds = p.cardIds, totalCards = p.totalCards,
             completedCards = p.completedCards,
             createdAt = p.createdAt.toString(), updatedAt = p.updatedAt.toString(),
-            version = p.version, deletedAt = p.deletedAt?.toString()
+            version = p.version, deletedAt = p.deletedAt?.toString(),
+            syncedAt = p.syncedAt?.toString()
         )
     }
 
@@ -282,12 +294,20 @@ class ExportManager {
         settings: Map<String, String>,
         deviceId: String? = null
     ): String {
+        val cleaned = settings.filterKeys { it !in DEPRECATED_SETTINGS_KEYS }
         val export = ConfigExport(
             exportDate = Clock.System.now().toString(),
             deviceId = deviceId,
-            settings = settings
+            settings = cleaned
         )
         return json.encodeToString(ConfigExport.serializer(), export)
+    }
+
+    companion object {
+        private val DEPRECATED_SETTINGS_KEYS = setOf(
+            "contentHorizontalCenter",
+            "contentVerticalCenter",
+        )
     }
 
     /** Full backup import. Also accepts share-format files (converts to DataExport). */

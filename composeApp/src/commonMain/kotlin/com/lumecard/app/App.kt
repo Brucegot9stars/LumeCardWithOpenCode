@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -24,6 +25,7 @@ import com.lumecard.app.ui.screens.settings.SettingsScreen
 import com.lumecard.app.ui.screens.settings.SettingsStateHolder
 import com.lumecard.app.ui.screens.stats.StatsScreen
 import com.lumecard.app.ui.screens.warehouse.WarehouseScreen
+import com.lumecard.app.font.FontInitializer
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.shared.repository.SettingsRepository
 import org.koin.compose.koinInject
@@ -40,9 +42,10 @@ var savedCrashLog: String? = null
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun App() {
+    val settingsRepository: SettingsRepository = koinInject()
+    FontInitializer.ensureInitialized(settingsRepository)
     val settingsStateHolder: SettingsStateHolder = koinInject()
     val i18nManager: I18nManager = koinInject()
-    val settingsRepository: SettingsRepository = koinInject()
     val strings = i18nManager.strings
 
     var crashLog by remember {
@@ -53,6 +56,7 @@ fun App() {
 
     LaunchedEffect(Unit) {
         settingsStateHolder.isDarkMode = settingsRepository.getBoolean("isDarkMode", false)
+        settingsStateHolder.fontScale = settingsRepository.get("fontScale")?.toFloatOrNull() ?: 1.0f
         val langStr = settingsRepository.get("language") ?: AppLocale.SYSTEM.name
         val savedLang = try { AppLocale.valueOf(langStr) } catch (_: Exception) { AppLocale.SYSTEM }
         settingsStateHolder.language = savedLang
@@ -106,7 +110,7 @@ fun App() {
         )
     }
 
-    LumeCardTheme(darkTheme = settingsStateHolder.isDarkMode) {
+    LumeCardTheme(darkTheme = settingsStateHolder.isDarkMode, fontScale = settingsStateHolder.fontScale) {
             var currentTab by remember { mutableStateOf(BottomNavItem.Dashboard) }
 
             Navigator(DashboardScreen()) { navigator ->
@@ -115,11 +119,11 @@ fun App() {
                         BottomNavItem.Dashboard -> DashboardScreen()
                         BottomNavItem.Stats -> StatsScreen()
                         BottomNavItem.Warehouse -> WarehouseScreen()
-                        BottomNavItem.Settings -> SettingsScreen()
+                        BottomNavItem.Settings -> SettingsScreen(onNavigateToHome = { currentTab = BottomNavItem.Dashboard })
                     }
                     val currentScreen = navigator.lastItemOrNull
                     if (currentScreen?.key != screen.key) {
-                        navigator.replaceAll(screen)
+                        withFrameNanos { navigator.replaceAll(screen) }
                     }
                 }
 

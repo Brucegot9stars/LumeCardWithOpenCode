@@ -16,6 +16,8 @@ class SettingsViewModel(
 
     fun loadSettings() {
         screenModelScope.launch {
+            val staleKeys = setOf("contentHorizontalCenter", "contentVerticalCenter")
+            staleKeys.forEach { settingsRepository.delete(it) }
             state.isDarkMode = settingsRepository.getBoolean("isDarkMode", false)
             val modeStr = settingsRepository.get("reviewMode") ?: ReviewMode.FSRS.name
             state.reviewMode = try { ReviewMode.valueOf(modeStr) } catch (_: Exception) { ReviewMode.FSRS }
@@ -28,6 +30,8 @@ class SettingsViewModel(
             state.autoSyncIntervalMinutes = settingsRepository.getInt("auto_sync_interval_minutes", 30)
             val langStr = settingsRepository.get("language") ?: AppLocale.SYSTEM.name
             state.language = try { AppLocale.valueOf(langStr) } catch (_: Exception) { AppLocale.SYSTEM }
+            state.defaultFontFamily = settingsRepository.get("defaultFontFamily") ?: ""
+            state.fontScale = settingsRepository.get("fontScale")?.toFloatOrNull() ?: 1.0f
         }
     }
 
@@ -43,6 +47,8 @@ class SettingsViewModel(
             settingsRepository.set("auto_sync_enabled", state.autoSyncEnabled.toString())
             settingsRepository.set("auto_sync_interval_minutes", state.autoSyncIntervalMinutes.toString())
             settingsRepository.set("language", state.language.name)
+            settingsRepository.set("defaultFontFamily", state.defaultFontFamily)
+            settingsRepository.set("fontScale", state.fontScale.toString())
             state.markClean()
             state.isSaving = false
         }

@@ -21,9 +21,6 @@ import kotlinx.datetime.toLocalDateTime
 data class AppStats(
     val totalCards: Int = 0,
     val totalDecks: Int = 0,
-    val newCardsCount: Int = 0,
-    val dueCardsCount: Int = 0,
-    val upcomingCardsCount: Int = 0,
     val todayReviews: Int = 0,
     val todayNewCards: Int = 0,
     val weekReviews: Int = 0,
@@ -33,7 +30,19 @@ data class AppStats(
     val studyTimeMinutes: Int = 0,
     val streakDays: Int = 0,
     val dailyGoal: Int = 20,
-    val newCardsPerDayGoal: Int = 20
+    val newCardsPerDayGoal: Int = 20,
+    val forecast: StatsCalculator.ForecastData = StatsCalculator.ForecastData(
+        emptyList(), false, 0
+    ),
+    val intervals: StatsCalculator.IntervalData = StatsCalculator.IntervalData(
+        emptyList(), 0.0, 0, 0
+    ),
+    val retention: StatsCalculator.RetentionData = StatsCalculator.RetentionData(
+        emptyList()
+    ),
+    val cardCounts: StatsCalculator.CardCountsData = StatsCalculator.CardCountsData(
+        0, 0, 0, 0
+    )
 )
 
 class StatsViewModel(
@@ -61,15 +70,6 @@ class StatsViewModel(
                 val now = Clock.System.now()
                 val today = now.toLocalDateTime(TimeZone.currentSystemDefault()).date
 
-                val newCards = allCards.filter { it.deletedAt == null }.count { it.nextReviewAt == null }
-                val dueCards = allCards.filter { it.deletedAt == null }.count { card ->
-                    val next = card.nextReviewAt
-                    next != null && next <= now
-                }
-                val upcomingCards = allCards.filter { it.deletedAt == null }.count { card ->
-                    val next = card.nextReviewAt
-                    next != null && next > now
-                }
                 val weekStart = today.minus(today.dayOfWeek.ordinal, DateTimeUnit.DAY)
                 val monthStart = LocalDate(today.year, today.month, 1)
 
@@ -101,12 +101,15 @@ class StatsViewModel(
                     next == null && it.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).date == today
                 }
 
+                val nonDeletedCards = allCards.filter { it.deletedAt == null }
+                val forecast = StatsCalculator.computeForecast(nonDeletedCards, now)
+                val intervals = StatsCalculator.computeIntervals(nonDeletedCards, allLogs)
+                val retention = StatsCalculator.computeRetention(allLogs, now)
+                val cardCounts = StatsCalculator.computeCardCounts(nonDeletedCards, allLogs)
+
                 _stats.value = AppStats(
-                    totalCards = allCards.count { it.deletedAt == null },
+                    totalCards = nonDeletedCards.size,
                     totalDecks = allDecks.count { it.deletedAt == null },
-                    newCardsCount = newCards,
-                    dueCardsCount = dueCards,
-                    upcomingCardsCount = upcomingCards,
                     todayReviews = todayLogs.size,
                     todayNewCards = todayNewCards,
                     weekReviews = weekLogs.size,
@@ -116,10 +119,13 @@ class StatsViewModel(
                     studyTimeMinutes = reviewStats.studyTimeMinutes,
                     streakDays = streak,
                     dailyGoal = dailyGoal,
-                    newCardsPerDayGoal = newCardsPerDayGoal
+                    newCardsPerDayGoal = newCardsPerDayGoal,
+                    forecast = forecast,
+                    intervals = intervals,
+                    retention = retention,
+                    cardCounts = cardCounts
                 )
             } catch (e: Exception) {
-                // Keep default zeros
             }
         }
     }

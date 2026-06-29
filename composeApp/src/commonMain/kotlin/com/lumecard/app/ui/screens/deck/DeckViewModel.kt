@@ -130,8 +130,16 @@ class DeckViewModel(
         val plans = planRepository.getAll().first()
         for (plan in plans) {
             if (id in plan.deckIds) {
+                val newDeckIds = plan.deckIds - id
+                val allCards = cardRepository.getAll().first()
+                val resolved = (plan.knowledgeBaseIds.flatMap { kbId ->
+                    allCards.filter { it.deletedAt == null && decks.value.any { d -> d.knowledgeBaseId == kbId && d.id == it.deckId } }.map { it.id }
+                } + newDeckIds.flatMap { deckId ->
+                    allCards.filter { it.deletedAt == null && it.deckId == deckId }.map { it.id }
+                } + plan.cardIds.filter { cid -> allCards.any { it.id == cid && it.deletedAt == null } }).toSet()
                 planRepository.update(plan.copy(
-                    deckIds = plan.deckIds - id,
+                    deckIds = newDeckIds,
+                    totalCards = resolved.size,
                     updatedAt = kotlin.time.Clock.System.now()
                 ))
             }

@@ -11,13 +11,17 @@ import kotlinx.datetime.plus
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
+import kotlin.random.Random
 
 class FSRSAlgorithm(
-    private val parameters: FSRSParameters = FSRSParameters()
+    private val parameters: FSRSParameters = FSRSParameters(),
+    private val desiredRetention: Double = 0.9,
+    private val maxInterval: Int = 36500,
 ) {
     data class FSRSParameters(
         val w: List<Double> = listOf(
-            0.4, 0.6, 2.4, 5.8, 4.93, 0.94, 0.86, 0.01, 1.49, 0.14, 0.94, 2.18, 0.05, 0.34, 1.26, 0.29, 2.61
+            0.4, 0.6, 2.4, 5.8, 4.93, 0.94, 0.86, 0.01, 1.49, 0.14, 0.94, 2.18, 0.05, 0.34, 1.26, 0.29, 2.61,
+            0.0, 0.0, 0.0, 0.3
         )
     )
 
@@ -36,12 +40,12 @@ class FSRSAlgorithm(
         )
     }
 
-    fun schedule(card: FSRSCard, rating: Rating): FSRSCard {
+    fun schedule(card: FSRSCard, rating: Rating, daysElapsed: Int = card.elapsedDays): FSRSCard {
         return when (card.state) {
             CardState.NEW -> initialSchedule(card, rating)
-            CardState.LEARNING -> learningSchedule(card, rating)
-            CardState.REVIEW -> reviewSchedule(card, rating)
-            CardState.RELEARNING -> relearningSchedule(card, rating)
+            CardState.LEARNING -> learningSchedule(card, rating, daysElapsed)
+            CardState.REVIEW -> reviewSchedule(card, rating, daysElapsed)
+            CardState.RELEARNING -> relearningSchedule(card, rating, daysElapsed)
         }
     }
 
@@ -69,9 +73,9 @@ class FSRSAlgorithm(
         )
     }
 
-    private fun learningSchedule(card: FSRSCard, rating: Rating): FSRSCard {
+    private fun learningSchedule(card: FSRSCard, rating: Rating, daysElapsed: Int): FSRSCard {
         val newDifficulty = calculateDifficulty(card.difficulty, rating)
-        val newStability = calculateStability(card, rating)
+        val newStability = calculateStability(card.stability, card.difficulty, rating, daysElapsed)
 
         val scheduledDays = when (rating) {
             Rating.AGAIN -> 1
@@ -92,9 +96,9 @@ class FSRSAlgorithm(
         )
     }
 
-    private fun reviewSchedule(card: FSRSCard, rating: Rating): FSRSCard {
+    private fun reviewSchedule(card: FSRSCard, rating: Rating, daysElapsed: Int): FSRSCard {
         val newDifficulty = calculateDifficulty(card.difficulty, rating)
-        val newStability = calculateStability(card, rating)
+        val newStability = calculateStability(card.stability, card.difficulty, rating, daysElapsed)
 
         val scheduledDays = calculateInterval(newStability, rating)
         val due = Clock.System.now().plus(scheduledDays, DateTimeUnit.DAY, TimeZone.UTC)
@@ -109,9 +113,9 @@ class FSRSAlgorithm(
         )
     }
 
-    private fun relearningSchedule(card: FSRSCard, rating: Rating): FSRSCard {
+    private fun relearningSchedule(card: FSRSCard, rating: Rating, daysElapsed: Int): FSRSCard {
         val newDifficulty = calculateDifficulty(card.difficulty, rating)
-        val newStability = calculateStability(card, rating)
+        val newStability = calculateStability(card.stability, card.difficulty, rating, daysElapsed)
 
         val scheduledDays = when (rating) {
             Rating.AGAIN -> 1
@@ -138,26 +142,30 @@ class FSRSAlgorithm(
         return max(1.0, min(10.0, newDifficulty))
     }
 
-    private fun calculateStability(card: FSRSCard, rating: Rating): Double {
+    private fun calculateStability(stability: Double, difficulty: Double, rating: Rating, daysElapsed: Int): Double {
         val w = parameters.w
 
         return when (rating) {
-            Rating.AGAIN -> max(w[0], card.stability * w[9] * (1 - card.difficulty * w[10]))
-            Rating.HARD -> card.stability * (1 + w[11] * (10 - card.difficulty) * card.stability.pow(w[12] - 1))
-            Rating.GOOD -> card.stability
-            Rating.EASY -> card.stability * (1 + w[13] * (10 - card.difficulty) * card.stability.pow(w[14] - 1))
+            Rating.AGAIN -> max(w[0], stability * w[9] * (1 - difficulty * w[10]))
+            Rating.HARD -> stability * (1 + w[11] * (10 - difficulty) * stability.pow(w[12] - 1))
+            Rating.GOOD -> stability * (1 + w[4] * (10 - difficulty) * stability.pow(w[5] - 1))
+            Rating.EASY -> stability * (1 + w[13] * (10 - difficulty) * stability.pow(w[14] - 1))
         }
     }
 
     private fun calculateInterval(stability: Double, rating: Rating): Int {
-        val w = parameters.w
+        if (rating == Rating.AGAIN) return 1
 
-        return when (rating) {
-            Rating.AGAIN -> 1
-            Rating.HARD -> max(1, (stability * w[15]).toInt())
-            Rating.GOOD -> max(1, (stability * w[16]).toInt())
-            Rating.EASY -> max(1, (stability * w[16] * 1.3).toInt())
+        val rawDays = when (rating) {
+            Rating.HARD -> stability * ((1.0 - desiredRetention) / desiredRetention).pow(1.0 / parameters.w[20])
+            Rating.GOOD -> stability * ((1.0 - desiredRetention) / desiredRetention).pow(1.0 / parameters.w[20])
+            Rating.EASY -> stability * 1.3 * ((1.0 - desiredRetention) / desiredRetention).pow(1.0 / parameters.w[20])
+            else -> 0.0
         }
+
+        val fuzz = 0.95 + Random.nextDouble() * 0.1
+        val interval = (rawDays * fuzz).toInt().coerceAtLeast(1)
+        return min(interval, maxInterval)
     }
 
     fun getNextReviewTime(card: FSRSCard): Instant {

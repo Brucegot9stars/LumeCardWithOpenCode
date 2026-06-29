@@ -3,9 +3,11 @@ package com.lumecard.app.ui.screens.warehouse
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import com.lumecard.shared.model.*
+import com.lumecard.shared.model.LearningPlan
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
 import com.lumecard.shared.repository.KnowledgeBaseRepository
+import com.lumecard.shared.repository.LearningPlanRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,7 +31,8 @@ enum class NodeType { KNOWLEDGE_BASE, DECK, CARD }
 class WarehouseViewModel(
     private val kbRepository: KnowledgeBaseRepository,
     private val deckRepository: DeckRepository,
-    private val cardRepository: CardRepository
+    private val cardRepository: CardRepository,
+    private val planRepository: LearningPlanRepository
 ) : ScreenModel {
 
     private val _treeNodes = MutableStateFlow<List<TreeNode>>(emptyList())
@@ -159,6 +162,15 @@ class WarehouseViewModel(
 
     suspend fun deleteKnowledgeBase(id: String) {
         kbRepository.delete(id)
+        val plans = planRepository.getAll().first()
+        for (plan in plans) {
+            if (id in plan.knowledgeBaseIds) {
+                planRepository.update(plan.copy(
+                    knowledgeBaseIds = plan.knowledgeBaseIds - id,
+                    updatedAt = Clock.System.now()
+                ))
+            }
+        }
         loadData()
     }
 
@@ -183,6 +195,15 @@ class WarehouseViewModel(
 
     suspend fun deleteDeck(id: String) {
         deckRepository.delete(id)
+        val plans = planRepository.getAll().first()
+        for (plan in plans) {
+            if (id in plan.deckIds) {
+                planRepository.update(plan.copy(
+                    deckIds = plan.deckIds - id,
+                    updatedAt = Clock.System.now()
+                ))
+            }
+        }
         loadData()
     }
 
@@ -208,15 +229,34 @@ class WarehouseViewModel(
 
     suspend fun batchDelete() {
         val ids = _selectedIds.value
+        val deletedKbIds = mutableSetOf<String>()
+        val deletedDeckIds = mutableSetOf<String>()
         for (id in ids) {
             when {
-                _treeNodes.value.any { it.id == id && it.type == NodeType.KNOWLEDGE_BASE } -> kbRepository.delete(id)
+                _treeNodes.value.any { it.id == id && it.type == NodeType.KNOWLEDGE_BASE } -> {
+                    kbRepository.delete(id)
+                    deletedKbIds.add(id)
+                }
                 _treeNodes.value.any { it.type == NodeType.DECK && it.children.any { c -> c.id == id } || it.id == id } -> {
                     val allDecks = deckRepository.getAll().first()
-                    if (allDecks.any { it.id == id }) deckRepository.delete(id)
-                    else cardRepository.delete(id)
+                    if (allDecks.any { it.id == id }) {
+                        deckRepository.delete(id)
+                        deletedDeckIds.add(id)
+                    } else cardRepository.delete(id)
                 }
                 else -> cardRepository.delete(id)
+            }
+        }
+        if (deletedKbIds.isNotEmpty() || deletedDeckIds.isNotEmpty()) {
+            val plans = planRepository.getAll().first()
+            for (plan in plans) {
+                var changed = false
+                var p = plan
+                val newKbIds = p.knowledgeBaseIds.filter { it !in deletedKbIds }
+                if (newKbIds.size != p.knowledgeBaseIds.size) { changed = true; p = p.copy(knowledgeBaseIds = newKbIds) }
+                val newDeckIds = p.deckIds.filter { it !in deletedDeckIds }
+                if (newDeckIds.size != p.deckIds.size) { changed = true; p = p.copy(deckIds = newDeckIds) }
+                if (changed) planRepository.update(p.copy(updatedAt = Clock.System.now()))
             }
         }
         _selectedIds.value = emptySet()

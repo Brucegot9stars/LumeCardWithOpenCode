@@ -17,7 +17,7 @@ class SimpleAlgorithm : ReviewAlgorithm {
         stage = 0
     )
 
-    override fun schedule(state: AlgorithmState, rating: Rating): AlgorithmState {
+    override fun schedule(state: AlgorithmState, rating: Rating, daysElapsed: Int): AlgorithmState {
         val currentStage = state.stage.coerceIn(0, fixedIntervals.size - 1)
         val newStage = if (rating.value >= 3) {
             (currentStage + 1).coerceAtMost(fixedIntervals.size - 1)

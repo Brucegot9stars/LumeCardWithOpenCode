@@ -7,3 +7,11 @@ plugins {
     id("com.android.library") version "9.2.1" apply false
     id("com.android.application") version "9.2.1" apply false
 }
+
+subprojects {
+    configurations.configureEach {
+        resolutionStrategy {
+            force("androidx.lifecycle:lifecycle-runtime:2.8.7")
+        }
+    }
+}

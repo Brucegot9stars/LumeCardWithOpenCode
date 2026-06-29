@@ -26,9 +26,12 @@ import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.components.LumeCardDialog
 import com.lumecard.app.ui.components.LumeCardTextField
 import com.lumecard.app.ui.components.LumeCardTopBar
+import com.lumecard.app.ui.screens.study.CardsStudyMode
 import com.lumecard.app.ui.screens.study.StudyModeScreen
+import com.lumecard.app.ui.screens.study.StudyScreen
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.shared.model.PlanStatus
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
@@ -47,10 +50,14 @@ class LearningPlanSelectionScreen : Screen {
         val isLoading by viewModel.isLoading.collectAsState()
         val scope = rememberCoroutineScope()
 
+        val snackbarHostState = remember { SnackbarHostState() }
         var showCreateDialog by remember { mutableStateOf(false) }
         var editPlanId by remember { mutableStateOf<String?>(null) }
         var dialogName by remember { mutableStateOf("") }
         var dialogDesc by remember { mutableStateOf("") }
+        var deletePlanId by remember { mutableStateOf<String?>(null) }
+        var renamePlanId by remember { mutableStateOf<String?>(null) }
+        var renameText by remember { mutableStateOf("") }
         var errorMsg by remember { mutableStateOf<String?>(null) }
 
         LaunchedEffect(Unit) {
@@ -114,7 +121,8 @@ class LearningPlanSelectionScreen : Screen {
                         }
                     }
                 )
-            }
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) }
         ) { padding ->
             if (isLoading) {
                 Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
@@ -180,6 +188,7 @@ class LearningPlanSelectionScreen : Screen {
                             PlanStatus.IN_PROGRESS -> strings.planStatusInProgress
                             PlanStatus.COMPLETED -> strings.planStatusCompleted
                         }
+                        var showAllDoneDialog by remember { mutableStateOf(false) }
 
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -187,24 +196,6 @@ class LearningPlanSelectionScreen : Screen {
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                             ),
-                            onClick = {
-                                scope.launch {
-                                    try {
-                                        viewModel.startPlan(plan.id)
-                                    } catch (e: Exception) {
-                                        println("[LumeCard ERROR] PlanSelection startPlan: ${e.message}")
-                                        e.printStackTrace()
-                                        errorMsg = "startPlan: ${e.message}\n${e.stackTraceToString()}"
-                                    }
-                                }
-                                try {
-                                    navigator.push(StudyModeScreen(planIds = listOf(plan.id), preSelectedDeckIds = plan.deckIds))
-                                } catch (e: Exception) {
-                                    println("[LumeCard ERROR] PlanSelection navigate plan: ${e.message}")
-                                    e.printStackTrace()
-                                    errorMsg = "navigate: ${e.message}\n${e.stackTraceToString()}"
-                                }
-                            }
                         ) {
                             Column(modifier = Modifier.fillMaxWidth().padding(spacing.md)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -217,6 +208,13 @@ class LearningPlanSelectionScreen : Screen {
                                         Surface(shape = radius.pill, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)) {
                                             Text(strings.planDefault, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
                                         }
+                                    }
+                                    Spacer(Modifier.width(spacing.xs))
+                                    IconButton(onClick = { renameText = plan.name; renamePlanId = plan.id }, modifier = Modifier.size(28.dp)) {
+                                        Icon(Icons.Default.Edit, contentDescription = strings.actionEdit, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                                    }
+                                    IconButton(onClick = { deletePlanId = plan.id }, modifier = Modifier.size(28.dp)) {
+                                        Icon(Icons.Default.Delete, contentDescription = strings.actionDelete, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                                     }
                                 }
                                 val desc = plan.description
@@ -232,7 +230,82 @@ class LearningPlanSelectionScreen : Screen {
                                     Spacer(Modifier.width(spacing.sm))
                                     Text("${(progress * 100).toInt()}%", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
+                                Spacer(Modifier.height(spacing.sm))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                                ) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            scope.launch {
+                                                try {
+                                                    viewModel.startPlan(plan.id)
+                                                    val deckIds = viewModel.getDeckIdsForPlan(plan)
+                                                    navigator.push(StudyScreen(deckIds, plan.name, planIds = listOf(plan.id), initialMode = CardsStudyMode.DUE_ONLY))
+                                                } catch (e: Exception) {
+                                                    println("[LumeCard ERROR] PlanSelection review: ${e.message}")
+                                                    e.printStackTrace()
+                                                    errorMsg = "review: ${e.message}\n${e.stackTraceToString()}"
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                    ) {
+                                        Text(strings.planReview)
+                                    }
+                                    Button(
+                                        onClick = {
+                                            scope.launch {
+                                                try {
+                                                    viewModel.startPlan(plan.id)
+                                                    val dueCount = viewModel.getDueCardCountForPlan(plan)
+                                                    val newCount = viewModel.getNewCardCountForPlan(plan)
+                                                    if (dueCount > 0 || newCount > 0) {
+                                                        val deckIds = viewModel.getDeckIdsForPlan(plan)
+                                                        val mode = if (dueCount > 0) CardsStudyMode.DUE_ONLY else CardsStudyMode.NEW_CARDS
+                                                        navigator.push(StudyScreen(deckIds, plan.name, planIds = listOf(plan.id), initialMode = mode))
+                                                    } else {
+                                                        showAllDoneDialog = true
+                                                    }
+                                                } catch (e: Exception) {
+                                                    println("[LumeCard ERROR] PlanSelection learn: ${e.message}")
+                                                    e.printStackTrace()
+                                                    errorMsg = "learn: ${e.message}\n${e.stackTraceToString()}"
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                    ) {
+                                        Text(strings.planLearn)
+                                    }
+                                }
                             }
+                        }
+
+                        if (showAllDoneDialog) {
+                            AlertDialog(
+                                onDismissRequest = { showAllDoneDialog = false },
+                                title = { Text(strings.planAllDoneTitle) },
+                                text = { Text(strings.planAllDoneDesc) },
+                                confirmButton = {
+                                    Button(onClick = {
+                                        showAllDoneDialog = false
+                                        scope.launch {
+                                            try {
+                                                val deckIds = viewModel.getDeckIdsForPlan(plan)
+                                                navigator.push(StudyScreen(deckIds, plan.name, planIds = listOf(plan.id), initialMode = CardsStudyMode.ALL_CARDS))
+                                            } catch (e: Exception) {
+                                                println("[LumeCard ERROR] PlanSelection re-learn: ${e.message}")
+                                            }
+                                        }
+                                    }) { Text(strings.planReviewAgain) }
+                                },
+                                dismissButton = {
+                                    OutlinedButton(onClick = { showAllDoneDialog = false }) {
+                                        Text(strings.actionCancel)
+                                    }
+                                }
+                            )
                         }
                     }
 
@@ -260,15 +333,27 @@ class LearningPlanSelectionScreen : Screen {
                 onDismiss = { showCreateDialog = false },
                 onConfirm = {
                     scope.launch {
-                        if (editPlanId != null) {
-                            val existing = viewModel.plans.value.find { it.id == editPlanId }
-                            if (existing != null) {
-                                viewModel.updatePlan(editPlanId!!, dialogName, dialogDesc.ifBlank { null }, existing.knowledgeBaseIds, existing.deckIds, existing.cardIds, existing.isDefault)
+                        val saved = try {
+                            if (editPlanId != null) {
+                                val existing = viewModel.plans.value.find { it.id == editPlanId }
+                                if (existing != null) {
+                                    viewModel.updatePlan(editPlanId!!, dialogName, dialogDesc.ifBlank { null }, existing.knowledgeBaseIds, existing.deckIds, existing.cardIds, existing.isDefault)
+                                }
+                            } else {
+                                viewModel.createPlan(dialogName, dialogDesc.ifBlank { null }, emptyList(), emptyList(), emptyList())
                             }
-                        } else {
-                            viewModel.createPlan(dialogName, dialogDesc.ifBlank { null }, emptyList(), emptyList(), emptyList())
-                        }
+                            true
+                        } catch (_: Exception) { false }
                         showCreateDialog = false
+                        val job = launch {
+                            snackbarHostState.showSnackbar(
+                                message = if (saved) (if (editPlanId != null) strings.planUpdated else strings.planCreated) else strings.errorDesc,
+                                duration = SnackbarDuration.Indefinite
+                            )
+                        }
+                        delay(1000)
+                        job.cancel()
+                        snackbarHostState.currentSnackbarData?.dismiss()
                     }
                 },
                 confirmText = strings.actionSave,
@@ -277,6 +362,77 @@ class LearningPlanSelectionScreen : Screen {
                 LumeCardTextField(value = dialogName, onValueChange = { dialogName = it }, label = strings.fieldName)
                 LumeCardTextField(value = dialogDesc, onValueChange = { dialogDesc = it }, label = strings.fieldDescription, singleLine = false)
             }
+        }
+
+        // Delete confirmation dialog
+        if (deletePlanId != null) {
+            AlertDialog(
+                onDismissRequest = { deletePlanId = null },
+                title = { Text(strings.planDeleteConfirm) },
+                text = { Text(strings.planDeleteConfirmDesc) },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                deletePlanId?.let { viewModel.deletePlan(it) }
+                                deletePlanId = null
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text(strings.actionDelete)
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(onClick = { deletePlanId = null }) {
+                        Text(strings.actionCancel)
+                    }
+                }
+            )
+        }
+
+        // Rename dialog
+        if (renamePlanId != null) {
+            AlertDialog(
+                onDismissRequest = { renamePlanId = null },
+                title = { Text(strings.planEdit) },
+                text = {
+                    OutlinedTextField(
+                        value = renameText,
+                        onValueChange = { renameText = it },
+                        label = { Text(strings.fieldName) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                val existing = viewModel.plans.value.find { it.id == renamePlanId }
+                                if (existing != null) {
+                                    viewModel.updatePlan(renamePlanId!!, renameText, existing.description, existing.knowledgeBaseIds, existing.deckIds, existing.cardIds, existing.isDefault)
+                                }
+                                val job = launch {
+                                    snackbarHostState.showSnackbar(strings.planUpdated, duration = SnackbarDuration.Indefinite)
+                                }
+                                delay(1000)
+                                job.cancel()
+                                snackbarHostState.currentSnackbarData?.dismiss()
+                                renamePlanId = null
+                            }
+                        },
+                        enabled = renameText.isNotBlank(),
+                    ) {
+                        Text(strings.actionSave)
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(onClick = { renamePlanId = null }) {
+                        Text(strings.actionCancel)
+                    }
+                }
+            )
         }
     }
 }

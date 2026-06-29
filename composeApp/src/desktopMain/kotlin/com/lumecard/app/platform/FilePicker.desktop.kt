@@ -26,12 +26,17 @@ actual suspend fun pickSaveFile(suggestedName: String, mimeType: String): String
     }
 }
 
-actual suspend fun pickOpenFile(mimeType: String): String? {
+actual suspend fun pickOpenFile(mimeType: String, initialDirectory: String?): String? {
     return withContext(Dispatchers.IO) {
         try {
             val chooser = JFileChooser().apply {
                 dialogTitle = "Open File"
-                fileFilter = FileNameExtensionFilter("JSON Files", "json")
+                fileFilter = FileNameExtensionFilter("Font Files", "ttf", "otf", "ttc")
+                isAcceptAllFileFilterUsed = true
+                if (initialDirectory != null) {
+                    val dir = File(initialDirectory)
+                    if (dir.isDirectory) currentDirectory = dir
+                }
             }
             val result = chooser.showOpenDialog(null)
             if (result == JFileChooser.APPROVE_OPTION) {
@@ -81,4 +86,11 @@ actual fun writeFileContent(path: String, content: String): Boolean {
     } catch (e: Exception) {
         false
     }
+}
+
+actual fun fileParentDirectory(filePath: String): String? {
+    return try {
+        val file = File(filePath)
+        file.parentFile?.absolutePath
+    } catch (_: Exception) { null }
 }

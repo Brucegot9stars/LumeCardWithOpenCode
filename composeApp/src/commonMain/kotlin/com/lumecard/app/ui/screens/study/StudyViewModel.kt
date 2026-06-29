@@ -9,6 +9,7 @@ import com.lumecard.shared.model.Rating
 import com.lumecard.shared.model.ReviewLog
 import com.lumecard.shared.repository.AlgorithmStateRepository
 import com.lumecard.shared.repository.CardRepository
+import com.lumecard.shared.repository.DeckRepository
 import com.lumecard.shared.repository.LearningPlanRepository
 import com.lumecard.shared.repository.ReviewLogRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +26,7 @@ import java.util.UUID
 
 enum class CardsStudyMode {
     DUE_FIRST,
+    DUE_ONLY,
     ALL_CARDS,
     NEW_CARDS,
     RANDOM
@@ -35,7 +37,8 @@ class StudyViewModel(
     private val reviewLogRepository: ReviewLogRepository,
     private val algorithmStateRepository: AlgorithmStateRepository,
     private val algorithm: ReviewAlgorithm,
-    private val planRepository: LearningPlanRepository
+    private val planRepository: LearningPlanRepository,
+    private val deckRepository: DeckRepository
 ) : ScreenModel {
 
     private val _error = MutableStateFlow<String?>(null)
@@ -84,6 +87,7 @@ class StudyViewModel(
     private var loadCardsJob: kotlinx.coroutines.Job? = null
     private val rateMutex = Mutex()
     private var planBaselineCompleted: Map<String, Int> = emptyMap()
+    private val ratedCardIds = mutableSetOf<String>()
 
     private var _hasStartedStudying = false
 
@@ -125,6 +129,13 @@ class StudyViewModel(
                             dueCards
                         }
                     }
+                    CardsStudyMode.DUE_ONLY -> {
+                        val now = Clock.System.now()
+                        allCards.filter { card ->
+                            val next = card.nextReviewAt
+                            next != null && next <= now
+                        }
+                    }
                     CardsStudyMode.ALL_CARDS -> allCards
                     CardsStudyMode.NEW_CARDS -> {
                         val unlearned = allCards.filter { it.lastReviewedAt == null }
@@ -162,10 +173,26 @@ class StudyViewModel(
         _cards.value = emptyList()
         _currentCardIndex.value = 0
         _completedCards.value = 0
+        ratedCardIds.clear()
         _isFlipped.value = false
         _history.value = emptyList()
         _hasStartedStudying = false
         loadCards(activeDeckIds, activePlanIds, mode, limit)
+    }
+
+    fun refreshCurrentCard() {
+        val index = _currentCardIndex.value
+        val card = _cards.value.getOrNull(index) ?: return
+        screenModelScope.launch {
+            try {
+                val fresh = cardRepository.getById(card.id)
+                if (fresh != null) {
+                    val list = _cards.value.toMutableList()
+                    list[index] = fresh
+                    _cards.value = list
+                }
+            } catch (_: Exception) { }
+        }
     }
 
     private fun startTimerIfNeeded() {
@@ -214,7 +241,10 @@ class StudyViewModel(
 
         startTimerIfNeeded()
 
-        val updatedState = algorithm.schedule(state, rating)
+        val daysElapsed = currentCard.lastReviewedAt?.let {
+            ((Clock.System.now().toEpochMilliseconds() - it.toEpochMilliseconds()) / 86400000).toInt().coerceAtLeast(0)
+        } ?: 0
+        val updatedState = algorithm.schedule(state, rating, daysElapsed)
         _algorithmStates.update { it + (currentCard.id to updatedState) }
 
         val now = Clock.System.now()
@@ -254,13 +284,14 @@ class StudyViewModel(
 
                     _isFlipped.value = false
                     _completedCards.update { it + 1 }
+                    ratedCardIds.add(currentCard.id)
+                    updatePlanProgress()
 
                     if (_currentCardIndex.value < _cards.value.size - 1) {
                         _currentCardIndex.value++
                         _cards.value.getOrNull(_currentCardIndex.value)?.let { _cardStartTimes[it.id] = Clock.System.now() }
                     } else {
                         _currentCardIndex.value = _cards.value.size
-                        updatePlanProgress()
                     }
                 }
             } catch (e: Exception) {
@@ -269,14 +300,27 @@ class StudyViewModel(
         }
     }
 
-    private fun updatePlanProgress() {
+    fun savePlanProgress() {
         if (activePlanIds.isEmpty()) return
         screenModelScope.launch {
             try {
+                val allCards = cardRepository.getAll().first()
+                val allDecks = deckRepository.getAll().first()
                 for (planId in activePlanIds) {
                     val plan = planRepository.getById(planId) ?: continue
+                    val planCardIds = plan.cardIds.toSet()
+                    val planDeckIds = plan.deckIds.toSet()
+                    val planKbIds = plan.knowledgeBaseIds.toSet()
+                    val ratedInPlan = ratedCardIds.count { cardId ->
+                        val card = allCards.find { it.id == cardId }
+                        card != null && card.deletedAt == null && (
+                            card.id in planCardIds ||
+                            card.deckId in planDeckIds ||
+                            allDecks.any { it.id == card.deckId && it.knowledgeBaseId in planKbIds }
+                        )
+                    }
                     val baseline = planBaselineCompleted[planId] ?: plan.completedCards
-                    val newCompleted = (baseline + _completedCards.value).coerceAtMost(plan.totalCards)
+                    val newCompleted = (baseline + ratedInPlan).coerceAtMost(plan.totalCards)
                     val newStatus = if (newCompleted >= plan.totalCards) {
                         com.lumecard.shared.model.PlanStatus.COMPLETED
                     } else if (newCompleted > 0) {
@@ -291,9 +335,13 @@ class StudyViewModel(
                     ))
                 }
             } catch (e: Exception) {
-                reportError(e, "updatePlanProgress")
+                reportError(e, "savePlanProgress")
             }
         }
+    }
+
+    private fun updatePlanProgress() {
+        savePlanProgress()
     }
 
     private val json = Json { ignoreUnknownKeys = true }

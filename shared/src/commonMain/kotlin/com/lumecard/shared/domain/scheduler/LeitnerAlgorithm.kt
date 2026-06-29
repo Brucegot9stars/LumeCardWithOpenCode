@@ -17,7 +17,7 @@ class LeitnerAlgorithm : ReviewAlgorithm {
         stage = 0
     )
 
-    override fun schedule(state: AlgorithmState, rating: Rating): AlgorithmState {
+    override fun schedule(state: AlgorithmState, rating: Rating, daysElapsed: Int): AlgorithmState {
         val currentBox = state.stage.coerceIn(0, boxIntervals.size - 1)
         val newBox = if (rating.value >= 3) {
             (currentBox + 1).coerceAtMost(boxIntervals.size - 1)

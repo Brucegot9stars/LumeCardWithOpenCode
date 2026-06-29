@@ -1,6 +1,13 @@
 package com.lumecard.app.platform
 
 import android.content.ClipboardManager
+import android.media.AudioAttributes
+import android.media.AudioFormat
+import android.media.AudioTrack
+import com.lumecard.shared.model.Rating
+import kotlin.math.PI
+import kotlin.math.exp
+import kotlin.math.sin
 import android.content.Context
 import android.net.Uri
 import com.lumecard.shared.database.AndroidContextHolder
@@ -63,7 +70,7 @@ actual fun getMediaBasePath(): String {
 actual fun pasteClipboardMedia(mediaDir: String): List<String> {
     val refs = mutableListOf<String>()
     try {
-        val context = AndroidContextHolder.context ?: return refs
+        val context = AndroidContextHolder.context
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = clipboard.primaryClip ?: return refs
         val desc = clip.description ?: return refs
@@ -98,7 +105,7 @@ actual fun pasteClipboardMedia(mediaDir: String): List<String> {
 
 actual fun saveMediaFile(mediaDir: String, sourcePath: String): String? {
     return try {
-        val context = AndroidContextHolder.context ?: return null
+        val context = AndroidContextHolder.context
         val uri = Uri.parse(sourcePath)
         val bytes = if (uri.scheme == "content" || uri.scheme == "file") {
             context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
@@ -122,6 +129,105 @@ private fun mimeGroupForAndroid(ext: String): String? = when (ext) {
     "mp3", "wav", "ogg", "m4a", "wma", "flac", "aac" -> "audio"
     "mp4", "mov", "avi", "mkv", "wmv", "webm" -> "video"
     else -> null
+}
+
+private fun generateSweepTone(
+    sampleRate: Int, numSamples: Int,
+    freqStart: Double, freqEnd: Double,
+    decayMs: Double, attackMs: Double,
+    harmonicAmplitude: Double = 0.0,
+): ShortArray {
+    val attackSamples = (sampleRate * attackMs / 1000.0).toInt()
+    return ShortArray(numSamples) { i ->
+        val t = i.toDouble() / sampleRate; val p = t * sampleRate / numSamples
+        val freq = freqStart + (freqEnd - freqStart) * p
+        val attack = if (i < attackSamples) i.toFloat() / attackSamples else 1f
+        val envelope = attack * exp(-t * 1000.0 / decayMs)
+        val amp = 0.6 * Short.MAX_VALUE * envelope
+        val fund = sin(2.0 * PI * freq * t)
+        val harm = harmonicAmplitude * sin(2.0 * PI * 2.0 * freq * t)
+        (amp * (fund + harm)).toInt().toShort()
+    }
+}
+
+actual fun playRatingSound(rating: Rating) {
+    Thread({
+        try {
+            val sampleRate = 22050
+            val (samples, durationMs) = when (rating) {
+                Rating.AGAIN -> {
+                    val dur = 350; val n = sampleRate * dur / 1000
+                    val buf = ShortArray(n)
+                    val fStart = 440.0; val fEnd = 220.0
+                    for (i in 0 until n) {
+                        val t = i.toDouble() / sampleRate; val p = t * sampleRate / n
+                        val freq = fStart - (fStart - fEnd) * p
+                        val envelope = exp(-2.5 * p)
+                        buf[i] = (0.6 * Short.MAX_VALUE * envelope * sin(2.0 * PI * freq * t)).toInt().toShort()
+                    }
+                    buf to dur
+                }
+                Rating.HARD -> {
+                    val dur = 300; val n = sampleRate * dur / 1000
+                    val buf = ShortArray(n)
+                    val f1 = 330.0; val f2 = 392.0
+                    for (i in 0 until n) {
+                        val t = i.toDouble() / sampleRate; val p = t * sampleRate / n
+                        val envelope = exp(-3.0 * p)
+                        val a1 = sin(2.0 * PI * f1 * t); val a2 = 0.6 * sin(2.0 * PI * f2 * t)
+                        buf[i] = (0.5 * Short.MAX_VALUE * envelope * (a1 + a2)).toInt().toShort()
+                    }
+                    buf to dur
+                }
+                Rating.GOOD -> {
+                    val dur = 250; val n = sampleRate * dur / 1000
+                    val buf = ShortArray(n)
+                    val freq = 660.0
+                    for (i in 0 until n) {
+                        val t = i.toDouble() / sampleRate; val p = t * sampleRate / n
+                        val envelope = exp(-5.0 * p)
+                        buf[i] = (0.6 * Short.MAX_VALUE * envelope * sin(2.0 * PI * freq * t)).toInt().toShort()
+                    }
+                    buf to dur
+                }
+                Rating.EASY -> {
+                    val dur = 400; val n = sampleRate * dur / 1000
+                    val attackSamples = (sampleRate * 0.002).toInt()
+                    val freq = 880.0; val harmFreq = 2640.0
+                    val buf = ShortArray(n) { i ->
+                        val t = i.toDouble() / sampleRate
+                        val attack = if (i < attackSamples) i.toFloat() / attackSamples else 1f
+                        val env = attack * exp(-3.0 * t * sampleRate / n)
+                        val fund = sin(2.0 * PI * freq * t)
+                        val harm = 0.3 * sin(2.0 * PI * harmFreq * t)
+                        (0.6 * Short.MAX_VALUE * env * (fund + harm)).toInt().toShort()
+                    }
+                    buf to dur
+                }
+            }
+            val minBuf = AudioTrack.getMinBufferSize(sampleRate,
+                AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
+            val track = AudioTrack(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_GAME)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build(),
+                AudioFormat.Builder()
+                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                    .setSampleRate(sampleRate)
+                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build(),
+                minBuf.coerceAtLeast(samples.size * 2),
+                AudioTrack.MODE_STATIC, 0
+            )
+            val buf = ByteArray(samples.size * 2)
+            for (i in samples.indices) {
+                buf[i * 2] = (samples[i].toInt() and 0xFF).toByte()
+                buf[i * 2 + 1] = (samples[i].toInt() shr 8).toByte()
+            }
+            track.write(buf, 0, buf.size)
+            track.play()
+            track.release()
+        } catch (_: Exception) { }
+    }, "RatingSound").apply { isDaemon = true }.start()
 }
 
 private fun markdownRefAndroid(mimeGroup: String, fileName: String): String = when (mimeGroup) {

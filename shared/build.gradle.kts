@@ -8,10 +8,6 @@ plugins {
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 kotlin {
-    compilerOptions {
-        freeCompilerArgs.add("-Xexpect-actual-classes")
-    }
-
     androidTarget {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)

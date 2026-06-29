@@ -6,12 +6,15 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.utils.io.core.readBytes
 import kotlin.time.Clock
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 
 class SyncManager(
     private val client: HttpClient
 ) {
+    private val syncMutex = Mutex()
     companion object {
         private const val BACKUP_DIR = "LumeCard"
         private const val DATA_FILENAME = "data.json"
@@ -21,6 +24,8 @@ class SyncManager(
         private const val LEGACY_PATH = "lumecard_backup.json"
         private const val MEDIA_DIR = "$BACKUP_DIR/media"
         private const val MANIFEST_PATH = "$BACKUP_DIR/media_manifest.json"
+        private const val FONTS_DIR = "$BACKUP_DIR/fonts"
+        private const val FONT_MANIFEST_PATH = "$BACKUP_DIR/font_manifest.json"
 
         private const val HISTORY_DIR = "$BACKUP_DIR/history"
         private const val HISTORY_INDEX_FILENAME = "history_index.json"
@@ -177,6 +182,67 @@ class SyncManager(
         }
     }
 
+    suspend fun uploadFont(config: WebDavConfig, fileName: String, data: ByteArray): Result<Unit> {
+        return try {
+            ensureDir(config.url, config.username, config.password, FONTS_DIR)
+            val url = config.url.trimEnd('/') + "/" + FONTS_DIR + "/" + fileName
+            val response = client.put(url) {
+                basicAuth(config.username, config.password)
+                contentType(ContentType.Application.OctetStream)
+                setBody(data)
+            }
+            if (response.status.isSuccess()) Result.success(Unit)
+            else Result.failure(SyncException("Upload font failed: ${response.status}"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun downloadFont(config: WebDavConfig, fileName: String): Result<ByteArray> {
+        return try {
+            val url = config.url.trimEnd('/') + "/" + FONTS_DIR + "/" + fileName
+            val response = client.get(url) {
+                basicAuth(config.username, config.password)
+            }
+            if (response.status == HttpStatusCode.OK) {
+                Result.success(response.bodyAsChannel().readRemaining().readBytes())
+            } else {
+                Result.failure(SyncException("Font not found: $fileName"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun uploadFontManifest(config: WebDavConfig, manifestJson: String): Result<Unit> {
+        return try {
+            ensureDir(config.url, config.username, config.password, BACKUP_DIR)
+            val url = config.url.trimEnd('/') + "/" + FONT_MANIFEST_PATH
+            val response = client.put(url) {
+                basicAuth(config.username, config.password)
+                contentType(ContentType.Application.Json)
+                setBody(manifestJson)
+            }
+            if (response.status.isSuccess()) Result.success(Unit)
+            else Result.failure(SyncException("Upload font manifest failed: ${response.status}"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun downloadFontManifest(config: WebDavConfig): Result<String> {
+        return try {
+            val url = config.url.trimEnd('/') + "/" + FONT_MANIFEST_PATH
+            val response = client.get(url) {
+                basicAuth(config.username, config.password)
+            }
+            if (response.status == HttpStatusCode.OK) Result.success(response.bodyAsText())
+            else Result.failure(SyncException("No font manifest found"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun upload(config: WebDavConfig, json: String): Result<Unit> {
         return uploadData(config, json)
     }
@@ -299,7 +365,7 @@ class SyncManager(
         localReviewLogs: List<com.lumecard.shared.model.ReviewLog>,
         localLearningPlans: List<com.lumecard.shared.model.LearningPlan>,
         exportManager: ExportManager,
-    ): SyncResult {
+    ): SyncResult = syncMutex.withLock {
         val remoteResult = downloadData(config)
 
         if (remoteResult.isFailure) {
@@ -378,7 +444,8 @@ fun ExportKnowledgeBase.toKnowledgeBase() = com.lumecard.shared.model.KnowledgeB
     createdAt = try { kotlin.time.Instant.parse(createdAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
     updatedAt = try { kotlin.time.Instant.parse(updatedAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
     version = version,
-    deletedAt = deletedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } }
+    deletedAt = deletedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } },
+    syncedAt = syncedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } }
 )
 
 fun ExportDeck.toDeck() = com.lumecard.shared.model.Deck(
@@ -387,19 +454,22 @@ fun ExportDeck.toDeck() = com.lumecard.shared.model.Deck(
     createdAt = try { kotlin.time.Instant.parse(createdAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
     updatedAt = try { kotlin.time.Instant.parse(updatedAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
     version = version,
-    deletedAt = deletedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } }
+    deletedAt = deletedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } },
+    syncedAt = syncedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } }
 )
 
 fun ExportCard.toCard() = com.lumecard.shared.model.Card(
     id = id, deckId = deckId,
     type = try { com.lumecard.shared.model.CardType.valueOf(type) } catch (_: Exception) { com.lumecard.shared.model.CardType.BASIC },
     front = front, back = back, tags = tags,
+    media = media, metadata = metadata,
     createdAt = try { kotlin.time.Instant.parse(createdAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
     updatedAt = try { kotlin.time.Instant.parse(updatedAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
     lastReviewedAt = lastReviewedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } },
     nextReviewAt = nextReviewAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } },
     version = version,
-    deletedAt = deletedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } }
+    deletedAt = deletedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } },
+    syncedAt = syncedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } }
 )
 
 fun ExportReviewLog.toReviewLog() = com.lumecard.shared.model.ReviewLog(
@@ -408,7 +478,8 @@ fun ExportReviewLog.toReviewLog() = com.lumecard.shared.model.ReviewLog(
     lapseCount = lapseCount,
     reviewedAt = try { kotlin.time.Instant.parse(reviewedAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
     version = version,
-    deletedAt = deletedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } }
+    deletedAt = deletedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } },
+    syncedAt = syncedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } }
 )
 
 fun ExportLearningPlan.toLearningPlan() = com.lumecard.shared.model.LearningPlan(
@@ -419,7 +490,8 @@ fun ExportLearningPlan.toLearningPlan() = com.lumecard.shared.model.LearningPlan
     createdAt = try { kotlin.time.Instant.parse(createdAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
     updatedAt = try { kotlin.time.Instant.parse(updatedAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
     version = version,
-    deletedAt = deletedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } }
+    deletedAt = deletedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } },
+    syncedAt = syncedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } }
 )
 
 sealed class SyncResult {

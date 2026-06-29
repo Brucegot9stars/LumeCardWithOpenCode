@@ -93,6 +93,8 @@ class CardViewModel(
         horizontalCenter: Boolean = false,
         verticalCenter: Boolean = false,
         fontSize: Int = 16,
+        fontFamily: String = "",
+        onComplete: (() -> Unit)? = null,
     ) {
         if (front.isBlank() || back.isBlank()) return
 
@@ -108,9 +110,11 @@ class CardViewModel(
                     if (horizontalCenter) put("hcenter", "true")
                     if (verticalCenter) put("vcenter", "true")
                     put("fontSize", fontSize.toString())
+                    if (fontFamily.isNotBlank()) put("fontFamily", fontFamily)
                 }
             )
             cardRepository.insert(card)
+            onComplete?.invoke()
         }
     }
 
@@ -123,21 +127,26 @@ class CardViewModel(
         horizontalCenter: Boolean = false,
         verticalCenter: Boolean = false,
         fontSize: Int = 16,
+        fontFamily: String = "",
+        onComplete: (() -> Unit)? = null,
     ) {
         screenModelScope.launch {
+            val metadata = card.metadata + mutableMapOf<String, String>().apply {
+                if (horizontalCenter) put("hcenter", "true")
+                if (verticalCenter) put("vcenter", "true")
+                put("fontSize", fontSize.toString())
+                if (fontFamily.isNotBlank()) put("fontFamily", fontFamily) else remove("fontFamily")
+            }
             val updated = card.copy(
                 front = front,
                 back = back,
                 type = type,
                 tags = tags,
-                metadata = card.metadata + mutableMapOf<String, String>().apply {
-                    if (horizontalCenter) put("hcenter", "true")
-                    if (verticalCenter) put("vcenter", "true")
-                    put("fontSize", fontSize.toString())
-                },
+                metadata = metadata,
                 updatedAt = Clock.System.now()
             )
             cardRepository.update(updated)
+            onComplete?.invoke()
         }
     }
 

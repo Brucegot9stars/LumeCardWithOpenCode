@@ -48,12 +48,18 @@ import com.lumecard.app.platform.pickSaveFile
 import com.lumecard.app.platform.pickOpenFile
 import com.lumecard.app.platform.readFileContent
 import com.lumecard.app.platform.writeFileContent
+import com.lumecard.app.platform.fileParentDirectory
 import com.lumecard.app.platform.installApk
 import com.lumecard.app.platform.getApkCacheDir
 import com.lumecard.app.platform.isDesktopPlatform
+import com.lumecard.app.font.FontInitializer
+import com.lumecard.app.font.FontRegistry
+import com.lumecard.app.font.registerFontFile
 import org.koin.compose.koinInject
 
-class SettingsScreen : Screen {
+class SettingsScreen(
+    private val onNavigateToHome: (() -> Unit)? = null,
+) : Screen {
     override val key: ScreenKey = "Settings"
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -84,6 +90,7 @@ class SettingsScreen : Screen {
         var updateState by remember { mutableStateOf<UpdateState>(UpdateState.Idle) }
         var downloadJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
         var currentDestFile by remember { mutableStateOf<java.io.File?>(null) }
+        var lastFontImportDir by remember { mutableStateOf<String?>(null) }
 
         LaunchedEffect(Unit) {
             settingsViewModel.loadSettings()
@@ -94,7 +101,10 @@ class SettingsScreen : Screen {
             topBar = {
                 LumeCardTopBar(
                     title = strings.settingsTitle,
-                    onBack = { navigator.replace(DashboardScreen()) },
+                    onBack = {
+                        if (onNavigateToHome != null) onNavigateToHome()
+                        else navigator.replace(DashboardScreen())
+                    },
                     action = {
                         if (settingsState.isDirty) {
                             FilledTonalButton(
@@ -403,6 +413,167 @@ class SettingsScreen : Screen {
                             }
                         },
                     )
+                }
+
+                // === Font Scale ===
+                Row(
+                    modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.FormatSize, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(spacing.sm))
+                    Text(strings.settingsFontScale, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = radius.card,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                ) {
+                    Column(modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm)) {
+                        Text("${(settingsState.fontScale * 100).toInt()}%", style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(spacing.xs))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("70%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Slider(
+                                modifier = Modifier.weight(1f).padding(horizontal = spacing.sm),
+                                value = settingsState.fontScale,
+                                onValueChange = { settingsState.fontScale = (it * 20).toInt() / 20f; settingsState.markDirty() },
+                                valueRange = 0.7f..1.5f,
+                                steps = 15,
+                            )
+                            Text("150%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+
+                // === Fonts ===
+                Row(
+                    modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.TextFields, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(spacing.sm))
+                    Text(strings.settingsFontTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = radius.card,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                ) {
+                    Column {
+                        // Default font selector
+                        var showFontDropdown by remember { mutableStateOf(false) }
+                        val allFontSpecs = FontRegistry.fonts
+                        val currentFontName = FontRegistry.findById(settingsState.defaultFontFamily)?.displayName ?: "Default"
+                        ListItem(
+                            headlineContent = { Text(strings.cardFont) },
+                            trailingContent = {
+                                Box {
+                                    TextButton(onClick = { showFontDropdown = true }) {
+                                        Text(currentFontName, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                                    }
+                                    DropdownMenu(expanded = showFontDropdown, onDismissRequest = { showFontDropdown = false }) {
+                                        DropdownMenuItem(
+                                            text = { Text("Default") },
+                                            onClick = {
+                                                settingsState.defaultFontFamily = ""
+                                                FontRegistry.defaultFontId = ""
+                                                showFontDropdown = false
+                                                settingsState.markDirty()
+                                            },
+                                        )
+                                        allFontSpecs.forEach { spec ->
+                                            DropdownMenuItem(
+                                                text = {
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        Text(spec.displayName)
+                                                        if (spec.source == com.lumecard.app.font.FontSource.USER_IMPORTED) {
+                                                            Spacer(Modifier.width(6.dp))
+                                                            Icon(
+                                                                Icons.Default.Download,
+                                                                contentDescription = null,
+                                                                modifier = Modifier.size(14.dp),
+                                                                tint = MaterialTheme.colorScheme.primary
+                                                            )
+                                                        }
+                                                    }
+                                                },
+                                                onClick = {
+                                                    settingsState.defaultFontFamily = spec.id
+                                                    FontRegistry.defaultFontId = spec.id
+                                                    showFontDropdown = false
+                                                    settingsState.markDirty()
+                                                },
+                                            )
+                                        }
+                                    }
+                                }
+                            },
+                        )
+                        HorizontalDivider()
+                        // Import font (remembers last-used directory within this session)
+                        ListItem(
+                            headlineContent = { Text(strings.settingsFontImport) },
+                            leadingContent = { Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                            modifier = Modifier.clickable {
+                                scope.launch {
+                                    val path = pickOpenFile("application/x-font-ttf", initialDirectory = lastFontImportDir)
+                                    if (path != null) {
+                                        lastFontImportDir = fileParentDirectory(path)
+                                        val name = path.substringAfterLast("/").substringAfterLast("\\").substringBeforeLast(".")
+                                        val spec = FontRegistry.importFont(path, name)
+                                        if (spec != null) {
+                                            FontInitializer.saveUserFonts()
+                                            snackbarHostState.showSnackbar(strings.settingsFontImportSuccess, duration = SnackbarDuration.Short)
+                                        } else {
+                                            snackbarHostState.showSnackbar(strings.settingsFontImportFailed, duration = SnackbarDuration.Short)
+                                        }
+                                    }
+                                }
+                            },
+                        )
+                        // User imported fonts list (with delete)
+                        val userFonts = FontRegistry.fonts.filter { it.source == com.lumecard.app.font.FontSource.USER_IMPORTED }
+                        userFonts.forEach { spec ->
+                            ListItem(
+                                headlineContent = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(spec.displayName)
+                                        Spacer(Modifier.width(6.dp))
+                                        Icon(
+                                            Icons.Default.Download,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                },
+                                trailingContent = {
+                                    Row {
+                                        val isApplied = spec.id == FontRegistry.defaultFontId
+                                        IconButton(onClick = {
+                                            settingsState.defaultFontFamily = spec.id
+                                            FontRegistry.defaultFontId = spec.id
+                                            settingsState.markDirty()
+                                        }) {
+                                            if (isApplied) {
+                                                Icon(Icons.Default.CheckCircle, contentDescription = strings.actionConfirm, tint = MaterialTheme.colorScheme.primary)
+                                            } else {
+                                                Icon(Icons.Default.AddCircle, contentDescription = strings.actionConfirm, tint = MaterialTheme.colorScheme.primary)
+                                            }
+                                        }
+                                        IconButton(onClick = {
+                                            FontRegistry.remove(spec.id)
+                                            FontInitializer.saveUserFonts()
+                                        }) {
+                                            Icon(Icons.Default.Delete, contentDescription = strings.actionDelete, tint = MaterialTheme.colorScheme.error)
+                                        }
+                                    }
+                                },
+                            )
+                        }
+                    }
                 }
 
                 // === Notifications ===
@@ -736,7 +907,9 @@ class SettingsScreen : Screen {
                                     updateState = UpdateState.Error(strings.updateDownloadFailed)
                                 }
                             } catch (e: Exception) {
-                                updateState = UpdateState.Error("更新失败：${e.message ?: "未知错误"}")
+                                println("[LumeCard] Update error: ${e::class.simpleName} ${e.message}")
+                                e.printStackTrace()
+                                updateState = UpdateState.Error("更新失败：${e::class.simpleName}: ${e.message ?: "未知错误"}")
                             }
                         }
                     },
