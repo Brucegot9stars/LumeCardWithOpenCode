@@ -30,6 +30,15 @@ object AiProviderRegistry {
     private fun registerProviders() {
         register(
             AiProviderSpec(
+                id = "mimo",
+                displayName = "小米 MiMo",
+                defaultBaseUrl = "https://api.xiaomimimo.com/v1",
+                supportedProtocols = listOf("openai_chat", "openai_responses", "anthropic_messages"),
+                defaultProtocol = "openai_chat",
+            )
+        )
+        register(
+            AiProviderSpec(
                 id = "openai",
                 displayName = "OpenAI",
                 defaultBaseUrl = "https://api.openai.com/v1",

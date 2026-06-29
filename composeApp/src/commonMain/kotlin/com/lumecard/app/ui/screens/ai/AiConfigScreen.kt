@@ -124,6 +124,8 @@ class AiConfigScreen : Screen {
                 editFrequencyPenalty = "0.0"
                 editPresencePenalty = "0.0"
                 editFallbackConfigId = null
+                fetchedModels = null
+                rawFetchedModels = emptyList()
             }
             testResult = null
             isEditing = true
@@ -269,6 +271,8 @@ class AiConfigScreen : Screen {
                                                         editModel = ""
                                                     }
                                                     editProtocol = p.defaultProtocol
+                                                    fetchedModels = null
+                                                    rawFetchedModels = emptyList()
                                                 }
                                                 if (editName.isBlank()) editName = p.displayName
                                                 showProviderMenu = false
