@@ -77,12 +77,6 @@ class AiModelListFetcher(
         settingsRepository.set("$cachePrefix$configId", encoded)
     }
 
-    fun mergeWithRegistry(fetchedModels: List<String>, providerId: String): List<String> {
-        val registryModels = AiProviderRegistry.findById(providerId)?.models?.map { it.id } ?: emptyList()
-        val combined = (registryModels + fetchedModels).distinct()
-        return combined
-    }
-
     suspend fun removeFromCache(configId: String, modelId: String) {
         val cached = getCachedModels(configId)?.toMutableList() ?: return
         if (cached.remove(modelId)) {

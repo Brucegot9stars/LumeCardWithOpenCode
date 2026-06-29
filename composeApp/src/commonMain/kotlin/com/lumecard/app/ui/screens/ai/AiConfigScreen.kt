@@ -343,10 +343,10 @@ class AiConfigScreen : Screen {
                                 modifier = Modifier.fillMaxWidth(),
                             )
 
-                            // Model selector (from registry + fetched + custom input)
+                            // Model selector (fetched from API + custom input)
                             val providerSpec = AiProviderRegistry.findById(editProvider)
                             val knownModels = providerSpec?.models ?: emptyList()
-                            val modelList = fetchedModels ?: knownModels.map { it.id }
+                            val modelList = if (fetchedModels != null) rawFetchedModels else emptyList()
 
                             fun buildEditConfig(): AiConfig = AiConfig(
                                 id = editConfig?.id ?: "",
@@ -390,10 +390,11 @@ class AiConfigScreen : Screen {
                                                 val config = buildEditConfig()
                                                 val fetched = withContext(Dispatchers.IO) { fetcher.fetchModels(config) }
                                                 rawFetchedModels = fetched
-                                                fetchedModels = fetcher.mergeWithRegistry(fetched, editProvider)
+                                                fetchedModels = fetched
                                             } catch (_: Exception) {
                                                 if (fetchedModels == null) {
-                                                    fetchedModels = knownModels.map { it.id }
+                                                    fetchedModels = emptyList()
+                                                    rawFetchedModels = emptyList()
                                                 }
                                             } finally {
                                                 isFetchingModels = false
@@ -418,7 +419,6 @@ class AiConfigScreen : Screen {
                             ) {
                                 modelList.forEach { modelId ->
                                     val modelSpec = knownModels.find { it.id == modelId }
-                                    val isDeletable = modelId in rawFetchedModels && modelSpec == null
                                     DropdownMenuItem(
                                         text = {
                                             Row(
@@ -435,25 +435,23 @@ class AiConfigScreen : Screen {
                                                         )
                                                     }
                                                 }
-                                                if (isDeletable) {
-                                                    IconButton(
-                                                        onClick = {
-                                                            scope.launch {
-                                                                val config = buildEditConfig()
-                                                                withContext(Dispatchers.IO) { fetcher.removeFromCache(config.id, modelId) }
-                                                                rawFetchedModels = rawFetchedModels - modelId
-                                                                fetchedModels = fetcher.mergeWithRegistry(rawFetchedModels, editProvider)
-                                                            }
-                                                        },
-                                                        interactionSource = null,
-                                                    ) {
-                                                        Icon(
-                                                            Icons.Default.Delete,
-                                                            contentDescription = "Delete model",
-                                                            tint = MaterialTheme.colorScheme.error,
-                                                            modifier = Modifier.size(18.dp),
-                                                        )
-                                                    }
+                                                IconButton(
+                                                    onClick = {
+                                                        scope.launch {
+                                                            val config = buildEditConfig()
+                                                            withContext(Dispatchers.IO) { fetcher.removeFromCache(config.id, modelId) }
+                                                            rawFetchedModels = rawFetchedModels - modelId
+                                                            fetchedModels = rawFetchedModels - modelId
+                                                        }
+                                                    },
+                                                    interactionSource = null,
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.Delete,
+                                                        contentDescription = "Delete model",
+                                                        tint = MaterialTheme.colorScheme.error,
+                                                        modifier = Modifier.size(18.dp),
+                                                    )
                                                 }
                                             }
                                         },
