@@ -7,7 +7,7 @@ class AiCardPromptManager(
     private val settingsRepository: SettingsRepository,
 ) {
     companion object {
-        private const val PROMPT_RESOURCE = "/config/prompt_ai_card.txt"
+        private const val PROMPT_RESOURCE = "/config/prompt_ai_card.md"
         private const val PROMPT_SETTINGS_KEY = "ai_card_prompt"
     }
 
