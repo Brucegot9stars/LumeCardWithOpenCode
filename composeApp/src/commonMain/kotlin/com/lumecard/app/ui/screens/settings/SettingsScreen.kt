@@ -60,7 +60,7 @@ import com.lumecard.app.font.registerFontFile
 import org.koin.compose.koinInject
 
 class SettingsScreen(
-    private val onNavigateToHome: (() -> Unit)? = null,
+    @Transient private val onNavigateToHome: (() -> Unit)? = null,
 ) : Screen {
     override val key: ScreenKey = "Settings"
 
