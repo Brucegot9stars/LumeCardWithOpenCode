@@ -384,6 +384,8 @@ object ZhTwStrings : I18nStrings {
     override val aiCardNoConfig = "未配置 AI 服務，請先在設置中配置"
     override val aiCardNoKb = "暫無知識庫"
     override val aiCardNoDeck = "暫無牌組"
+    override val aiCardTopic = "製卡主題"
+    override val aiCardTopicPlaceholder = "描述你想要學習的內容、目標或主題..."
     override val aiCardMaterials = "參考資料"
     override val aiCardMaterialsPlaceholder = "在此粘貼參考資料內容..."
     override val aiCardImportFile = "導入文件"

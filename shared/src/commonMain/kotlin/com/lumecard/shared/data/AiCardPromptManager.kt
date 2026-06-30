@@ -1,6 +1,7 @@
 package com.lumecard.shared.data
 
 import com.lumecard.shared.repository.SettingsRepository
+import com.lumecard.shared.util.loadTextResource
 
 class AiCardPromptManager(
     private val settingsRepository: SettingsRepository,
@@ -26,12 +27,7 @@ class AiCardPromptManager(
     }
 
     private fun loadDefaultPrompt(): String {
-        return try {
-            val stream = object {}.javaClass.getResourceAsStream(PROMPT_RESOURCE)
-            stream?.bufferedReader()?.readText()?.trim()
-                ?: throw IllegalStateException("Prompt resource not found: $PROMPT_RESOURCE")
-        } catch (e: Exception) {
-            throw IllegalStateException("Failed to load default prompt: ${e.message}")
-        }
+        return loadTextResource(PROMPT_RESOURCE)
+            ?: error("Default prompt resource not found: $PROMPT_RESOURCE")
     }
 }

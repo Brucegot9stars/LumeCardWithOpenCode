@@ -390,6 +390,8 @@ interface I18nStrings {
     val aiCardNoConfig: String
     val aiCardNoKb: String
     val aiCardNoDeck: String
+    val aiCardTopic: String
+    val aiCardTopicPlaceholder: String
     val aiCardMaterials: String
     val aiCardMaterialsPlaceholder: String
     val aiCardImportFile: String

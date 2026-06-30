@@ -117,6 +117,17 @@ class AiCardScreen : Screen {
                     }
                 }
 
+                // Topic
+                Text(strings.aiCardTopic, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                OutlinedTextField(
+                    value = state.topic,
+                    onValueChange = { vm.setTopic(it) },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text(strings.aiCardTopicPlaceholder) },
+                    minLines = 2,
+                    maxLines = 5,
+                )
+
                 // Reference materials
                 Text(strings.aiCardMaterials, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 OutlinedTextField(

@@ -384,6 +384,8 @@ object EsStrings : I18nStrings {
     override val aiCardNoConfig = "No hay servicio AI configurado. Configúrelo primero en Ajustes."
     override val aiCardNoKb = "No hay bases de conocimiento todavía"
     override val aiCardNoDeck = "No hay mazos todavía"
+    override val aiCardTopic = "Tema de las tarjetas"
+    override val aiCardTopicPlaceholder = "Describe qué quieres aprender, objetivos o tema..."
     override val aiCardMaterials = "Materiales de referencia"
     override val aiCardMaterialsPlaceholder = "Pegue los materiales de referencia aquí..."
     override val aiCardImportFile = "Importar archivo"

@@ -384,6 +384,8 @@ object JaStrings : I18nStrings {
     override val aiCardNoConfig = "AIサービスが設定されていません。設定画面で設定してください。"
     override val aiCardNoKb = "知識ベースがありません"
     override val aiCardNoDeck = "デッキがありません"
+    override val aiCardTopic = "カードのトピック"
+    override val aiCardTopicPlaceholder = "学びたい内容、目標、トピックを入力してください..."
     override val aiCardMaterials = "参考資料"
     override val aiCardMaterialsPlaceholder = "参考資料をここに貼り付け..."
     override val aiCardImportFile = "ファイルをインポート"

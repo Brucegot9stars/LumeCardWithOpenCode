@@ -26,6 +26,7 @@ data class AiCardUiState(
     val decks: List<Deck> = emptyList(),
     val selectedKbId: String? = null,
     val selectedDeckId: String? = null,
+    val topic: String = "",
     val referenceMaterials: String = "",
     val cardCount: Int = 10,
     val prompt: String = "",
@@ -102,6 +103,10 @@ class AiCardViewModel(
         }
     }
 
+    fun setTopic(text: String) {
+        _state.update { it.copy(topic = text, result = null, errorMessage = null, screenState = AiCardScreenState.IDLE) }
+    }
+
     fun setReferenceMaterials(text: String) {
         _state.update { it.copy(referenceMaterials = text, result = null, errorMessage = null, screenState = AiCardScreenState.IDLE) }
     }
@@ -143,8 +148,8 @@ class AiCardViewModel(
             _state.update { it.copy(screenState = AiCardScreenState.ERROR, errorMessage = "请先配置 AI 服务") }
             return
         }
-        if (current.referenceMaterials.isBlank()) {
-            _state.update { it.copy(screenState = AiCardScreenState.ERROR, errorMessage = "请输入参考资料") }
+        if (current.topic.isBlank()) {
+            _state.update { it.copy(screenState = AiCardScreenState.ERROR, errorMessage = "请输入制卡主题") }
             return
         }
 
@@ -163,6 +168,7 @@ class AiCardViewModel(
                     mode = current.mode,
                     knowledgeBaseId = current.selectedKbId,
                     deckId = current.selectedDeckId,
+                    topic = current.topic,
                     referenceMaterials = current.referenceMaterials,
                     cardCount = current.cardCount,
                     systemPrompt = current.prompt,

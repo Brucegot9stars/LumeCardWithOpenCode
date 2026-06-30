@@ -16,6 +16,7 @@ data class AiCardRequest(
     val deckId: String? = null,
     val knowledgeBaseName: String? = null,
     val deckName: String? = null,
+    val topic: String,
     val referenceMaterials: String,
     val cardCount: Int,
     val systemPrompt: String,

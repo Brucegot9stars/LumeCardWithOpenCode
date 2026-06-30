@@ -1069,8 +1069,13 @@ private suspend fun restoreSettingsAndFonts(
         val configResult = syncManager.downloadConfig(config)
         if (configResult.isSuccess) {
             val remoteSettings = try {
-                fontManifestJson.decodeFromString<Map<String, String>>(configResult.getOrThrow())
-            } catch (_: Exception) { null }
+                val export = fontManifestJson.decodeFromString<com.lumecard.shared.data.ConfigExport>(configResult.getOrThrow())
+                export.settings
+            } catch (_: Exception) {
+                try {
+                    fontManifestJson.decodeFromString<Map<String, String>>(configResult.getOrThrow())
+                } catch (_: Exception) { null }
+            }
             if (remoteSettings != null) {
                 for ((key, value) in remoteSettings) {
                     settingsRepository.set(key, value)

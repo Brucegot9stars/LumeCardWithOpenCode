@@ -384,6 +384,8 @@ object EnStrings : I18nStrings {
     override val aiCardNoConfig = "No AI service configured. Please configure in Settings first."
     override val aiCardNoKb = "No knowledge bases yet"
     override val aiCardNoDeck = "No decks yet"
+    override val aiCardTopic = "Card Topic"
+    override val aiCardTopicPlaceholder = "Describe what you want to learn, goals, or topic..."
     override val aiCardMaterials = "Reference Materials"
     override val aiCardMaterialsPlaceholder = "Paste reference materials here..."
     override val aiCardImportFile = "Import File"

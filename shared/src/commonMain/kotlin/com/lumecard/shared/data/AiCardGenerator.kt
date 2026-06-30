@@ -88,8 +88,12 @@ class AiCardGenerator(
     private fun buildUserMessage(request: AiCardRequest): String {
         val sb = StringBuilder()
         sb.appendLine("Generate ${request.cardCount} flashcards.")
+        sb.appendLine()
+        sb.appendLine("Topic / Goal:")
+        sb.appendLine(request.topic)
         when (request.mode) {
             AiCardMode.AUTO, AiCardMode.SPECIFY_KB -> {
+                sb.appendLine()
                 sb.appendLine("Create a knowledge base and deck with appropriate names.")
             }
             AiCardMode.SPECIFY_BOTH -> {}
