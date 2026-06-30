@@ -148,6 +148,8 @@ class AiCardScreen : Screen {
                                     val content = withContext(Dispatchers.IO) { readFileContent(path) }
                                     if (content != null) {
                                         vm.appendReferenceMaterials(content)
+                                    } else {
+                                        snackbarHostState.showSnackbar(strings.aiCardImportFileError)
                                     }
                                 }
                             } catch (_: Exception) { }

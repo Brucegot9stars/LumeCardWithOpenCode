@@ -392,6 +392,7 @@ object EsStrings : I18nStrings {
     override val aiCardMaterials = "Materiales de referencia"
     override val aiCardMaterialsPlaceholder = "Pegue los materiales de referencia aquí..."
     override val aiCardImportFile = "Importar archivo"
+    override val aiCardImportFileError = "Formato no compatible o archivo demasiado grande. Use archivos .txt o .md (menos de 5MB)."
     override val aiCardSupportedFormats = "Admite archivos .txt / .md"
     override val aiCardCount = "Cantidad de tarjetas"
     override val aiCardCountDesc = "1-1000 por lote"

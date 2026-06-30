@@ -392,6 +392,7 @@ object ZhCnStrings : I18nStrings {
     override val aiCardMaterials = "参考资料"
     override val aiCardMaterialsPlaceholder = "在此粘贴参考资料内容..."
     override val aiCardImportFile = "导入文件"
+    override val aiCardImportFileError = "不支持的文件格式或文件过大，请使用 .txt 或 .md 文件（5MB以内）"
     override val aiCardSupportedFormats = "支持 .txt / .md 文件"
     override val aiCardCount = "生成数量"
     override val aiCardCountDesc = "每批 1-1000 张"

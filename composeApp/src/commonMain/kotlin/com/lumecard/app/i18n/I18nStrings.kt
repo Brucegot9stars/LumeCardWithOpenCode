@@ -398,6 +398,7 @@ interface I18nStrings {
     val aiCardMaterials: String
     val aiCardMaterialsPlaceholder: String
     val aiCardImportFile: String
+    val aiCardImportFileError: String
     val aiCardSupportedFormats: String
     val aiCardCount: String
     val aiCardCountDesc: String

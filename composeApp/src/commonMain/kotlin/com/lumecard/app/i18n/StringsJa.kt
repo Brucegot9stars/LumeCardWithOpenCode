@@ -392,6 +392,7 @@ object JaStrings : I18nStrings {
     override val aiCardMaterials = "参考資料"
     override val aiCardMaterialsPlaceholder = "参考資料をここに貼り付け..."
     override val aiCardImportFile = "ファイルをインポート"
+    override val aiCardImportFileError = "非対応のファイル形式またはファイルが大きすぎます。.txt または .md ファイルを使用してください（5MB以内）"
     override val aiCardSupportedFormats = ".txt / .md ファイル対応"
     override val aiCardCount = "生成枚数"
     override val aiCardCountDesc = "1回につき1-1000枚"

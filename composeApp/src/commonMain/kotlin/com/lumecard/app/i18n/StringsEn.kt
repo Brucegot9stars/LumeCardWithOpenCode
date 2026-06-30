@@ -392,6 +392,7 @@ object EnStrings : I18nStrings {
     override val aiCardMaterials = "Reference Materials"
     override val aiCardMaterialsPlaceholder = "Paste reference materials here..."
     override val aiCardImportFile = "Import File"
+    override val aiCardImportFileError = "Unsupported format or file too large. Use .txt or .md files (under 5MB)."
     override val aiCardSupportedFormats = "Supports .txt / .md files"
     override val aiCardCount = "Card Count"
     override val aiCardCountDesc = "1-1000 per batch"
