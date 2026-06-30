@@ -9,6 +9,7 @@ data class AiProviderInfo(
     val defaultBaseUrls: List<String>,
     val supportedProtocols: List<String>,
     val defaultProtocol: String,
+    val supportsModelListing: Boolean = true,
 )
 
 object AiProviders {
@@ -29,4 +30,5 @@ private fun com.lumecard.shared.data.ai.AiProviderSpec.toProviderInfo() = AiProv
     defaultBaseUrls = defaultBaseUrls,
     supportedProtocols = supportedProtocols,
     defaultProtocol = defaultProtocol,
+    supportsModelListing = supportsModelListing,
 )

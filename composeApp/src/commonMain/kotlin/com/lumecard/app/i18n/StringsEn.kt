@@ -347,6 +347,7 @@ object EnStrings : I18nStrings {
     override val aiProtocol = "API Protocol"
     override val aiModel = "Model"
     override val aiFetchModels = "Fetch Models"
+    override val aiModelListNotSupported = "This provider does not support model listing. Enter the model name manually."
     override val aiApiKey = "API Key"
     override val aiBaseUrl = "Base URL"
     override val aiSystemPrompt = "System Prompt"

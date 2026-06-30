@@ -72,6 +72,7 @@ object AiProviderRegistry {
                 defaultBaseUrl = "https://api.anthropic.com/v1",
                 supportedProtocols = listOf("anthropic_messages"),
                 defaultProtocol = "anthropic_messages",
+                supportsModelListing = false,
             )
         )
         register(
@@ -99,6 +100,7 @@ object AiProviderRegistry {
                 defaultBaseUrl = "https://{resource}.openai.azure.com",
                 supportedProtocols = listOf("openai_compatible"),
                 defaultProtocol = "openai_compatible",
+                supportsModelListing = false,
             )
         )
         register(

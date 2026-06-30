@@ -403,6 +403,9 @@ class AiConfigScreen : Screen {
                                 fallbackConfigId = editFallbackConfigId,
                             )
 
+                            val currentProviderSpec = AiProviderRegistry.findById(editProvider)
+                            val modelListingSupported = currentProviderSpec?.supportsModelListing ?: true
+
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.fillMaxWidth(),
@@ -439,7 +442,7 @@ class AiConfigScreen : Screen {
                                             }
                                         }
                                     },
-                                    enabled = editApiKey.isNotBlank() && editBaseUrl.isNotBlank() && !isFetchingModels,
+                                    enabled = editApiKey.isNotBlank() && editBaseUrl.isNotBlank() && !isFetchingModels && modelListingSupported,
                                     interactionSource = null,
                                 ) {
                                     if (isFetchingModels) {
@@ -450,6 +453,13 @@ class AiConfigScreen : Screen {
                                     Spacer(Modifier.width(4.dp))
                                     Text(strings.aiFetchModels, style = MaterialTheme.typography.bodySmall)
                                 }
+                            }
+                            if (!modelListingSupported) {
+                                Text(
+                                    strings.aiModelListNotSupported,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
                             DropdownMenu(
                                 expanded = showModelMenu,

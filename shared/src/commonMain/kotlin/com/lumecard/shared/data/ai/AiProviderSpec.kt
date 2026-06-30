@@ -8,4 +8,5 @@ data class AiProviderSpec(
     val defaultProtocol: String,
     val defaultBaseUrls: List<String> = emptyList(),
     val models: List<AiModelSpec> = emptyList(),
+    val supportsModelListing: Boolean = true,
 )

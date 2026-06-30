@@ -347,6 +347,7 @@ object JaStrings : I18nStrings {
     override val aiProtocol = "API プロトコル"
     override val aiModel = "モデル"
     override val aiFetchModels = "モデルを取得"
+    override val aiModelListNotSupported = "このプロバイダーはモデル一覧取得非対応です。モデル名を手動で入力してください"
     override val aiApiKey = "API Key"
     override val aiBaseUrl = "Base URL"
     override val aiSystemPrompt = "System Prompt"

@@ -347,6 +347,7 @@ object ZhCnStrings : I18nStrings {
     override val aiProtocol = "API 协议"
     override val aiModel = "模型"
     override val aiFetchModels = "获取模型"
+    override val aiModelListNotSupported = "该服务商不支持模型列表获取，请手动输入模型名称"
     override val aiApiKey = "API Key"
     override val aiBaseUrl = "Base URL"
     override val aiSystemPrompt = "System Prompt"

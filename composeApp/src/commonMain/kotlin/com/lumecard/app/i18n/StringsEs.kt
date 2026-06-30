@@ -347,6 +347,7 @@ object EsStrings : I18nStrings {
     override val aiProtocol = "Protocolo API"
     override val aiModel = "Modelo"
     override val aiFetchModels = "Obtener modelos"
+    override val aiModelListNotSupported = "Este proveedor no soporta listado de modelos. Ingrese el nombre manualmente."
     override val aiApiKey = "API Key"
     override val aiBaseUrl = "Base URL"
     override val aiSystemPrompt = "System Prompt"
