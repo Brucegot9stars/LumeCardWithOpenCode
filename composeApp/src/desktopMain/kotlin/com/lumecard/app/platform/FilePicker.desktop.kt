@@ -31,7 +31,22 @@ actual suspend fun pickOpenFile(mimeType: String, initialDirectory: String?): St
         try {
             val chooser = JFileChooser().apply {
                 dialogTitle = "Open File"
-                fileFilter = FileNameExtensionFilter("Font Files", "ttf", "otf", "ttc")
+                fileFilter = FileNameExtensionFilter(
+                    when {
+                        mimeType.startsWith("image/") -> "Image Files"
+                        mimeType == "text/plain" || mimeType.startsWith("text/") -> "Text Files"
+                        mimeType.contains("font") -> "Font Files"
+                        mimeType == "application/json" -> "JSON Files"
+                        else -> "All Files"
+                    },
+                    *when {
+                        mimeType == "text/plain" || mimeType.startsWith("text/") -> arrayOf("txt", "md")
+                        mimeType == "application/json" -> arrayOf("json")
+                        mimeType.startsWith("image/") -> arrayOf("png", "jpg", "jpeg", "gif", "webp", "bmp", "svg")
+                        mimeType.contains("font") -> arrayOf("ttf", "otf", "ttc")
+                        else -> emptyArray()
+                    }
+                )
                 isAcceptAllFileFilterUsed = true
                 if (initialDirectory != null) {
                     val dir = File(initialDirectory)
@@ -52,7 +67,12 @@ actual suspend fun pickOpenFile(mimeType: String, initialDirectory: String?): St
 
 actual fun readFileContent(path: String): String? {
     return try {
-        File(path).readText()
+        val file = File(path)
+        val name = file.name.lowercase()
+        val binaryExtensions = setOf("docx", "doc", "pdf", "xls", "xlsx", "ppt", "pptx", "zip", "rar", "7z", "exe", "dll", "so", "dylib", "bin", "dat")
+        if (binaryExtensions.any { name.endsWith(it) }) return null
+        if (file.length() > 5 * 1024 * 1024) return null
+        file.readText()
     } catch (e: Exception) {
         null
     }
