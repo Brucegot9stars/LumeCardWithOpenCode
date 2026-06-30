@@ -33,6 +33,12 @@ object AiProviderRegistry {
                 id = "mimo",
                 displayName = "小米 MiMo",
                 defaultBaseUrl = "https://api.xiaomimimo.com/v1",
+                defaultBaseUrls = listOf(
+                    "https://api.xiaomimimo.com/v1",
+                    "https://api.xiaomimimo.com/anthropic",
+                    "https://token-plan-cn.xiaomimimo.com/v1",
+                    "https://token-plan-cn.xiaomimimo.com/anthropic",
+                ),
                 supportedProtocols = listOf("openai_compatible", "openai_responses", "anthropic_messages"),
                 defaultProtocol = "openai_compatible",
             )
@@ -51,7 +57,11 @@ object AiProviderRegistry {
                 id = "deepseek",
                 displayName = "DeepSeek",
                 defaultBaseUrl = "https://api.deepseek.com",
-                supportedProtocols = listOf("openai_compatible"),
+                defaultBaseUrls = listOf(
+                    "https://api.deepseek.com",
+                    "https://api.deepseek.com/anthropic",
+                ),
+                supportedProtocols = listOf("openai_compatible", "anthropic_messages"),
                 defaultProtocol = "openai_compatible",
             )
         )

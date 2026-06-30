@@ -126,6 +126,7 @@ class SqlDelightDeckRepository(
 
     override suspend fun update(deck: Deck) {
         queries.updateDeck(
+            knowledge_base_id = deck.knowledgeBaseId,
             name = deck.name,
             description = deck.description,
             color = deck.color,

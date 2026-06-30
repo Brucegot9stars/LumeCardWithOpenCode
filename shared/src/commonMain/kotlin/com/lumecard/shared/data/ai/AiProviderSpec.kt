@@ -6,5 +6,6 @@ data class AiProviderSpec(
     val defaultBaseUrl: String,
     val supportedProtocols: List<String>,
     val defaultProtocol: String,
+    val defaultBaseUrls: List<String> = emptyList(),
     val models: List<AiModelSpec> = emptyList(),
 )

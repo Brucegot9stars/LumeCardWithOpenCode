@@ -136,7 +136,7 @@ INSERT OR REPLACE INTO Deck(id, knowledge_base_id, name, description, color, ico
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 updateDeck:
-UPDATE Deck SET name = ?, description = ?, color = ?, icon = ?, parent_id = ?, updated_at = ?, version = version + 1, deleted_at = ?, synced_at = ? WHERE id = ?;
+UPDATE Deck SET knowledge_base_id = ?, name = ?, description = ?, color = ?, icon = ?, parent_id = ?, updated_at = ?, version = version + 1, deleted_at = ?, synced_at = ? WHERE id = ?;
 
 insertCard:
 INSERT OR REPLACE INTO Card(id, deck_id, type, front, back, tags, media, metadata, created_at, updated_at, last_reviewed_at, next_review_at, version, deleted_at, synced_at)

@@ -320,14 +320,50 @@ class AiConfigScreen : Screen {
                                 }
                             }
 
-                            // Base URL
-                            OutlinedTextField(
-                                value = editBaseUrl,
-                                onValueChange = { editBaseUrl = it },
-                                label = { Text(strings.aiBaseUrl) },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
+                            // Base URL (dropdown if provider has multiple base URLs)
+                            val baseUrls = currentProvider?.defaultBaseUrls ?: emptyList()
+                            if (baseUrls.isNotEmpty()) {
+                                var showBaseUrlMenu by remember { mutableStateOf(false) }
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    OutlinedTextField(
+                                        value = editBaseUrl,
+                                        onValueChange = { editBaseUrl = it },
+                                        label = { Text(strings.aiBaseUrl) },
+                                        singleLine = true,
+                                        trailingIcon = {
+                                            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .matchParentSize()
+                                            .clickable { showBaseUrlMenu = true },
+                                    )
+                                    DropdownMenu(
+                                        expanded = showBaseUrlMenu,
+                                        onDismissRequest = { showBaseUrlMenu = false },
+                                    ) {
+                                        baseUrls.forEach { url ->
+                                            DropdownMenuItem(
+                                                text = { Text(url, style = MaterialTheme.typography.bodySmall) },
+                                                onClick = {
+                                                    editBaseUrl = url
+                                                    showBaseUrlMenu = false
+                                                },
+                                            )
+                                        }
+                                    }
+                                }
+                            } else {
+                                OutlinedTextField(
+                                    value = editBaseUrl,
+                                    onValueChange = { editBaseUrl = it },
+                                    label = { Text(strings.aiBaseUrl) },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
 
                             // API Key
                             OutlinedTextField(
