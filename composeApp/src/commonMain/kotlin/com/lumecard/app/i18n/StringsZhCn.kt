@@ -420,6 +420,8 @@ object ZhCnStrings : I18nStrings {
     override val aiCardErrorRateLimit = "请求频率过高，请稍后重试"
     override val aiCardErrorTimeout = "AI 服务响应超时，请稍后重试或增加超时时间"
     override val aiCardErrorNoContent = "AI 未返回卡牌内容"
+    override val aiCardAutoClassify = "自动分类到牌组"
+    override val aiCardAutoClassifyDesc = "AI 根据内容自动创建多个合适牌组"
 
     override val actionMove = "移动"
     override val actionMerge = "合并"

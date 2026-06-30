@@ -420,6 +420,8 @@ object EsStrings : I18nStrings {
     override val aiCardErrorRateLimit = "Límite de tasa excedido. Intente más tarde"
     override val aiCardErrorTimeout = "El servicio AI tardó demasiado. Vuelva a intentarlo o aumente el tiempo de espera."
     override val aiCardErrorNoContent = "AI no devolvió contenido de tarjetas"
+    override val aiCardAutoClassify = "Clasificar automáticamente en mazos"
+    override val aiCardAutoClassifyDesc = "La IA crea mazos adecuados según el contenido"
 
     override val actionMove = "Mover"
     override val actionMerge = "Fusionar"

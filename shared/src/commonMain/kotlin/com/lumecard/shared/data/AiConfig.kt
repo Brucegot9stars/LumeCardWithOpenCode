@@ -13,7 +13,7 @@ data class AiConfig(
     val model: String,
     val systemPrompt: String = "",
     val temperature: Float = 0.7f,
-    val maxTokens: Int = 2048,
+    val maxTokens: Int = 8192,
     val topP: Float = 1.0f,
     val frequencyPenalty: Float = 0.0f,
     val presencePenalty: Float = 0.0f,

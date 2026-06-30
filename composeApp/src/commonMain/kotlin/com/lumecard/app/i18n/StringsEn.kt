@@ -420,6 +420,8 @@ object EnStrings : I18nStrings {
     override val aiCardErrorRateLimit = "Rate limit exceeded. Please try again later"
     override val aiCardErrorTimeout = "AI service timed out. Please retry or increase the timeout."
     override val aiCardErrorNoContent = "AI returned no card content"
+    override val aiCardAutoClassify = "Auto-classify into decks"
+    override val aiCardAutoClassifyDesc = "AI creates appropriate decks based on content"
 
     override val actionMove = "Move"
     override val actionMerge = "Merge"

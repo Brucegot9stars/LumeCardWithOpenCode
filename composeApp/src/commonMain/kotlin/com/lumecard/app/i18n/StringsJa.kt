@@ -420,6 +420,8 @@ object JaStrings : I18nStrings {
     override val aiCardErrorRateLimit = "レート制限に達しました。後でもう一度お試しください"
     override val aiCardErrorTimeout = "AIサービスの応答がタイムアウトしました。再試行するか、タイムアウト時間を延ばしてください。"
     override val aiCardErrorNoContent = "AIがカード内容を返しませんでした"
+    override val aiCardAutoClassify = "デッキを自動分類"
+    override val aiCardAutoClassifyDesc = "AIが内容に基づいて適切なデッキを作成"
 
     override val actionMove = "移動"
     override val actionMerge = "マージ"

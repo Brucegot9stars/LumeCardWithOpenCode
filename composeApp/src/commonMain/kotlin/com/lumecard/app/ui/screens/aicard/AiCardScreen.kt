@@ -101,6 +101,24 @@ class AiCardScreen : Screen {
                     )
                 }
 
+                // Auto-classify decks checkbox (hidden when deck is user-specified)
+                if (state.mode != AiCardMode.SPECIFY_BOTH) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Checkbox(
+                            checked = state.autoClassifyDecks,
+                            onCheckedChange = { vm.setAutoClassifyDecks(it) },
+                        )
+                        Spacer(Modifier.width(spacing.sm))
+                        Column {
+                            Text(strings.aiCardAutoClassify, style = MaterialTheme.typography.bodyMedium)
+                            Text(strings.aiCardAutoClassifyDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+
                 // Config error warning
                 if (state.configError) {
                     Card(
@@ -239,7 +257,23 @@ class AiCardScreen : Screen {
                             color = MaterialTheme.colorScheme.onPrimary,
                         )
                         Spacer(Modifier.width(spacing.sm))
-                        Text(strings.aiCardGenerating)
+                        val batchProgress = state.batchProgress
+                        val downloadProgress = state.downloadProgress
+                        val progressText = when {
+                            batchProgress != null && batchProgress.totalBatches > 0 ->
+                                "${strings.aiCardGenerating} (${batchProgress.savedCards}/${batchProgress.totalTarget})"
+                            downloadProgress != null -> {
+                                val (received, total) = downloadProgress
+                                val receivedStr = formatDataSize(received)
+                                if (total != null && total > 0L) {
+                                    "${strings.aiCardGenerating} ($receivedStr / ${formatDataSize(total)})"
+                                } else {
+                                    "${strings.aiCardGenerating} ($receivedStr)"
+                                }
+                            }
+                            else -> strings.aiCardGenerating
+                        }
+                        Text(progressText, maxLines = 1)
                     } else {
                         Icon(Icons.Default.AutoAwesome, contentDescription = null)
                         Spacer(Modifier.width(spacing.sm))
@@ -249,7 +283,7 @@ class AiCardScreen : Screen {
 
                 // Result display
                 val result = state.result
-                if (state.screenState == AiCardScreenState.DONE && result != null) {
+                if (state.screenState == AiCardScreenState.DONE) {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                         modifier = Modifier.fillMaxWidth(),
@@ -260,16 +294,18 @@ class AiCardScreen : Screen {
                                 Spacer(Modifier.width(spacing.sm))
                                 Text("${strings.aiCardGeneration} - ${strings.actionDone}", fontWeight = FontWeight.Bold)
                             }
-                            Spacer(Modifier.height(spacing.sm))
-                            Text(strings.aiCardResultCreated(result.cardsCreated))
-                            Spacer(Modifier.height(spacing.sm))
-                            Text(
-                                strings.aiCardResultDesc
-                                    .replace("{0}", result.knowledgeBaseName)
-                                    .replace("{1}", result.deckName)
-                                    .replace("{2}", result.cardsCreated.toString()),
-                                style = MaterialTheme.typography.bodySmall,
-                            )
+                            if (result != null) {
+                                Spacer(Modifier.height(spacing.sm))
+                                Text(strings.aiCardResultCreated(result.cardsCreated))
+                                Spacer(Modifier.height(spacing.sm))
+                                Text(
+                                    strings.aiCardResultDesc
+                                        .replace("{0}", result.knowledgeBaseName)
+                                        .replace("{1}", result.deckName)
+                                        .replace("{2}", result.cardsCreated.toString()),
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
                             Spacer(Modifier.height(spacing.sm))
                             OutlinedButton(onClick = { vm.resetState() }) {
                                 Text(strings.aiCardGenerate)
@@ -285,13 +321,32 @@ class AiCardScreen : Screen {
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Row(
-                            modifier = Modifier.padding(spacing.md),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(Icons.Default.Error, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-                            Spacer(Modifier.width(spacing.sm))
-                            Text(errorMsg, color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodySmall)
+                        Column(modifier = Modifier.padding(spacing.md)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Error, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                Spacer(Modifier.width(spacing.sm))
+                                Text("错误", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+                            }
+                            Spacer(Modifier.height(spacing.sm))
+                            Text(
+                                errorMsg,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                style = MaterialTheme.typography.bodySmall,
+                                softWrap = true,
+                            )
+                            Spacer(Modifier.height(spacing.sm))
+                            OutlinedButton(
+                                onClick = {
+                                    try {
+                                        copyToClipboard(errorMsg, "AI 错误信息")
+                                        scope.launch { snackbarHostState.showSnackbar("错误信息已复制") }
+                                    } catch (_: Exception) { }
+                                },
+                            ) {
+                                Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("复制错误信息", style = MaterialTheme.typography.bodySmall)
+                            }
                         }
                     }
                 }
@@ -390,6 +445,14 @@ class AiCardScreen : Screen {
                 },
             )
         }
+    }
+}
+
+private fun formatDataSize(bytes: Long): String {
+    return when {
+        bytes < 1024L -> "$bytes B"
+        bytes < 1024L * 1024L -> "${bytes / 1024L} KB"
+        else -> "${"%.1f".format(bytes.toDouble() / (1024.0 * 1024.0))} MB"
     }
 }
 

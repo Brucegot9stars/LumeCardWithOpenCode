@@ -37,6 +37,17 @@ data class AiCardUiState(
     val configError: Boolean = false,
     val hasKb: Boolean = false,
     val hasDeck: Boolean = false,
+    val downloadProgress: Pair<Long, Long?>? = null,
+    val batchProgress: AiCardBatchProgress? = null,
+    val autoClassifyDecks: Boolean = false,
+)
+
+data class AiCardBatchProgress(
+    val currentBatch: Int,
+    val totalBatches: Int,
+    val savedCards: Int,
+    val totalTarget: Int,
+    val status: String,
 )
 
 class AiCardViewModel(
@@ -63,6 +74,7 @@ class AiCardViewModel(
                     referenceMaterials = cached.referenceMaterials,
                     cardCount = cached.cardCount,
                     prompt = cached.prompt,
+                    autoClassifyDecks = cached.autoClassifyDecks,
                 )
             }
         }
@@ -78,6 +90,7 @@ class AiCardViewModel(
         val referenceMaterials: String,
         val cardCount: Int,
         val prompt: String,
+        val autoClassifyDecks: Boolean,
     )
 
     private companion object {
@@ -94,6 +107,7 @@ class AiCardViewModel(
             referenceMaterials = state.referenceMaterials,
             cardCount = state.cardCount,
             prompt = state.prompt,
+            autoClassifyDecks = state.autoClassifyDecks,
         )
     }
 
@@ -184,6 +198,10 @@ class AiCardViewModel(
         cacheDraft(_state.value)
     }
 
+    fun setAutoClassifyDecks(value: Boolean) {
+        _state.update { it.copy(autoClassifyDecks = value) }
+    }
+
     fun setPrompt(prompt: String) {
         _state.update { it.copy(prompt = prompt) }
         cacheDraft(_state.value)
@@ -210,65 +228,118 @@ class AiCardViewModel(
     fun generate() {
         val current = _state.value
         if (current.configError || current.selectedConfigId == null) {
-            _state.update { it.copy(screenState = AiCardScreenState.ERROR, errorMessage = "请先配置 AI 服务") }
+            _state.value = current.copy(screenState = AiCardScreenState.ERROR, errorMessage = "请先配置 AI 服务")
             return
         }
         if (current.topic.isBlank()) {
-            _state.update { it.copy(screenState = AiCardScreenState.ERROR, errorMessage = "请输入制卡主题") }
+            _state.value = current.copy(screenState = AiCardScreenState.ERROR, errorMessage = "请输入制卡主题")
             return
         }
 
-        screenModelScope.launch {
-            _state.update { it.copy(screenState = AiCardScreenState.GENERATING, errorMessage = null) }
+        _state.value = current.copy(screenState = AiCardScreenState.GENERATING, errorMessage = null, result = null)
 
+        val configId = current.selectedConfigId
+        val cardCount = current.cardCount
+        val mode = current.mode
+        val topic = current.topic
+        val prompt = current.prompt
+        val refMaterials = current.referenceMaterials
+        val kbId = current.selectedKbId
+        val deckId = current.selectedDeckId
+        val autoClassifyDecks = current.autoClassifyDecks
+
+        screenModelScope.launch {
             try {
-                val config = withContext(Dispatchers.IO) { aiConfigManager.getById(requireNotNull(current.selectedConfigId)) }
+                val config = withContext(Dispatchers.IO) { aiConfigManager.getById(configId) }
                 if (config == null) {
-                    _state.update { it.copy(screenState = AiCardScreenState.ERROR, errorMessage = "请先配置 AI 服务") }
+                    _state.value = _state.value.copy(screenState = AiCardScreenState.ERROR, errorMessage = "请先配置 AI 服务")
                     return@launch
                 }
 
-                val request = AiCardRequest(
-                    config = config,
-                    mode = current.mode,
-                    knowledgeBaseId = current.selectedKbId,
-                    deckId = current.selectedDeckId,
-                    topic = current.topic,
-                    referenceMaterials = current.referenceMaterials,
-                    cardCount = current.cardCount,
-                    systemPrompt = current.prompt,
-                )
+                val batchSize = 5
+                var remaining = cardCount
+                var totalCreated = 0
+                val allCardIds = mutableListOf<String>()
+                var lastKbId = ""
+                var lastDeckId = ""
 
-                val result = withContext(Dispatchers.IO) { aiCardGenerator.generate(request) }
+                while (remaining > 0) {
+                    val currentBatch = (cardCount - remaining) / batchSize + 1
+                    val totalBatches = (cardCount + batchSize - 1) / batchSize
+                    _state.value = _state.value.copy(
+                        batchProgress = AiCardBatchProgress(
+                            currentBatch = currentBatch,
+                            totalBatches = totalBatches,
+                            savedCards = totalCreated,
+                            totalTarget = cardCount,
+                            status = "生成中",
+                        ),
+                    )
 
-                result.fold(
-                    onSuccess = { res ->
-                        _state.update { it.copy(screenState = AiCardScreenState.DONE, result = res, errorMessage = null) }
-                    },
-                    onFailure = { e ->
-                        val msg = when {
-                            e is AiCardException && e.error == AiCardError.NO_CONFIG -> "请先配置 AI 服务"
-                            e is AiCardException && e.error == AiCardError.AUTH_FAILED -> "认证失败，请检查 API Key"
-                            e is AiCardException && e.error == AiCardError.CONNECTION_FAILED -> "连接 AI 服务失败"
-                            e is AiCardException && e.error == AiCardError.TIMEOUT -> "AI 服务响应超时，请稍后重试"
-                            e is AiCardException && e.error == AiCardError.RATE_LIMITED -> "请求频率过高，请稍后重试"
-                            e is AiCardException && e.error == AiCardError.PARSE_ERROR -> "AI 返回格式异常，请重试"
-                            e is AiCardException && e.error == AiCardError.NO_CONTENT -> "AI 未返回卡牌内容"
-                            e is AiCardException && e.error == AiCardError.API_ERROR -> "AI 服务返回错误"
-                            else -> "生成失败：${e.message ?: "未知错误"}"
+                    val batchCount = batchSize.coerceAtMost(remaining)
+                    val requestKbId = if (lastKbId.isNotEmpty()) lastKbId else kbId
+                    val requestDeckId = if (!autoClassifyDecks && lastDeckId.isNotEmpty()) lastDeckId else deckId
+                    val request = AiCardRequest(
+                        config = config,
+                        mode = mode,
+                        knowledgeBaseId = requestKbId,
+                        deckId = requestDeckId,
+                        topic = topic,
+                        referenceMaterials = refMaterials,
+                        cardCount = batchCount,
+                        systemPrompt = prompt,
+                    )
+
+                    val result = withContext(Dispatchers.IO) {
+                        aiCardGenerator.generate(request) { received, total ->
+                            _state.value = _state.value.copy(downloadProgress = received to total)
                         }
-                        _state.update { it.copy(screenState = AiCardScreenState.ERROR, errorMessage = msg) }
                     }
+
+                    result.fold(
+                        onSuccess = { res ->
+                            remaining -= batchCount
+                            totalCreated += res.cardsCreated
+                            allCardIds.addAll(res.cardIds)
+                            lastKbId = res.knowledgeBaseId
+                            lastDeckId = res.deckId
+                        },
+                        onFailure = { e ->
+                            _state.value = _state.value.copy(
+                                screenState = AiCardScreenState.ERROR,
+                                batchProgress = null,
+                                errorMessage = "第 $currentBatch 批生成失败：${e.message ?: "未知错误"}",
+                            )
+                            return@launch
+                        },
+                    )
+                }
+
+                _state.value = _state.value.copy(
+                    screenState = AiCardScreenState.DONE,
+                    batchProgress = null,
+                    result = AiCardResult(
+                        knowledgeBaseName = "AI Cards",
+                        deckName = "AI Cards",
+                        knowledgeBaseId = lastKbId,
+                        deckId = lastDeckId,
+                        cardsCreated = totalCreated,
+                        cardIds = allCardIds,
+                    ),
                 )
             } catch (e: Exception) {
-                _state.update { it.copy(screenState = AiCardScreenState.ERROR, errorMessage = "生成失败：${e.message ?: "未知错误"}") }
+                _state.value = _state.value.copy(
+                    screenState = AiCardScreenState.ERROR,
+                    batchProgress = null,
+                    errorMessage = "生成失败：${e.message ?: "未知错误"}",
+                )
             }
         }
     }
 
     fun resetState() {
         draftCache = null
-        _state.update { it.copy(screenState = AiCardScreenState.IDLE, result = null, errorMessage = null) }
+        _state.update { it.copy(screenState = AiCardScreenState.IDLE, result = null, errorMessage = null, batchProgress = null) }
     }
 
 }

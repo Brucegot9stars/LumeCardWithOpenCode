@@ -12,6 +12,8 @@ import com.lumecard.shared.data.ai.AiClientAdapter
 import com.lumecard.shared.data.ai.AiFallbackManager
 import com.lumecard.shared.data.ai.AiModelListFetcher
 import com.lumecard.shared.data.ai.ProviderAdapter
+import com.lumecard.shared.data.ai.event.AiEventBus
+import com.lumecard.shared.data.ai.task.AiBatchGenerator
 import com.lumecard.shared.database.LumeCardDatabase
 import com.lumecard.shared.domain.scheduler.*
 import com.lumecard.shared.repository.*
@@ -27,7 +29,8 @@ val sharedModule = module {
     single {
         HttpClient {
             install(HttpTimeout) {
-                requestTimeoutMillis = 120_000
+                requestTimeoutMillis = 3_600_000
+                socketTimeoutMillis = 3_600_000
                 connectTimeoutMillis = 30_000
             }
             expectSuccess = false
@@ -56,6 +59,8 @@ val sharedModule = module {
     single { AiFallbackManager(get(), get()) }
     single { AiModelListFetcher(get(), get()) }
     single { AiCardGenerator(get(), get(), get(), get(), get(), get()) }
+    single { AiEventBus() }
+    single { AiBatchGenerator(get(), get()) }
 
     // Algorithm implementations
     single { FSRSAlgorithm() }

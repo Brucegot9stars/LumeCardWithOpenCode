@@ -426,6 +426,8 @@ interface I18nStrings {
     val aiCardErrorRateLimit: String
     val aiCardErrorTimeout: String
     val aiCardErrorNoContent: String
+    val aiCardAutoClassify: String
+    val aiCardAutoClassifyDesc: String
 
     // Move / Merge
     val actionMove: String

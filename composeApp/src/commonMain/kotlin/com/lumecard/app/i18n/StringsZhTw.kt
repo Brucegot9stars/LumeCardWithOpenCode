@@ -420,6 +420,8 @@ object ZhTwStrings : I18nStrings {
     override val aiCardErrorRateLimit = "請求頻率過高，請稍後重試"
     override val aiCardErrorTimeout = "AI 服務響應超時，請稍後重試或增加超時時間"
     override val aiCardErrorNoContent = "AI 未返回卡牌內容"
+    override val aiCardAutoClassify = "自動分類到牌組"
+    override val aiCardAutoClassifyDesc = "AI 根據內容自動建立多個合適牌組"
 
     override val actionMove = "移動"
     override val actionMerge = "合併"
