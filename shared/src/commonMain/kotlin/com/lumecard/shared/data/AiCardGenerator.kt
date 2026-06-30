@@ -38,13 +38,14 @@ class AiCardGenerator(
             )
 
             val content = response.getOrElse { e ->
+                val msg = e.message ?: ""
                 val aiErr = when {
-                    e.message?.contains("401") == true -> AiCardException(AiCardError.AUTH_FAILED, e.message ?: "Auth failed")
-                    e.message?.contains("429") == true -> AiCardException(AiCardError.RATE_LIMITED, e.message ?: "Rate limited")
-                    e.message?.contains("Timeout") == true || e.message?.contains("Connection") == true
-                        -> AiCardException(AiCardError.CONNECTION_FAILED, e.message ?: "Connection failed")
-                    e.message?.contains("Parse error") == true -> AiCardException(AiCardError.PARSE_ERROR, e.message ?: "Parse error")
-                    else -> AiCardException(AiCardError.API_ERROR, e.message ?: "API error")
+                    msg.contains("401") -> AiCardException(AiCardError.AUTH_FAILED, msg)
+                    msg.contains("429") -> AiCardException(AiCardError.RATE_LIMITED, msg)
+                    msg.contains("Timeout", ignoreCase = true) -> AiCardException(AiCardError.TIMEOUT, msg)
+                    msg.contains("Connection") -> AiCardException(AiCardError.CONNECTION_FAILED, msg)
+                    msg.contains("Parse error", ignoreCase = true) -> AiCardException(AiCardError.PARSE_ERROR, msg)
+                    else -> AiCardException(AiCardError.API_ERROR, msg)
                 }
                 return Result.failure(aiErr)
             }

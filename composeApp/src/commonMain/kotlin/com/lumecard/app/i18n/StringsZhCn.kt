@@ -418,6 +418,7 @@ object ZhCnStrings : I18nStrings {
     override val aiCardErrorApi = "AI 服务返回错误"
     override val aiCardErrorParse = "AI 返回格式异常，请重试"
     override val aiCardErrorRateLimit = "请求频率过高，请稍后重试"
+    override val aiCardErrorTimeout = "AI 服务响应超时，请稍后重试或增加超时时间"
     override val aiCardErrorNoContent = "AI 未返回卡牌内容"
 
     override val actionMove = "移动"

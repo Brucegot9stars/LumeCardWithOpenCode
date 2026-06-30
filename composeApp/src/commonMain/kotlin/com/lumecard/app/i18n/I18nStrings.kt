@@ -424,6 +424,7 @@ interface I18nStrings {
     val aiCardErrorApi: String
     val aiCardErrorParse: String
     val aiCardErrorRateLimit: String
+    val aiCardErrorTimeout: String
     val aiCardErrorNoContent: String
 
     // Move / Merge

@@ -27,8 +27,8 @@ val sharedModule = module {
     single {
         HttpClient {
             install(HttpTimeout) {
-                requestTimeoutMillis = 30_000
-                connectTimeoutMillis = 15_000
+                requestTimeoutMillis = 120_000
+                connectTimeoutMillis = 30_000
             }
             expectSuccess = false
         }

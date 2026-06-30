@@ -38,6 +38,7 @@ enum class AiCardError {
     API_ERROR,
     PARSE_ERROR,
     RATE_LIMITED,
+    TIMEOUT,
     NO_CONTENT,
     UNKNOWN,
 }

@@ -129,7 +129,17 @@ class AiCardScreen : Screen {
                 }
 
                 // Topic
-                Text(strings.aiCardTopic, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(strings.aiCardTopic, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    if (state.topic.isNotEmpty()) {
+                        IconButton(onClick = { vm.setTopic("") }, modifier = Modifier.size(24.dp)) {
+                            Icon(Icons.Default.Close, contentDescription = strings.aiCardClear, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
                 OutlinedTextField(
                     value = state.topic,
                     onValueChange = { vm.setTopic(it) },
@@ -140,7 +150,17 @@ class AiCardScreen : Screen {
                 )
 
                 // Reference materials
-                Text(strings.aiCardMaterials, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(strings.aiCardMaterials, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    if (state.referenceMaterials.isNotEmpty()) {
+                        IconButton(onClick = { vm.setReferenceMaterials("") }, modifier = Modifier.size(24.dp)) {
+                            Icon(Icons.Default.Close, contentDescription = strings.aiCardClear, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
                 OutlinedTextField(
                     value = state.referenceMaterials,
                     onValueChange = { vm.setReferenceMaterials(it) },
@@ -201,30 +221,17 @@ class AiCardScreen : Screen {
                 }
 
                 // Generate button
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                Button(
+                    onClick = {
+                        if (state.cardCount > 100) {
+                            showLargeCountDialog = true
+                        } else {
+                            vm.generate()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    enabled = state.screenState != AiCardScreenState.GENERATING && !state.configError && state.selectedConfigId != null,
                 ) {
-                    OutlinedButton(
-                        onClick = { vm.clearForm() },
-                        modifier = Modifier.height(48.dp),
-                        enabled = state.screenState != AiCardScreenState.GENERATING,
-                    ) {
-                        Icon(Icons.Default.Delete, contentDescription = null)
-                        Spacer(Modifier.width(spacing.xs))
-                        Text(strings.aiCardClear)
-                    }
-                    Button(
-                        onClick = {
-                            if (state.cardCount > 100) {
-                                showLargeCountDialog = true
-                            } else {
-                                vm.generate()
-                            }
-                        },
-                        modifier = Modifier.weight(1f).height(48.dp),
-                        enabled = state.screenState != AiCardScreenState.GENERATING && !state.configError && state.selectedConfigId != null,
-                    ) {
                     if (state.screenState == AiCardScreenState.GENERATING) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(20.dp),
@@ -237,7 +244,6 @@ class AiCardScreen : Screen {
                         Icon(Icons.Default.AutoAwesome, contentDescription = null)
                         Spacer(Modifier.width(spacing.sm))
                         Text(strings.aiCardGenerate)
-                    }
                     }
                 }
 

@@ -250,6 +250,7 @@ class AiCardViewModel(
                             e is AiCardException && e.error == AiCardError.NO_CONFIG -> "请先配置 AI 服务"
                             e is AiCardException && e.error == AiCardError.AUTH_FAILED -> "认证失败，请检查 API Key"
                             e is AiCardException && e.error == AiCardError.CONNECTION_FAILED -> "连接 AI 服务失败"
+                            e is AiCardException && e.error == AiCardError.TIMEOUT -> "AI 服务响应超时，请稍后重试"
                             e is AiCardException && e.error == AiCardError.RATE_LIMITED -> "请求频率过高，请稍后重试"
                             e is AiCardException && e.error == AiCardError.PARSE_ERROR -> "AI 返回格式异常，请重试"
                             e is AiCardException && e.error == AiCardError.NO_CONTENT -> "AI 未返回卡牌内容"
@@ -270,19 +271,5 @@ class AiCardViewModel(
         _state.update { it.copy(screenState = AiCardScreenState.IDLE, result = null, errorMessage = null) }
     }
 
-    fun clearForm() {
-        val mode = AiCardMode.AUTO
-        _state.update { it.copy(
-            mode = mode,
-            selectedKbId = null,
-            selectedDeckId = null,
-            topic = "",
-            referenceMaterials = "",
-            cardCount = 10,
-            screenState = AiCardScreenState.IDLE,
-            result = null,
-            errorMessage = null,
-        ) }
-        cacheDraft(_state.value)
-    }
 }
+

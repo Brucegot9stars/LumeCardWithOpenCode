@@ -418,6 +418,7 @@ object EsStrings : I18nStrings {
     override val aiCardErrorApi = "El servicio AI devolvió un error"
     override val aiCardErrorParse = "Error de formato en respuesta AI. Reintente"
     override val aiCardErrorRateLimit = "Límite de tasa excedido. Intente más tarde"
+    override val aiCardErrorTimeout = "El servicio AI tardó demasiado. Vuelva a intentarlo o aumente el tiempo de espera."
     override val aiCardErrorNoContent = "AI no devolvió contenido de tarjetas"
 
     override val actionMove = "Mover"

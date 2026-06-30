@@ -418,6 +418,7 @@ object JaStrings : I18nStrings {
     override val aiCardErrorApi = "AIサービスがエラーを返しました"
     override val aiCardErrorParse = "AI応答の解析に失敗しました。再試行してください"
     override val aiCardErrorRateLimit = "レート制限に達しました。後でもう一度お試しください"
+    override val aiCardErrorTimeout = "AIサービスの応答がタイムアウトしました。再試行するか、タイムアウト時間を延ばしてください。"
     override val aiCardErrorNoContent = "AIがカード内容を返しませんでした"
 
     override val actionMove = "移動"

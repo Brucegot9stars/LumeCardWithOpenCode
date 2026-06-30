@@ -418,6 +418,7 @@ object EnStrings : I18nStrings {
     override val aiCardErrorApi = "AI service returned an error"
     override val aiCardErrorParse = "AI response format error. Please retry"
     override val aiCardErrorRateLimit = "Rate limit exceeded. Please try again later"
+    override val aiCardErrorTimeout = "AI service timed out. Please retry or increase the timeout."
     override val aiCardErrorNoContent = "AI returned no card content"
 
     override val actionMove = "Move"
