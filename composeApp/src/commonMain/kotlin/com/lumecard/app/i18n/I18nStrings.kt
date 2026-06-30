@@ -413,6 +413,7 @@ interface I18nStrings {
     val aiCardPromptRestoreConfirm: String
     val aiCardPromptRestored: String
     val aiCardGenerate: String
+    val aiCardClear: String
     val aiCardGenerating: String
     fun aiCardResultCreated(count: Int): String
     val aiCardResultDesc: String

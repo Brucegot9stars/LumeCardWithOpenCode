@@ -201,17 +201,30 @@ class AiCardScreen : Screen {
                 }
 
                 // Generate button
-                Button(
-                    onClick = {
-                        if (state.cardCount > 100) {
-                            showLargeCountDialog = true
-                        } else {
-                            vm.generate()
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                    enabled = state.screenState != AiCardScreenState.GENERATING && !state.configError && state.selectedConfigId != null,
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(spacing.sm),
                 ) {
+                    OutlinedButton(
+                        onClick = { vm.clearForm() },
+                        modifier = Modifier.height(48.dp),
+                        enabled = state.screenState != AiCardScreenState.GENERATING,
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null)
+                        Spacer(Modifier.width(spacing.xs))
+                        Text(strings.aiCardClear)
+                    }
+                    Button(
+                        onClick = {
+                            if (state.cardCount > 100) {
+                                showLargeCountDialog = true
+                            } else {
+                                vm.generate()
+                            }
+                        },
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        enabled = state.screenState != AiCardScreenState.GENERATING && !state.configError && state.selectedConfigId != null,
+                    ) {
                     if (state.screenState == AiCardScreenState.GENERATING) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(20.dp),
@@ -224,6 +237,7 @@ class AiCardScreen : Screen {
                         Icon(Icons.Default.AutoAwesome, contentDescription = null)
                         Spacer(Modifier.width(spacing.sm))
                         Text(strings.aiCardGenerate)
+                    }
                     }
                 }
 

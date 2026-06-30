@@ -407,6 +407,7 @@ object EsStrings : I18nStrings {
     override val aiCardPromptRestoreConfirm = "¿Restaurar prompt predeterminado? Se perderán sus cambios."
     override val aiCardPromptRestored = "Prompt predeterminado restaurado"
     override val aiCardGenerate = "Generar"
+    override val aiCardClear = "Limpiar"
     override val aiCardGenerating = "Generando..."
     override fun aiCardResultCreated(count: Int) = "Se crearon exitosamente $count tarjetas"
     override val aiCardResultDesc = "AI creó BC \"{0}\", mazo \"{1}\" y agregó {2} tarjetas."

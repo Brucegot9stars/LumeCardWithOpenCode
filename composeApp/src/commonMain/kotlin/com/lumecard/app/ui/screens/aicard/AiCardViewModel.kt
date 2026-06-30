@@ -269,4 +269,20 @@ class AiCardViewModel(
         draftCache = null
         _state.update { it.copy(screenState = AiCardScreenState.IDLE, result = null, errorMessage = null) }
     }
+
+    fun clearForm() {
+        val mode = AiCardMode.AUTO
+        _state.update { it.copy(
+            mode = mode,
+            selectedKbId = null,
+            selectedDeckId = null,
+            topic = "",
+            referenceMaterials = "",
+            cardCount = 10,
+            screenState = AiCardScreenState.IDLE,
+            result = null,
+            errorMessage = null,
+        ) }
+        cacheDraft(_state.value)
+    }
 }

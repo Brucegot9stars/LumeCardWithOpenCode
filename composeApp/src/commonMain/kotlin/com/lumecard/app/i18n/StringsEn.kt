@@ -407,6 +407,7 @@ object EnStrings : I18nStrings {
     override val aiCardPromptRestoreConfirm = "Restore default prompt? Your edits will be lost."
     override val aiCardPromptRestored = "Default prompt restored"
     override val aiCardGenerate = "Generate"
+    override val aiCardClear = "Clear"
     override val aiCardGenerating = "Generating..."
     override fun aiCardResultCreated(count: Int) = "Successfully created $count cards"
     override val aiCardResultDesc = "AI created KB \"{0}\", deck \"{1}\", and added {2} cards."

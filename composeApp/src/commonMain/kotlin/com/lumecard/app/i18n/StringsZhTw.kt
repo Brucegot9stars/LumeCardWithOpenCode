@@ -407,6 +407,7 @@ object ZhTwStrings : I18nStrings {
     override val aiCardPromptRestoreConfirm = "確認恢復默認 Prompt？當前修改將丟失。"
     override val aiCardPromptRestored = "已恢復默認 Prompt"
     override val aiCardGenerate = "開始生成"
+    override val aiCardClear = "清空"
     override val aiCardGenerating = "正在生成..."
     override fun aiCardResultCreated(count: Int) = "已成功創建 $count 張卡牌"
     override val aiCardResultDesc = "AI 已創建知識庫「{0}」、牌組「{1}」，並添加了 {2} 張卡牌。"

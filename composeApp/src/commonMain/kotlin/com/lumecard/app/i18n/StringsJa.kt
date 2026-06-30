@@ -407,6 +407,7 @@ object JaStrings : I18nStrings {
     override val aiCardPromptRestoreConfirm = "デフォルトのプロンプトに戻しますか？編集内容は失われます。"
     override val aiCardPromptRestored = "デフォルトのプロンプトに戻しました"
     override val aiCardGenerate = "生成開始"
+    override val aiCardClear = "クリア"
     override val aiCardGenerating = "生成中..."
     override fun aiCardResultCreated(count: Int) = "${count}枚のカードを生成しました"
     override val aiCardResultDesc = "AIが知識ベース「{0}」、デッキ「{1}」を作成し、{2}枚のカードを追加しました。"
