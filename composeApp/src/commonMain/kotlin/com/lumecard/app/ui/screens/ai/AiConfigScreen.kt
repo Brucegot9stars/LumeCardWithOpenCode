@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -71,6 +72,7 @@ class AiConfigScreen : Screen {
         var editPresencePenalty by remember { mutableStateOf("0.0") }
 
         var testResult by remember { mutableStateOf<String?>(null) }
+        var isTesting by remember { mutableStateOf(false) }
         var deleteConfirmId by remember { mutableStateOf<String?>(null) }
         var defaultConfig by remember { mutableStateOf<AiConfig?>(null) }
         var editFallbackConfigId by remember { mutableStateOf<String?>(null) }
@@ -636,54 +638,59 @@ class AiConfigScreen : Screen {
                                 )
                             }
 
-                            // Test result
-                            if (testResult != null) {
-                                val isSuccess = testResult!!.startsWith("OK") || testResult!!.startsWith(strings.aiTestSuccess)
-                                Text(
-                                    testResult!!,
-                                    color = if (isSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
-                            }
-
-                            // Action buttons
+                            // Test + Save
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(spacing.sm),
                             ) {
                                 OutlinedButton(
                                     onClick = {
+                                        isTesting = true
+                                        testResult = null
                                         scope.launch {
-                                            testResult = null
-                                            val config = AiConfig(
-                                                id = editConfig?.id ?: Clock.System.now().toEpochMilliseconds().toString(),
-                                                name = editName.ifBlank { editBaseUrl },
-                                                provider = editProvider,
-                                                protocol = editProtocol,
-                                                baseUrl = editBaseUrl,
-                                                apiKey = editApiKey,
-                                                model = editModel,
-                                                systemPrompt = editSystemPrompt,
-                                                temperature = editTemperature.toFloatOrNull() ?: 0.7f,
-                                                maxTokens = editMaxTokens.toIntOrNull() ?: 2048,
-                                                topP = editTopP.toFloatOrNull() ?: 1.0f,
-                                                frequencyPenalty = editFrequencyPenalty.toFloatOrNull() ?: 0.0f,
-                                                presencePenalty = editPresencePenalty.toFloatOrNull() ?: 0.0f,
-                                                isDefault = editConfig?.isDefault ?: configs.isEmpty(),
-                                                fallbackConfigId = editFallbackConfigId,
-                                            )
-                                            val result = withContext(Dispatchers.IO) { aiConfigManager.testConnection(config) }
-                                            testResult = result.fold(
-                                                onSuccess = { if (it.startsWith("OK")) strings.aiTestSuccess else it },
-                                                onFailure = { strings.aiTestError(it.message ?: "unknown error") },
-                                            )
-                                            snackbarHostState.showSnackbar(testResult ?: return@launch)
+                                            try {
+                                                val config = AiConfig(
+                                                    id = editConfig?.id ?: Clock.System.now().toEpochMilliseconds().toString(),
+                                                    name = editName.ifBlank { editBaseUrl },
+                                                    provider = editProvider,
+                                                    protocol = editProtocol,
+                                                    baseUrl = editBaseUrl,
+                                                    apiKey = editApiKey,
+                                                    model = editModel,
+                                                    systemPrompt = editSystemPrompt,
+                                                    temperature = editTemperature.toFloatOrNull() ?: 0.7f,
+                                                    maxTokens = editMaxTokens.toIntOrNull() ?: 2048,
+                                                    topP = editTopP.toFloatOrNull() ?: 1.0f,
+                                                    frequencyPenalty = editFrequencyPenalty.toFloatOrNull() ?: 0.0f,
+                                                    presencePenalty = editPresencePenalty.toFloatOrNull() ?: 0.0f,
+                                                    isDefault = editConfig?.isDefault ?: configs.isEmpty(),
+                                                    fallbackConfigId = editFallbackConfigId,
+                                                )
+                                                val result = withContext(Dispatchers.IO) { aiConfigManager.testConnection(config) }
+                                                testResult = result.fold(
+                                                    onSuccess = { if (it.startsWith("OK")) strings.aiTestSuccess else it },
+                                                    onFailure = { strings.aiTestError(it.message ?: "unknown error") },
+                                                )
+                                            } catch (e: Exception) {
+                                                testResult = strings.aiTestError(e.message ?: "unknown error")
+                                            } finally {
+                                                isTesting = false
+                                            }
                                         }
                                     },
+                                    enabled = editApiKey.isNotBlank() && editBaseUrl.isNotBlank() && !isTesting,
                                     interactionSource = null,
                                     modifier = Modifier.weight(1f),
                                 ) {
-                                    Text(strings.aiTestConnection)
+                                    if (isTesting) {
+                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                        Spacer(Modifier.width(spacing.sm))
+                                        Text(strings.aiTestConnecting)
+                                    } else {
+                                        Icon(Icons.Default.NetworkCheck, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.width(spacing.sm))
+                                        Text(strings.aiTestConnection)
+                                    }
                                 }
                                 Button(
                                     onClick = {
@@ -719,6 +726,18 @@ class AiConfigScreen : Screen {
                                     modifier = Modifier.weight(1f),
                                 ) {
                                     Text(strings.actionSave)
+                                }
+                            }
+
+                            // Test result (copyable)
+                            if (testResult != null) {
+                                val isSuccess = testResult!!.startsWith("OK") || testResult!!.startsWith(strings.aiTestSuccess)
+                                SelectionContainer {
+                                    Text(
+                                        testResult!!,
+                                        color = if (isSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
                                 }
                             }
 

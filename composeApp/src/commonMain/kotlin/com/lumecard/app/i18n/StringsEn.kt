@@ -357,6 +357,7 @@ object EnStrings : I18nStrings {
     override val aiFrequencyPenalty = "Frequency Penalty"
     override val aiPresencePenalty = "Presence Penalty"
     override val aiTestConnection = "Test Connection"
+    override val aiTestConnecting = "Testing connection..."
     override val aiTestSuccess = "Connection test successful"
     override fun aiTestError(msg: String) = "Connection test failed: $msg"
     override val aiAddConfig = "Add Config"

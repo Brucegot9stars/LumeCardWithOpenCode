@@ -362,6 +362,7 @@ interface I18nStrings {
     val aiFrequencyPenalty: String
     val aiPresencePenalty: String
     val aiTestConnection: String
+    val aiTestConnecting: String
     val aiTestSuccess: String
     fun aiTestError(msg: String): String
     val aiAddConfig: String

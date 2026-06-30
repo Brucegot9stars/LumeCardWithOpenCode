@@ -357,6 +357,7 @@ object ZhCnStrings : I18nStrings {
     override val aiFrequencyPenalty = "Frequency Penalty"
     override val aiPresencePenalty = "Presence Penalty"
     override val aiTestConnection = "测试连接"
+    override val aiTestConnecting = "连接测试中..."
     override val aiTestSuccess = "连接测试成功"
     override fun aiTestError(msg: String) = "连接测试失败：$msg"
     override val aiAddConfig = "新增配置"

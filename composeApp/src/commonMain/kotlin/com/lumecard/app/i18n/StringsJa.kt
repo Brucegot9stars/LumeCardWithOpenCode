@@ -357,6 +357,7 @@ object JaStrings : I18nStrings {
     override val aiFrequencyPenalty = "Frequency Penalty"
     override val aiPresencePenalty = "Presence Penalty"
     override val aiTestConnection = "接続テスト"
+    override val aiTestConnecting = "接続テスト中..."
     override val aiTestSuccess = "接続テスト成功"
     override fun aiTestError(msg: String) = "接続テスト失敗：$msg"
     override val aiAddConfig = "設定を追加"
