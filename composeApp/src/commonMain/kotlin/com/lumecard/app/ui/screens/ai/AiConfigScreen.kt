@@ -467,7 +467,7 @@ class AiConfigScreen : Screen {
                                                     onClick = {
                                                         scope.launch {
                                                             val config = buildEditConfig()
-                                                            withContext(Dispatchers.IO) { fetcher.removeFromCache(config.id, modelId) }
+                                                            withContext(Dispatchers.IO) { fetcher.removeFromCache(config, modelId) }
                                                             rawFetchedModels = rawFetchedModels - modelId
                                                             fetchedModels = rawFetchedModels - modelId
                                                         }

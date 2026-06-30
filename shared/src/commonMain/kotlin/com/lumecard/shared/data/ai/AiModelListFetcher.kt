@@ -19,11 +19,17 @@ class AiModelListFetcher(
     private val json = Json { ignoreUnknownKeys = true }
     private val cachePrefix = "ai_fetched_models_"
 
+    private fun cacheKey(config: AiConfig): String {
+        val base = config.baseUrl.trimEnd('/').lowercase()
+        val proto = config.protocol
+        return "$cachePrefix${base}::${proto}"
+    }
+
     suspend fun fetchModels(config: AiConfig): List<String> {
         return try {
             val baseUrl = config.baseUrl.trimEnd('/')
             if (baseUrl.isBlank() || config.apiKey.isBlank()) {
-                return getCachedModels(config.id) ?: emptyList()
+                return getCachedModels(cacheKey(config)) ?: emptyList()
             }
 
             val protocol = AiProtocols.findById(config.protocol)
@@ -37,26 +43,38 @@ class AiModelListFetcher(
             }
 
             if (!response.status.isSuccess()) {
-                val cached = getCachedModels(config.id)
+                val cached = getCachedModels(cacheKey(config))
                 return cached ?: emptyList()
             }
 
             val body = response.bodyAsText()
             val modelIds = parseModelList(body)
-            cacheModels(config.id, modelIds)
+            cacheModels(cacheKey(config), modelIds)
             modelIds
         } catch (_: Exception) {
-            getCachedModels(config.id) ?: emptyList()
+            getCachedModels(cacheKey(config)) ?: emptyList()
         }
     }
 
     private fun parseModelList(responseBody: String): List<String> {
         return try {
             val root = json.parseToJsonElement(responseBody).jsonObject
-            val data = root["data"]?.jsonArray ?: return emptyList()
-            data.mapNotNull { element ->
-                element.jsonObject["id"]?.jsonPrimitive?.content
+            // OpenAI format: { "data": [{ "id": "model-name" }] }
+            val data = root["data"]?.jsonArray
+            if (data != null) {
+                return data.mapNotNull { element ->
+                    element.jsonObject["id"]?.jsonPrimitive?.content
+                }
             }
+            // Google Gemini format: { "models": [{ "name": "models/gemini-2.0-flash" }] }
+            val models = root["models"]?.jsonArray
+            if (models != null) {
+                return models.mapNotNull { element ->
+                    val name = element.jsonObject["name"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                    name.removePrefix("models/")
+                }
+            }
+            emptyList()
         } catch (_: Exception) {
             emptyList()
         }
@@ -77,13 +95,14 @@ class AiModelListFetcher(
         settingsRepository.set("$cachePrefix$configId", encoded)
     }
 
-    suspend fun removeFromCache(configId: String, modelId: String) {
-        val cached = getCachedModels(configId)?.toMutableList() ?: return
+    suspend fun removeFromCache(config: AiConfig, modelId: String) {
+        val key = cacheKey(config)
+        val cached = getCachedModels(key)?.toMutableList() ?: return
         if (cached.remove(modelId)) {
             if (cached.isEmpty()) {
-                settingsRepository.delete("$cachePrefix$configId")
+                settingsRepository.delete(key)
             } else {
-                settingsRepository.set("$cachePrefix$configId", json.encodeToString(cached))
+                settingsRepository.set(key, json.encodeToString(cached))
             }
         }
     }
