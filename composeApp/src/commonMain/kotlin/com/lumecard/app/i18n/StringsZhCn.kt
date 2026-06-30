@@ -291,6 +291,7 @@ object ZhCnStrings : I18nStrings {
     override val settingsSyncLastSync = "上次同步"
     override val settingsSyncNever = "从未同步"
     override val settingsSyncTestConnection = "测试连接"
+    override val settingsSyncTestConnecting = "连接测试中..."
     override val settingsSyncTestSuccess = "连接成功"
     override fun settingsSyncTestError(msg: String) = "连接失败：$msg"
     override val settingsSyncDeleteConfirm = "确认删除此配置？"

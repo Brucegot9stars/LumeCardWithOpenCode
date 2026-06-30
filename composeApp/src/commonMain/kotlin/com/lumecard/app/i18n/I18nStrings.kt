@@ -296,6 +296,7 @@ interface I18nStrings {
     val settingsSyncLastSync: String
     val settingsSyncNever: String
     val settingsSyncTestConnection: String
+    val settingsSyncTestConnecting: String
     val settingsSyncTestSuccess: String
     fun settingsSyncTestError(msg: String): String
     val settingsSyncDeleteConfirm: String

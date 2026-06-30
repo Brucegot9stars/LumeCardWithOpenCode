@@ -285,6 +285,7 @@ object EsStrings : I18nStrings {
     override val settingsSyncLastSync = "Última sincronización"
     override val settingsSyncNever = "Nunca"
     override val settingsSyncTestConnection = "Probar conexión"
+    override val settingsSyncTestConnecting = "Probando conexión..."
     override val settingsSyncTestSuccess = "Conexión exitosa"
     override fun settingsSyncTestError(msg: String) = "Conexión fallida: $msg"
     override val settingsSyncDeleteConfirm = "¿Eliminar esta configuración?"

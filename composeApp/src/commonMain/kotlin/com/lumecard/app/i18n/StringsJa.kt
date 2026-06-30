@@ -291,6 +291,7 @@ object JaStrings : I18nStrings {
     override val settingsSyncLastSync = "最終同期"
     override val settingsSyncNever = "未同期"
     override val settingsSyncTestConnection = "接続テスト"
+    override val settingsSyncTestConnecting = "接続テスト中..."
     override val settingsSyncTestSuccess = "接続成功"
     override fun settingsSyncTestError(msg: String) = "接続失敗：$msg"
     override val settingsSyncDeleteConfirm = "この設定を削除しますか？"

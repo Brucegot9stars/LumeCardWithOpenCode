@@ -291,6 +291,7 @@ object EnStrings : I18nStrings {
     override val settingsSyncLastSync = "Last Sync"
     override val settingsSyncNever = "Never"
     override val settingsSyncTestConnection = "Test Connection"
+    override val settingsSyncTestConnecting = "Testing connection..."
     override val settingsSyncTestSuccess = "Connection successful"
     override fun settingsSyncTestError(msg: String) = "Connection failed: $msg"
     override val settingsSyncDeleteConfirm = "Delete this config?"
