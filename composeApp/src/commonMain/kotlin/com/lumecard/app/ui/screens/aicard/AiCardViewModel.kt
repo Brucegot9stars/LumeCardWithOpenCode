@@ -26,6 +26,8 @@ data class AiCardUiState(
     val decks: List<Deck> = emptyList(),
     val selectedKbId: String? = null,
     val selectedDeckId: String? = null,
+    val allConfigs: List<AiConfig> = emptyList(),
+    val selectedConfigId: String? = null,
     val topic: String = "",
     val referenceMaterials: String = "",
     val cardCount: Int = 10,
@@ -55,18 +57,21 @@ class AiCardViewModel(
     private fun loadInitialData() {
         screenModelScope.launch {
             try {
-                val (kbs, prompt) = withContext(Dispatchers.IO) {
+                val (kbs, prompt, configs) = withContext(Dispatchers.IO) {
                     val kbList = knowledgeBaseRepository.getAll().first()
                     val p = promptManager.getActivePrompt()
-                    Pair(kbList, p)
+                    val cfgs = aiConfigManager.getAll()
+                    Triple(kbList, p, cfgs)
                 }
-                val defaultConfig = withContext(Dispatchers.IO) { aiConfigManager.getDefault() }
+                val defaultConfig = configs.firstOrNull { it.isDefault }
                 _state.update {
                     it.copy(
                         knowledgeBases = kbs,
                         hasKb = kbs.isNotEmpty(),
                         prompt = prompt,
-                        configError = defaultConfig == null,
+                        allConfigs = configs,
+                        selectedConfigId = defaultConfig?.id,
+                        configError = configs.isEmpty(),
                     )
                 }
             } catch (_: Exception) { }
@@ -101,6 +106,10 @@ class AiCardViewModel(
                 _state.update { it.copy(decks = decks, hasDeck = decks.isNotEmpty()) }
             } catch (_: Exception) { }
         }
+    }
+
+    fun selectConfig(configId: String) {
+        _state.update { it.copy(selectedConfigId = configId, result = null, errorMessage = null, screenState = AiCardScreenState.IDLE) }
     }
 
     fun setTopic(text: String) {
@@ -144,7 +153,7 @@ class AiCardViewModel(
 
     fun generate() {
         val current = _state.value
-        if (current.configError) {
+        if (current.configError || current.selectedConfigId == null) {
             _state.update { it.copy(screenState = AiCardScreenState.ERROR, errorMessage = "请先配置 AI 服务") }
             return
         }
@@ -157,7 +166,7 @@ class AiCardViewModel(
             _state.update { it.copy(screenState = AiCardScreenState.GENERATING, errorMessage = null) }
 
             try {
-                val config = withContext(Dispatchers.IO) { aiConfigManager.getDefault() }
+                val config = withContext(Dispatchers.IO) { aiConfigManager.getById(requireNotNull(current.selectedConfigId)) }
                 if (config == null) {
                     _state.update { it.copy(screenState = AiCardScreenState.ERROR, errorMessage = "请先配置 AI 服务") }
                     return@launch

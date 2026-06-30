@@ -390,7 +390,10 @@ interface I18nStrings {
     val aiCardModeBothDesc: String
     val aiCardSelectKb: String
     val aiCardSelectDeck: String
+    val aiCardSelectConfig: String
+    val aiCardSelectConfigLabel: String
     val aiCardNoConfig: String
+    val aiCardNoConfigDesc: String
     val aiCardNoKb: String
     val aiCardNoDeck: String
     val aiCardTopic: String

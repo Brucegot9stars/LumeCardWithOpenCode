@@ -27,6 +27,7 @@ import com.lumecard.app.platform.readFileContent
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.shared.data.AiCardMode
+import com.lumecard.shared.data.AiConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -112,9 +113,19 @@ class AiCardScreen : Screen {
                         ) {
                             Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                             Spacer(Modifier.width(spacing.sm))
-                            Text(strings.aiCardNoConfig, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                            Text(strings.aiCardNoConfigDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
                         }
                     }
+                }
+
+                // AI config selector
+                if (state.allConfigs.isNotEmpty()) {
+                    ConfigSelector(
+                        configs = state.allConfigs,
+                        selectedConfigId = state.selectedConfigId,
+                        onConfigSelected = { vm.selectConfig(it) },
+                        strings = strings,
+                    )
                 }
 
                 // Topic
@@ -199,7 +210,7 @@ class AiCardScreen : Screen {
                         }
                     },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
-                    enabled = state.screenState != AiCardScreenState.GENERATING && !state.configError,
+                    enabled = state.screenState != AiCardScreenState.GENERATING && !state.configError && state.selectedConfigId != null,
                 ) {
                     if (state.screenState == AiCardScreenState.GENERATING) {
                         CircularProgressIndicator(
@@ -495,6 +506,49 @@ private fun DeckSelector(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ConfigSelector(
+    configs: List<AiConfig>,
+    selectedConfigId: String?,
+    onConfigSelected: (String) -> Unit,
+    strings: com.lumecard.app.i18n.I18nStrings,
+) {
+    val selected = configs.find { it.id == selectedConfigId }
+    var showMenu by remember { mutableStateOf(false) }
+
+    Text(strings.aiCardSelectConfigLabel, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+    Box {
+        OutlinedTextField(
+            value = selected?.name ?: "",
+            onValueChange = {},
+            label = { Text(strings.aiCardSelectConfig) },
+            placeholder = { Text(strings.aiCardSelectConfig) },
+            readOnly = true,
+            trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clickable { showMenu = true },
+        )
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
+        ) {
+            configs.forEach { config ->
+                DropdownMenuItem(
+                    text = { Text(config.name) },
+                    onClick = {
+                        onConfigSelected(config.id)
+                        showMenu = false
+                    },
+                )
             }
         }
     }
