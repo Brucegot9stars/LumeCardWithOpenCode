@@ -2,6 +2,7 @@ package com.lumecard.app.font
 
 import android.os.Build
 import android.util.Log
+import androidx.compose.ui.text.font.DeviceFontFamilyName
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -231,7 +232,10 @@ actual fun readFontFamilyName(filePath: String): String? {
 actual fun createFileFontFamily(filePath: String): FontFamily? {
     return try {
         val file = File(filePath)
-        FontFamily(Font(file = file))
+        FontFamily(
+            Font(file = file),
+            Font(DeviceFontFamilyName("sans-serif")),
+        )
     } catch (e: Exception) {
         Log.e("FontPlatform", "createFileFontFamily failed for $filePath", e)
         null
