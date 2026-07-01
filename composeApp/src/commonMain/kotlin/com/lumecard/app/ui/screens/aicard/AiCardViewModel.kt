@@ -29,6 +29,7 @@ data class AiCardUiState(
     val prompt: String = "",
     val result: AiCardResult? = null,
     val errorMessage: String? = null,
+    val detailedError: String? = null,
     val configError: Boolean = false,
     val hasKb: Boolean = false,
     val hasDeck: Boolean = false,

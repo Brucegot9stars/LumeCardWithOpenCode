@@ -69,15 +69,21 @@ class AiCardGenerator(
             val parsed = try {
                 json.decodeFromString<AiCardResponseJson>(cleaned)
             } catch (e: Exception) {
-                val msg = e.message ?: ""
-                val userMsg = when {
-                    msg.contains("EOF", ignoreCase = true) ->
-                        "AI 返回内容被截断，请检查模型的 max_tokens 设置或减少每批制卡数量：${e.message}"
-                    else -> "Failed to parse AI response as JSON: ${e.message}"
+                val fallback = extractCardsFallback(cleaned)
+                if (fallback != null) {
+                    fallback
+                } else {
+                    val msg = e.message ?: ""
+                    val shortMsg = when {
+                        msg.contains("EOF", ignoreCase = true) ->
+                            "AI 返回内容被截断，请检查模型的 max_tokens 设置或减少每批制卡数量"
+                        else -> "解析 AI 返回的 JSON 失败"
+                    }
+                    val fullMsg = "$shortMsg|||详细错误：${e.message}\n\nJSON input:\n$cleaned"
+                    return Result.failure(
+                        AiCardException(AiCardError.PARSE_ERROR, fullMsg)
+                    )
                 }
-                return Result.failure(
-                    AiCardException(AiCardError.PARSE_ERROR, userMsg)
-                )
             }
 
             if (parsed.cards.isEmpty()) {
@@ -219,6 +225,55 @@ class AiCardGenerator(
             ids.add(card.id)
         }
         return ids
+    }
+
+    private fun extractCardsFallback(text: String): AiCardResponseJson? {
+        val trimmed = text.trim()
+
+        val kbName = Regex("""knowledge_base_name["\s]*:["\s]*"([^"]*)"""").find(trimmed)?.groupValues?.getOrNull(1) ?: ""
+        val deckName = Regex("""deck_name["\s]*:["\s]*"([^"]*)"""").find(trimmed)?.groupValues?.getOrNull(1) ?: ""
+
+        val cardsStart = trimmed.indexOf("\"cards\"")
+        if (cardsStart == -1) return null
+        val arrayStart = trimmed.indexOf('[', cardsStart)
+        if (arrayStart == -1) return null
+
+        val cards = mutableListOf<AiCardItemJson>()
+        var i = arrayStart + 1
+        while (i < trimmed.length) {
+            while (i < trimmed.length && (trimmed[i] == ' ' || trimmed[i] == '\n' || trimmed[i] == '\r' || trimmed[i] == '\t' || trimmed[i] == ',')) i++
+            if (i >= trimmed.length || trimmed[i] == ']') break
+
+            if (trimmed[i] == '{') {
+                val braceStart = i
+                var depth = 0
+                var inString = false
+                var escaped = false
+                while (i < trimmed.length) {
+                    val c = trimmed[i]
+                    if (escaped) { escaped = false; i++; continue }
+                    if (c == '\\' && inString) { escaped = true; i++; continue }
+                    if (c == '"') inString = !inString
+                    if (!inString) {
+                        if (c == '{') depth++
+                        else if (c == '}') {
+                            depth--
+                            if (depth == 0) { i++; break }
+                        }
+                    }
+                    i++
+                }
+                val cardJson = trimmed.substring(braceStart, i)
+                try {
+                    val card = json.decodeFromString<AiCardItemJson>(cardJson)
+                    cards.add(card)
+                } catch (_: Exception) { }
+            } else {
+                i++
+            }
+        }
+        if (cards.isEmpty()) return null
+        return AiCardResponseJson(knowledge_base_name = kbName, deck_name = deckName, cards = cards)
     }
 
     private fun parseCardType(type: String): CardType {

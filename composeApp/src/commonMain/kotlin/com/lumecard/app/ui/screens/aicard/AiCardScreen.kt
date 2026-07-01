@@ -338,7 +338,8 @@ class AiCardScreen : Screen {
                             OutlinedButton(
                                 onClick = {
                                     try {
-                                        copyToClipboard(errorMsg, "AI 错误信息")
+                                        val copyText = state.detailedError ?: errorMsg
+                                        copyToClipboard(copyText, "AI 错误信息")
                                         scope.launch { snackbarHostState.showSnackbar("错误信息已复制") }
                                     } catch (_: Exception) { }
                                 },

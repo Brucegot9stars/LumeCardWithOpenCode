@@ -258,11 +258,16 @@ class AiCardGenerationManager(
                             lastDeckId = res.deckId
                         },
                         onFailure = { e ->
+                            val msg = e.message ?: "未知错误"
+                            val parts = msg.split("|||", limit = 2)
+                            val shortMsg = parts[0]
+                            val detailed = parts.getOrNull(1) ?: msg
                             _state.update {
                                 it.copy(
                                     screenState = AiCardScreenState.ERROR,
                                     batchProgress = null,
-                                    errorMessage = "第 $currentBatch 批生成失败：${e.message ?: "未知错误"}",
+                                    errorMessage = "第 $currentBatch 批生成失败：$shortMsg",
+                                    detailedError = detailed,
                                 )
                             }
                             return@launch
@@ -285,11 +290,14 @@ class AiCardGenerationManager(
                     )
                 }
             } catch (e: Exception) {
+                val msg = e.message ?: "未知错误"
+                val parts = msg.split("|||", limit = 2)
                 _state.update {
                     it.copy(
                         screenState = AiCardScreenState.ERROR,
                         batchProgress = null,
-                        errorMessage = "生成失败：${e.message ?: "未知错误"}",
+                        errorMessage = "生成失败：${parts[0]}",
+                        detailedError = parts.getOrNull(1) ?: msg,
                     )
                 }
             }
@@ -298,7 +306,7 @@ class AiCardGenerationManager(
 
     fun resetState() {
         draftCache = null
-        _state.update { it.copy(screenState = AiCardScreenState.IDLE, result = null, errorMessage = null, batchProgress = null, downloadProgress = null) }
+        _state.update { it.copy(screenState = AiCardScreenState.IDLE, result = null, errorMessage = null, detailedError = null, batchProgress = null, downloadProgress = null) }
     }
 
     fun clearDraftCache() {
