@@ -28,6 +28,8 @@ import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.shared.data.AiCardMode
 import com.lumecard.shared.data.AiConfig
+import com.lumecard.shared.data.LogEntry
+import com.lumecard.shared.data.LogEntryType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -420,6 +422,46 @@ class AiCardScreen : Screen {
                     }
                 }
 
+                // Interaction log panel
+                var showLogPanel by remember { mutableStateOf(false) }
+                val scrollStateLog = rememberScrollState()
+                HorizontalDivider()
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable { showLogPanel = !showLogPanel },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("交互日志 (${state.logEntries.size})", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Icon(
+                        if (showLogPanel) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null,
+                    )
+                }
+                AnimatedVisibility(visible = showLogPanel) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
+                    ) {
+                        LaunchedEffect(state.logEntries.size) {
+                            scrollStateLog.animateScrollTo(scrollStateLog.maxValue)
+                        }
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(scrollStateLog)
+                                .padding(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            if (state.logEntries.isEmpty()) {
+                                Text("暂无日志", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            } else {
+                                state.logEntries.forEach { entry ->
+                                    LogEntryRow(entry)
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Spacer(Modifier.height(spacing.md))
             }
         }
@@ -465,6 +507,49 @@ class AiCardScreen : Screen {
                         Text(strings.actionCancel)
                     }
                 },
+            )
+        }
+    }
+}
+
+@Composable
+private fun LogEntryRow(entry: LogEntry) {
+    val (icon, color) = when (entry.type) {
+        LogEntryType.INFO -> Icons.Default.Info to MaterialTheme.colorScheme.primary
+        LogEntryType.WARNING -> Icons.Default.Warning to MaterialTheme.colorScheme.tertiary
+        LogEntryType.ERROR -> Icons.Default.Error to MaterialTheme.colorScheme.error
+        LogEntryType.SYSTEM_PROMPT -> Icons.Default.Code to MaterialTheme.colorScheme.secondary
+        LogEntryType.USER_MESSAGE -> Icons.Default.Person to MaterialTheme.colorScheme.secondary
+        LogEntryType.API_REQUEST -> Icons.Default.Send to MaterialTheme.colorScheme.secondary
+        LogEntryType.API_RESPONSE -> Icons.Default.CloudDownload to MaterialTheme.colorScheme.secondary
+        LogEntryType.PARSE_RESULT -> Icons.Default.CheckCircle to MaterialTheme.colorScheme.primary
+    }
+    var expanded by remember { mutableStateOf(entry.type == LogEntryType.INFO) }
+    Column(modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
+            Spacer(Modifier.width(4.dp))
+            Text(
+                entry.title,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = if (entry.type == LogEntryType.INFO) FontWeight.Medium else FontWeight.Normal,
+                color = color,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+            )
+            Icon(
+                if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = null,
+                modifier = Modifier.size(12.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (expanded) {
+            Text(
+                entry.content,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 18.dp, top = 2.dp).fillMaxWidth(),
             )
         }
     }

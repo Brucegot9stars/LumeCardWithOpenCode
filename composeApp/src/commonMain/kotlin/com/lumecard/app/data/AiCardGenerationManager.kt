@@ -206,7 +206,7 @@ class AiCardGenerationManager(
             return
         }
 
-        _state.update { it.copy(screenState = AiCardScreenState.GENERATING, errorMessage = null, result = null, downloadProgress = null, batchProgress = null) }
+        _state.update { it.copy(screenState = AiCardScreenState.GENERATING, errorMessage = null, result = null, downloadProgress = null, batchProgress = null, logEntries = emptyList()) }
 
         val configId = current.selectedConfigId
         val cardCount = current.cardCount
@@ -238,9 +238,12 @@ class AiCardGenerationManager(
                 var lastKbId = ""
                 var lastDeckId = ""
 
+                var logBatchIndex = 0
                 while (remaining > 0) {
                     val currentBatch = (cardCount - remaining) / batchSize + 1
                     val totalBatches = (cardCount + batchSize - 1) / batchSize
+                    val batchIdx = logBatchIndex++
+                    _state.update { it.copy(logEntries = it.logEntries + LogEntry(0, LogEntryType.INFO, "Batch $currentBatch/$totalBatches", "Requesting ${batchSize.coerceAtMost(remaining)} cards (${totalCreated + allCardIds.size}/$cardCount so far)", batchIndex = batchIdx)) }
                     _state.update {
                         it.copy(
                             batchProgress = AiCardBatchProgress(
@@ -270,9 +273,15 @@ class AiCardGenerationManager(
                     )
 
                     val result = withContext(Dispatchers.IO) {
-                        aiCardGenerator.generate(request) { received, total ->
-                            _state.update { it.copy(downloadProgress = received to total) }
-                        }
+                        aiCardGenerator.generate(
+                            request = request,
+                            onProgress = { received, total ->
+                                _state.update { it.copy(downloadProgress = received to total) }
+                            },
+                            onLog = { entry ->
+                                _state.update { it.copy(logEntries = it.logEntries + entry) }
+                            },
+                        )
                     }
 
                     result.fold(

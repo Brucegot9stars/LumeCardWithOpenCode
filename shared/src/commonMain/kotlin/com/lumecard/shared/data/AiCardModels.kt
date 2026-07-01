@@ -50,6 +50,25 @@ data class AiCardException(
     override val message: String,
 ) : Exception(message)
 
+enum class LogEntryType {
+    SYSTEM_PROMPT,
+    USER_MESSAGE,
+    API_REQUEST,
+    API_RESPONSE,
+    PARSE_RESULT,
+    INFO,
+    WARNING,
+    ERROR,
+}
+
+data class LogEntry(
+    val timestamp: Long,
+    val type: LogEntryType,
+    val title: String,
+    val content: String,
+    val batchIndex: Int = 0,
+)
+
 @Serializable
 data class AiCardResponseJson(
     val knowledge_base_name: String = "",

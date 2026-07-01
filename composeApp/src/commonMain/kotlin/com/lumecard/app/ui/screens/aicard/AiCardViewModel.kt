@@ -37,6 +37,7 @@ data class AiCardUiState(
     val downloadProgress: Pair<Long, Long?>? = null,
     val batchProgress: AiCardBatchProgress? = null,
     val autoClassifyDecks: Boolean = false,
+    val logEntries: List<LogEntry> = emptyList(),
 )
 
 data class AiCardBatchProgress(

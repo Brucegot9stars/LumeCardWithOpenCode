@@ -28,6 +28,7 @@ class AiCardGenerator(
     suspend fun generate(
         request: AiCardRequest,
         onProgress: ((received: Long, total: Long?) -> Unit)? = null,
+        onLog: ((LogEntry) -> Unit)? = null,
     ): Result<AiCardResult> {
         return try {
             val promptTemplate = promptManager.getActivePrompt()
@@ -35,6 +36,11 @@ class AiCardGenerator(
                 .replace("{card_count}", request.cardCount.toString())
                 .replace("{app_language}", request.appLanguage)
             val userMessage = buildUserMessage(request)
+
+            val now = Clock.System.now().toEpochMilliseconds()
+            onLog?.invoke(LogEntry(now, LogEntryType.SYSTEM_PROMPT, "System Prompt", systemPrompt))
+            onLog?.invoke(LogEntry(now, LogEntryType.USER_MESSAGE, "User Message", userMessage))
+            onLog?.invoke(LogEntry(now, LogEntryType.INFO, "Request", "Sending to ${request.config.model} (${request.config.baseUrl})"))
 
             val response = fallbackManager.sendWithFallback(
                 config = request.config,
@@ -68,11 +74,14 @@ class AiCardGenerator(
                     } else s
                 }
 
+            onLog?.invoke(LogEntry(now, LogEntryType.API_RESPONSE, "Raw Response", cleaned.take(2000)))
+
             val parsed = try {
                 json.decodeFromString<AiCardResponseJson>(cleaned)
             } catch (e: Exception) {
                 val fallback = extractCardsFallback(cleaned)
                 if (fallback != null) {
+                    onLog?.invoke(LogEntry(now, LogEntryType.WARNING, "Parse Warning", "Full JSON parse failed, extracted ${fallback.cards.size} cards via fallback"))
                     fallback
                 } else {
                     val msg = e.message ?: ""
@@ -96,6 +105,9 @@ class AiCardGenerator(
 
             val (kbId, deckId) = resolveEntities(request, parsed)
             val cardIds = createCards(deckId, parsed)
+
+            val cardTypes = parsed.cards.groupBy { it.type }.map { (t, c) -> "${c.size}x $t" }.joinToString(", ")
+            onLog?.invoke(LogEntry(now, LogEntryType.PARSE_RESULT, "Parse Result", "${cardIds.size} cards parsed ($cardTypes) → deck: ${parsed.deck_name}"))
 
             Result.success(
                 AiCardResult(
