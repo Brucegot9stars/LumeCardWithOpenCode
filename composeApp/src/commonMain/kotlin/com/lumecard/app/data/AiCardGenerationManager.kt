@@ -39,6 +39,10 @@ class AiCardGenerationManager(
 
     private var generateJob: Job? = null
     private val allCardIds = mutableListOf<String>()
+    private val createdKbIds = mutableSetOf<String>()
+    private val createdDeckIds = mutableSetOf<String>()
+    private var originalKbId: String? = null
+    private var originalDeckId: String? = null
 
     private data class Draft(
         val mode: AiCardMode,
@@ -237,6 +241,10 @@ class AiCardGenerationManager(
                 }
 
                 allCardIds.clear()
+                createdKbIds.clear()
+                createdDeckIds.clear()
+                originalKbId = kbId
+                originalDeckId = deckId
                 val batchSize = 5
                 var remaining = cardCount
                 var totalCreated = 0
@@ -296,6 +304,8 @@ class AiCardGenerationManager(
                             allCardIds.addAll(res.cardIds)
                             lastKbId = res.knowledgeBaseId
                             lastDeckId = res.deckId
+                            if (res.knowledgeBaseId != originalKbId) createdKbIds.add(res.knowledgeBaseId)
+                            if (res.deckId != originalDeckId) createdDeckIds.add(res.deckId)
                         },
                         onFailure = { e ->
                             val msg = e.message ?: "未知错误"
@@ -359,9 +369,15 @@ class AiCardGenerationManager(
     fun cancelGeneration(deletePartialCards: Boolean = false) {
         if (deletePartialCards) {
             scope.launch {
-                val ids = allCardIds.toList()
-                for (id in ids) {
+                val cardIds = allCardIds.toList()
+                for (id in cardIds) {
                     try { cardRepository.delete(id) } catch (_: Exception) { }
+                }
+                for (kbId in createdKbIds) {
+                    try { knowledgeBaseRepository.delete(kbId) } catch (_: Exception) { }
+                }
+                for (deckId in createdDeckIds) {
+                    try { deckRepository.delete(deckId) } catch (_: Exception) { }
                 }
             }
         }
@@ -371,6 +387,10 @@ class AiCardGenerationManager(
     fun resetState() {
         generateJob = null
         allCardIds.clear()
+        createdKbIds.clear()
+        createdDeckIds.clear()
+        originalKbId = null
+        originalDeckId = null
         draftCache = null
         _state.update { it.copy(screenState = AiCardScreenState.IDLE, result = null, errorMessage = null, detailedError = null, batchProgress = null, downloadProgress = null) }
     }

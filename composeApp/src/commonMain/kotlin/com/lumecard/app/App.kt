@@ -166,8 +166,7 @@ fun App() {
                     AnimatedVisibility(visible = batchProgress != null) {
                         Surface(
                             modifier = Modifier
-                                .align(Alignment.TopCenter)
-                                .padding(top = 8.dp)
+                                .align(Alignment.Center)
                                 .clickable { navigator.push(AiCardScreen()) },
                             shape = RoundedCornerShape(24.dp),
                             shadowElevation = 8.dp,
