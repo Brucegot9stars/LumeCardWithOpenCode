@@ -25,6 +25,7 @@ data class AiCardUiState(
     val selectedConfigId: String? = null,
     val topic: String = "",
     val referenceMaterials: String = "",
+    val additionalRequirements: String = "",
     val cardCount: Int = 10,
     val prompt: String = "",
     val result: AiCardResult? = null,
@@ -64,6 +65,7 @@ class AiCardViewModel(
     fun setReferenceMaterials(text: String) = manager.setReferenceMaterials(text)
     fun appendReferenceMaterials(text: String) = manager.appendReferenceMaterials(text)
     fun setCardCount(count: Int) = manager.setCardCount(count)
+    fun setAdditionalRequirements(text: String) = manager.setAdditionalRequirements(text)
     fun setAutoClassifyDecks(value: Boolean) = manager.setAutoClassifyDecks(value)
     fun setPrompt(prompt: String) = manager.setPrompt(prompt)
     fun restoreDefaultPrompt() = manager.restoreDefaultPrompt()

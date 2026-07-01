@@ -212,6 +212,27 @@ class AiCardScreen : Screen {
                 }
                 Text(strings.aiCardSupportedFormats, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
+                // Additional requirements
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(strings.aiCardAdditionalReqs, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    if (state.additionalRequirements.isNotEmpty()) {
+                        IconButton(onClick = { vm.setAdditionalRequirements("") }, modifier = Modifier.size(24.dp)) {
+                            Icon(Icons.Default.Close, contentDescription = strings.aiCardClear, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = state.additionalRequirements,
+                    onValueChange = { vm.setAdditionalRequirements(it) },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text(strings.aiCardAdditionalReqsPlaceholder) },
+                    minLines = 2,
+                    maxLines = 5,
+                )
+
                 // Card count
                 Text(strings.aiCardCount, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 Text(strings.aiCardCountDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -28,7 +28,7 @@ val appModule = module {
     single { I18nManager() }
     single { EntityMergeManager(get(), get(), get()) }
     single { OperationConfirmationManager() }
-    single { AiCardGenerationManager(get(), get(), get(), get(), get()) }
+    single { AiCardGenerationManager(get(), get(), get(), get(), get(), get()) }
 
     factory { AiCardViewModel(get()) }
     factory { DashboardViewModel(get(), get(), get(), get(), get(), get()) }

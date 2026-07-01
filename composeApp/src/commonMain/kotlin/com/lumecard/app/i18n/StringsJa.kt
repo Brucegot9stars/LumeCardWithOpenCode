@@ -399,6 +399,8 @@ object JaStrings : I18nStrings {
     override val aiCardSupportedFormats = ".txt / .md ファイル対応"
     override val aiCardCount = "生成枚数"
     override val aiCardCountDesc = "1回につき1-1000枚"
+    override val aiCardAdditionalReqs = "追加要件（任意）"
+    override val aiCardAdditionalReqsPlaceholder = "例：初心者向け、特定概念に焦点、試験形式など"
     override fun aiCardLargeCountConfirm(count: Int) = "${count}枚のカードを生成します。時間がかかる場合があります。続行しますか？"
     override val aiCardPrompt = "プロンプト設定"
     override val aiCardPromptCopy = "プロンプトをコピー"

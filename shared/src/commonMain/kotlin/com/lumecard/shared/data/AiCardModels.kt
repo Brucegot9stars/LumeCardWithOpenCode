@@ -18,8 +18,10 @@ data class AiCardRequest(
     val deckName: String? = null,
     val topic: String,
     val referenceMaterials: String,
+    val additionalRequirements: String = "",
     val cardCount: Int,
     val systemPrompt: String,
+    val appLanguage: String = "中文",
 )
 
 data class AiCardResult(

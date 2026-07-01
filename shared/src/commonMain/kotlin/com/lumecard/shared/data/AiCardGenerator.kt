@@ -31,7 +31,9 @@ class AiCardGenerator(
     ): Result<AiCardResult> {
         return try {
             val promptTemplate = promptManager.getActivePrompt()
-            val systemPrompt = promptTemplate.replace("{card_count}", request.cardCount.toString())
+            val systemPrompt = promptTemplate
+                .replace("{card_count}", request.cardCount.toString())
+                .replace("{app_language}", request.appLanguage)
             val userMessage = buildUserMessage(request)
 
             val response = fallbackManager.sendWithFallback(
@@ -116,20 +118,25 @@ class AiCardGenerator(
 
     private fun buildUserMessage(request: AiCardRequest): String {
         val sb = StringBuilder()
-        sb.appendLine("Generate ${request.cardCount} flashcards.")
-        sb.appendLine()
-        sb.appendLine("Topic / Goal:")
-        sb.appendLine(request.topic)
+        sb.appendLine("Application Language: ${request.appLanguage}")
+        sb.appendLine("Target Card Count: ${request.cardCount}")
         when (request.mode) {
             AiCardMode.AUTO, AiCardMode.SPECIFY_KB -> {
-                sb.appendLine()
                 sb.appendLine("Create a knowledge base and deck with appropriate names.")
             }
             AiCardMode.SPECIFY_BOTH -> {}
         }
+        sb.appendLine()
+        sb.appendLine("Learning Topic:")
+        sb.appendLine(request.topic)
+        if (request.additionalRequirements.isNotBlank()) {
+            sb.appendLine()
+            sb.appendLine("Additional Requirements:")
+            sb.appendLine(request.additionalRequirements)
+        }
         if (request.referenceMaterials.isNotBlank()) {
             sb.appendLine()
-            sb.appendLine("Reference materials:")
+            sb.appendLine("Reference Materials:")
             sb.appendLine(request.referenceMaterials)
         }
         return sb.toString()

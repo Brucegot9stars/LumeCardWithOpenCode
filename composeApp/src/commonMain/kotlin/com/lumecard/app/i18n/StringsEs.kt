@@ -399,6 +399,8 @@ object EsStrings : I18nStrings {
     override val aiCardSupportedFormats = "Admite archivos .txt / .md"
     override val aiCardCount = "Cantidad de tarjetas"
     override val aiCardCountDesc = "1-1000 por lote"
+    override val aiCardAdditionalReqs = "Requisitos adicionales (opcional)"
+    override val aiCardAdditionalReqsPlaceholder = "ej., adecuado para principiantes, enfocarse en conceptos específicos, tipo de examen"
     override fun aiCardLargeCountConfirm(count: Int) = "Esto creará $count tarjetas y podría tomar tiempo. ¿Continuar?"
     override val aiCardPrompt = "Configuración del Prompt"
     override val aiCardPromptCopy = "Copiar Prompt"

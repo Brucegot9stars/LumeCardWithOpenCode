@@ -399,6 +399,8 @@ object ZhTwStrings : I18nStrings {
     override val aiCardSupportedFormats = "支持 .txt / .md 文件"
     override val aiCardCount = "生成數量"
     override val aiCardCountDesc = "每批 1-1000 張"
+    override val aiCardAdditionalReqs = "額外要求（可選）"
+    override val aiCardAdditionalReqsPlaceholder = "如：適合初學者、重點理解某個概念、考試類型等"
     override fun aiCardLargeCountConfirm(count: Int) = "當前將創建 $count 張卡牌，可能耗時較長，是否繼續？"
     override val aiCardPrompt = "Prompt 設置"
     override val aiCardPromptCopy = "複製 Prompt"

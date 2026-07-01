@@ -405,6 +405,8 @@ interface I18nStrings {
     val aiCardSupportedFormats: String
     val aiCardCount: String
     val aiCardCountDesc: String
+    val aiCardAdditionalReqs: String
+    val aiCardAdditionalReqsPlaceholder: String
     fun aiCardLargeCountConfirm(count: Int): String
     val aiCardPrompt: String
     val aiCardPromptCopy: String

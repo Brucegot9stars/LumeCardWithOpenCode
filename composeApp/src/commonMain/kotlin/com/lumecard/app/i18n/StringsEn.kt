@@ -399,6 +399,8 @@ object EnStrings : I18nStrings {
     override val aiCardSupportedFormats = "Supports .txt / .md files"
     override val aiCardCount = "Card Count"
     override val aiCardCountDesc = "1-1000 per batch"
+    override val aiCardAdditionalReqs = "Additional Requirements (optional)"
+    override val aiCardAdditionalReqsPlaceholder = "e.g., suitable for beginners, focus on specific concepts, exam type"
     override fun aiCardLargeCountConfirm(count: Int) = "This will create $count cards and may take a while. Continue?"
     override val aiCardPrompt = "Prompt Settings"
     override val aiCardPromptCopy = "Copy Prompt"

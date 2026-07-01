@@ -1,5 +1,7 @@
 package com.lumecard.app.data
 
+import com.lumecard.app.i18n.AppLocale
+import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.screens.aicard.AiCardBatchProgress
 import com.lumecard.app.ui.screens.aicard.AiCardScreenState
 import com.lumecard.app.ui.screens.aicard.AiCardUiState
@@ -12,12 +14,21 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlin.coroutines.CoroutineContext
 
+private fun AppLocale.toPromptLanguage(): String = when (this) {
+    AppLocale.ZH_CN, AppLocale.ZH_TW -> "中文"
+    AppLocale.EN -> "English"
+    AppLocale.JA -> "日本語"
+    AppLocale.ES -> "Español"
+    AppLocale.SYSTEM -> "中文"
+}
+
 class AiCardGenerationManager(
     private val aiCardGenerator: AiCardGenerator,
     private val aiConfigManager: AiConfigManager,
     private val promptManager: AiCardPromptManager,
     private val knowledgeBaseRepository: KnowledgeBaseRepository,
     private val deckRepository: DeckRepository,
+    private val i18nManager: I18nManager,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -31,6 +42,7 @@ class AiCardGenerationManager(
         val selectedConfigId: String?,
         val topic: String,
         val referenceMaterials: String,
+        val additionalRequirements: String,
         val cardCount: Int,
         val prompt: String,
         val autoClassifyDecks: Boolean,
@@ -46,6 +58,7 @@ class AiCardGenerationManager(
             selectedConfigId = s.selectedConfigId,
             topic = s.topic,
             referenceMaterials = s.referenceMaterials,
+            additionalRequirements = s.additionalRequirements,
             cardCount = s.cardCount,
             prompt = s.prompt,
             autoClassifyDecks = s.autoClassifyDecks,
@@ -76,6 +89,7 @@ class AiCardGenerationManager(
                         selectedDeckId = cached?.selectedDeckId ?: it.selectedDeckId,
                         topic = cached?.topic ?: it.topic,
                         referenceMaterials = cached?.referenceMaterials ?: it.referenceMaterials,
+                        additionalRequirements = cached?.additionalRequirements ?: it.additionalRequirements,
                         cardCount = cached?.cardCount ?: it.cardCount,
                         autoClassifyDecks = cached?.autoClassifyDecks ?: it.autoClassifyDecks,
                     )
@@ -141,6 +155,11 @@ class AiCardGenerationManager(
         cacheDraft(_state.value)
     }
 
+    fun setAdditionalRequirements(text: String) {
+        _state.update { it.copy(additionalRequirements = text, result = null, errorMessage = null, screenState = AiCardScreenState.IDLE) }
+        cacheDraft(_state.value)
+    }
+
     fun setCardCount(count: Int) {
         _state.update { it.copy(cardCount = count.coerceIn(1, 1000)) }
         cacheDraft(_state.value)
@@ -195,6 +214,11 @@ class AiCardGenerationManager(
         val topic = current.topic
         val prompt = current.prompt
         val refMaterials = current.referenceMaterials
+        val addReqs = current.additionalRequirements
+        val appLanguage = i18nManager.strings.let {
+            val locale = if (i18nManager.currentLocale == AppLocale.SYSTEM) null else i18nManager.currentLocale
+            (locale ?: AppLocale.ZH_CN).toPromptLanguage()
+        }
         val kbId = current.selectedKbId
         val deckId = current.selectedDeckId
         val autoClassifyDecks = current.autoClassifyDecks
@@ -239,8 +263,10 @@ class AiCardGenerationManager(
                         deckId = requestDeckId,
                         topic = topic,
                         referenceMaterials = refMaterials,
+                        additionalRequirements = addReqs,
                         cardCount = batchCount,
                         systemPrompt = prompt,
+                        appLanguage = appLanguage,
                     )
 
                     val result = withContext(Dispatchers.IO) {
