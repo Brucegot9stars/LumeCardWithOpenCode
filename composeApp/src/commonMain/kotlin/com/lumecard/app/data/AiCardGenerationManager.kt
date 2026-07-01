@@ -35,6 +35,8 @@ class AiCardGenerationManager(
     private val _state = MutableStateFlow(AiCardUiState())
     val state: StateFlow<AiCardUiState> = _state.asStateFlow()
 
+    private var generateJob: Job? = null
+
     private data class Draft(
         val mode: AiCardMode,
         val selectedKbId: String?,
@@ -223,7 +225,7 @@ class AiCardGenerationManager(
         val deckId = current.selectedDeckId
         val autoClassifyDecks = current.autoClassifyDecks
 
-        scope.launch {
+        generateJob = scope.launch {
             try {
                 val config = withContext(Dispatchers.IO) { aiConfigManager.getById(configId) }
                 if (config == null) {
@@ -324,6 +326,17 @@ class AiCardGenerationManager(
                         ),
                     )
                 }
+                generateJob = null
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                _state.update {
+                    it.copy(
+                        screenState = AiCardScreenState.IDLE,
+                        batchProgress = null,
+                        errorMessage = "已取消",
+                        detailedError = null,
+                    )
+                }
+                generateJob = null
             } catch (e: Exception) {
                 val msg = e.message ?: "未知错误"
                 val parts = msg.split("|||", limit = 2)
@@ -335,11 +348,17 @@ class AiCardGenerationManager(
                         detailedError = parts.getOrNull(1) ?: msg,
                     )
                 }
+                generateJob = null
             }
         }
     }
 
+    fun cancelGeneration() {
+        generateJob?.cancel()
+    }
+
     fun resetState() {
+        generateJob = null
         draftCache = null
         _state.update { it.copy(screenState = AiCardScreenState.IDLE, result = null, errorMessage = null, detailedError = null, batchProgress = null, downloadProgress = null) }
     }

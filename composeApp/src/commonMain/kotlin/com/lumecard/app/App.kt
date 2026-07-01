@@ -166,15 +166,14 @@ fun App() {
                     AnimatedVisibility(visible = batchProgress != null) {
                         Surface(
                             modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(bottom = 80.dp)
-                                .clickable { navigator.push(AiCardScreen()) },
+                                .align(Alignment.TopCenter)
+                                .padding(top = 8.dp),
                             shape = RoundedCornerShape(24.dp),
                             shadowElevation = 8.dp,
                             color = MaterialTheme.colorScheme.primaryContainer,
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
@@ -187,8 +186,20 @@ fun App() {
                                 if (bp != null) {
                                     Text(
                                         text = "Batch ${bp.currentBatch}/${bp.totalBatches} · ${bp.savedCards}/${bp.totalTarget}",
-                                        style = MaterialTheme.typography.bodyMedium,
+                                        style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.clickable { navigator.push(AiCardScreen()) },
+                                    )
+                                }
+                                IconButton(
+                                    onClick = { manager.cancelGeneration() },
+                                    modifier = Modifier.size(24.dp),
+                                ) {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = "停止",
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.size(18.dp),
                                     )
                                 }
                             }
