@@ -72,5 +72,6 @@ class AiCardViewModel(
     fun restoreDefaultPrompt() = manager.restoreDefaultPrompt()
     fun savePrompt() = manager.savePrompt()
     fun generate() = manager.generate()
+    fun cancelGeneration(deletePartialCards: Boolean) = manager.cancelGeneration(deletePartialCards)
     fun resetState() = manager.resetState()
 }

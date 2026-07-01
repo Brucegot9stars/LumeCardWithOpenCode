@@ -54,6 +54,8 @@ class AiCardScreen : Screen {
         var showPromptEditor by remember { mutableStateOf(false) }
         var showLargeCountDialog by remember { mutableStateOf(false) }
         var showRestorePromptDialog by remember { mutableStateOf(false) }
+        var showStopDialog by remember { mutableStateOf(false) }
+        var deletePartialCards by remember { mutableStateOf(false) }
 
         Scaffold(
             topBar = {
@@ -261,43 +263,63 @@ class AiCardScreen : Screen {
                     )
                 }
 
-                // Generate button
-                Button(
-                    onClick = {
-                        if (state.cardCount > 100) {
-                            showLargeCountDialog = true
-                        } else {
-                            vm.generate()
+                // Generate / Stop buttons
+                if (state.screenState == AiCardScreenState.GENERATING) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                    ) {
+                        Button(
+                            onClick = { showStopDialog = true },
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                            ),
+                        ) {
+                            Icon(Icons.Default.Stop, contentDescription = null)
+                            Spacer(Modifier.width(spacing.sm))
+                            Text("停止制卡")
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                    enabled = state.screenState != AiCardScreenState.GENERATING && !state.configError && state.selectedConfigId != null,
-                ) {
-                    if (state.screenState == AiCardScreenState.GENERATING) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                        )
-                        Spacer(Modifier.width(spacing.sm))
-                        val batchProgress = state.batchProgress
-                        val downloadProgress = state.downloadProgress
-                        val progressText = when {
-                            batchProgress != null && batchProgress.totalBatches > 0 ->
-                                "${strings.aiCardGenerating} (${batchProgress.savedCards}/${batchProgress.totalTarget})"
-                            downloadProgress != null -> {
-                                val (received, total) = downloadProgress
-                                val receivedStr = formatDataSize(received)
-                                if (total != null && total > 0L) {
-                                    "${strings.aiCardGenerating} ($receivedStr / ${formatDataSize(total)})"
-                                } else {
-                                    "${strings.aiCardGenerating} ($receivedStr)"
+                        OutlinedButton(
+                            onClick = { navigator.push(AiCardScreen()) },
+                            modifier = Modifier.weight(1f).height(48.dp),
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                            )
+                            Spacer(Modifier.width(spacing.sm))
+                            val batchProgress = state.batchProgress
+                            val downloadProgress = state.downloadProgress
+                            val progressText = when {
+                                batchProgress != null && batchProgress.totalBatches > 0 ->
+                                    "${strings.aiCardGenerating} (${batchProgress.savedCards}/${batchProgress.totalTarget})"
+                                downloadProgress != null -> {
+                                    val (received, total) = downloadProgress
+                                    val receivedStr = formatDataSize(received)
+                                    if (total != null && total > 0L) {
+                                        "$receivedStr / ${formatDataSize(total)}"
+                                    } else {
+                                        receivedStr
+                                    }
                                 }
+                                else -> strings.aiCardGenerating
                             }
-                            else -> strings.aiCardGenerating
+                            Text(progressText, maxLines = 1)
                         }
-                        Text(progressText, maxLines = 1)
-                    } else {
+                    }
+                } else {
+                    Button(
+                        onClick = {
+                            if (state.cardCount > 100) {
+                                showLargeCountDialog = true
+                            } else {
+                                vm.generate()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        enabled = !state.configError && state.selectedConfigId != null,
+                    ) {
                         Icon(Icons.Default.AutoAwesome, contentDescription = null)
                         Spacer(Modifier.width(spacing.sm))
                         Text(strings.aiCardGenerate)
@@ -504,6 +526,42 @@ class AiCardScreen : Screen {
                 },
                 dismissButton = {
                     TextButton(onClick = { showRestorePromptDialog = false }) {
+                        Text(strings.actionCancel)
+                    }
+                },
+            )
+        }
+
+        // Stop generation confirmation dialog
+        if (showStopDialog) {
+            AlertDialog(
+                onDismissRequest = { showStopDialog = false },
+                title = { Text("停止制卡") },
+                text = {
+                    Column {
+                        Text("确定要停止制卡吗？已完成的部分卡片将被保留。")
+                        Spacer(Modifier.height(spacing.md))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(
+                                checked = deletePartialCards,
+                                onCheckedChange = { deletePartialCards = it },
+                            )
+                            Spacer(Modifier.width(spacing.sm))
+                            Text("删除已完成的部分制卡", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showStopDialog = false
+                        vm.cancelGeneration(deletePartialCards)
+                        deletePartialCards = false
+                    }) {
+                        Text("停止")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showStopDialog = false }) {
                         Text(strings.actionCancel)
                     }
                 },

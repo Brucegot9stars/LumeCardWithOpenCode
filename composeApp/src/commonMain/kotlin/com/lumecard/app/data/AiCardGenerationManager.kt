@@ -8,6 +8,7 @@ import com.lumecard.app.ui.screens.aicard.AiCardUiState
 import com.lumecard.shared.data.*
 import com.lumecard.shared.model.Deck
 import com.lumecard.shared.model.KnowledgeBase
+import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
 import com.lumecard.shared.repository.KnowledgeBaseRepository
 import kotlinx.coroutines.*
@@ -29,6 +30,7 @@ class AiCardGenerationManager(
     private val knowledgeBaseRepository: KnowledgeBaseRepository,
     private val deckRepository: DeckRepository,
     private val i18nManager: I18nManager,
+    private val cardRepository: CardRepository,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -36,6 +38,7 @@ class AiCardGenerationManager(
     val state: StateFlow<AiCardUiState> = _state.asStateFlow()
 
     private var generateJob: Job? = null
+    private val allCardIds = mutableListOf<String>()
 
     private data class Draft(
         val mode: AiCardMode,
@@ -233,10 +236,10 @@ class AiCardGenerationManager(
                     return@launch
                 }
 
+                allCardIds.clear()
                 val batchSize = 5
                 var remaining = cardCount
                 var totalCreated = 0
-                val allCardIds = mutableListOf<String>()
                 var lastKbId = ""
                 var lastDeckId = ""
 
@@ -353,12 +356,21 @@ class AiCardGenerationManager(
         }
     }
 
-    fun cancelGeneration() {
+    fun cancelGeneration(deletePartialCards: Boolean = false) {
+        if (deletePartialCards) {
+            scope.launch {
+                val ids = allCardIds.toList()
+                for (id in ids) {
+                    try { cardRepository.delete(id) } catch (_: Exception) { }
+                }
+            }
+        }
         generateJob?.cancel()
     }
 
     fun resetState() {
         generateJob = null
+        allCardIds.clear()
         draftCache = null
         _state.update { it.copy(screenState = AiCardScreenState.IDLE, result = null, errorMessage = null, detailedError = null, batchProgress = null, downloadProgress = null) }
     }
