@@ -245,7 +245,7 @@ class AiCardGenerationManager(
                 createdDeckIds.clear()
                 originalKbId = kbId
                 originalDeckId = deckId
-                val batchSize = 5
+                val batchSize = 25
                 var remaining = cardCount
                 var totalCreated = 0
                 var lastKbId = ""
@@ -256,7 +256,7 @@ class AiCardGenerationManager(
                     val currentBatch = (cardCount - remaining) / batchSize + 1
                     val totalBatches = (cardCount + batchSize - 1) / batchSize
                     val batchIdx = logBatchIndex++
-                    _state.update { it.copy(logEntries = it.logEntries + LogEntry(0, LogEntryType.INFO, "Batch $currentBatch/$totalBatches", "Requesting ${batchSize.coerceAtMost(remaining)} cards (${totalCreated + allCardIds.size}/$cardCount so far)", batchIndex = batchIdx)) }
+                    _state.update { it.copy(logEntries = it.logEntries + LogEntry(0, LogEntryType.INFO, "Batch $currentBatch/$totalBatches", "Requesting ${batchSize.coerceAtMost(remaining)} cards ($totalCreated/$cardCount so far)", batchIndex = batchIdx)) }
                     _state.update {
                         it.copy(
                             batchProgress = AiCardBatchProgress(

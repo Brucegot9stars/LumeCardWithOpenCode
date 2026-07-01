@@ -85,13 +85,17 @@ Do not force a single card type throughout the deck.
 
 - CLOZE cards: place {{c1::answer}} directly in `front`; explain the answer in `back`.
 - MULTIPLE_CHOICE:
-  - `front` format:
-    Question
-    A) ...
-    B) ...
-    C) ...
-    D) ...
-  - `back` should contain the correct option and a brief explanation.
+  - `front`: the question only (no options, no prefixes, no numbering)
+  - `back`: one option per line; prefix the correct option with `+`
+  - Rules:
+    - Exactly one correct option marked with leading `+`
+    - Incorrect options must NOT have any prefix
+    - Do NOT use A), B), C), D) or any letter/number prefixes
+    - Do NOT output explanatory text like "正确答案:", "Answer:", etc.
+    - `back` contains only the option lines, nothing else
+    - Generate 4 options per question (3-6 when justified)
+    - Distractors must be plausible, closely related, and not obviously wrong
+    - Keep all options similar in style, length, and phrasing
 - `knowledge_base_name` should describe the overall learning topic.
 - `deck_name` should describe the specific subtopic.
 - Tags should be hierarchical, meaningful, and consistent.

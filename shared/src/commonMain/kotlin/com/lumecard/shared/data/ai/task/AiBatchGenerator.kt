@@ -175,7 +175,25 @@ class AiBatchGenerator(
                 deckName = null,
             )
 
-            val result = cardGenerator.generate(aiRequest)
+            val collectedLogs = mutableListOf<com.lumecard.shared.data.LogEntry>()
+            val result = cardGenerator.generate(
+                aiRequest,
+                onLog = { entry ->
+                    collectedLogs.add(entry)
+                    stateMachine.update { it.copy(logEntries = it.logEntries + entry) }
+                    _taskState.value = stateMachine.state
+                },
+            )
+            val now = Clock.System.now()
+            for (entry in collectedLogs) {
+                when (entry.type) {
+                    com.lumecard.shared.data.LogEntryType.WARNING ->
+                        eventBus.emit(Warning(sessionId, now, entry.content, entry.title))
+                    com.lumecard.shared.data.LogEntryType.ERROR ->
+                        eventBus.emit(Error(sessionId, now, entry.content, entry.title))
+                    else -> {}
+                }
+            }
             result
         } catch (e: Exception) {
             Result.failure(e)

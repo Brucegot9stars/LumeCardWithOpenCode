@@ -1,6 +1,7 @@
 package com.lumecard.shared.data.ai.task
 
 import com.lumecard.shared.data.AiConfig
+import com.lumecard.shared.data.LogEntry
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -47,6 +48,7 @@ data class AiTaskState(
     val etaSeconds: Long? = null,
     val errors: List<String> = emptyList(),
     val warnings: List<String> = emptyList(),
+    val logEntries: List<LogEntry> = emptyList(),
     val startTime: Instant = Clock.System.now(),
     val endTime: Instant? = null,
 ) {
