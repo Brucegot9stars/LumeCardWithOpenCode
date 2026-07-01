@@ -97,6 +97,9 @@ SELECT * FROM KnowledgeBase WHERE deleted_at IS NULL ORDER BY created_at ASC;
 selectKnowledgeBaseById:
 SELECT * FROM KnowledgeBase WHERE id = ?;
 
+selectKnowledgeBaseByName:
+SELECT * FROM KnowledgeBase WHERE name = ? AND deleted_at IS NULL;
+
 selectAllDecks:
 SELECT * FROM Deck WHERE deleted_at IS NULL ORDER BY created_at ASC;
 
@@ -105,6 +108,9 @@ SELECT * FROM Deck WHERE knowledge_base_id = ? AND deleted_at IS NULL ORDER BY c
 
 selectDeckById:
 SELECT * FROM Deck WHERE id = ?;
+
+selectDeckByNameAndKnowledgeBase:
+SELECT * FROM Deck WHERE knowledge_base_id = ? AND name = ? AND deleted_at IS NULL;
 
 selectAllCards:
 SELECT * FROM Card WHERE deleted_at IS NULL ORDER BY created_at ASC;
@@ -130,7 +136,7 @@ INSERT OR REPLACE INTO Deck(id, knowledge_base_id, name, description, color, ico
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 updateDeck:
-UPDATE Deck SET name = ?, description = ?, color = ?, icon = ?, parent_id = ?, updated_at = ?, version = version + 1, deleted_at = ?, synced_at = ? WHERE id = ?;
+UPDATE Deck SET knowledge_base_id = ?, name = ?, description = ?, color = ?, icon = ?, parent_id = ?, updated_at = ?, version = version + 1, deleted_at = ?, synced_at = ? WHERE id = ?;
 
 insertCard:
 INSERT OR REPLACE INTO Card(id, deck_id, type, front, back, tags, media, metadata, created_at, updated_at, last_reviewed_at, next_review_at, version, deleted_at, synced_at)

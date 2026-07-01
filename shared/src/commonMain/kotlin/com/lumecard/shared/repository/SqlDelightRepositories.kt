@@ -36,6 +36,10 @@ class SqlDelightKnowledgeBaseRepository(
         return queries.selectKnowledgeBaseById(id).executeAsOneOrNull()?.toKnowledgeBase()
     }
 
+    override suspend fun getByName(name: String): KnowledgeBase? {
+        return queries.selectKnowledgeBaseByName(name).executeAsOneOrNull()?.toKnowledgeBase()
+    }
+
     override suspend fun insert(knowledgeBase: KnowledgeBase) {
         queries.insertKnowledgeBase(
             id = knowledgeBase.id,
@@ -99,6 +103,10 @@ class SqlDelightDeckRepository(
         return queries.selectDeckById(id).executeAsOneOrNull()?.toDeck()
     }
 
+    override suspend fun getByNameInKnowledgeBase(knowledgeBaseId: String, name: String): Deck? {
+        return queries.selectDeckByNameAndKnowledgeBase(knowledgeBaseId, name).executeAsOneOrNull()?.toDeck()
+    }
+
     override suspend fun insert(deck: Deck) {
         queries.insertDeck(
             id = deck.id,
@@ -118,6 +126,7 @@ class SqlDelightDeckRepository(
 
     override suspend fun update(deck: Deck) {
         queries.updateDeck(
+            knowledge_base_id = deck.knowledgeBaseId,
             name = deck.name,
             description = deck.description,
             color = deck.color,

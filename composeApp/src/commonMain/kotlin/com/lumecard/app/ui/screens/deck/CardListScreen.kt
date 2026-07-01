@@ -6,7 +6,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,12 +16,21 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.lumecard.app.ui.components.OperationConfirmationManager
 import com.lumecard.app.ui.screens.card.CardViewModel
 import com.lumecard.app.ui.screens.card.CreateCardScreen
+import com.lumecard.app.ui.components.ConfirmOperationDialog
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.screens.study.StudyScreen
+import com.lumecard.shared.data.EntityMergeManager
+import com.lumecard.shared.data.EntityOperationType
 import com.lumecard.shared.model.Card
+import com.lumecard.shared.model.Deck
+import com.lumecard.shared.repository.DeckRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 
 class CardListScreen(
@@ -41,6 +49,14 @@ class CardListScreen(
         val isLoading by viewModel.isLoading.collectAsState()
         val sortConfig by viewModel.sortConfig.collectAsState()
         var showSortMenu by remember { mutableStateOf(false) }
+        val mergeManager: EntityMergeManager = koinInject()
+        val confirmManager: OperationConfirmationManager = koinInject()
+        val deckRepository: DeckRepository = koinInject()
+        val allDecks by deckRepository.getAll().collectAsState(initial = emptyList())
+        var moveCardTarget by remember { mutableStateOf<Card?>(null) }
+        var showMoveDeckPicker by remember { mutableStateOf(false) }
+        var moveResultMessage by remember { mutableStateOf<String?>(null) }
+        val scope = rememberCoroutineScope()
 
         LaunchedEffect(deckId) {
             viewModel.loadSortPref()
@@ -160,11 +176,79 @@ class CardListScreen(
                         CardItem(
                             card = card,
                             onEdit = { navigator.push(CreateCardScreen(deckId, deckName, editCard = card)) },
-                            onDelete = { viewModel.deleteCard(card.id) }
+                            onDelete = { viewModel.deleteCard(card.id) },
+                            onMove = {
+                                moveCardTarget = card
+                                showMoveDeckPicker = true
+                            },
                         )
                     }
                 }
             }
+        }
+
+        // Move card to deck dialog
+        if (showMoveDeckPicker && moveCardTarget != null) {
+            val targetDecks = allDecks.filter { it.id != deckId && it.deletedAt == null }
+
+            AlertDialog(
+                onDismissRequest = { showMoveDeckPicker = false; moveCardTarget = null },
+                title = { Text(strings.moveCardTitle) },
+                text = {
+                    if (targetDecks.isEmpty()) {
+                        Text(strings.moveDeckNoTarget)
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            targetDecks.forEach { targetDeck ->
+                                TextButton(
+                                    onClick = {
+                                        val cardId = moveCardTarget!!.id
+                                        showMoveDeckPicker = false
+                                        moveCardTarget = null
+                                        scope.launch {
+                                            val result = withContext(Dispatchers.IO) {
+                                                mergeManager.moveCard(cardId, targetDeck.id)
+                                            }
+                                            result.fold(
+                                                onSuccess = { r ->
+                                                    moveResultMessage = strings.moveMergeResult(r.itemsMoved, r.conflictsResolved)
+                                                },
+                                                onFailure = { e ->
+                                                    moveResultMessage = e.message
+                                                },
+                                            )
+                                            viewModel.loadCards(deckId)
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(targetDeck.name, modifier = Modifier.padding(vertical = 4.dp))
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {},
+                dismissButton = {
+                    TextButton(onClick = { showMoveDeckPicker = false; moveCardTarget = null }) {
+                        Text(strings.actionCancel)
+                    }
+                },
+            )
+        }
+
+        // Move result dialog
+        if (moveResultMessage != null) {
+            AlertDialog(
+                onDismissRequest = { moveResultMessage = null },
+                title = { Text(strings.moveMergeSuccess) },
+                text = { Text(moveResultMessage ?: "") },
+                confirmButton = {
+                    TextButton(onClick = { moveResultMessage = null }) {
+                        Text(strings.actionOk)
+                    }
+                },
+            )
         }
     }
 }
@@ -173,7 +257,8 @@ class CardListScreen(
 fun CardItem(
     card: Card,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onMove: () -> Unit,
 ) {
     val strings = koinInject<I18nManager>().strings
     Card(
@@ -248,6 +333,28 @@ fun CardItem(
                     contentDescription = strings.actionDelete,
                     tint = MaterialTheme.colorScheme.error
                 )
+            }
+            Box {
+                var expanded by remember { mutableStateOf(false) }
+                IconButton(onClick = { expanded = true }) {
+                    Icon(
+                        Icons.Default.MoreVert,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    DropdownMenuItem(
+                        text = { Text(strings.actionMove) },
+                        onClick = {
+                            expanded = false
+                            onMove()
+                        },
+                        leadingIcon = {
+                                                        Icon(Icons.Default.DriveFileMove, contentDescription = null)
+                        },
+                    )
+                }
             }
         }
     }

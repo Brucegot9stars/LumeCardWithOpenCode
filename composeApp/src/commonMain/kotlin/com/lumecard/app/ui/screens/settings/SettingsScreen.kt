@@ -21,6 +21,7 @@ import com.lumecard.shared.AppVersion
 import com.lumecard.shared.data.ExportManager
 import com.lumecard.shared.data.UpdateManager
 import com.lumecard.shared.data.UpdateState
+import com.lumecard.shared.data.AiConfigManager
 import com.lumecard.shared.data.WebDavConfigManager
 import com.lumecard.app.platform.copyToClipboard
 import com.lumecard.shared.domain.scheduler.ReviewMode
@@ -30,6 +31,7 @@ import com.lumecard.app.i18n.AppLocale
 import com.lumecard.app.ui.components.LumeCardDialog
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.components.LumeCardTextField
+import com.lumecard.app.ui.screens.ai.AiConfigScreen
 import com.lumecard.app.ui.screens.dashboard.DashboardScreen
 import com.lumecard.app.ui.components.UpdateCheckDialog
 import com.lumecard.app.i18n.I18nManager
@@ -58,7 +60,7 @@ import com.lumecard.app.font.registerFontFile
 import org.koin.compose.koinInject
 
 class SettingsScreen(
-    private val onNavigateToHome: (() -> Unit)? = null,
+    @Transient private val onNavigateToHome: (() -> Unit)? = null,
 ) : Screen {
     override val key: ScreenKey = "Settings"
 
@@ -76,12 +78,14 @@ class SettingsScreen(
         val scope = rememberCoroutineScope()
         val snackbarHostState = remember { SnackbarHostState() }
         val webDavConfigManager: WebDavConfigManager = koinInject()
+        val aiConfigManager: AiConfigManager = koinInject()
         val knowledgeBaseRepository: com.lumecard.shared.repository.KnowledgeBaseRepository = koinInject()
         val updateManager: UpdateManager = koinInject()
         val spacing = LumeCardTheme.spacing
         val radius = LumeCardTheme.radius
 
         var defaultConfigName by remember { mutableStateOf("") }
+        var aiDefaultConfigName by remember { mutableStateOf("") }
         var showModeDropdown by remember { mutableStateOf(false) }
         var showAnswerModeDropdown by remember { mutableStateOf(false) }
         var showGoalDialog by remember { mutableStateOf(false) }
@@ -95,6 +99,7 @@ class SettingsScreen(
         LaunchedEffect(Unit) {
             settingsViewModel.loadSettings()
             try { withContext(Dispatchers.IO) { webDavConfigManager.getDefault() }?.let { defaultConfigName = it.name } } catch (_: Exception) { }
+            try { withContext(Dispatchers.IO) { aiConfigManager.getDefault() }?.let { aiDefaultConfigName = it.name } } catch (_: Exception) { }
         }
 
         Scaffold(
@@ -752,6 +757,73 @@ class SettingsScreen(
                                         color = MaterialTheme.colorScheme.primary,
                                     )
                                 }
+                            },
+                        )
+                    }
+                }
+
+                // === AI Config ===
+                Row(
+                    modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.SmartToy, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(spacing.sm))
+                    Text(
+                        strings.aiConfig,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = radius.card,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    ),
+                ) {
+                    Column {
+                        ListItem(
+                            headlineContent = { Text(strings.aiTitle) },
+                            supportingContent = { Text(strings.aiConfigDesc) },
+                            leadingContent = { Icon(Icons.Default.SmartToy, contentDescription = null) },
+                            modifier = Modifier.clickable { navigator.push(AiConfigScreen()) },
+                            trailingContent = {
+                                TextButton(onClick = { navigator.push(AiConfigScreen()) }) {
+                                    Text(
+                                        if (aiDefaultConfigName.isNotEmpty()) aiDefaultConfigName
+                                        else strings.aiNotConfigured,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            },
+                        )
+                    }
+                }
+
+                // === AI Card Generation ===
+                Row(
+                    modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(spacing.xs))
+                    Text(strings.aiCardGeneration, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = radius.card,
+                ) {
+                    Column {
+                        ListItem(
+                            headlineContent = { Text(strings.aiCardGeneration) },
+                            supportingContent = { Text(strings.aiCardGenerationDesc) },
+                            leadingContent = { Icon(Icons.Default.AutoAwesome, contentDescription = null) },
+                            modifier = Modifier.clickable { navigator.push(com.lumecard.app.ui.screens.aicard.AiCardScreen()) },
+                            trailingContent = {
+                                Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
                         )
                     }

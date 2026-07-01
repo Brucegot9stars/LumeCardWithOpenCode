@@ -10,6 +10,7 @@ import kotlin.time.Instant
 interface KnowledgeBaseRepository {
     fun getAll(): Flow<List<KnowledgeBase>>
     suspend fun getById(id: String): KnowledgeBase?
+    suspend fun getByName(name: String): KnowledgeBase?
     suspend fun insert(knowledgeBase: KnowledgeBase)
     suspend fun update(knowledgeBase: KnowledgeBase)
     suspend fun delete(id: String)
@@ -21,6 +22,7 @@ interface DeckRepository {
     fun getAll(): Flow<List<Deck>>
     fun getByKnowledgeBase(knowledgeBaseId: String): Flow<List<Deck>>
     suspend fun getById(id: String): Deck?
+    suspend fun getByNameInKnowledgeBase(knowledgeBaseId: String, name: String): Deck?
     suspend fun insert(deck: Deck)
     suspend fun update(deck: Deck)
     suspend fun delete(id: String)

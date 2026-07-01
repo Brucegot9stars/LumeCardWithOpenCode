@@ -1,6 +1,9 @@
 package com.lumecard.app
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,13 +16,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.navigator.Navigator
+import com.lumecard.app.data.AiCardGenerationManager
 import com.lumecard.app.i18n.AppLocale
 import com.lumecard.app.i18n.I18nManager
+import com.lumecard.app.ui.screens.aicard.AiCardScreen
 import com.lumecard.app.ui.screens.dashboard.DashboardScreen
 import com.lumecard.app.ui.screens.settings.SettingsScreen
 import com.lumecard.app.ui.screens.settings.SettingsStateHolder
@@ -127,15 +133,20 @@ fun App() {
                     }
                 }
 
-                Scaffold(
-                    bottomBar = {
-                        NavigationBar {
-                            BottomNavItem.entries.forEach { item ->
-                                NavigationBarItem(
-                                    selected = currentTab == item,
-                                    onClick = { currentTab = item },
-                                    icon = { Icon(item.icon, contentDescription = null) },
-                                    label = {
+                val manager = koinInject<AiCardGenerationManager>()
+                val aiState by manager.state.collectAsState()
+                val batchProgress = aiState.batchProgress
+
+                Box(Modifier.fillMaxSize()) {
+                    Scaffold(
+                        bottomBar = {
+                            NavigationBar {
+                                BottomNavItem.entries.forEach { item ->
+                                    NavigationBarItem(
+                                        selected = currentTab == item,
+                                        onClick = { currentTab = item },
+                                        icon = { Icon(item.icon, contentDescription = null) },
+                                        label = {
                         val label = when (item) {
                             BottomNavItem.Dashboard -> strings.navHome
                             BottomNavItem.Stats -> strings.navStats
@@ -144,13 +155,58 @@ fun App() {
                         }
                         Text(label)
                     }
-                                )
+                                    )
+                                }
                             }
                         }
+                    ) { paddingValues ->
+                        Box(modifier = Modifier.padding(paddingValues)) {
+                            cafe.adriel.voyager.navigator.CurrentScreen()
+                        }
                     }
-                ) { paddingValues ->
-                    Box(modifier = Modifier.padding(paddingValues)) {
-                        cafe.adriel.voyager.navigator.CurrentScreen()
+
+                    val infiniteTransition = rememberInfiniteTransition()
+                    val breatheAlpha by infiniteTransition.animateFloat(
+                        initialValue = 0.5f,
+                        targetValue = 1f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(800, easing = LinearEasing),
+                            repeatMode = RepeatMode.Reverse,
+                        ),
+                    )
+
+                    AnimatedVisibility(
+                        visible = batchProgress != null,
+                        modifier = Modifier.align(Alignment.TopCenter).padding(top = 12.dp),
+                    ) {
+                        Surface(
+                            modifier = Modifier
+                                .clickable { navigator.push(AiCardScreen()) }
+                                .graphicsLayer { alpha = breatheAlpha },
+                            shape = RoundedCornerShape(24.dp),
+                            shadowElevation = 8.dp,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Icon(
+                                    Icons.Default.Autorenew,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                )
+                                val bp = batchProgress
+                                if (bp != null) {
+                                    Text(
+                                        text = "Batch ${bp.currentBatch}/${bp.totalBatches} · ${bp.savedCards}/${bp.totalTarget}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

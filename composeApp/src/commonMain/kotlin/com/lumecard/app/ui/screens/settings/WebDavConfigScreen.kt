@@ -3,6 +3,7 @@ package com.lumecard.app.ui.screens.settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -89,6 +90,7 @@ class WebDavConfigScreen : Screen {
         var editPass by remember { mutableStateOf("") }
         var showPass by remember { mutableStateOf(false) }
         var testResult by remember { mutableStateOf<String?>(null) }
+        var isTesting by remember { mutableStateOf(false) }
         var isSyncing by remember { mutableStateOf(false) }
         var syncStatus by remember { mutableStateOf("") }
         var deleteConfirmId by remember { mutableStateOf<String?>(null) }
@@ -306,13 +308,16 @@ class WebDavConfigScreen : Screen {
                                 modifier = Modifier.fillMaxWidth(),
                             )
 
+                            // Test result (copyable)
                             if (testResult != null) {
                                 val isSuccess = testResult!!.startsWith("HTTP") || testResult!!.startsWith(strings.settingsSyncTestSuccess)
-                                Text(
-                                    testResult!!,
-                                    color = if (isSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
+                                SelectionContainer {
+                                    Text(
+                                        testResult!!,
+                                        color = if (isSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                }
                             }
 
                             Row(
@@ -321,29 +326,43 @@ class WebDavConfigScreen : Screen {
                             ) {
                                 OutlinedButton(
                                     onClick = {
+                                        isTesting = true
+                                        testResult = null
                                         scope.launch {
-                                            testResult = null
-                                            val config = WebDavConfig(
-                                                id = editConfig?.id ?: Clock.System.now().toEpochMilliseconds().toString(),
-                                                name = editName.ifBlank { editUrl },
-                                                url = editUrl,
-                                                username = editUser,
-                                                password = editPass,
-                                                isDefault = editConfig?.isDefault ?: configs.isEmpty(),
-                                            )
-                                            val result = withContext(Dispatchers.IO) { webDavConfigManager.testConnection(config) }
-                                            testResult = result.fold(
-                                                onSuccess = { strings.settingsSyncTestSuccess },
-                                                onFailure = { strings.settingsSyncTestError(it.message ?: strings.errorUnknown) }
-                                            )
-                                            val msg = testResult ?: return@launch
-                                            snackbarHostState.showSnackbar(msg)
+                                            try {
+                                                val config = WebDavConfig(
+                                                    id = editConfig?.id ?: Clock.System.now().toEpochMilliseconds().toString(),
+                                                    name = editName.ifBlank { editUrl },
+                                                    url = editUrl,
+                                                    username = editUser,
+                                                    password = editPass,
+                                                    isDefault = editConfig?.isDefault ?: configs.isEmpty(),
+                                                )
+                                                val result = withContext(Dispatchers.IO) { webDavConfigManager.testConnection(config) }
+                                                testResult = result.fold(
+                                                    onSuccess = { strings.settingsSyncTestSuccess },
+                                                    onFailure = { strings.settingsSyncTestError(it.message ?: strings.errorUnknown) }
+                                                )
+                                            } catch (e: Exception) {
+                                                testResult = strings.settingsSyncTestError(e.message ?: strings.errorUnknown)
+                                            } finally {
+                                                isTesting = false
+                                            }
                                         }
                                     },
+                                    enabled = editUrl.isNotBlank() && editUser.isNotBlank() && editPass.isNotBlank() && !isTesting,
                                     interactionSource = null,
                                     modifier = Modifier.weight(1f),
                                 ) {
-                                    Text(strings.settingsSyncTestConnection)
+                                    if (isTesting) {
+                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                        Spacer(Modifier.width(spacing.sm))
+                                        Text(strings.settingsSyncTestConnecting)
+                                    } else {
+                                        Icon(Icons.Default.NetworkCheck, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.width(spacing.sm))
+                                        Text(strings.settingsSyncTestConnection)
+                                    }
                                 }
                                 Button(
                                     onClick = {
@@ -1069,8 +1088,13 @@ private suspend fun restoreSettingsAndFonts(
         val configResult = syncManager.downloadConfig(config)
         if (configResult.isSuccess) {
             val remoteSettings = try {
-                fontManifestJson.decodeFromString<Map<String, String>>(configResult.getOrThrow())
-            } catch (_: Exception) { null }
+                val export = fontManifestJson.decodeFromString<com.lumecard.shared.data.ConfigExport>(configResult.getOrThrow())
+                export.settings
+            } catch (_: Exception) {
+                try {
+                    fontManifestJson.decodeFromString<Map<String, String>>(configResult.getOrThrow())
+                } catch (_: Exception) { null }
+            }
             if (remoteSettings != null) {
                 for ((key, value) in remoteSettings) {
                     settingsRepository.set(key, value)

@@ -26,6 +26,9 @@
 - ✅ **WebDAV 云同步** — 增量数据同步 + 版本冲突解决 + Anki 风格媒体同步（SHA-1 + mtime 缓存，仅哈希变更文件）+ 多配置管理
 - ✅ **级联软删除** — 删除知识库级联软删除下属牌组与卡片，删除牌组级联软删除下属卡片
 - ✅ **媒体贴入** — 粘贴图片到卡片编辑器字段（Desktop: AWT / Android: ClipboardManager），自动 SHA-1 去重保存，插入 Markdown 图片引用
+- ✅ **AI 制卡助手** — SSE 流式生成 + 增量 JSON 解析 + 批量自动分类到牌组/知识库 + 实时进度气泡 + 交互日志面板 + 停止生成（保留已完成卡片）
+- ✅ **AI 事件流框架** — 事件驱动架构：`AiEventBus`（SharedFlow）+ `AiEvent` 14 种事件类型 + `AiBatchGenerator` 批处理循环 + `AiTaskStateMachine` 状态验证
+- ✅ **字体系统** — 跨平台自定义字体加载（TTF/OTF），平台字体检测（Android: `Typeface.create` / Desktop: `GraphicsEnvironment`），用户导入字体存储
 - ✅ **设置持久化** — 所有设置存入 SQLite，dirty-state 追踪按需保存
 - ✅ **跨平台** — Android + Desktop (Windows/Linux/macOS)，支持 Windows EXE/MSI 打包 & macOS DMG
 - ✅ **Markdown 渲染** — 基于 CommonMark 的 GFM 标准渲染，支持标题/表格/代码高亮/任务列表/删除线/自动链接/数学公式
@@ -36,7 +39,6 @@
 
 ### 待实现
 
-- ❌ AI 制卡助手 — 接口已定义（`AIApi`），后端尚未对接
 - ❌ 知识图谱
 - ❌ 学习热力图 / 日历贡献图
 - ❌ iOS 平台
@@ -46,15 +48,15 @@
 
 | 类别 | 技术 |
 |------|------|
-| UI | Compose Multiplatform 1.7.3 + Material 3 |
-| 语言 | Kotlin 2.0.20 + Compose Multiplatform Plugin |
-| 数据库 | SQLDelight 2.0.2 (SQLite) |
+| UI | Compose Multiplatform 1.11.1 + Material 3 |
+| 语言 | Kotlin 2.4.0 + Compose Multiplatform Plugin |
+| 数据库 | SQLDelight 2.3.2 (SQLite) |
 | 网络 | Ktor 2.3.12 |
 | DI | Koin 3.5.6 + koin-compose 1.1.5 |
 | 导航 | Voyager 1.0.1 |
-| 序列化 | kotlinx-serialization 1.7.2 |
-| 日期 | kotlinx-datetime 0.6.1 |
-| Markdown | CommonMark 0.21.0（含 GFM Tables、Strikethrough、Autolink、TaskListItems 扩展）|
+| 序列化 | kotlinx-serialization 1.11.0 |
+| 日期 | kotlinx-datetime 0.7.1 |
+| Markdown | mikepenz Markdown Renderer 0.41.0（GFM Tables、Strikethrough、Autolink、TaskListItems）|
 
 ## 项目结构
 
@@ -64,9 +66,17 @@ LumeCard/
 │   └── src/
 │       ├── commonMain/kotlin/
 │       │   ├── App.kt              # 入口 + 底部导航（首页/统计/仓管/设置）
+│       │   ├── data/
+│       │   │   └── AiCardGenerationManager.kt # AI 制卡状态机
 │       │   ├── di/
 │       │   │   ├── AppModule.kt    # Koin 应用模块入口
 │       │   │   └── PlatformModule.kt # 平台相关 Koin 模块（expect）
+│       │   ├── font/               # 字体系统
+│       │   │   ├── FontSystem.kt   # 字体注册表/缓存/导入
+│       │   │   ├── FontInitializer.kt # 字体初始化
+│       │   │   ├── FontPlatform.kt # expect 声明
+│       │   │   ├── FontPlatform.android.kt
+│       │   │   └── FontPlatform.desktop.kt
 │       │   ├── i18n/               # 国际化
 │       │   │   ├── I18nManager.kt  # 多语言管理
 │   │   │   ├── I18nStrings.kt  # 字符串接口（350+ 条）
@@ -104,6 +114,21 @@ LumeCard/
 │       │   ├── domain/scheduler/          # 复习算法
 │       │   ├── repository/                # 仓库接口 + 实现
 │       │   ├── data/
+│       │   │   ├── ai/
+│       │   │   │   ├── event/
+│       │   │   │   │   ├── AiEvent.kt     # 14 种事件类型
+│       │   │   │   │   └── AiEventBus.kt  # 事件总线
+│       │   │   │   ├── task/
+│       │   │   │   │   ├── AiBatchGenerator.kt # 批处理循环
+│       │   │   │   │   └── AiTask.kt      # 状态机
+│       │   │   │   ├── stream/
+│       │   │   │   │   ├── AiStreamParser.kt   # 增量 JSON 解析
+│       │   │   │   │   └── AiStreamReader.kt   # Ktor 流读取
+│       │   │   │   ├── progress/
+│       │   │   │   │   └── AiProgressManager.kt # 进度计算
+│       │   │   │   ├── AiCardGenerator.kt  # 卡片生成器
+│       │   │   │   ├── AiClient.kt         # AI API 客户端
+│       │   │   │   └── AiModels.kt         # 数据模型
 │       │   │   ├── ExportManager.kt       # 导入导出（v2 格式）
 │       │   │   ├── SyncManager.kt         # WebDAV 增量同步
 │       │   │   ├── MediaManager.kt        # 媒体 Manifest & 缓存管理
@@ -119,7 +144,8 @@ LumeCard/
 ├── .github/workflows/
 │   ├── android.yml                        # Android APK 自动构建
 │   ├── pr-validation.yml                  # PR 校验
-│   └── release.yml                        # Tag 触发 Release
+│   ├── release.yml                        # Tag 触发 Release（Android APK/AAB）
+│   └── windows.yml                        # Tag 触发 Windows EXE/MSI/ZIP 打包
 │
 ├── version.properties                     # 应用版本（唯一来源）
 ├── build.gradle.kts                       # 根构建脚本
@@ -144,13 +170,25 @@ set GRADLE_USER_HOME=C:\gradle-home
 .\gradlew.bat :composeApp:assembleDebug
 ```
 
-APK 输出: `composeApp/build/outputs/apk/debug/composeApp-debug.apk`
+APK 输出: `composeApp/build/outputs/apk/debug/LumeCard-v{version}-debug.apk`
 
 ### 运行 Desktop 版本
 
 ```bash
 .\gradlew.bat :composeApp:run
 ```
+
+### 构建 Desktop 安装包
+
+需要 JDK 21+（含 `jpackage`）：
+
+```bash
+set JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot
+set GRADLE_USER_HOME=C:\gradle-home
+.\gradlew.bat :composeApp:packageExe :composeApp:packageMsi
+```
+
+EXE 输出: `composeApp/build/compose/binaries/main/exe/LumeCard-{version}.exe`
 
 ### Windows 注意事项
 
