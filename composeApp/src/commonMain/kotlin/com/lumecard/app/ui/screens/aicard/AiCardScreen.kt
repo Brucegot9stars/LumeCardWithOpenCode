@@ -123,6 +123,14 @@ class AiCardScreen : Screen {
                     }
                 }
 
+                // AI config selector (always shown)
+                ConfigSelector(
+                    configs = state.allConfigs,
+                    selectedConfigId = state.selectedConfigId,
+                    onConfigSelected = { vm.selectConfig(it) },
+                    strings = strings,
+                )
+
                 // Config error warning
                 if (state.configError) {
                     Card(
@@ -138,16 +146,6 @@ class AiCardScreen : Screen {
                             Text(strings.aiCardNoConfigDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
                         }
                     }
-                }
-
-                // AI config selector
-                if (state.allConfigs.isNotEmpty()) {
-                    ConfigSelector(
-                        configs = state.allConfigs,
-                        selectedConfigId = state.selectedConfigId,
-                        onConfigSelected = { vm.selectConfig(it) },
-                        strings = strings,
-                    )
                 }
 
                 // Topic
@@ -766,37 +764,46 @@ private fun ConfigSelector(
     onConfigSelected: (String) -> Unit,
     strings: com.lumecard.app.i18n.I18nStrings,
 ) {
-    val selected = configs.find { it.id == selectedConfigId }
-    var showMenu by remember { mutableStateOf(false) }
-
     Text(strings.aiCardSelectConfigLabel, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-    Box {
-        OutlinedTextField(
-            value = selected?.name ?: "",
-            onValueChange = {},
-            label = { Text(strings.aiCardSelectConfig) },
-            placeholder = { Text(strings.aiCardSelectConfig) },
-            readOnly = true,
-            trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
-            modifier = Modifier.fillMaxWidth(),
+    if (configs.isEmpty()) {
+        Text(
+            strings.aiCardNoConfigDesc,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(vertical = 4.dp),
         )
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .clickable { showMenu = true },
-        )
-        DropdownMenu(
-            expanded = showMenu,
-            onDismissRequest = { showMenu = false },
-        ) {
-            configs.forEach { config ->
-                DropdownMenuItem(
-                    text = { Text(config.name) },
-                    onClick = {
-                        onConfigSelected(config.id)
-                        showMenu = false
-                    },
-                )
+    } else {
+        val selected = configs.find { it.id == selectedConfigId }
+        var showMenu by remember { mutableStateOf(false) }
+
+        Box {
+            OutlinedTextField(
+                value = selected?.name ?: "",
+                onValueChange = {},
+                label = { Text(strings.aiCardSelectConfig) },
+                placeholder = { Text(strings.aiCardSelectConfig) },
+                readOnly = true,
+                trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clickable { showMenu = true },
+            )
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false },
+            ) {
+                configs.forEach { config ->
+                    DropdownMenuItem(
+                        text = { Text(config.name) },
+                        onClick = {
+                            onConfigSelected(config.id)
+                            showMenu = false
+                        },
+                    )
+                }
             }
         }
     }

@@ -107,7 +107,13 @@ class AiCardGenerationManager(
                 if ((cur.mode == AiCardMode.SPECIFY_KB || cur.mode == AiCardMode.SPECIFY_BOTH) && cur.selectedKbId != null) {
                     loadDecks()
                 }
-            } catch (_: Exception) { }
+            } catch (e: Exception) {
+                _state.update { it.copy(
+                    screenState = AiCardScreenState.ERROR,
+                    errorMessage = "加载数据失败：${e.message}",
+                    configError = true,
+                ) }
+            }
         }
     }
 

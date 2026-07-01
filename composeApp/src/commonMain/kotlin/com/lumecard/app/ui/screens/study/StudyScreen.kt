@@ -420,7 +420,7 @@ class StudyScreen(
                                         val nextHCenter = (nextCard.type == CardType.BASIC || nextCard.type == CardType.REVERSED) && nextCard.metadata["hcenter"].toBoolean()
                                         val nextVCenter = (nextCard.type == CardType.BASIC || nextCard.type == CardType.REVERSED) && nextCard.metadata["vcenter"].toBoolean()
                                         val nextFontSize = nextCard.metadata["fontSize"]?.toIntOrNull() ?: 16
-                                        val nextFontFamily = FontRegistry.resolveFontFamily(nextCard.metadata["fontFamily"] ?: "")
+                                        val nextFontFamily = nextCard.metadata["fontFamily"]?.takeIf { it.isNotBlank() }?.let { FontRegistry.resolveFontFamily(it) }
                                         CardContent(card = nextCard, isFlipped = false, displayMode = settingsState.answerDisplayMode, horizontalCenter = nextHCenter, verticalCenter = nextVCenter, fontSize = nextFontSize, fontFamily = nextFontFamily)
                                     }
                                 }
@@ -525,7 +525,7 @@ class StudyScreen(
                                         horizontalCenter = hCenter,
                                         verticalCenter = vCenter,
                                         fontSize = fontSize,
-                                        fontFamily = FontRegistry.resolveFontFamily(currentCard.metadata["fontFamily"] ?: ""),
+                                        fontFamily = currentCard.metadata["fontFamily"]?.takeIf { it.isNotBlank() }?.let { FontRegistry.resolveFontFamily(it) },
                                         onConfirmChoice = onConfirmChoice,
                                     )
                                 }
