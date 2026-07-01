@@ -299,8 +299,8 @@ class AiCardGenerationManager(
 
                     result.fold(
                         onSuccess = { res ->
-                            remaining -= batchCount
                             totalCreated += res.cardsCreated
+                            remaining = (cardCount - totalCreated).coerceAtLeast(0)
                             allCardIds.addAll(res.cardIds)
                             lastKbId = res.knowledgeBaseId
                             lastDeckId = res.deckId

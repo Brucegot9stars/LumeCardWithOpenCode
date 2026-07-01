@@ -1,6 +1,7 @@
 package com.lumecard.app
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -15,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
@@ -163,11 +165,24 @@ fun App() {
                         }
                     }
 
-                    AnimatedVisibility(visible = batchProgress != null) {
+                    val infiniteTransition = rememberInfiniteTransition()
+                    val breatheAlpha by infiniteTransition.animateFloat(
+                        initialValue = 0.5f,
+                        targetValue = 1f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(800, easing = LinearEasing),
+                            repeatMode = RepeatMode.Reverse,
+                        ),
+                    )
+
+                    AnimatedVisibility(
+                        visible = batchProgress != null,
+                        modifier = Modifier.align(Alignment.TopCenter).padding(top = 12.dp),
+                    ) {
                         Surface(
                             modifier = Modifier
-                                .align(Alignment.Center)
-                                .clickable { navigator.push(AiCardScreen()) },
+                                .clickable { navigator.push(AiCardScreen()) }
+                                .graphicsLayer { alpha = breatheAlpha },
                             shape = RoundedCornerShape(24.dp),
                             shadowElevation = 8.dp,
                             color = MaterialTheme.colorScheme.primaryContainer,
