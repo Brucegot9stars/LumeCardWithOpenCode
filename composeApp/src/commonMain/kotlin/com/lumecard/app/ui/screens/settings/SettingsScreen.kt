@@ -581,6 +581,153 @@ class SettingsScreen(
                     }
                 }
 
+                // === Splash Quote ===
+                Row(
+                    modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(spacing.sm))
+                    Text(
+                        strings.splashQuoteTitle,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = radius.card,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    ),
+                ) {
+                    Column {
+                        ListItem(
+                            headlineContent = { Text(strings.splashQuoteEnabled) },
+                            supportingContent = { Text(strings.splashQuoteEnabledDesc) },
+                            trailingContent = {
+                                Switch(
+                                    checked = settingsState.splashQuoteEnabled,
+                                    onCheckedChange = { settingsViewModel.setSplashQuoteEnabled(it) },
+                                )
+                            },
+                        )
+                        HorizontalDivider()
+                        // Direction selector
+                        var showDirectionDropdown by remember { mutableStateOf(false) }
+                        ListItem(
+                            headlineContent = { Text(strings.splashQuoteDirection) },
+                            trailingContent = {
+                                Box {
+                                    TextButton(onClick = { showDirectionDropdown = true }) {
+                                        Text(
+                                            when (settingsState.splashQuoteDirection) {
+                                                com.lumecard.shared.data.SplashQuoteDirection.HORIZONTAL -> strings.splashQuoteDirectionHorizontal
+                                                com.lumecard.shared.data.SplashQuoteDirection.VERTICAL -> strings.splashQuoteDirectionVertical
+                                            },
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = MaterialTheme.colorScheme.primary,
+                                        )
+                                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                                    }
+                                    DropdownMenu(
+                                        expanded = showDirectionDropdown,
+                                        onDismissRequest = { showDirectionDropdown = false },
+                                    ) {
+                                        com.lumecard.shared.data.SplashQuoteDirection.entries.forEach { dir ->
+                                            DropdownMenuItem(
+                                                text = {
+                                                    Text(
+                                                        when (dir) {
+                                                            com.lumecard.shared.data.SplashQuoteDirection.HORIZONTAL -> strings.splashQuoteDirectionHorizontal
+                                                            com.lumecard.shared.data.SplashQuoteDirection.VERTICAL -> strings.splashQuoteDirectionVertical
+                                                        }
+                                                    )
+                                                },
+                                                onClick = {
+                                                    settingsViewModel.setSplashQuoteDirection(dir)
+                                                    showDirectionDropdown = false
+                                                },
+                                                leadingIcon = {
+                                                    if (dir == settingsState.splashQuoteDirection) {
+                                                        Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                                    }
+                                                },
+                                            )
+                                        }
+                                    }
+                                }
+                            },
+                        )
+                        HorizontalDivider()
+                        // Font selector
+                        var showSplashFontDropdown by remember { mutableStateOf(false) }
+                        val allFontSpecs = FontRegistry.fonts
+                        val currentSplashFontName = FontRegistry.findById(settingsState.splashQuoteFont)?.displayName ?: "Default"
+                        ListItem(
+                            headlineContent = { Text(strings.splashQuoteFont) },
+                            trailingContent = {
+                                Box {
+                                    TextButton(onClick = { showSplashFontDropdown = true }) {
+                                        Text(currentSplashFontName, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                                    }
+                                    DropdownMenu(expanded = showSplashFontDropdown, onDismissRequest = { showSplashFontDropdown = false }) {
+                                        DropdownMenuItem(
+                                            text = { Text("Default") },
+                                            onClick = {
+                                                settingsViewModel.setSplashQuoteFont("")
+                                                showSplashFontDropdown = false
+                                            },
+                                        )
+                                        allFontSpecs.forEach { spec ->
+                                            DropdownMenuItem(
+                                                text = { Text(spec.displayName) },
+                                                onClick = {
+                                                    settingsViewModel.setSplashQuoteFont(spec.id)
+                                                    showSplashFontDropdown = false
+                                                },
+                                                leadingIcon = {
+                                                    if (spec.id == settingsState.splashQuoteFont) {
+                                                        Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                                    }
+                                                },
+                                            )
+                                        }
+                                    }
+                                }
+                            },
+                        )
+                        HorizontalDivider()
+                        // Font size
+                        ListItem(
+                            headlineContent = { Text(strings.splashQuoteFontSize) },
+                            trailingContent = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    FilledIconButton(onClick = {
+                                        val v = (if (settingsState.splashQuoteFontSize > 0f) settingsState.splashQuoteFontSize else 24f) - 2f
+                                        settingsViewModel.setSplashQuoteFontSize(v.coerceAtLeast(12f))
+                                    }, modifier = Modifier.size(32.dp)) {
+                                        Text("-", style = MaterialTheme.typography.titleMedium)
+                                    }
+                                    Text(
+                                        if (settingsState.splashQuoteFontSize > 0f) "${settingsState.splashQuoteFontSize.toInt()}" else "Default",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        modifier = Modifier.padding(horizontal = 8.dp),
+                                    )
+                                    FilledIconButton(onClick = {
+                                        val v = (if (settingsState.splashQuoteFontSize > 0f) settingsState.splashQuoteFontSize else 24f) + 2f
+                                        settingsViewModel.setSplashQuoteFontSize(v.coerceAtMost(72f))
+                                    }, modifier = Modifier.size(32.dp)) {
+                                        Text("+", style = MaterialTheme.typography.titleMedium)
+                                    }
+                                }
+                            },
+                        )
+                    }
+                }
+
                 // === Notifications ===
                 Row(
                     modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),

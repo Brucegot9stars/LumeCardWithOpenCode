@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.lumecard.app.i18n.AppLocale
+import com.lumecard.shared.data.SplashQuoteDirection
 import com.lumecard.shared.domain.scheduler.ReviewMode
 
 class SettingsStateHolder {
@@ -18,6 +19,12 @@ class SettingsStateHolder {
     var language by mutableStateOf(AppLocale.SYSTEM)
     var defaultFontFamily by mutableStateOf("")
     var fontScale by mutableStateOf(1.0f)
+
+    var splashQuoteEnabled by mutableStateOf(true)
+    var splashQuoteDirection by mutableStateOf(SplashQuoteDirection.HORIZONTAL)
+    var splashQuoteFont by mutableStateOf("")
+    var splashQuoteFontSize by mutableStateOf(0f)
+
     var isDirty by mutableStateOf(false)
     var isSaving by mutableStateOf(false)
 

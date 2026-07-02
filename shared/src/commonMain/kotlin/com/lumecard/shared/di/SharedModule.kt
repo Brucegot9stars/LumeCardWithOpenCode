@@ -5,6 +5,7 @@ import com.lumecard.shared.data.AiCardPromptManager
 import com.lumecard.shared.data.AiClient
 import com.lumecard.shared.data.AiConfigManager
 import com.lumecard.shared.data.MediaManager
+import com.lumecard.shared.data.SplashQuoteManager
 import com.lumecard.shared.data.SyncManager
 import com.lumecard.shared.data.UpdateManager
 import com.lumecard.shared.data.WebDavConfigManager
@@ -59,6 +60,7 @@ val sharedModule = module {
     single { AiFallbackManager(get(), get()) }
     single { AiModelListFetcher(get(), get()) }
     single { AiCardGenerator(get(), get(), get(), get(), get(), get()) }
+    single { SplashQuoteManager(get()) }
     single { AiEventBus() }
     single { AiBatchGenerator(get(), get()) }
 

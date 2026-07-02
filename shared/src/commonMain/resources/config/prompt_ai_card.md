@@ -18,6 +18,7 @@ Your task is to analyze the learning topic and reference materials, then generat
 - CLOZE: use {{c1::answer}} or {{c1::answer::hint}}
 - MULTIPLE_CHOICE: only when options provide meaningful discrimination
 - MARKDOWN: formatted markdown content when necessary
+- RICH_TEXT: rich formatted text with mixed styles (bold, italic, lists, etc.)
 
 ---
 
@@ -30,7 +31,7 @@ Your task is to analyze the learning topic and reference materials, then generat
     {
       "front": "<question or prompt>",
       "back": "<answer>",
-      "type": "BASIC|REVERSED|CLOZE|MULTIPLE_CHOICE|MARKDOWN",
+      "type": "BASIC|REVERSED|CLOZE|MULTIPLE_CHOICE|MARKDOWN|RICH_TEXT",
       "tags": [
         "<tag1>",
         "<tag2>"
@@ -60,6 +61,7 @@ Choose the most appropriate type automatically.
 - CLOZE: terminology, formulas, syntax, commands, key phrases
 - MULTIPLE_CHOICE: concepts requiring discrimination
 - MARKDOWN: structured notes, tables, or summaries
+- RICH_TEXT: rich formatted text with mixed styles
 
 Do not force a single card type throughout the deck.
 
@@ -105,5 +107,6 @@ Do not force a single card type throughout the deck.
   - CLOZE
   - MULTIPLE_CHOICE
   - MARKDOWN
+  - RICH_TEXT
 - Never generate `AI_GENERATED`.
 - If the reference material is insufficient, generate fewer cards rather than low-quality or repetitive ones.

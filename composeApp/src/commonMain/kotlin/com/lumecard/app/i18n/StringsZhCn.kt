@@ -602,4 +602,13 @@ object ZhCnStrings : I18nStrings {
 
     override val pasteMedia = "粘贴媒体"
     override val browseMedia = "浏览..."
+
+    override val splashQuoteTitle = "启动名言（Splash Quote）设置"
+    override val splashQuoteEnabled = "启用启动名言"
+    override val splashQuoteEnabledDesc = "启动时展示一条激励名言"
+    override val splashQuoteDirection = "排版方向"
+    override val splashQuoteDirectionHorizontal = "横排"
+    override val splashQuoteDirectionVertical = "竖排（逐字竖排）"
+    override val splashQuoteFont = "专用字体"
+    override val splashQuoteFontSize = "字号"
 }

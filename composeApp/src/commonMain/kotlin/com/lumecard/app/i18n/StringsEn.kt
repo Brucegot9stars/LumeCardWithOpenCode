@@ -602,4 +602,13 @@ object EnStrings : I18nStrings {
 
     override val pasteMedia = "Paste Media"
     override val browseMedia = "Browse..."
+
+    override val splashQuoteTitle = "Splash Quote Settings"
+    override val splashQuoteEnabled = "Enable Splash Quote"
+    override val splashQuoteEnabledDesc = "Show an inspirational quote on app launch"
+    override val splashQuoteDirection = "Layout Direction"
+    override val splashQuoteDirectionHorizontal = "Horizontal"
+    override val splashQuoteDirectionVertical = "Vertical (character-by-character)"
+    override val splashQuoteFont = "Custom Font"
+    override val splashQuoteFontSize = "Font Size"
 }

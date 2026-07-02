@@ -602,4 +602,13 @@ object JaStrings : I18nStrings {
 
     override val pasteMedia = "メディアを貼り付け"
     override val browseMedia = "参照..."
+
+    override val splashQuoteTitle = "スプラッシュ名言設定"
+    override val splashQuoteEnabled = "スプラッシュ名言を有効化"
+    override val splashQuoteEnabledDesc = "アプリ起動時に励ましの名言を表示"
+    override val splashQuoteDirection = "レイアウト方向"
+    override val splashQuoteDirectionHorizontal = "横書き"
+    override val splashQuoteDirectionVertical = "縦書き（一字ずつ）"
+    override val splashQuoteFont = "専用フォント"
+    override val splashQuoteFontSize = "フォントサイズ"
 }

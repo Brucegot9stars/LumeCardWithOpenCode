@@ -602,4 +602,13 @@ object EsStrings : I18nStrings {
 
     override val pasteMedia = "Pegar medio"
     override val browseMedia = "Examinar..."
+
+    override val splashQuoteTitle = "Configuración de Cita de Inicio"
+    override val splashQuoteEnabled = "Activar cita de inicio"
+    override val splashQuoteEnabledDesc = "Mostrar una cita inspiradora al iniciar la aplicación"
+    override val splashQuoteDirection = "Dirección del diseño"
+    override val splashQuoteDirectionHorizontal = "Horizontal"
+    override val splashQuoteDirectionVertical = "Vertical (carácter por carácter)"
+    override val splashQuoteFont = "Fuente personalizada"
+    override val splashQuoteFontSize = "Tamaño de fuente"
 }

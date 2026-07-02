@@ -614,4 +614,13 @@ interface I18nStrings {
 
     val pasteMedia: String
     val browseMedia: String
+
+    val splashQuoteTitle: String
+    val splashQuoteEnabled: String
+    val splashQuoteEnabledDesc: String
+    val splashQuoteDirection: String
+    val splashQuoteDirectionHorizontal: String
+    val splashQuoteDirectionVertical: String
+    val splashQuoteFont: String
+    val splashQuoteFontSize: String
 }

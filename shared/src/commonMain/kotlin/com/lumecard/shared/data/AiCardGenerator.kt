@@ -295,9 +295,19 @@ class AiCardGenerator(
         return AiCardResponseJson(knowledge_base_name = kbName, deck_name = deckName, cards = cards)
     }
 
+    private val allowedAiTypes = setOf(
+        CardType.BASIC,
+        CardType.REVERSED,
+        CardType.CLOZE,
+        CardType.MULTIPLE_CHOICE,
+        CardType.MARKDOWN,
+        CardType.RICH_TEXT,
+    )
+
     private fun parseCardType(type: String): CardType {
         return try {
-            CardType.valueOf(type.uppercase())
+            val parsed = CardType.valueOf(type.uppercase())
+            if (parsed in allowedAiTypes) parsed else CardType.BASIC
         } catch (_: IllegalArgumentException) {
             CardType.BASIC
         }

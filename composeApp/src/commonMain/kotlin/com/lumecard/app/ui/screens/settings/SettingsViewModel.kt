@@ -4,6 +4,8 @@ import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import com.lumecard.app.i18n.AppLocale
 import com.lumecard.app.i18n.I18nManager
+import com.lumecard.shared.data.SplashQuoteDirection
+import com.lumecard.shared.data.SplashQuoteManager
 import com.lumecard.shared.domain.scheduler.ReviewMode
 import com.lumecard.shared.repository.SettingsRepository
 import kotlinx.coroutines.launch
@@ -11,7 +13,8 @@ import kotlinx.coroutines.launch
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     val state: SettingsStateHolder,
-    private val i18nManager: I18nManager
+    private val i18nManager: I18nManager,
+    private val splashQuoteManager: SplashQuoteManager,
 ) : ScreenModel {
 
     fun loadSettings() {
@@ -32,6 +35,10 @@ class SettingsViewModel(
             state.language = try { AppLocale.valueOf(langStr) } catch (_: Exception) { AppLocale.SYSTEM }
             state.defaultFontFamily = settingsRepository.get("defaultFontFamily") ?: ""
             state.fontScale = settingsRepository.get("fontScale")?.toFloatOrNull() ?: 1.0f
+            state.splashQuoteEnabled = splashQuoteManager.isEnabled()
+            state.splashQuoteDirection = splashQuoteManager.getDirection()
+            state.splashQuoteFont = splashQuoteManager.getFont()
+            state.splashQuoteFontSize = splashQuoteManager.getFontSize()
         }
     }
 
@@ -49,6 +56,10 @@ class SettingsViewModel(
             settingsRepository.set("language", state.language.name)
             settingsRepository.set("defaultFontFamily", state.defaultFontFamily)
             settingsRepository.set("fontScale", state.fontScale.toString())
+            splashQuoteManager.setEnabled(state.splashQuoteEnabled)
+            splashQuoteManager.setDirection(state.splashQuoteDirection)
+            splashQuoteManager.setFont(state.splashQuoteFont)
+            splashQuoteManager.setFontSize(state.splashQuoteFontSize)
             state.markClean()
             state.isSaving = false
         }
@@ -97,6 +108,26 @@ class SettingsViewModel(
 
     fun setAutoSyncInterval(minutes: Int) {
         state.autoSyncIntervalMinutes = minutes.coerceIn(5, 1440)
+        state.markDirty()
+    }
+
+    fun setSplashQuoteEnabled(enabled: Boolean) {
+        state.splashQuoteEnabled = enabled
+        state.markDirty()
+    }
+
+    fun setSplashQuoteDirection(direction: SplashQuoteDirection) {
+        state.splashQuoteDirection = direction
+        state.markDirty()
+    }
+
+    fun setSplashQuoteFont(font: String) {
+        state.splashQuoteFont = font
+        state.markDirty()
+    }
+
+    fun setSplashQuoteFontSize(size: Float) {
+        state.splashQuoteFontSize = size
         state.markDirty()
     }
 }

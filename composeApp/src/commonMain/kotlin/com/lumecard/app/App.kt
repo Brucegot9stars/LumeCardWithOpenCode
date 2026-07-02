@@ -29,10 +29,13 @@ import com.lumecard.app.ui.screens.aicard.AiCardScreen
 import com.lumecard.app.ui.screens.dashboard.DashboardScreen
 import com.lumecard.app.ui.screens.settings.SettingsScreen
 import com.lumecard.app.ui.screens.settings.SettingsStateHolder
+import com.lumecard.app.ui.screens.splash.SplashQuoteScreen
 import com.lumecard.app.ui.screens.stats.StatsScreen
 import com.lumecard.app.ui.screens.warehouse.WarehouseScreen
 import com.lumecard.app.font.FontInitializer
 import com.lumecard.app.ui.theme.LumeCardTheme
+import com.lumecard.shared.data.SplashQuoteDirection
+import com.lumecard.shared.data.SplashQuoteManager
 import com.lumecard.shared.repository.SettingsRepository
 import org.koin.compose.koinInject
 
@@ -60,6 +63,13 @@ fun App() {
         mutableStateOf(fromHolder)
     }
 
+    val splashQuoteManager: SplashQuoteManager = koinInject()
+    var showSplash by remember { mutableStateOf(false) }
+    var splashQuote by remember { mutableStateOf<com.lumecard.shared.data.SplashQuoteData?>(null) }
+    var splashDirection by remember { mutableStateOf(SplashQuoteDirection.HORIZONTAL) }
+    var splashFont by remember { mutableStateOf("") }
+    var splashFontSize by remember { mutableStateOf(0f) }
+
     LaunchedEffect(Unit) {
         settingsStateHolder.isDarkMode = settingsRepository.getBoolean("isDarkMode", false)
         settingsStateHolder.fontScale = settingsRepository.get("fontScale")?.toFloatOrNull() ?: 1.0f
@@ -67,6 +77,18 @@ fun App() {
         val savedLang = try { AppLocale.valueOf(langStr) } catch (_: Exception) { AppLocale.SYSTEM }
         settingsStateHolder.language = savedLang
         i18nManager.setLocale(savedLang)
+
+        val enabled = splashQuoteManager.isEnabled()
+        if (enabled) {
+            val quote = splashQuoteManager.getRandomQuote()
+            if (quote != null) {
+                splashQuote = quote
+                splashDirection = splashQuoteManager.getDirection()
+                splashFont = splashQuoteManager.getFont()
+                splashFontSize = splashQuoteManager.getFontSize()
+                showSplash = true
+            }
+        }
     }
 
     if (crashLog != null) {
@@ -117,6 +139,16 @@ fun App() {
     }
 
     LumeCardTheme(darkTheme = settingsStateHolder.isDarkMode, fontScale = settingsStateHolder.fontScale) {
+        val splashQuoteValue = splashQuote
+        if (showSplash && splashQuoteValue != null) {
+            SplashQuoteScreen(
+                quote = splashQuoteValue,
+                direction = splashDirection,
+                splashFontId = splashFont,
+                splashFontSize = splashFontSize,
+                onDismiss = { showSplash = false },
+            )
+        } else {
             var currentTab by remember { mutableStateOf(BottomNavItem.Dashboard) }
 
             Navigator(DashboardScreen()) { navigator ->
@@ -210,5 +242,6 @@ fun App() {
                     }
                 }
             }
+        }
     }
 }
