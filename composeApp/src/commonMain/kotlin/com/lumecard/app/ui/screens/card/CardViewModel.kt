@@ -77,6 +77,10 @@ class CardViewModel(
         return if (config.order == SortOrder.DESC) sorted.reversed() else sorted
     }
 
+    suspend fun getCardById(cardId: String): Card? {
+        return cardRepository.getById(cardId)
+    }
+
     fun getCardCount(deckId: String, onResult: (Int) -> Unit) {
         screenModelScope.launch {
             val count = cardRepository.getByDeck(deckId).first().size

@@ -191,7 +191,7 @@ class StudyViewModel(
                     list[index] = fresh
                     _cards.value = list
                 }
-            } catch (_: Exception) { }
+            } catch (e: Exception) { println("[LumeCard] refreshCurrentCard failed: ${e.message}") }
         }
     }
 

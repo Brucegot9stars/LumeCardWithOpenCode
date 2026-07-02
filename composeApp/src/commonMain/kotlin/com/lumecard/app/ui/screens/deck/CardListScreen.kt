@@ -175,7 +175,7 @@ class CardListScreen(
                     items(cards) { card ->
                         CardItem(
                             card = card,
-                            onEdit = { navigator.push(CreateCardScreen(deckId, deckName, editCard = card)) },
+                            onEdit = { navigator.push(CreateCardScreen(deckId, deckName, editCardId = card.id)) },
                             onDelete = { viewModel.deleteCard(card.id) },
                             onMove = {
                                 moveCardTarget = card

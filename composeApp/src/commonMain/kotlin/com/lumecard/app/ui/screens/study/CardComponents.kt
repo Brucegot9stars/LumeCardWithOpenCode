@@ -198,7 +198,7 @@ internal fun CardFace(
             }
             CardType.CLOZE -> {
                 if (!showBack) {
-                    val displayText = card.front.replace(clozeHintRegex, "____").replace(clozeRegex, "____")
+                    val displayText = remember(card.front) { card.front.replace(clozeHintRegex, "____").replace(clozeRegex, "____") }
                     Text(displayText, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.fillMaxWidth(), textAlign = textAlign, fontSize = fontSize.sp)
                     Spacer(Modifier.height(8.dp))
                     Text(strings.studyClozeHint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth())
@@ -223,9 +223,9 @@ internal fun CardFace(
             }
             CardType.MULTIPLE_CHOICE -> {
                 val question = card.front
-                val options = remember { card.back.split("\n").filter { it.isNotBlank() } }
-                val cleanOptions = remember { options.map { it.removePrefix("+").trim() } }
-                val correctIndices = remember {
+                val options = remember(card.back) { card.back.split("\n").filter { it.isNotBlank() } }
+                val cleanOptions = remember(options) { options.map { it.removePrefix("+").trim() } }
+                val correctIndices = remember(options) {
                     options.mapIndexedNotNull { i, opt -> if (opt.startsWith("+")) i else null }.toSet()
                 }
                 Surface(

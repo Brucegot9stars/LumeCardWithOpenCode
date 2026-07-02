@@ -11,6 +11,7 @@ import com.lumecard.shared.repository.KnowledgeBaseRepository
 import com.lumecard.shared.repository.LearningPlanRepository
 import com.lumecard.shared.repository.ReviewLogRepository
 import com.lumecard.shared.repository.SettingsRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -96,12 +98,13 @@ class DashboardViewModel(
                         _activePlanCount.update { list.count { it.status == PlanStatus.IN_PROGRESS } }
                     }
                 }
-                deckRepository.getAll().collect { deckList ->
-                    _decks.update { deckList }
+                launch {
+                    val deckList = withContext(Dispatchers.IO) { deckRepository.getAll().first() }
                     val withCount = deckList.map { deck ->
-                        val cards = cardRepository.getByDeck(deck.id).first()
+                        val cards = withContext(Dispatchers.IO) { cardRepository.getByDeck(deck.id).first() }
                         DeckWithCount(deck, cards.size)
                     }
+                    _decks.update { deckList }
                     _decksWithCount.update { withCount }
                     _isLoading.value = false
                 }
@@ -111,33 +114,40 @@ class DashboardViewModel(
 
     fun loadStats() {
         screenModelScope.launch {
-            val allLogs = reviewLogRepository.getAll().first()
+            val allLogs = withContext(Dispatchers.IO) { reviewLogRepository.getAll().first() }
+            val allCards = withContext(Dispatchers.IO) { cardRepository.getAll().first() }
+            val allPlans = withContext(Dispatchers.IO) { planRepository.getAll().first() }
+            val allDecks = withContext(Dispatchers.IO) { deckRepository.getAll().first() }
+
             val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-            val todayCount = allLogs.count { log ->
-                log.reviewedAt.toLocalDateTime(TimeZone.currentSystemDefault()).date == today
+            val todayCount = withContext(Dispatchers.Default) {
+                allLogs.count { log ->
+                    log.reviewedAt.toLocalDateTime(TimeZone.currentSystemDefault()).date == today
+                }
             }
             _todayReviews.value = todayCount
 
-            val allCards = cardRepository.getAll().first()
             val now = Clock.System.now()
-            val dueCount = allCards.count { card ->
-                val next = card.nextReviewAt
-                next != null && next <= now
+            val dueCount = withContext(Dispatchers.Default) {
+                allCards.count { card ->
+                    val next = card.nextReviewAt
+                    next != null && next <= now
+                }
             }
             _totalDueCards.value = dueCount
 
-            val allPlans = planRepository.getAll().first()
-            val allDecks = deckRepository.getAll().first()
-            val duePlanCount = allPlans.count { plan ->
-                val planCardIds = plan.cardIds.toSet()
-                val planDeckIds = plan.deckIds.toSet()
-                val planKbIds = plan.knowledgeBaseIds.toSet()
-                allCards.any { card ->
-                    card.deletedAt == null && (
-                        card.id in planCardIds ||
-                        card.deckId in planDeckIds ||
-                        allDecks.any { it.id == card.deckId && it.knowledgeBaseId in planKbIds }
-                    ) && card.nextReviewAt?.let { it <= now } == true
+            val duePlanCount = withContext(Dispatchers.Default) {
+                val planCardIdsSet = allPlans.map { it.cardIds.toSet() }
+                val planDeckIdsSet = allPlans.map { it.deckIds.toSet() }
+                val planKbIdsSet = allPlans.map { it.knowledgeBaseIds.toSet() }
+                allPlans.indices.count { i ->
+                    allCards.any { card ->
+                        card.deletedAt == null && (
+                            card.id in planCardIdsSet[i] ||
+                            card.deckId in planDeckIdsSet[i] ||
+                            allDecks.any { it.id == card.deckId && it.knowledgeBaseId in planKbIdsSet[i] }
+                        ) && card.nextReviewAt?.let { it <= now } == true
+                    }
                 }
             }
             _duePlanCount.value = duePlanCount

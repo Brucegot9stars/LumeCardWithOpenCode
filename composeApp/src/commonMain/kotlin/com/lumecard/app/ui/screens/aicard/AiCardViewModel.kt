@@ -58,6 +58,10 @@ class AiCardViewModel(
         manager.loadInitialData()
     }
 
+    override fun onDispose() {
+        manager.dispose()
+    }
+
     fun setMode(mode: AiCardMode) = manager.setMode(mode)
     fun selectKb(kbId: String) = manager.selectKb(kbId)
     fun selectDeck(deckId: String) = manager.selectDeck(deckId)

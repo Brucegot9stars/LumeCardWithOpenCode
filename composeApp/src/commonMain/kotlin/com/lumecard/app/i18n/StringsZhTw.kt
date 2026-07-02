@@ -424,6 +424,11 @@ object ZhTwStrings : I18nStrings {
     override val aiCardErrorNoContent = "AI 未返回卡牌內容"
     override val aiCardAutoClassify = "自動分類到牌組"
     override val aiCardAutoClassifyDesc = "AI 根據內容自動建立多個合適牌組"
+    override val aiCardTopicRequired = "請輸入製卡主題"
+    override val aiCardCancelled = "已取消"
+    override fun aiCardErrorLoadData(message: String) = "載入資料失敗：$message"
+    override fun aiCardErrorBatch(batch: Int, message: String) = "第 $batch 批生成失敗：$message"
+    override fun aiCardErrorGeneration(message: String) = "生成失敗：$message"
 
     override val actionMove = "移動"
     override val actionMerge = "合併"

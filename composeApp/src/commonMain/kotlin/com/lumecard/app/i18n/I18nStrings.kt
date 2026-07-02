@@ -430,6 +430,11 @@ interface I18nStrings {
     val aiCardErrorNoContent: String
     val aiCardAutoClassify: String
     val aiCardAutoClassifyDesc: String
+    val aiCardTopicRequired: String
+    val aiCardCancelled: String
+    fun aiCardErrorLoadData(message: String): String
+    fun aiCardErrorBatch(batch: Int, message: String): String
+    fun aiCardErrorGeneration(message: String): String
 
     // Move / Merge
     val actionMove: String

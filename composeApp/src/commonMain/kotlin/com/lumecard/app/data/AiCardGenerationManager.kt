@@ -37,6 +37,10 @@ class AiCardGenerationManager(
     private val _state = MutableStateFlow(AiCardUiState())
     val state: StateFlow<AiCardUiState> = _state.asStateFlow()
 
+    fun dispose() {
+        scope.cancel()
+    }
+
     private var generateJob: Job? = null
     private val allCardIds = mutableListOf<String>()
     private val createdKbIds = mutableSetOf<String>()
@@ -110,7 +114,7 @@ class AiCardGenerationManager(
             } catch (e: Exception) {
                 _state.update { it.copy(
                     screenState = AiCardScreenState.ERROR,
-                    errorMessage = "加载数据失败：${e.message}",
+                    errorMessage = i18nManager.strings.aiCardErrorLoadData(e.message ?: i18nManager.strings.errorUnknown),
                     configError = true,
                 ) }
             }
@@ -124,7 +128,9 @@ class AiCardGenerationManager(
                 deckRepository.getByKnowledgeBase(kbId).first()
             }
             _state.update { it.copy(decks = decks, hasDeck = decks.isNotEmpty()) }
-        } catch (_: Exception) { }
+        } catch (e: Exception) {
+            println("[LumeCard] loadDecks failed: ${e.message}")
+        }
     }
 
     fun setMode(mode: AiCardMode) {
@@ -193,10 +199,12 @@ class AiCardGenerationManager(
     fun restoreDefaultPrompt() {
         scope.launch {
             try {
-                val defaultPrompt = withContext(Dispatchers.IO) { promptManager.resetToDefault() }
+                val defaultPrompt =                 withContext(Dispatchers.IO) { promptManager.resetToDefault() }
                 _state.update { it.copy(prompt = defaultPrompt) }
                 cacheDraft(_state.value)
-            } catch (_: Exception) { }
+            } catch (e: Exception) {
+                println("[LumeCard] restoreDefaultPrompt failed: ${e.message}")
+            }
         }
     }
 
@@ -204,7 +212,9 @@ class AiCardGenerationManager(
         scope.launch {
             try {
                 withContext(Dispatchers.IO) { promptManager.savePrompt(_state.value.prompt) }
-            } catch (_: Exception) { }
+            } catch (e: Exception) {
+                println("[LumeCard] savePrompt failed: ${e.message}")
+            }
         }
     }
 
@@ -213,11 +223,11 @@ class AiCardGenerationManager(
         if (current.screenState == AiCardScreenState.GENERATING) return
 
         if (current.configError || current.selectedConfigId == null) {
-            _state.update { it.copy(screenState = AiCardScreenState.ERROR, errorMessage = "请先配置 AI 服务") }
+            _state.update { it.copy(screenState = AiCardScreenState.ERROR, errorMessage = i18nManager.strings.aiCardErrorNoConfig) }
             return
         }
         if (current.topic.isBlank()) {
-            _state.update { it.copy(screenState = AiCardScreenState.ERROR, errorMessage = "请输入制卡主题") }
+            _state.update { it.copy(screenState = AiCardScreenState.ERROR, errorMessage = i18nManager.strings.aiCardTopicRequired) }
             return
         }
 
@@ -242,7 +252,7 @@ class AiCardGenerationManager(
             try {
                 val config = withContext(Dispatchers.IO) { aiConfigManager.getById(configId) }
                 if (config == null) {
-                    _state.update { it.copy(screenState = AiCardScreenState.ERROR, errorMessage = "请先配置 AI 服务") }
+                    _state.update { it.copy(screenState = AiCardScreenState.ERROR, errorMessage = i18nManager.strings.aiCardErrorNoConfig) }
                     return@launch
                 }
 
@@ -270,7 +280,7 @@ class AiCardGenerationManager(
                                 totalBatches = totalBatches,
                                 savedCards = totalCreated,
                                 totalTarget = cardCount,
-                                status = "生成中",
+                                status = i18nManager.strings.aiCardGenerating,
                             ),
                         )
                     }
@@ -314,7 +324,7 @@ class AiCardGenerationManager(
                             if (res.deckId != originalDeckId) createdDeckIds.add(res.deckId)
                         },
                         onFailure = { e ->
-                            val msg = e.message ?: "未知错误"
+                            val msg = e.message ?: i18nManager.strings.errorUnknown
                             val parts = msg.split("|||", limit = 2)
                             val shortMsg = parts[0]
                             val detailed = parts.getOrNull(1) ?: msg
@@ -322,7 +332,7 @@ class AiCardGenerationManager(
                                 it.copy(
                                     screenState = AiCardScreenState.ERROR,
                                     batchProgress = null,
-                                    errorMessage = "第 $currentBatch 批生成失败：$shortMsg",
+                                    errorMessage = i18nManager.strings.aiCardErrorBatch(currentBatch, shortMsg),
                                     detailedError = detailed,
                                 )
                             }
@@ -351,19 +361,19 @@ class AiCardGenerationManager(
                     it.copy(
                         screenState = AiCardScreenState.IDLE,
                         batchProgress = null,
-                        errorMessage = "已取消",
+                        errorMessage = i18nManager.strings.aiCardCancelled,
                         detailedError = null,
                     )
                 }
                 generateJob = null
             } catch (e: Exception) {
-                val msg = e.message ?: "未知错误"
+                val msg = e.message ?: i18nManager.strings.errorUnknown
                 val parts = msg.split("|||", limit = 2)
                 _state.update {
                     it.copy(
                         screenState = AiCardScreenState.ERROR,
                         batchProgress = null,
-                        errorMessage = "生成失败：${parts[0]}",
+                        errorMessage = i18nManager.strings.aiCardErrorGeneration(parts[0]),
                         detailedError = parts.getOrNull(1) ?: msg,
                     )
                 }
@@ -377,13 +387,13 @@ class AiCardGenerationManager(
             scope.launch {
                 val cardIds = allCardIds.toList()
                 for (id in cardIds) {
-                    try { cardRepository.delete(id) } catch (_: Exception) { }
+                    try { cardRepository.delete(id) } catch (e: Exception) { println("[LumeCard] delete card $id failed: ${e.message}") }
                 }
                 for (kbId in createdKbIds) {
-                    try { knowledgeBaseRepository.delete(kbId) } catch (_: Exception) { }
+                    try { knowledgeBaseRepository.delete(kbId) } catch (e: Exception) { println("[LumeCard] delete KB $kbId failed: ${e.message}") }
                 }
                 for (deckId in createdDeckIds) {
-                    try { deckRepository.delete(deckId) } catch (_: Exception) { }
+                    try { deckRepository.delete(deckId) } catch (e: Exception) { println("[LumeCard] delete deck $deckId failed: ${e.message}") }
                 }
             }
         }

@@ -289,7 +289,7 @@ class StudyScreen(
                                             navigator.push(CreateCardScreen(
                                                 deckId = currentCard.deckId,
                                                 deckName = deckName,
-                                                editCard = currentCard,
+                                                editCardId = currentCard.id,
                                                 onCardSaved = { editSaveCount++ }
                                             ))
                                         } catch (e: Exception) {

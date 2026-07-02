@@ -424,6 +424,11 @@ object JaStrings : I18nStrings {
     override val aiCardErrorNoContent = "AIがカード内容を返しませんでした"
     override val aiCardAutoClassify = "デッキを自動分類"
     override val aiCardAutoClassifyDesc = "AIが内容に基づいて適切なデッキを作成"
+    override val aiCardTopicRequired = "カードのテーマを入力してください"
+    override val aiCardCancelled = "キャンセル済み"
+    override fun aiCardErrorLoadData(message: String) = "データの読み込みに失敗しました：$message"
+    override fun aiCardErrorBatch(batch: Int, message: String) = "バッチ $batch の生成に失敗しました：$message"
+    override fun aiCardErrorGeneration(message: String) = "生成に失敗しました：$message"
 
     override val actionMove = "移動"
     override val actionMerge = "マージ"

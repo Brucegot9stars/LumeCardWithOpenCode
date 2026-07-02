@@ -35,10 +35,10 @@ import org.koin.compose.koinInject
 class CreateCardScreen(
     private val deckId: String,
     private val deckName: String,
-    private val editCard: Card? = null,
+    private val editCardId: String? = null,
     private val onCardSaved: (() -> Unit)? = null,
 ) : Screen {
-    override val key: ScreenKey = "CreateCard_${editCard?.id ?: deckId}"
+    override val key: ScreenKey = "CreateCard_${editCardId ?: deckId}"
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
@@ -46,17 +46,23 @@ class CreateCardScreen(
         val navigator = LocalNavigator.currentOrThrow
         val viewModel: CardViewModel = koinInject()
         val strings = koinInject<I18nManager>().strings
-        var front by remember { mutableStateOf(editCard?.front ?: "") }
-        var back by remember { mutableStateOf(editCard?.back ?: "") }
-        var cardType by remember { mutableStateOf(editCard?.type ?: CardType.BASIC) }
-        var tags by remember { mutableStateOf(editCard?.tags?.joinToString(", ") ?: "") }
-        var horizontalCenter by remember { mutableStateOf(editCard?.metadata?.get("hcenter")?.toBoolean() ?: false) }
-        var verticalCenter by remember { mutableStateOf(editCard?.metadata?.get("vcenter")?.toBoolean() ?: false) }
-        var fontSize by remember { mutableStateOf(editCard?.metadata?.get("fontSize")?.toIntOrNull() ?: 16) }
-        var fontFamily by remember { mutableStateOf(editCard?.metadata?.get("fontFamily") ?: "") }
+
+        var editCard: Card? by remember { mutableStateOf(null) }
+        LaunchedEffect(editCardId) {
+            editCard = editCardId?.let { viewModel.getCardById(it) }
+        }
+
+        var front by remember(editCardId) { mutableStateOf(editCard?.front ?: "") }
+        var back by remember(editCardId) { mutableStateOf(editCard?.back ?: "") }
+        var cardType by remember(editCardId) { mutableStateOf(editCard?.type ?: CardType.BASIC) }
+        var tags by remember(editCardId) { mutableStateOf(editCard?.tags?.joinToString(", ") ?: "") }
+        var horizontalCenter by remember(editCardId) { mutableStateOf(editCard?.metadata?.get("hcenter")?.toBoolean() ?: false) }
+        var verticalCenter by remember(editCardId) { mutableStateOf(editCard?.metadata?.get("vcenter")?.toBoolean() ?: false) }
+        var fontSize by remember(editCardId) { mutableStateOf(editCard?.metadata?.get("fontSize")?.toIntOrNull() ?: 16) }
+        var fontFamily by remember(editCardId) { mutableStateOf(editCard?.metadata?.get("fontFamily") ?: "") }
         var showTypeMenu by remember { mutableStateOf(false) }
         var showTypeHelp by remember { mutableStateOf(true) }
-        val isEditing = editCard != null
+        val isEditing = editCardId != null
         Scaffold(
             topBar = {
                 LumeCardTopBar(
@@ -69,8 +75,9 @@ class CreateCardScreen(
                                 val saveBack = back
                                 val saveTags = tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
                                 if (isEditing) {
+                                    val savedCard = editCard ?: return@IconButton
                                     viewModel.updateCard(
-                                        card = editCard,
+                                        card = savedCard,
                                         front = saveFront,
                                         back = saveBack,
                                         type = cardType,

@@ -424,6 +424,11 @@ object EnStrings : I18nStrings {
     override val aiCardErrorNoContent = "AI returned no card content"
     override val aiCardAutoClassify = "Auto-classify into decks"
     override val aiCardAutoClassifyDesc = "AI creates appropriate decks based on content"
+    override val aiCardTopicRequired = "Please enter a card topic"
+    override val aiCardCancelled = "Cancelled"
+    override fun aiCardErrorLoadData(message: String) = "Failed to load data: $message"
+    override fun aiCardErrorBatch(batch: Int, message: String) = "Batch $batch generation failed: $message"
+    override fun aiCardErrorGeneration(message: String) = "Generation failed: $message"
 
     override val actionMove = "Move"
     override val actionMerge = "Merge"

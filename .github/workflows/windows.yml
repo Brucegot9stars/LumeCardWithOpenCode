@@ -9,6 +9,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: windows-latest
@@ -47,15 +51,14 @@ jobs:
       - name: Build all distributables
         run: .\gradlew.bat :composeApp:createDistributable :composeApp:packageExe :composeApp:packageMsi
 
-      - name: Extract version
+      - name: Extract version from tag
         id: version
         shell: pwsh
         run: |
-          $props = @{}
-          Get-Content version.properties | ForEach-Object {
-            if ($_ -match '^([^=]+)=(.*)$') { $props[$matches[1]] = $matches[2] }
-          }
-          echo "version=$($props['APP_VERSION_NAME'])" >> $env:GITHUB_OUTPUT
+          $tag = "$env:GITHUB_REF_NAME"
+          $ver = $tag -replace "^v", ""
+          echo "version=$ver" >> $env:GITHUB_OUTPUT
+          echo "Extracted version: $ver from tag $tag"
 
       - name: Package portable as ZIP
         shell: pwsh

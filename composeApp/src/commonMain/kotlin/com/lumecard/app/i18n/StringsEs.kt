@@ -424,6 +424,11 @@ object EsStrings : I18nStrings {
     override val aiCardErrorNoContent = "AI no devolvió contenido de tarjetas"
     override val aiCardAutoClassify = "Clasificar automáticamente en mazos"
     override val aiCardAutoClassifyDesc = "La IA crea mazos adecuados según el contenido"
+    override val aiCardTopicRequired = "Introduce un tema para la tarjeta"
+    override val aiCardCancelled = "Cancelado"
+    override fun aiCardErrorLoadData(message: String) = "Error al cargar datos: $message"
+    override fun aiCardErrorBatch(batch: Int, message: String) = "Error en el lote $batch: $message"
+    override fun aiCardErrorGeneration(message: String) = "Error de generación: $message"
 
     override val actionMove = "Mover"
     override val actionMerge = "Fusionar"

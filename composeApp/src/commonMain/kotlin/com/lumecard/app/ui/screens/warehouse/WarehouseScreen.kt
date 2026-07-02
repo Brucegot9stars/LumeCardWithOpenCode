@@ -278,7 +278,7 @@ class WarehouseScreen : Screen {
                                                         },
                                                         onAddCard = null,
                                                         onEditCard = (card.data as? Card)?.let { cardObj ->
-                                                            { navigator.push(CreateCardScreen(child.id, child.name, editCard = cardObj)) }
+                                                            { navigator.push(CreateCardScreen(child.id, child.name, editCardId = cardObj.id)) }
                                                         },
                                                         onDeleteCard = null,
                                                         spacing = spacing,
