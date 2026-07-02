@@ -52,14 +52,14 @@ class CreateCardScreen(
             editCard = editCardId?.let { viewModel.getCardById(it) }
         }
 
-        var front by remember(editCardId) { mutableStateOf(editCard?.front ?: "") }
-        var back by remember(editCardId) { mutableStateOf(editCard?.back ?: "") }
-        var cardType by remember(editCardId) { mutableStateOf(editCard?.type ?: CardType.BASIC) }
-        var tags by remember(editCardId) { mutableStateOf(editCard?.tags?.joinToString(", ") ?: "") }
-        var horizontalCenter by remember(editCardId) { mutableStateOf(editCard?.metadata?.get("hcenter")?.toBoolean() ?: false) }
-        var verticalCenter by remember(editCardId) { mutableStateOf(editCard?.metadata?.get("vcenter")?.toBoolean() ?: false) }
-        var fontSize by remember(editCardId) { mutableStateOf(editCard?.metadata?.get("fontSize")?.toIntOrNull() ?: 16) }
-        var fontFamily by remember(editCardId) { mutableStateOf(editCard?.metadata?.get("fontFamily") ?: "") }
+        var front by remember(editCard) { mutableStateOf(editCard?.front ?: "") }
+        var back by remember(editCard) { mutableStateOf(editCard?.back ?: "") }
+        var cardType by remember(editCard) { mutableStateOf(editCard?.type ?: CardType.BASIC) }
+        var tags by remember(editCard) { mutableStateOf(editCard?.tags?.joinToString(", ") ?: "") }
+        var horizontalCenter by remember(editCard) { mutableStateOf(editCard?.metadata?.get("hcenter")?.toBoolean() ?: false) }
+        var verticalCenter by remember(editCard) { mutableStateOf(editCard?.metadata?.get("vcenter")?.toBoolean() ?: false) }
+        var fontSize by remember(editCard) { mutableStateOf(editCard?.metadata?.get("fontSize")?.toIntOrNull() ?: 16) }
+        var fontFamily by remember(editCard) { mutableStateOf(editCard?.metadata?.get("fontFamily") ?: "") }
         var showTypeMenu by remember { mutableStateOf(false) }
         var showTypeHelp by remember { mutableStateOf(true) }
         val isEditing = editCardId != null

@@ -401,10 +401,14 @@ private fun TreeNodeItem(
     }
     val childCount = node.children.size
 
-    val cardModifier = if (node.type == NodeType.CARD && onEditCard != null) {
-        Modifier.fillMaxWidth().clickable { onEditCard() }
-    } else {
-        Modifier.fillMaxWidth()
+    val cardModifier = Modifier.fillMaxWidth().let { modifier ->
+        if (node.type == NodeType.CARD && onEditCard != null) {
+            modifier.clickable { onEditCard() }
+        } else if (node.type != NodeType.CARD && childCount > 0 && !isSelectMode) {
+            modifier.clickable { onToggleExpand() }
+        } else {
+            modifier
+        }
     }
 
     Card(
