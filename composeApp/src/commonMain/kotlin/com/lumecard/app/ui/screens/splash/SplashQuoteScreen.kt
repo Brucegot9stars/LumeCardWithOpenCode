@@ -152,7 +152,7 @@ private fun VerticalLayout(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         if (isCjk) {
-            val sentences = remember(quote.text) { splitSentences(quote.text) }
+            val sentences = remember(quote.text) { splitSentences(quote.text).reversed() }
             Row(
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
                 modifier = Modifier.fillMaxWidth(),
@@ -210,7 +210,7 @@ private fun VerticalLayout(
             Spacer(modifier = Modifier.height(4.dp))
 
             if (authorIsCjk) {
-                val authorSentences = remember(quote.author) { splitSentences(quote.author) }
+                val authorSentences = remember(quote.author) { splitSentences(quote.author).reversed() }
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(24.dp),
                     modifier = Modifier.fillMaxWidth(),
