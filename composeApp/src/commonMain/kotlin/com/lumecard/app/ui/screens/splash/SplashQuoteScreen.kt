@@ -153,24 +153,23 @@ private fun VerticalLayout(
     ) {
         if (isCjk) {
             val sentences = remember(quote.text) { splitSentences(quote.text).reversed() }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                sentences.forEach { sentence ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        for (ch in sentence) {
-                            if (ch == ' ') continue
-                            Text(
-                                text = ch.toString(),
-                                style = TextStyle(
-                                    fontFamily = fontFamily,
-                                    fontSize = fontSize,
-                                    lineHeight = fontSize * 0.95f,
-                                    textAlign = TextAlign.Center,
-                                ),
-                                color = MaterialTheme.colorScheme.onBackground,
-                            )
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                    sentences.forEach { sentence ->
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            for (ch in sentence) {
+                                if (ch == ' ') continue
+                                Text(
+                                    text = ch.toString(),
+                                    style = TextStyle(
+                                        fontFamily = fontFamily,
+                                        fontSize = fontSize,
+                                        lineHeight = fontSize * 0.95f,
+                                        textAlign = TextAlign.Center,
+                                    ),
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                )
+                            }
                         }
                     }
                 }
@@ -211,11 +210,9 @@ private fun VerticalLayout(
 
             if (authorIsCjk) {
                 val authorSentences = remember(quote.author) { splitSentences(quote.author).reversed() }
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    authorSentences.forEach { sentence ->
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                        authorSentences.forEach { sentence ->
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             for (ch in sentence) {
                                 if (ch == ' ') continue
@@ -231,6 +228,7 @@ private fun VerticalLayout(
                                 )
                             }
                         }
+                    }
                     }
                 }
             } else {
