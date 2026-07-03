@@ -9,11 +9,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import org.jetbrains.skia.Image as SkiaImage
+import com.lumecard.app.platform.platformLoadImage
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign as ComposeTextAlign
@@ -187,11 +185,7 @@ private fun tryParseHexColor(hex: String): Color? {
 }
 
 private fun tryLoadImage(path: String): Painter? {
-    return try {
-        val bytes = java.io.File(path).readBytes()
-        val bitmap = SkiaImage.makeFromEncoded(bytes).toComposeImageBitmap()
-        BitmapPainter(bitmap)
-    } catch (_: Exception) { null }
+    return platformLoadImage(path)
 }
 
 @Composable
