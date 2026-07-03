@@ -4,7 +4,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,13 +14,15 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.ui.components.AnimatedDonutChart
+import com.lumecard.app.ui.components.LumeCardDialog
+import com.lumecard.app.ui.components.LumeCardTextField
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.screens.dashboard.DashboardScreen
 import com.lumecard.app.ui.theme.LumeCardTheme
@@ -37,6 +40,8 @@ class StatsScreen : Screen {
         val viewModel: StatsViewModel = koinInject()
         val strings = koinInject<I18nManager>().strings
         val stats by viewModel.stats.collectAsState()
+        val resetStep by viewModel.resetStep.collectAsState()
+        val confirmInput by viewModel.confirmInput.collectAsState()
 
         LaunchedEffect(Unit) {
             viewModel.loadStats()
@@ -247,8 +252,105 @@ class StatsScreen : Screen {
                 HorizontalDivider()
 
                 CardCountsSection(stats, strings)
+                HorizontalDivider()
+
+                ResetSection(strings, viewModel, stats.totalDecks)
 
                 Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+
+        when (resetStep) {
+            1 -> LumeCardDialog(
+                title = strings.statsResetStep1Title,
+                onDismiss = { viewModel.cancelReset() },
+                onConfirm = { viewModel.advanceResetStep() },
+                confirmText = strings.actionConfirm,
+            ) {
+                Text(
+                    text = strings.statsResetStep1Desc,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+            2 -> LumeCardDialog(
+                title = strings.statsResetStep2Title,
+                onDismiss = { viewModel.cancelReset() },
+                onConfirm = { viewModel.advanceResetStep() },
+                confirmText = strings.actionConfirm,
+                confirmEnabled = confirmInput.trim() == "reset",
+            ) {
+                Text(
+                    text = strings.statsResetStep2Desc,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Spacer(Modifier.height(LumeCardTheme.spacing.sm))
+                LumeCardTextField(
+                    value = confirmInput,
+                    onValueChange = { viewModel.updateConfirmInput(it) },
+                    label = strings.statsResetInputPrompt,
+                )
+            }
+            3 -> LumeCardDialog(
+                title = strings.statsResetStep3Title,
+                onDismiss = { viewModel.cancelReset() },
+                onConfirm = { viewModel.executeReset() },
+                confirmText = strings.actionConfirm,
+            ) {
+                Text(
+                    text = strings.statsResetStep3Desc,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ResetSection(
+    strings: com.lumecard.app.i18n.I18nStrings,
+    viewModel: StatsViewModel,
+    totalDecks: Int
+) {
+    Text(
+        strings.statsResetData,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.error
+    )
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = if (totalDecks == 0) 0.4f else 0.15f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(LumeCardTheme.spacing.sm)
+        ) {
+            Text(
+                strings.statsResetDataDesc,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Button(
+                onClick = { viewModel.startReset() },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(
+                    Icons.Default.DeleteForever,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.width(LumeCardTheme.spacing.sm))
+                Text(strings.statsResetData)
             }
         }
     }
@@ -476,21 +578,21 @@ private fun RetentionSection(stats: AppStats, strings: com.lumecard.app.i18n.I18
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.width(60.dp),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    textAlign = TextAlign.Center
                 )
                 Text(
                     strings.statsRetentionMature,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.width(60.dp),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    textAlign = TextAlign.Center
                 )
                 Text(
                     strings.statsRetentionOverall,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.width(60.dp),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    textAlign = TextAlign.Center
                 )
             }
 
@@ -519,21 +621,21 @@ private fun RetentionSection(stats: AppStats, strings: com.lumecard.app.i18n.I18
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.width(60.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        textAlign = TextAlign.Center
                     )
                     Text(
                         fmtPct(period.matureRate),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.width(60.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        textAlign = TextAlign.Center
                     )
                     Text(
                         fmtPct(period.overallRate),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.width(60.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        textAlign = TextAlign.Center
                     )
                 }
             }

@@ -69,6 +69,9 @@ fun App() {
     var splashDirection by remember { mutableStateOf(SplashQuoteDirection.HORIZONTAL) }
     var splashFont by remember { mutableStateOf("") }
     var splashFontSize by remember { mutableStateOf(0f) }
+    var splashBackground by remember { mutableStateOf("") }
+    var splashShowAuthor by remember { mutableStateOf(true) }
+    var splashDurationSeconds by remember { mutableStateOf(3) }
 
     LaunchedEffect(Unit) {
         settingsStateHolder.isDarkMode = settingsRepository.getBoolean("isDarkMode", false)
@@ -78,14 +81,18 @@ fun App() {
         settingsStateHolder.language = savedLang
         i18nManager.setLocale(savedLang)
 
-        val enabled = splashQuoteManager.isEnabled()
-        if (enabled) {
-            val quote = splashQuoteManager.getRandomQuote()
+        val settings = splashQuoteManager.loadSettings()
+        if (settings.enabled) {
+            val allQuotes = splashQuoteManager.getAllQuotes()
+            val (quote, _) = splashQuoteManager.getQuoteForDisplay(settings.strategy, settings.sequenceIndex, allQuotes)
             if (quote != null) {
                 splashQuote = quote
-                splashDirection = splashQuoteManager.getDirection()
-                splashFont = splashQuoteManager.getFont()
-                splashFontSize = splashQuoteManager.getFontSize()
+                splashDirection = settings.direction
+                splashFont = settings.font
+                splashFontSize = settings.fontSize
+                splashBackground = settings.backgroundPath
+                splashShowAuthor = settings.showAuthor
+                splashDurationSeconds = settings.durationSeconds
                 showSplash = true
             }
         }
@@ -146,6 +153,10 @@ fun App() {
                 direction = splashDirection,
                 splashFontId = splashFont,
                 splashFontSize = splashFontSize,
+                durationMs = splashDurationSeconds * 1000L,
+                backgroundPath = splashBackground,
+                showAuthor = splashShowAuthor,
+                overrideConfig = splashQuoteValue.overrideConfig,
                 onDismiss = { showSplash = false },
             )
         } else {

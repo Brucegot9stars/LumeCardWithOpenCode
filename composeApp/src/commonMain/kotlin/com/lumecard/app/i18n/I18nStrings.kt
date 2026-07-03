@@ -566,6 +566,17 @@ interface I18nStrings {
     val statsCardCountsYoung: String
     val statsCardCountsMature: String
 
+    val statsResetData: String
+    val statsResetDataDesc: String
+    val statsResetStep1Title: String
+    val statsResetStep1Desc: String
+    val statsResetStep2Title: String
+    val statsResetStep2Desc: String
+    val statsResetInputPrompt: String
+    val statsResetStep3Title: String
+    val statsResetStep3Desc: String
+    val statsResetSuccess: String
+
     val algoFsrs: String
     val algoFsrsDesc: String
     val algoSm2: String
@@ -616,11 +627,64 @@ interface I18nStrings {
     val browseMedia: String
 
     val splashQuoteTitle: String
+    val splashQuoteSettingsDesc: String
     val splashQuoteEnabled: String
     val splashQuoteEnabledDesc: String
+    val splashQuoteDuration: String
+    val splashQuoteDurationDesc: String
     val splashQuoteDirection: String
     val splashQuoteDirectionHorizontal: String
     val splashQuoteDirectionVertical: String
     val splashQuoteFont: String
     val splashQuoteFontSize: String
+    val splashQuoteBackground: String
+    val splashQuoteBackgroundDesc: String
+    val splashQuoteBackgroundDefault: String
+    val splashQuoteBackgroundClear: String
+    val splashQuoteStrategy: String
+    val splashQuoteStrategyRandom: String
+    val splashQuoteStrategySequential: String
+    val splashQuoteShowAuthor: String
+    val splashQuoteShowAuthorDesc: String
+    val splashQuotePreview: String
+    val splashQuotePreviewDesc: String
+    val splashQuoteManage: String
+    val splashQuoteManageDesc: String
+    val splashQuoteAdd: String
+    val splashQuoteEdit: String
+    val splashQuoteDelete: String
+    val splashQuoteImport: String
+    val splashQuoteExport: String
+    val splashQuoteImportAppend: String
+    val splashQuoteImportOverwrite: String
+    val splashQuoteImportSuccess: String
+    val splashQuoteExportSuccess: String
+    val splashQuoteTextLabel: String
+    val splashQuoteAuthorLabel: String
+    val splashQuoteEmpty: String
+    val splashQuoteDurationSeconds: String
+    val splashQuoteDeleteConfirm: String
+    val splashQuoteDeleteConfirmDesc: String
+    val splashQuoteClearBgConfirm: String
+    val splashQuoteFontDefault: String
+    val splashQuoteBrowse: String
+    val splashQuoteOverrideEnabled: String
+    val splashQuoteOverrideGlobal: String
+    val splashQuoteBgSolidColor: String
+    val splashQuoteBgImage: String
+    val splashQuoteBgColorLabel: String
+    val splashQuoteBgImageLabel: String
+    val splashQuoteLayout: String
+    val splashQuoteTextAlign: String
+    val splashQuoteAuthorAlign: String
+    val splashQuoteVerticalPosition: String
+    fun splashQuoteContentSpacing(value: Int): String
+    fun splashQuotePagePadding(value: Int): String
+    fun splashQuoteMaxWidth(value: Int): String
+    val splashQuoteUnsavedTitle: String
+    val splashQuoteUnsavedDesc: String
+    val splashQuoteDiscard: String
+    val splashQuoteImportError: String
+    fun splashQuoteAuthorPrefix(author: String): String
+    fun splashQuoteFontSizeValue(size: Int): String
 }

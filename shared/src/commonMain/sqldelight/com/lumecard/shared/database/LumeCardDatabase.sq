@@ -191,6 +191,15 @@ DELETE FROM CardFTS WHERE card_id = ?;
 deleteAllCardFts:
 DELETE FROM CardFTS;
 
+deleteAllReviewLogs:
+DELETE FROM ReviewLog;
+
+deleteAllAlgorithmStates:
+DELETE FROM AlgorithmState;
+
+resetCardScheduling:
+UPDATE Card SET last_reviewed_at = NULL, next_review_at = NULL, updated_at = ?, version = version + 1, synced_at = NULL WHERE deleted_at IS NULL;
+
 rebuildCardFts:
 INSERT INTO CardFTS(card_id, front, back, tags) SELECT id, front, back, tags FROM Card WHERE deleted_at IS NULL;
 

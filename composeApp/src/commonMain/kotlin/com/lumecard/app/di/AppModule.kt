@@ -11,8 +11,8 @@ import com.lumecard.app.ui.screens.deck.DeckViewModel
 import com.lumecard.app.ui.screens.knowledgebase.KnowledgeBaseViewModel
 import com.lumecard.app.ui.screens.learningplan.LearningPlanViewModel
 import com.lumecard.app.ui.screens.settings.SettingsStateHolder
-import com.lumecard.shared.data.SplashQuoteManager
 import com.lumecard.app.ui.screens.settings.SettingsViewModel
+import com.lumecard.app.ui.screens.splash.SplashQuoteViewModel
 import com.lumecard.app.ui.screens.stats.StatsViewModel
 import com.lumecard.app.ui.screens.study.StudyViewModel
 import com.lumecard.app.ui.screens.warehouse.WarehouseViewModel
@@ -36,8 +36,9 @@ val appModule = module {
     factory { DeckViewModel(get(), get(), get(), get()) }
     factory { StudyViewModel(get(), get(), get(), get(), get(), get()) }
     factory { CardViewModel(get(), get()) }
-    factory { StatsViewModel(get(), get(), get(), get()) }
-    factory { SettingsViewModel(get(), get(), get(), get()) }
+    factory { StatsViewModel(get(), get(), get(), get(), get()) }
+    factory { SettingsViewModel(get(), get(), get()) }
+    factory { SplashQuoteViewModel(get()) }
     factory { KnowledgeBaseViewModel(get(), get()) }
     factory { LearningPlanViewModel(get(), get(), get()) }
     factory { WarehouseViewModel(get(), get(), get(), get()) }

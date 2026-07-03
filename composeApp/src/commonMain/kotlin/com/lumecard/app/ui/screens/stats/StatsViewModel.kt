@@ -2,6 +2,7 @@ package com.lumecard.app.ui.screens.stats
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import com.lumecard.shared.repository.AlgorithmStateRepository
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
 import com.lumecard.shared.repository.ReviewLogRepository
@@ -66,11 +67,18 @@ class StatsViewModel(
     private val reviewLogRepository: ReviewLogRepository,
     private val cardRepository: CardRepository,
     private val deckRepository: DeckRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val algorithmStateRepository: AlgorithmStateRepository
 ) : ScreenModel {
 
     private val _stats = MutableStateFlow(AppStats())
     val stats: StateFlow<AppStats> = _stats.asStateFlow()
+
+    private val _resetStep = MutableStateFlow(0)
+    val resetStep: StateFlow<Int> = _resetStep.asStateFlow()
+
+    private val _confirmInput = MutableStateFlow("")
+    val confirmInput: StateFlow<String> = _confirmInput.asStateFlow()
 
     init {
         loadStats()
@@ -134,6 +142,44 @@ class StatsViewModel(
                 )
             } catch (e: Exception) {
                 println("[LumeCard] StatsViewModel.loadStats failed: ${e.message}")
+            }
+        }
+    }
+
+    fun startReset() {
+        _resetStep.value = 1
+        _confirmInput.value = ""
+    }
+
+    fun advanceResetStep() {
+        val current = _resetStep.value
+        if (current < 3) _resetStep.value = current + 1
+    }
+
+    fun cancelReset() {
+        _resetStep.value = 0
+        _confirmInput.value = ""
+    }
+
+    fun updateConfirmInput(value: String) {
+        _confirmInput.value = value
+    }
+
+    fun executeReset() {
+        screenModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    reviewLogRepository.deleteAll()
+                    algorithmStateRepository.deleteAll()
+                    cardRepository.resetScheduling()
+                }
+                _resetStep.value = 0
+                _confirmInput.value = ""
+                loadStats()
+            } catch (e: Exception) {
+                println("[LumeCard] StatsViewModel.resetAllStats failed: ${e.message}")
+                _resetStep.value = 0
+                _confirmInput.value = ""
             }
         }
     }

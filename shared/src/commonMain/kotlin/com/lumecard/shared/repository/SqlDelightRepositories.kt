@@ -249,6 +249,12 @@ class SqlDelightCardRepository(
         queries.deleteAllCardFts()
         queries.rebuildCardFts()
     }
+
+    override suspend fun resetScheduling() {
+        val now = Clock.System.now().toString()
+        queries.resetCardScheduling(now)
+        queries.deleteAllCardFts()
+    }
 }
 
 class SqlDelightReviewLogRepository(
@@ -310,6 +316,10 @@ class SqlDelightReviewLogRepository(
         val ts = syncedAt.toString()
         ids.forEach { queries.updateReviewLogSyncedAt(ts, it) }
     }
+
+    override suspend fun deleteAll() {
+        queries.deleteAllReviewLogs()
+    }
 }
 
 class SqlDelightSettingsRepository(
@@ -363,6 +373,10 @@ class SqlDelightAlgorithmStateRepository(
 
     override suspend fun delete(cardId: String) {
         queries.deleteAlgorithmState(cardId)
+    }
+
+    override suspend fun deleteAll() {
+        queries.deleteAllAlgorithmStates()
     }
 }
 
