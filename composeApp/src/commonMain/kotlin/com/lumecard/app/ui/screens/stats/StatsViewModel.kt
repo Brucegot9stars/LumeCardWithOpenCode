@@ -147,7 +147,7 @@ class StatsViewModel(
     }
 
     fun startReset() {
-        _resetStep.value = 1
+        _resetStep.value = if (_stats.value.totalCards == 0) 3 else 1
         _confirmInput.value = ""
     }
 
