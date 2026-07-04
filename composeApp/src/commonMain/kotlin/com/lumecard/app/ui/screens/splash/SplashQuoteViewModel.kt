@@ -110,4 +110,20 @@ class SplashQuoteViewModel(
         val (quote, _) = manager.getQuoteForDisplay(s.strategy, s.sequenceIndex, quotes)
         return quote
     }
+
+    // ── Built-in quote hiding ─────────────────────────────
+
+    fun hideDefaultQuote(index: Int) {
+        screenModelScope.launch {
+            manager.hideDefaultQuote(index)
+            _defaultQuotes.value = manager.getDefaultQuotes()
+        }
+    }
+
+    fun restoreAllDefaultQuotes() {
+        screenModelScope.launch {
+            manager.restoreAllDefaultQuotes()
+            _defaultQuotes.value = manager.getDefaultQuotes()
+        }
+    }
 }

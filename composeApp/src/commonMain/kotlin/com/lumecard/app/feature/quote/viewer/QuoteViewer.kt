@@ -14,7 +14,6 @@ import androidx.compose.ui.unit.sp
 import com.lumecard.app.font.FontRegistry
 import com.lumecard.shared.data.*
 import com.lumecard.shared.feature.quote.config.QuoteDisplayConfig
-import com.lumecard.shared.feature.quote.config.QuoteDisplayMode
 import kotlinx.coroutines.delay
 
 @Composable
@@ -23,24 +22,21 @@ fun QuoteViewer(
     config: QuoteDisplayConfig,
     overrideConfig: QuoteOverrideConfig? = null,
     globalBackgroundPath: String = "",
-    globalFontFamily: FontFamily = FontFamily.Default,
-    globalFontSize: TextUnit = 24.sp,
-    globalShowAuthor: Boolean = true,
     onDismiss: () -> Unit = {},
     onNextQuote: (() -> Unit)? = null,
 ) {
     val effectiveOverride = overrideConfig ?: quote.overrideConfig
-    val effectiveDirection = effectiveOverride?.direction?.resolveOverridden(
-        if (config.mode == QuoteDisplayMode.STARTUP) SplashQuoteDirection.HORIZONTAL else SplashQuoteDirection.HORIZONTAL
-    ) ?: SplashQuoteDirection.HORIZONTAL
+    val effectiveDirection = effectiveOverride?.direction?.resolveOverridden(config.defaultDirection) ?: config.defaultDirection
 
-    val effectiveFontFamily = remember(effectiveOverride?.font) {
-        val fontId = effectiveOverride?.font ?: ""
-        if (fontId.isNotBlank()) FontRegistry.resolveFontFamily(fontId) else globalFontFamily
+    val effectiveFontFamily = remember(effectiveOverride?.font, config.defaultFont) {
+        val fontId = effectiveOverride?.font?.takeIf { it.isNotBlank() } ?: config.defaultFont
+        if (fontId.isNotBlank()) FontRegistry.resolveFontFamily(fontId) else FontFamily.Default
     }
 
-    val effectiveFontSize = effectiveOverride?.fontSize?.resolveOverridden(globalFontSize.value)?.sp ?: globalFontSize
-    val effectiveShowAuthor = effectiveOverride?.showAuthor?.resolveOverridden(globalShowAuthor) ?: globalShowAuthor
+    val effectiveFontSize = effectiveOverride?.fontSize?.resolveOverridden(config.defaultFontSize)?.let {
+        if (it > 0f) it.sp else 24.sp
+    } ?: if (config.defaultFontSize > 0f) config.defaultFontSize.sp else 24.sp
+    val effectiveShowAuthor = effectiveOverride?.showAuthor?.resolveOverridden(config.showAuthor) ?: config.showAuthor
     val effectiveBackground = resolveBackground(effectiveOverride?.background, globalBackgroundPath)
 
     var autoDismissed by remember { mutableStateOf(false) }

@@ -105,7 +105,7 @@ class SplashQuoteListScreen : Screen {
             snackbarHost = { SnackbarHost(snackbar) },
             floatingActionButton = {
                 FloatingActionButton(
-                    onClick = { navigator.push(SplashQuoteEditScreen(-1, null)) },
+                    onClick = { navigator.push(SplashQuoteEditScreen(-1)) },
                     containerColor = MaterialTheme.colorScheme.primary,
                 ) {
                     Icon(Icons.Default.Add, contentDescription = strings.splashQuoteAdd)
@@ -137,7 +137,7 @@ class SplashQuoteListScreen : Screen {
                             quote = quote,
                             strings = strings,
                             builtin = false,
-                            onEdit = { navigator.push(SplashQuoteEditScreen(index, quote)) },
+                            onEdit = { navigator.push(SplashQuoteEditScreen(index, quote.text, quote.author, quote.overrideConfig?.let { json.encodeToString(it) })) },
                             onDelete = {
                                 deletingIndex = index; showDeleteConfirm = true
                             },
@@ -149,7 +149,22 @@ class SplashQuoteListScreen : Screen {
                 if (defaultQuotes.isNotEmpty()) {
                     item {
                         Spacer(Modifier.height(spacing.section))
-                        SectionHeader(text = strings.splashQuoteBuiltinSection)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            SectionHeader(
+                                text = strings.splashQuoteBuiltinSection,
+                                modifier = Modifier.weight(1f),
+                            )
+                            TextButton(onClick = { vm.restoreAllDefaultQuotes() }) {
+                                Text(
+                                    text = "Restore all",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        }
                         Text(
                             text = strings.splashQuoteBuiltinHint,
                             style = MaterialTheme.typography.bodySmall,
@@ -157,13 +172,13 @@ class SplashQuoteListScreen : Screen {
                             modifier = Modifier.padding(start = spacing.sm, bottom = spacing.xs),
                         )
                     }
-                    itemsIndexed(defaultQuotes, key = { i, _ -> "builtin_$i" }) { _, quote ->
+                    itemsIndexed(defaultQuotes, key = { i, _ -> "builtin_$i" }) { index, quote ->
                         QuoteItem(
                             quote = quote,
                             strings = strings,
                             builtin = true,
-                            onEdit = { navigator.push(SplashQuoteEditScreen(-1, quote)) },
-                            onDelete = {},
+                            onEdit = { navigator.push(SplashQuoteEditScreen(-1, quote.text, quote.author, quote.overrideConfig?.let { json.encodeToString(it) })) },
+                            onDelete = { vm.hideDefaultQuote(index) },
                         )
                     }
                 }
@@ -246,6 +261,10 @@ private fun QuoteItem(
                 FilledTonalIconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
                     Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
+                Spacer(Modifier.width(4.dp))
+                IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                }
             } else {
                 IconButton(onClick = onEdit) {
                     Icon(Icons.Default.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -259,13 +278,13 @@ private fun QuoteItem(
 }
 
 @Composable
-private fun SectionHeader(text: String) {
+private fun SectionHeader(text: String, modifier: Modifier = Modifier) {
     val t = LumeCardTheme.spacing
     Text(
         text = text,
         style = MaterialTheme.typography.titleSmall,
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = t.sm, top = t.sm, bottom = 4.dp),
+        modifier = modifier.padding(start = t.sm, top = t.sm, bottom = 4.dp),
     )
 }

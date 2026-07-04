@@ -73,6 +73,10 @@ fun App() {
     var startupQuote by remember { mutableStateOf<com.lumecard.shared.data.SplashQuoteData?>(null) }
     var startupBackgroundPath by remember { mutableStateOf("") }
     var startupDurationMs by remember { mutableStateOf(3000L) }
+    var startupDirection by remember { mutableStateOf(com.lumecard.shared.data.SplashQuoteDirection.HORIZONTAL) }
+    var startupFontId by remember { mutableStateOf("") }
+    var startupFontSize by remember { mutableStateOf(0f) }
+    var startupShowAuthor by remember { mutableStateOf(true) }
     val activityScope = rememberCoroutineScope()
 
     // ── Screen saver state ───────────────────────────────
@@ -97,6 +101,10 @@ fun App() {
             startupQuote = quoteFeature.currentQuote.value
             startupBackgroundPath = settings.backgroundPath
             startupDurationMs = settings.durationSeconds * 1000L
+            startupDirection = settings.direction
+            startupFontId = settings.font
+            startupFontSize = settings.fontSize
+            startupShowAuthor = settings.showAuthor
             showSplash = startupQuote != null
         }
 
@@ -216,6 +224,10 @@ fun App() {
                     quote = startupQuote!!,
                     config = com.lumecard.shared.feature.quote.config.QuoteDisplayConfig.STARTUP_DEFAULT.copy(
                         dismissDurationMs = startupDurationMs,
+                        defaultDirection = startupDirection,
+                        defaultFont = startupFontId,
+                        defaultFontSize = startupFontSize,
+                        showAuthor = startupShowAuthor,
                     ),
                     globalBackgroundPath = startupBackgroundPath,
                     onDismiss = { showSplash = false },

@@ -13,6 +13,7 @@ class SplashQuoteManager(
     companion object {
         private const val QUOTES_RESOURCE = "/config/quotes.json"
         private const val KEY_USER_QUOTES = "splash_quote_user_quotes"
+        private const val KEY_HIDDEN_DEFAULTS = "splash_quote_hidden_defaults"
 
         private const val KEY_ENABLED = "splash_quote_enabled"
         private const val KEY_DURATION = "splash_quote_duration"
@@ -67,7 +68,7 @@ class SplashQuoteManager(
     suspend fun getAllQuotes(): List<SplashQuoteData> {
         val userQuotes = loadUserQuotes()
         if (userQuotes.isNotEmpty()) return userQuotes
-        return loadDefaultQuotes()
+        return getFilteredDefaultQuotes()
     }
 
     fun getQuoteForDisplay(strategy: SplashQuoteStrategy, currentIndex: Int, quotes: List<SplashQuoteData>): Pair<SplashQuoteData?, Int> {
@@ -86,8 +87,46 @@ class SplashQuoteManager(
     // ── Default quotes ──────────────────────────────────
 
     suspend fun getDefaultQuotes(): List<SplashQuoteData> {
-        return loadDefaultQuotes()
+        return getFilteredDefaultQuotes()
     }
+
+    suspend fun getHiddenDefaultIndices(): Set<Int> {
+        val raw = settingsRepository.get(KEY_HIDDEN_DEFAULTS) ?: return emptySet()
+        return try {
+            raw.split(",").mapNotNull { it.trim().toIntOrNull() }.toSet()
+        } catch (_: Exception) { emptySet() }
+    }
+
+    suspend fun hideDefaultQuote(index: Int) {
+        val hidden = getHiddenDefaultIndices().toMutableSet()
+        hidden.add(index)
+        saveHiddenIndices(hidden)
+        clearDefaultCache()
+    }
+
+    suspend fun restoreDefaultQuote(index: Int) {
+        val hidden = getHiddenDefaultIndices().toMutableSet()
+        hidden.remove(index)
+        saveHiddenIndices(hidden)
+        clearDefaultCache()
+    }
+
+    suspend fun restoreAllDefaultQuotes() {
+        saveHiddenIndices(emptySet())
+        clearDefaultCache()
+    }
+
+    private suspend fun getFilteredDefaultQuotes(): List<SplashQuoteData> {
+        val all = loadDefaultQuotes()
+        val hidden = getHiddenDefaultIndices()
+        return all.filterIndexed { index, _ -> index !in hidden }
+    }
+
+    private suspend fun saveHiddenIndices(indices: Set<Int>) {
+        settingsRepository.set(KEY_HIDDEN_DEFAULTS, indices.joinToString(","))
+    }
+
+    private fun clearDefaultCache() { cachedDefaultQuotes = null }
 
     // ── Quotes: CRUD on user quotes ──────────────────────
 

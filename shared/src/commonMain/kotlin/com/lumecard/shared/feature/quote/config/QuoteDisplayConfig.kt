@@ -1,5 +1,7 @@
 package com.lumecard.shared.feature.quote.config
 
+import com.lumecard.shared.data.SplashQuoteDirection
+
 data class QuoteDisplayConfig(
     val autoDismiss: Boolean = true,
     val dismissDurationMs: Long = 3000L,
@@ -16,6 +18,9 @@ data class QuoteDisplayConfig(
     val enableBackground: Boolean = true,
     val useGlobalBackground: Boolean = true,
     val mode: QuoteDisplayMode = QuoteDisplayMode.STARTUP,
+    val defaultDirection: SplashQuoteDirection = SplashQuoteDirection.HORIZONTAL,
+    val defaultFont: String = "",
+    val defaultFontSize: Float = 0f,
 ) {
     companion object {
         val STARTUP_DEFAULT = QuoteDisplayConfig(

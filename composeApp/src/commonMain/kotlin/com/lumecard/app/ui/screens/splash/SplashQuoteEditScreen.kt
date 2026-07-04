@@ -22,6 +22,7 @@ import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.app.platform.pickOpenFile
 import com.lumecard.shared.data.*
+import kotlinx.serialization.json.Json
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -29,7 +30,9 @@ import org.koin.compose.koinInject
 
 class SplashQuoteEditScreen(
     private val quoteIndex: Int,
-    private val initialQuote: SplashQuoteData?,
+    private val initialText: String = "",
+    private val initialAuthor: String = "",
+    private val initialOverrideJson: String? = null,
 ) : Screen {
     override val key: ScreenKey = "SplashQuoteEdit_$quoteIndex"
 
@@ -41,11 +44,15 @@ class SplashQuoteEditScreen(
         val vm: SplashQuoteViewModel = koinInject()
         val spacing = LumeCardTheme.spacing
         val radius = LumeCardTheme.radius
+        val json = remember { Json { ignoreUnknownKeys = true } }
+
+        val initialOverride = remember(initialOverrideJson) {
+            initialOverrideJson?.let { try { json.decodeFromString<QuoteOverrideConfig>(it) } catch (_: Exception) { null } }
+        }
 
         // ── Core fields ─────────────────────────────────
-        var text by remember { mutableStateOf(initialQuote?.text ?: "") }
-        var author by remember { mutableStateOf(initialQuote?.author ?: "") }
-        val initialOverride = initialQuote?.overrideConfig
+        var text by remember { mutableStateOf(initialText) }
+        var author by remember { mutableStateOf(initialAuthor) }
 
         // ── Direction override ─────────────────────────
         var dirOverrideEnabled by remember { mutableStateOf(initialOverride?.direction != null) }
@@ -83,8 +90,8 @@ class SplashQuoteEditScreen(
                 bgType, bgColor, bgImagePath,
                 textAlignValue, authorAlignValue, contentSpacingValue, pagePaddingValue, maxWidthValue, verticalPosValue)
             val overrideChanged = current != initialOverride
-            return text != (initialQuote?.text ?: "") ||
-                author != (initialQuote?.author ?: "") ||
+            return text != initialText ||
+                author != initialAuthor ||
                 overrideChanged
         }
         var isDirty by remember { mutableStateOf(false) }
