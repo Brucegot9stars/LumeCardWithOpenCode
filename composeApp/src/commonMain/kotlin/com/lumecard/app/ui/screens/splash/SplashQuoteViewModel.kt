@@ -66,6 +66,15 @@ class SplashQuoteViewModel(
         }
     }
 
+    suspend fun saveQuote(quoteIndex: Int, quote: SplashQuoteData) {
+        if (quoteIndex < 0) {
+            manager.addQuote(quote)
+        } else {
+            manager.updateQuote(quoteIndex, quote)
+        }
+        _userQuotes.value = manager.getUserQuotes()
+    }
+
     fun deleteQuote(index: Int) {
         screenModelScope.launch {
             manager.deleteQuote(index)

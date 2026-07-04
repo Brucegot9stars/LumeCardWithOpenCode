@@ -90,17 +90,20 @@ class SplashQuoteEditScreen(
         var isDirty by remember { mutableStateOf(false) }
         val updateDirty = { isDirty = computeIsDirty() }
 
-        // ── Preview state ──────────────────────────────
-        var showPreview by remember { mutableStateOf(false) }
+                        // ── Preview state ──────────────────────────────
+                        var showPreview by remember { mutableStateOf(false) }
 
-        // ── Discard confirmation ───────────────────────
-        var showDiscardDialog by remember { mutableStateOf(false) }
+                        // ── Discard confirmation ───────────────────────
+                        var showDiscardDialog by remember { mutableStateOf(false) }
 
-        // ── Save ────────────────────────────────────────
-        fun doSave() {
-            val override = if (layoutEnabled || dirOverrideEnabled || fontOverrideEnabled ||
+                        // ── Coroutine scope for save ───────────────────
+                        val saveScope = rememberCoroutineScope()
+
+                        // ── Save ────────────────────────────────────────
+                        fun buildFinalQuote(): Pair<SplashQuoteData, Boolean> {
+            val hasOverride = layoutEnabled || dirOverrideEnabled || fontOverrideEnabled ||
                 fontSizeOverrideEnabled || showAuthorOverrideEnabled || bgType != BackgroundType.FOLLOW_GLOBAL
-            ) {
+            val override = if (hasOverride) {
                 QuoteOverrideConfig(
                     direction = if (dirOverrideEnabled) dirValue else null,
                     font = if (fontOverrideEnabled) fontIdValue.ifBlank { null } else null,
@@ -122,7 +125,7 @@ class SplashQuoteEditScreen(
                 )
             } else null
             val quote = SplashQuoteData(text = text.trim(), author = author.trim(), overrideConfig = override)
-            if (quoteIndex < 0) vm.addQuote(quote) else vm.updateQuote(quoteIndex, quote)
+            return quote to hasOverride
         }
 
         Scaffold(
@@ -135,7 +138,13 @@ class SplashQuoteEditScreen(
                     },
                     action = {
                         FilledTonalButton(
-                            onClick = { doSave(); navigator.pop() },
+                            onClick = {
+                                val (quote, _) = buildFinalQuote()
+                                saveScope.launch {
+                                    vm.saveQuote(quoteIndex, quote)
+                                    navigator.pop()
+                                }
+                            },
                             enabled = text.isNotBlank(),
                         ) {
                             Text(strings.actionSave)
