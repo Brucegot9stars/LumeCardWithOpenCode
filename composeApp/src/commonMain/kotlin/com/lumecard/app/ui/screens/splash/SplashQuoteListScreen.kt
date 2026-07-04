@@ -1,17 +1,22 @@
 package com.lumecard.app.ui.screens.splash
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
@@ -42,9 +47,9 @@ class SplashQuoteListScreen : Screen {
         val strings = koinInject<I18nManager>().strings
         val vm: SplashQuoteViewModel = koinInject()
         val userQuotes by vm.userQuotes.collectAsState()
+        val defaultQuotes by vm.defaultQuotes.collectAsState()
         val scope = rememberCoroutineScope()
         val spacing = LumeCardTheme.spacing
-        val radius = LumeCardTheme.radius
         val snackbar = remember { SnackbarHostState() }
         val json = remember { Json { ignoreUnknownKeys = true; prettyPrint = true } }
 
@@ -107,27 +112,58 @@ class SplashQuoteListScreen : Screen {
                 }
             },
         ) { padding ->
-            if (userQuotes.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize().padding(padding),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(strings.splashQuoteEmpty, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(padding),
-                    contentPadding = PaddingValues(horizontal = spacing.md, vertical = spacing.sm),
-                    verticalArrangement = Arrangement.spacedBy(spacing.sm),
-                ) {
-                    itemsIndexed(userQuotes, key = { i, _ -> i }) { index, quote ->
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentPadding = PaddingValues(horizontal = spacing.md, vertical = spacing.sm),
+                verticalArrangement = Arrangement.spacedBy(spacing.xs),
+            ) {
+                // ── User quotes section ────────────────
+                if (userQuotes.isEmpty()) {
+                    item {
+                        Text(
+                            text = strings.splashQuoteEmpty,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = spacing.lg).fillMaxWidth(),
+                        )
+                    }
+                } else {
+                    item {
+                        SectionHeader(text = strings.splashQuoteTitle)
+                        Spacer(Modifier.height(spacing.xs))
+                    }
+                    itemsIndexed(userQuotes, key = { i, _ -> "user_$i" }) { index, quote ->
                         QuoteItem(
                             quote = quote,
                             strings = strings,
+                            builtin = false,
                             onEdit = { navigator.push(SplashQuoteEditScreen(index, quote)) },
                             onDelete = {
                                 deletingIndex = index; showDeleteConfirm = true
                             },
+                        )
+                    }
+                }
+
+                // ── Built-in quotes section ────────────
+                if (defaultQuotes.isNotEmpty()) {
+                    item {
+                        Spacer(Modifier.height(spacing.section))
+                        SectionHeader(text = strings.splashQuoteBuiltinSection)
+                        Text(
+                            text = strings.splashQuoteBuiltinHint,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = spacing.sm, bottom = spacing.xs),
+                        )
+                    }
+                    itemsIndexed(defaultQuotes, key = { i, _ -> "builtin_$i" }) { _, quote ->
+                        QuoteItem(
+                            quote = quote,
+                            strings = strings,
+                            builtin = true,
+                            onEdit = { navigator.push(SplashQuoteEditScreen(-1, quote)) },
+                            onDelete = {},
                         )
                     }
                 }
@@ -157,12 +193,16 @@ class SplashQuoteListScreen : Screen {
 private fun QuoteItem(
     quote: SplashQuoteData,
     strings: com.lumecard.app.i18n.I18nStrings,
+    builtin: Boolean,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onEdit),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = if (builtin) CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        ) else CardDefaults.cardColors(),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -171,13 +211,13 @@ private fun QuoteItem(
             Surface(
                 modifier = Modifier.size(40.dp),
                 shape = MaterialTheme.shapes.small,
-                color = MaterialTheme.colorScheme.primaryContainer,
+                color = if (builtin) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.primaryContainer,
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
-                        text = "“",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        text = if (builtin) "\uD83D\uDCD6" else "“",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (builtin) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
             }
@@ -202,12 +242,30 @@ private fun QuoteItem(
                 }
             }
 
-            IconButton(onClick = onEdit) {
-                Icon(Icons.Default.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+            if (builtin) {
+                FilledTonalIconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
+                }
+            } else {
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                }
             }
         }
     }
+}
+
+@Composable
+private fun SectionHeader(text: String) {
+    val t = LumeCardTheme.spacing
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = t.sm, top = t.sm, bottom = 4.dp),
+    )
 }

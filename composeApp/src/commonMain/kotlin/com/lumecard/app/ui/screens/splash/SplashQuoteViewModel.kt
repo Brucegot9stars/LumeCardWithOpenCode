@@ -23,6 +23,9 @@ class SplashQuoteViewModel(
     private val _userQuotes = MutableStateFlow<List<SplashQuoteData>>(emptyList())
     val userQuotes: StateFlow<List<SplashQuoteData>> = _userQuotes.asStateFlow()
 
+    private val _defaultQuotes = MutableStateFlow<List<SplashQuoteData>>(emptyList())
+    val defaultQuotes: StateFlow<List<SplashQuoteData>> = _defaultQuotes.asStateFlow()
+
     private val _isSaving = MutableStateFlow(false)
     val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
 
@@ -30,6 +33,7 @@ class SplashQuoteViewModel(
         screenModelScope.launch {
             _settings.value = manager.loadSettings()
             _userQuotes.value = manager.getUserQuotes()
+            _defaultQuotes.value = manager.getDefaultQuotes()
         }
     }
 

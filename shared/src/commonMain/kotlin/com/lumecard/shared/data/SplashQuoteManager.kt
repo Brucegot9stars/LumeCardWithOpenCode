@@ -83,6 +83,12 @@ class SplashQuoteManager(
         }
     }
 
+    // ── Default quotes ──────────────────────────────────
+
+    suspend fun getDefaultQuotes(): List<SplashQuoteData> {
+        return loadDefaultQuotes()
+    }
+
     // ── Quotes: CRUD on user quotes ──────────────────────
 
     suspend fun getUserQuotes(): List<SplashQuoteData> {

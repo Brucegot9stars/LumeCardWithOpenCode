@@ -687,4 +687,6 @@ interface I18nStrings {
     val splashQuoteImportError: String
     fun splashQuoteAuthorPrefix(author: String): String
     fun splashQuoteFontSizeValue(size: Int): String
+    val splashQuoteBuiltinSection: String
+    val splashQuoteBuiltinHint: String
 }

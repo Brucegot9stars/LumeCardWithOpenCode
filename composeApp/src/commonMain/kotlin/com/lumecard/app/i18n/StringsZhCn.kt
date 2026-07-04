@@ -675,4 +675,6 @@ object ZhCnStrings : I18nStrings {
     override val splashQuoteImportError = "JSON 格式无效"
     override fun splashQuoteAuthorPrefix(author: String) = "—— ${author}"
     override fun splashQuoteFontSizeValue(size: Int) = "${size}sp"
+    override val splashQuoteBuiltinSection = "内置名言"
+    override val splashQuoteBuiltinHint = "点击复制到自定义列表"
 }

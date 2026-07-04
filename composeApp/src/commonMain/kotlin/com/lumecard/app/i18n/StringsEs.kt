@@ -675,4 +675,6 @@ object EsStrings : I18nStrings {
     override val splashQuoteImportError = "Formato JSON inválido"
     override fun splashQuoteAuthorPrefix(author: String) = "— $author"
     override fun splashQuoteFontSizeValue(size: Int) = "${size}sp"
+    override val splashQuoteBuiltinSection = "Citas incorporadas"
+    override val splashQuoteBuiltinHint = "Haga clic para copiar y personalizar"
 }

@@ -675,4 +675,6 @@ object JaStrings : I18nStrings {
     override val splashQuoteImportError = "JSON形式が無効です"
     override fun splashQuoteAuthorPrefix(author: String) = "— ${author}"
     override fun splashQuoteFontSizeValue(size: Int) = "${size}sp"
+    override val splashQuoteBuiltinSection = "組み込み名言"
+    override val splashQuoteBuiltinHint = "クリックしてカスタムリストにコピー"
 }
