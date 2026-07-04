@@ -611,6 +611,147 @@ class SettingsScreen(
                     )
                 }
 
+                // === Screen Saver ===
+                Row(
+                    modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.Tv, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(spacing.sm))
+                    Text(
+                        strings.settingsScreenSaver,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = radius.card,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                ) {
+                    Column {
+                        ListItem(
+                            headlineContent = { Text(strings.settingsScreenSaverEnabled) },
+                            supportingContent = { Text(strings.settingsScreenSaverDesc) },
+                            trailingContent = {
+                                Switch(
+                                    checked = settingsState.screenSaverEnabled,
+                                    onCheckedChange = { settingsViewModel.setScreenSaverEnabled(it) },
+                                )
+                            },
+                        )
+                        HorizontalDivider()
+                        ListItem(
+                            headlineContent = { Text(strings.settingsScreenSaverIdleMinutes) },
+                            trailingContent = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    FilledIconButton(onClick = {
+                                        val v = (settingsState.screenSaverIdleMinutes - 1).coerceAtLeast(1)
+                                        settingsViewModel.setScreenSaverIdleMinutes(v)
+                                    }, modifier = Modifier.size(32.dp)) {
+                                        Text("-", style = MaterialTheme.typography.titleMedium)
+                                    }
+                                    Text(
+                                        "${settingsState.screenSaverIdleMinutes}",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        modifier = Modifier.padding(horizontal = 8.dp),
+                                    )
+                                    FilledIconButton(onClick = {
+                                        val v = (settingsState.screenSaverIdleMinutes + 1).coerceAtMost(60)
+                                        settingsViewModel.setScreenSaverIdleMinutes(v)
+                                    }, modifier = Modifier.size(32.dp)) {
+                                        Text("+", style = MaterialTheme.typography.titleMedium)
+                                    }
+                                }
+                            },
+                        )
+                        HorizontalDivider()
+                        ListItem(
+                            headlineContent = { Text(strings.settingsScreenSaverRotation) },
+                            trailingContent = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    FilledIconButton(onClick = {
+                                        val v = (settingsState.screenSaverRotationSeconds - 1).coerceAtLeast(1)
+                                        settingsViewModel.setScreenSaverRotationSeconds(v)
+                                    }, modifier = Modifier.size(32.dp)) {
+                                        Text("-", style = MaterialTheme.typography.titleMedium)
+                                    }
+                                    Text(
+                                        "${settingsState.screenSaverRotationSeconds}",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        modifier = Modifier.padding(horizontal = 8.dp),
+                                    )
+                                    FilledIconButton(onClick = {
+                                        val v = (settingsState.screenSaverRotationSeconds + 1).coerceAtMost(30)
+                                        settingsViewModel.setScreenSaverRotationSeconds(v)
+                                    }, modifier = Modifier.size(32.dp)) {
+                                        Text("+", style = MaterialTheme.typography.titleMedium)
+                                    }
+                                }
+                            },
+                        )
+                    }
+                }
+
+                // === Study Timer (inside Learning) ===
+                Row(
+                    modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.Timer, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(spacing.sm))
+                    Text(
+                        strings.settingsStudyTimer,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = radius.card,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                ) {
+                    Column {
+                        ListItem(
+                            headlineContent = { Text(strings.settingsStudyTimerIdlePause) },
+                            supportingContent = { Text(strings.settingsStudyTimerIdlePauseDesc) },
+                            trailingContent = {
+                                Switch(
+                                    checked = settingsState.idlePauseEnabled,
+                                    onCheckedChange = { settingsViewModel.setIdlePauseEnabled(it) },
+                                )
+                            },
+                        )
+                        HorizontalDivider()
+                        ListItem(
+                            headlineContent = { Text(strings.settingsStudyTimerIdlePauseThreshold) },
+                            trailingContent = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    FilledIconButton(onClick = {
+                                        val v = (settingsState.idlePauseThresholdSeconds - 5).coerceAtLeast(10)
+                                        settingsViewModel.setIdlePauseThresholdSeconds(v)
+                                    }, modifier = Modifier.size(32.dp)) {
+                                        Text("-", style = MaterialTheme.typography.titleMedium)
+                                    }
+                                    Text(
+                                        "${settingsState.idlePauseThresholdSeconds}",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        modifier = Modifier.padding(horizontal = 8.dp),
+                                    )
+                                    FilledIconButton(onClick = {
+                                        val v = (settingsState.idlePauseThresholdSeconds + 5).coerceAtMost(600)
+                                        settingsViewModel.setIdlePauseThresholdSeconds(v)
+                                    }, modifier = Modifier.size(32.dp)) {
+                                        Text("+", style = MaterialTheme.typography.titleMedium)
+                                    }
+                                }
+                            },
+                        )
+                    }
+                }
+
                 // === Notifications ===
                 Row(
                     modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),

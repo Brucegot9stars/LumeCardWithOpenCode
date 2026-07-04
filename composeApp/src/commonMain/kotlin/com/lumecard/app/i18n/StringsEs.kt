@@ -677,4 +677,14 @@ object EsStrings : I18nStrings {
     override fun splashQuoteFontSizeValue(size: Int) = "${size}sp"
     override val splashQuoteBuiltinSection = "Citas incorporadas"
     override val splashQuoteBuiltinHint = "Haga clic para copiar y personalizar"
+
+    override val settingsScreenSaver = "Protector de pantalla"
+    override val settingsScreenSaverDesc = "Mostrar citas en inactividad"
+    override val settingsScreenSaverEnabled = "Activar protector de pantalla"
+    override val settingsScreenSaverIdleMinutes = "Tiempo de inactividad (minutos)"
+    override val settingsScreenSaverRotation = "Intervalo de rotación (segundos)"
+    override val settingsStudyTimer = "Temporizador de estudio"
+    override val settingsStudyTimerIdlePause = "Pausar en inactividad"
+    override val settingsStudyTimerIdlePauseDesc = "Pausar el temporizador tras 30s de inactividad"
+    override val settingsStudyTimerIdlePauseThreshold = "Umbral de pausa (segundos)"
 }

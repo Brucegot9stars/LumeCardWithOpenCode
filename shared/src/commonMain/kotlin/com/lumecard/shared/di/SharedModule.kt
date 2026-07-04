@@ -64,6 +64,27 @@ val sharedModule = module {
     single { AiEventBus() }
     single { AiBatchGenerator(get(), get()) }
 
+    // Quote Feature (new unified architecture)
+    single { com.lumecard.shared.feature.quote.manager.IdleManager() }
+    single { com.lumecard.shared.feature.quote.timer.StudyTimerManager(get()) }
+    single { com.lumecard.shared.feature.quote.manager.QuoteOverrideManager() }
+    single { com.lumecard.shared.feature.quote.manager.QuoteManager(get()) }
+    single<com.lumecard.shared.feature.quote.settings.QuoteSettingsRepository> {
+        com.lumecard.shared.feature.quote.settings.DefaultQuoteSettingsRepository(get())
+    }
+    single { com.lumecard.shared.feature.quote.manager.QuoteDisplayController(get(), get()) }
+    single<com.lumecard.shared.feature.quote.facade.QuoteFeature> {
+        com.lumecard.shared.feature.quote.facade.DefaultQuoteFeature(
+            quoteManager = get(),
+            displayController = get(),
+            overrideManager = get(),
+            idleManager = get(),
+            studyTimerManager = get(),
+            settingsRepository = get(),
+            splashQuoteManager = get(),
+        )
+    }
+
     // Algorithm implementations
     single { FSRSAlgorithm() }
 

@@ -12,6 +12,7 @@ import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
 import com.lumecard.shared.repository.LearningPlanRepository
 import com.lumecard.shared.repository.ReviewLogRepository
+import com.lumecard.shared.feature.quote.facade.QuoteFeature
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.Job
@@ -38,7 +39,8 @@ class StudyViewModel(
     private val algorithmStateRepository: AlgorithmStateRepository,
     private val algorithm: ReviewAlgorithm,
     private val planRepository: LearningPlanRepository,
-    private val deckRepository: DeckRepository
+    private val deckRepository: DeckRepository,
+    private val quoteFeature: QuoteFeature,
 ) : ScreenModel {
 
     private val _error = MutableStateFlow<String?>(null)
@@ -79,6 +81,14 @@ class StudyViewModel(
 
     private val _elapsedSeconds = MutableStateFlow(0)
     val elapsedSeconds: StateFlow<Int> = _elapsedSeconds
+
+    init {
+        screenModelScope.launch {
+            quoteFeature.studyTimeSeconds.collect { secs ->
+                _elapsedSeconds.value = secs.toInt()
+            }
+        }
+    }
 
     private val _cardStartTimes = java.util.concurrent.ConcurrentHashMap<String, kotlin.time.Instant>()
 
@@ -200,17 +210,11 @@ class StudyViewModel(
         _hasStartedStudying = true
         _sessionStartTime.value = Clock.System.now()
         _elapsedSeconds.value = 0
-        timerJob?.cancel()
-        timerJob = screenModelScope.launch {
-            while (true) {
-                kotlinx.coroutines.delay(1000)
-                val start = _sessionStartTime.value ?: continue
-                _elapsedSeconds.value = ((Clock.System.now().toEpochMilliseconds() - start.toEpochMilliseconds()) / 1000).toInt()
-            }
-        }
+        quoteFeature.startStudy()
     }
 
     fun stopTimer() {
+        quoteFeature.stopStudy()
         timerJob?.cancel()
         timerJob = null
     }

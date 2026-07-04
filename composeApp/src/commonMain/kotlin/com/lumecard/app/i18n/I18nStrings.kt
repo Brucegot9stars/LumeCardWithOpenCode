@@ -689,4 +689,17 @@ interface I18nStrings {
     fun splashQuoteFontSizeValue(size: Int): String
     val splashQuoteBuiltinSection: String
     val splashQuoteBuiltinHint: String
+
+    // Screen Saver
+    val settingsScreenSaver: String
+    val settingsScreenSaverDesc: String
+    val settingsScreenSaverEnabled: String
+    val settingsScreenSaverIdleMinutes: String
+    val settingsScreenSaverRotation: String
+
+    // Study Timer
+    val settingsStudyTimer: String
+    val settingsStudyTimerIdlePause: String
+    val settingsStudyTimerIdlePauseDesc: String
+    val settingsStudyTimerIdlePauseThreshold: String
 }

@@ -25,6 +25,7 @@ data class QuoteOverrideConfig(
     val font: String? = null,
     val fontSize: Float? = null,
     val showAuthor: Boolean? = null,
+    val animationStyle: com.lumecard.shared.feature.quote.config.QuoteAnimationStyle? = null,
     val background: BackgroundOverride? = null,
     val layout: QuoteLayoutOverride? = null,
 )

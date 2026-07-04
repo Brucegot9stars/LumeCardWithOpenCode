@@ -677,4 +677,14 @@ object JaStrings : I18nStrings {
     override fun splashQuoteFontSizeValue(size: Int) = "${size}sp"
     override val splashQuoteBuiltinSection = "組み込み名言"
     override val splashQuoteBuiltinHint = "クリックしてカスタムリストにコピー"
+
+    override val settingsScreenSaver = "スクリーンセーバー"
+    override val settingsScreenSaverDesc = "アイドル時に名言を表示"
+    override val settingsScreenSaverEnabled = "スクリーンセーバーを有効"
+    override val settingsScreenSaverIdleMinutes = "アイドルタイムアウト（分）"
+    override val settingsScreenSaverRotation = "ローテーション間隔（秒）"
+    override val settingsStudyTimer = "学習タイマー"
+    override val settingsStudyTimerIdlePause = "アイドルで一時停止"
+    override val settingsStudyTimerIdlePauseDesc = "30秒間操作がないと学習タイマーを一時停止"
+    override val settingsStudyTimerIdlePauseThreshold = "アイドル一時停止しきい値（秒）"
 }
