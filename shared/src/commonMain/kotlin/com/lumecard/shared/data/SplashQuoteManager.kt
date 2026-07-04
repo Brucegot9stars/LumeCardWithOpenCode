@@ -67,8 +67,8 @@ class SplashQuoteManager(
 
     suspend fun getAllQuotes(): List<SplashQuoteData> {
         val userQuotes = loadUserQuotes()
-        if (userQuotes.isNotEmpty()) return userQuotes
-        return getFilteredDefaultQuotes()
+        val defaults = getFilteredDefaultQuotes()
+        return if (userQuotes.isNotEmpty()) userQuotes + defaults else defaults
     }
 
     fun getQuoteForDisplay(strategy: SplashQuoteStrategy, currentIndex: Int, quotes: List<SplashQuoteData>): Pair<SplashQuoteData?, Int> {
