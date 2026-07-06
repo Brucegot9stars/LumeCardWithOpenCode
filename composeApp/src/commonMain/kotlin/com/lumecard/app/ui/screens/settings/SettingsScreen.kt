@@ -32,7 +32,10 @@ import com.lumecard.app.ui.components.LumeCardDialog
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.components.LumeCardTextField
 import com.lumecard.app.ui.screens.ai.AiConfigScreen
+import com.lumecard.app.ui.screens.aicard.AiCardScreen
 import com.lumecard.app.ui.screens.dashboard.DashboardScreen
+import com.lumecard.app.ui.screens.settings.quote.QuoteSettingsScreen
+import com.lumecard.shared.settings.SettingsSearchResult
 import com.lumecard.app.ui.components.UpdateCheckDialog
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.theme.LumeCardTheme
@@ -96,6 +99,27 @@ class SettingsScreen(
         var currentDestFile by remember { mutableStateOf<java.io.File?>(null) }
         var lastFontImportDir by remember { mutableStateOf<String?>(null) }
 
+        // ── Global Settings Search ──────────────────────────
+        var searchQuery by remember { mutableStateOf("") }
+        var searchResults by remember { mutableStateOf<List<SettingsSearchResult>>(emptyList()) }
+        val searchEngine = rememberSettingsSearchEngine(strings)
+        LaunchedEffect(searchQuery) {
+            searchResults = searchEngine.search(searchQuery)
+        }
+
+        fun navigateToSearchResult(result: SettingsSearchResult) {
+            searchQuery = ""
+            val route = result.entry.route
+            when (route) {
+                "QuoteSettings" -> navigator.push(com.lumecard.app.ui.screens.settings.quote.QuoteSettingsScreen())
+                "WebDAV" -> navigator.push(WebDavConfigScreen())
+                "AIConfig" -> navigator.push(AiConfigScreen())
+                "AICards" -> navigator.push(com.lumecard.app.ui.screens.aicard.AiCardScreen())
+                "Stats" -> navigator.push(com.lumecard.app.ui.screens.dashboard.DashboardScreen())
+                else -> {} // "Settings" entries are on the current page
+            }
+        }
+
         LaunchedEffect(Unit) {
             settingsViewModel.loadSettings()
             try { withContext(Dispatchers.IO) { webDavConfigManager.getDefault() }?.let { defaultConfigName = it.name } } catch (_: Exception) { }
@@ -130,16 +154,33 @@ class SettingsScreen(
             snackbarHost = { SnackbarHost(snackbarHostState) }
         ) { padding ->
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = spacing.md),
-                verticalArrangement = Arrangement.spacedBy(spacing.section),
+                modifier = Modifier.fillMaxSize().padding(padding),
             ) {
-                Spacer(modifier = Modifier.height(spacing.xs))
+                com.lumecard.app.ui.components.SettingsSearchBar(
+                    query = searchQuery,
+                    onQueryChange = { searchQuery = it },
+                    placeholder = strings.actionSearch,
+                    modifier = Modifier.padding(horizontal = spacing.md),
+                )
 
-                // === Learning ===
+                if (searchQuery.isNotBlank()) {
+                    SettingsSearchResults(
+                        query = searchQuery,
+                        results = searchResults,
+                        onResultClick = { navigateToSearchResult(it) },
+                        modifier = Modifier.weight(1f),
+                    )
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = spacing.md),
+                        verticalArrangement = Arrangement.spacedBy(spacing.section),
+                    ) {
+                        Spacer(modifier = Modifier.height(spacing.xs))
+
+                        // === Learning ===
                 Row(
                     modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
                     verticalAlignment = Alignment.CenterVertically,
@@ -581,7 +622,7 @@ class SettingsScreen(
                     }
                 }
 
-                // === Splash Quote ===
+                // === Splash Quote & Screen Saver ===
                 Row(
                     modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
                     verticalAlignment = Alignment.CenterVertically,
@@ -604,94 +645,11 @@ class SettingsScreen(
                         headlineContent = { Text(strings.splashQuoteTitle) },
                         supportingContent = { Text(strings.splashQuoteSettingsDesc) },
                         leadingContent = { Icon(Icons.Default.AutoAwesome, contentDescription = null) },
-                        modifier = Modifier.clickable { navigator.push(com.lumecard.app.ui.screens.splash.SplashQuoteSettingsScreen()) },
+                        modifier = Modifier.clickable { navigator.push(com.lumecard.app.ui.screens.settings.quote.QuoteSettingsScreen()) },
                         trailingContent = {
                             Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         },
                     )
-                }
-
-                // === Screen Saver ===
-                Row(
-                    modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.Default.Tv, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(spacing.sm))
-                    Text(
-                        strings.settingsScreenSaver,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = radius.card,
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
-                ) {
-                    Column {
-                        ListItem(
-                            headlineContent = { Text(strings.settingsScreenSaverEnabled) },
-                            supportingContent = { Text(strings.settingsScreenSaverDesc) },
-                            trailingContent = {
-                                Switch(
-                                    checked = settingsState.screenSaverEnabled,
-                                    onCheckedChange = { settingsViewModel.setScreenSaverEnabled(it) },
-                                )
-                            },
-                        )
-                        HorizontalDivider()
-                        ListItem(
-                            headlineContent = { Text(strings.settingsScreenSaverIdleMinutes) },
-                            trailingContent = {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    FilledIconButton(onClick = {
-                                        val v = (settingsState.screenSaverIdleMinutes - 1).coerceAtLeast(1)
-                                        settingsViewModel.setScreenSaverIdleMinutes(v)
-                                    }, modifier = Modifier.size(32.dp)) {
-                                        Text("-", style = MaterialTheme.typography.titleMedium)
-                                    }
-                                    Text(
-                                        "${settingsState.screenSaverIdleMinutes}",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        modifier = Modifier.padding(horizontal = 8.dp),
-                                    )
-                                    FilledIconButton(onClick = {
-                                        val v = (settingsState.screenSaverIdleMinutes + 1).coerceAtMost(60)
-                                        settingsViewModel.setScreenSaverIdleMinutes(v)
-                                    }, modifier = Modifier.size(32.dp)) {
-                                        Text("+", style = MaterialTheme.typography.titleMedium)
-                                    }
-                                }
-                            },
-                        )
-                        HorizontalDivider()
-                        ListItem(
-                            headlineContent = { Text(strings.settingsScreenSaverRotation) },
-                            trailingContent = {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    FilledIconButton(onClick = {
-                                        val v = (settingsState.screenSaverRotationSeconds - 1).coerceAtLeast(1)
-                                        settingsViewModel.setScreenSaverRotationSeconds(v)
-                                    }, modifier = Modifier.size(32.dp)) {
-                                        Text("-", style = MaterialTheme.typography.titleMedium)
-                                    }
-                                    Text(
-                                        "${settingsState.screenSaverRotationSeconds}",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        modifier = Modifier.padding(horizontal = 8.dp),
-                                    )
-                                    FilledIconButton(onClick = {
-                                        val v = (settingsState.screenSaverRotationSeconds + 1).coerceAtMost(30)
-                                        settingsViewModel.setScreenSaverRotationSeconds(v)
-                                    }, modifier = Modifier.size(32.dp)) {
-                                        Text("+", style = MaterialTheme.typography.titleMedium)
-                                    }
-                                }
-                            },
-                        )
-                    }
                 }
 
                 // === Study Timer (inside Learning) ===
@@ -1073,6 +1031,8 @@ class SettingsScreen(
                 }
 
                 Spacer(modifier = Modifier.height(spacing.xxl))
+                    }
+                }
             }
         }
 

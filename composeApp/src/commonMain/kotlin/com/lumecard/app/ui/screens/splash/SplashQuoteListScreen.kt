@@ -55,6 +55,8 @@ class SplashQuoteListScreen : Screen {
 
         var showDeleteConfirm by remember { mutableStateOf(false) }
         var deletingIndex by remember { mutableStateOf(-1) }
+        var showBuiltinDeleteConfirm by remember { mutableStateOf(false) }
+        var deletingBuiltinQuote by remember { mutableStateOf<SplashQuoteData?>(null) }
 
         LaunchedEffect(Unit) { vm.load() }
 
@@ -114,7 +116,7 @@ class SplashQuoteListScreen : Screen {
         ) { padding ->
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(horizontal = spacing.md, vertical = spacing.sm),
+                contentPadding = PaddingValues(start = spacing.md, end = spacing.md, top = spacing.sm, bottom = 80.dp),
                 verticalArrangement = Arrangement.spacedBy(spacing.xs),
             ) {
                 // ── User quotes section ────────────────
@@ -178,14 +180,16 @@ class SplashQuoteListScreen : Screen {
                             strings = strings,
                             builtin = true,
                             onEdit = { navigator.push(SplashQuoteEditScreen(-1, quote.text, quote.author, quote.overrideConfig?.let { json.encodeToString(it) })) },
-                            onDelete = { vm.hideDefaultQuote(index) },
+                            onDelete = {
+                                deletingBuiltinQuote = quote; showBuiltinDeleteConfirm = true
+                            },
                         )
                     }
                 }
             }
         }
 
-        // ── Delete confirm ──────────────────────────────
+        // ── Delete confirm (user quotes) ──────────────
         if (showDeleteConfirm) {
             AlertDialog(
                 onDismissRequest = { showDeleteConfirm = false },
@@ -198,6 +202,30 @@ class SplashQuoteListScreen : Screen {
                 },
                 dismissButton = {
                     TextButton(onClick = { showDeleteConfirm = false }) { Text(strings.actionCancel) }
+                },
+            )
+        }
+
+        // ── Delete confirm (built-in quotes) ──────────
+        if (showBuiltinDeleteConfirm && deletingBuiltinQuote != null) {
+            AlertDialog(
+                onDismissRequest = { showBuiltinDeleteConfirm = false; deletingBuiltinQuote = null },
+                title = { Text(strings.splashQuoteDeleteConfirm) },
+                text = { Text(strings.splashQuoteBuiltinDeleteDesc) },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            vm.hideDefaultQuote(deletingBuiltinQuote!!)
+                            showBuiltinDeleteConfirm = false
+                            deletingBuiltinQuote = null
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    ) {
+                        Text(strings.actionDelete)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showBuiltinDeleteConfirm = false; deletingBuiltinQuote = null }) { Text(strings.actionCancel) }
                 },
             )
         }

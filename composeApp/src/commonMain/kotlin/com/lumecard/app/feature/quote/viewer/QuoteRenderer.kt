@@ -122,6 +122,7 @@ fun QuoteTextLayout(
     val textAlign = resolveTextAlign(layoutOverride?.textAlign, ComposeTextAlign.Center)
     val authorAlign = resolveTextAlign(layoutOverride?.authorAlign, ComposeTextAlign.Center)
     val contentSpacing = layoutOverride?.contentSpacing?.dp ?: 24.dp
+    val lineSpacing = (contentSpacing / 3).coerceAtLeast(4.dp)
     val paddingHorizontal = layoutOverride?.pagePadding?.dp ?: 32.dp
     val maxWidthFraction = layoutOverride?.maxWidth
     val verticalPos = layoutOverride?.verticalPosition ?: VerticalPosition.CENTER
@@ -130,6 +131,8 @@ fun QuoteTextLayout(
         VerticalPosition.CENTER -> Arrangement.Center
         VerticalPosition.BOTTOM -> Arrangement.Bottom
     }
+
+    val lines = remember(text) { text.splitLines() }
 
     Box(
         modifier = modifier
@@ -150,15 +153,19 @@ fun QuoteTextLayout(
                 verticalArrangement = verticalArrangement,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text(
-                    text = text,
-                    style = TextStyle(
-                        fontFamily = fontFamily,
-                        fontSize = fontSize,
-                        textAlign = textAlign,
-                    ),
-                    overflow = TextOverflow.Ellipsis,
-                )
+                lines.forEachIndexed { index, line ->
+                    Text(
+                        text = line,
+                        style = TextStyle(
+                            fontFamily = fontFamily,
+                            fontSize = fontSize,
+                            textAlign = textAlign,
+                        ),
+                    )
+                    if (index < lines.lastIndex) {
+                        Spacer(Modifier.height(lineSpacing))
+                    }
+                }
                 if (showAuthor && author.isNotBlank()) {
                     Spacer(Modifier.height(contentSpacing))
                     Text(
@@ -168,12 +175,32 @@ fun QuoteTextLayout(
                             textAlign = authorAlign,
                         ),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
         }
     }
+}
+
+private fun String.splitLines(): List<String> {
+    val punctuation = setOf('。', '！', '？', '；', '，', '、')
+    val result = mutableListOf<String>()
+    val current = StringBuilder()
+    for (char in this) {
+        current.append(char)
+        if (char in punctuation) {
+            val line = current.toString().trim()
+            if (line.isNotBlank()) {
+                result.add(line)
+            }
+            current.clear()
+        }
+    }
+    val remaining = current.toString().trim()
+    if (remaining.isNotBlank()) {
+        result.add(remaining)
+    }
+    return if (result.isEmpty()) listOf(this) else result
 }
 
 internal fun resolveTextAlign(override: TextAlignOverride?, default: ComposeTextAlign): ComposeTextAlign {

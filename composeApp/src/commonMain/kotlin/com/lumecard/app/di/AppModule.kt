@@ -12,6 +12,7 @@ import com.lumecard.app.ui.screens.knowledgebase.KnowledgeBaseViewModel
 import com.lumecard.app.ui.screens.learningplan.LearningPlanViewModel
 import com.lumecard.app.ui.screens.settings.SettingsStateHolder
 import com.lumecard.app.ui.screens.settings.SettingsViewModel
+import com.lumecard.app.ui.screens.settings.quote.QuoteSettingsViewModel
 import com.lumecard.app.ui.screens.splash.SplashQuoteViewModel
 import com.lumecard.app.ui.screens.stats.StatsViewModel
 import com.lumecard.app.ui.screens.study.StudyViewModel
@@ -39,6 +40,7 @@ val appModule = module {
     factory { StatsViewModel(get(), get(), get(), get(), get()) }
     factory { SettingsViewModel(get(), get(), get(), get()) }
     factory { SplashQuoteViewModel(get()) }
+    factory { QuoteSettingsViewModel(get(), get(), get()) }
     factory { KnowledgeBaseViewModel(get(), get()) }
     factory { LearningPlanViewModel(get(), get(), get()) }
     factory { WarehouseViewModel(get(), get(), get(), get()) }

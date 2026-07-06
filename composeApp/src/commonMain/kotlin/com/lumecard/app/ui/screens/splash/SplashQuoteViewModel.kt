@@ -113,9 +113,9 @@ class SplashQuoteViewModel(
 
     // ── Built-in quote hiding ─────────────────────────────
 
-    fun hideDefaultQuote(index: Int) {
+    fun hideDefaultQuote(quote: SplashQuoteData) {
         screenModelScope.launch {
-            manager.hideDefaultQuote(index)
+            manager.hideDefaultQuote(quote)
             _defaultQuotes.value = manager.getDefaultQuotes()
         }
     }

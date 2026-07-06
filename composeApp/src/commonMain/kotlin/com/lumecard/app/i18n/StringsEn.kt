@@ -677,6 +677,9 @@ object EnStrings : I18nStrings {
     override fun splashQuoteFontSizeValue(size: Int) = "${size}sp"
     override val splashQuoteBuiltinSection = "Built-in Quotes"
     override val splashQuoteBuiltinHint = "Click to copy and customize"
+    override val splashQuoteAnimation = "Animation"
+    override val splashQuoteAnimationDesc = "Animation settings (coming soon)"
+    override val splashQuoteAdvanced = "Advanced"
 
     override val settingsScreenSaver = "Screen Saver"
     override val settingsScreenSaverDesc = "Show splash quotes when idle"
@@ -687,4 +690,5 @@ object EnStrings : I18nStrings {
     override val settingsStudyTimerIdlePause = "Pause on idle"
     override val settingsStudyTimerIdlePauseDesc = "Pause study timer when inactive for 30s"
     override val settingsStudyTimerIdlePauseThreshold = "Idle pause threshold (seconds)"
+    override val splashQuoteBuiltinDeleteDesc = "This built-in quote will be hidden. You can restore it later."
 }

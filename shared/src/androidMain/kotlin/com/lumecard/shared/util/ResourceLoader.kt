@@ -14,12 +14,10 @@ actual fun loadTextResource(path: String): String? {
     val ctx = AndroidContextHolder.context
     return try {
         val file = File(ctx.filesDir, relativePath)
-        if (!file.exists()) {
-            file.parentFile?.mkdirs()
-            ctx.assets.open(relativePath).use { src ->
-                file.outputStream().use { dst ->
-                    src.copyTo(dst)
-                }
+        file.parentFile?.mkdirs()
+        ctx.assets.open(relativePath).use { src ->
+            file.outputStream().use { dst ->
+                src.copyTo(dst)
             }
         }
         file.readText().trim()

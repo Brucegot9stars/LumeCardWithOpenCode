@@ -677,6 +677,9 @@ object ZhCnStrings : I18nStrings {
     override fun splashQuoteFontSizeValue(size: Int) = "${size}sp"
     override val splashQuoteBuiltinSection = "内置名言"
     override val splashQuoteBuiltinHint = "点击复制到自定义列表"
+    override val splashQuoteAnimation = "动画"
+    override val splashQuoteAnimationDesc = "动画设置（即将推出）"
+    override val splashQuoteAdvanced = "高级设置"
 
     override val settingsScreenSaver = "屏幕保护"
     override val settingsScreenSaverDesc = "闲置时显示名言"
@@ -687,4 +690,5 @@ object ZhCnStrings : I18nStrings {
     override val settingsStudyTimerIdlePause = "闲置暂停"
     override val settingsStudyTimerIdlePauseDesc = "闲置30秒后暂停学习计时"
     override val settingsStudyTimerIdlePauseThreshold = "闲置暂停阈值（秒）"
+    override val splashQuoteBuiltinDeleteDesc = "该内置名言将被隐藏，之后可以恢复。"
 }

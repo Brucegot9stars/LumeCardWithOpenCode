@@ -677,6 +677,9 @@ object EsStrings : I18nStrings {
     override fun splashQuoteFontSizeValue(size: Int) = "${size}sp"
     override val splashQuoteBuiltinSection = "Citas incorporadas"
     override val splashQuoteBuiltinHint = "Haga clic para copiar y personalizar"
+    override val splashQuoteAnimation = "Animación"
+    override val splashQuoteAnimationDesc = "Configuración de animación (próximamente)"
+    override val splashQuoteAdvanced = "Avanzado"
 
     override val settingsScreenSaver = "Protector de pantalla"
     override val settingsScreenSaverDesc = "Mostrar citas en inactividad"
@@ -687,4 +690,5 @@ object EsStrings : I18nStrings {
     override val settingsStudyTimerIdlePause = "Pausar en inactividad"
     override val settingsStudyTimerIdlePauseDesc = "Pausar el temporizador tras 30s de inactividad"
     override val settingsStudyTimerIdlePauseThreshold = "Umbral de pausa (segundos)"
+    override val splashQuoteBuiltinDeleteDesc = "Esta cita integrada se ocultará. Puede restaurarla más tarde."
 }

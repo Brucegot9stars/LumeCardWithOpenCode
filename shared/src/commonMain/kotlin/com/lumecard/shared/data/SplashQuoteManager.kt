@@ -97,11 +97,15 @@ class SplashQuoteManager(
         } catch (_: Exception) { emptySet() }
     }
 
-    suspend fun hideDefaultQuote(index: Int) {
-        val hidden = getHiddenDefaultIndices().toMutableSet()
-        hidden.add(index)
-        saveHiddenIndices(hidden)
-        clearDefaultCache()
+    suspend fun hideDefaultQuote(quote: SplashQuoteData) {
+        val all = loadDefaultQuotes()
+        val originalIndex = all.indexOfFirst { it.text == quote.text && it.author == quote.author }
+        if (originalIndex >= 0) {
+            val hidden = getHiddenDefaultIndices().toMutableSet()
+            hidden.add(originalIndex)
+            saveHiddenIndices(hidden)
+            clearDefaultCache()
+        }
     }
 
     suspend fun restoreDefaultQuote(index: Int) {

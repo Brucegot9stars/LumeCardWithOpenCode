@@ -689,6 +689,12 @@ interface I18nStrings {
     fun splashQuoteFontSizeValue(size: Int): String
     val splashQuoteBuiltinSection: String
     val splashQuoteBuiltinHint: String
+    val splashQuoteBuiltinDeleteDesc: String
+
+    // Unified Quote Settings sections
+    val splashQuoteAnimation: String
+    val splashQuoteAnimationDesc: String
+    val splashQuoteAdvanced: String
 
     // Screen Saver
     val settingsScreenSaver: String
