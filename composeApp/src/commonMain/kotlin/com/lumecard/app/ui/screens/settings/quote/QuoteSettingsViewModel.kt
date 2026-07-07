@@ -49,10 +49,6 @@ class QuoteSettingsViewModel(
     )
     val sections: StateFlow<Map<String, Boolean>> = _sections.asStateFlow()
     private val savedSections = mutableMapOf<String, Boolean>()
-    private var preSearchSections: Map<String, Boolean>? = null
-
-    private val _searchQuery = MutableStateFlow("")
-    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
     private val _isDirty = MutableStateFlow(false)
     val isDirty: StateFlow<Boolean> = _isDirty.asStateFlow()
@@ -115,16 +111,6 @@ class QuoteSettingsViewModel(
     fun setScreenSaverEnabled(v: Boolean) { _settings.value = _settings.value.copy(screenSaverEnabled = v); markDirty() }
     fun setScreenSaverIdleMinutes(v: Int) { _settings.value = _settings.value.copy(screenSaverIdleMinutes = v.coerceIn(1, 60)); markDirty() }
     fun setScreenSaverRotationSeconds(v: Int) { _settings.value = _settings.value.copy(screenSaverRotationSeconds = v.coerceIn(1, 30)); markDirty() }
-
-    fun setSearchQuery(query: String) {
-        if (_searchQuery.value.isBlank() && query.isNotBlank()) {
-            preSearchSections = _sections.value.toMap()
-        } else if (query.isBlank() && _searchQuery.value.isNotBlank()) {
-            preSearchSections?.let { _sections.value = it }
-            preSearchSections = null
-        }
-        _searchQuery.value = query
-    }
 
     fun toggleSection(id: String) {
         val current = _sections.value.toMutableMap()

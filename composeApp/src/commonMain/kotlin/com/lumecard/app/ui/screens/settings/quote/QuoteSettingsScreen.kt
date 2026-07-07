@@ -22,7 +22,6 @@ import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.i18n.I18nStrings
 import com.lumecard.app.ui.components.ConfigSection
 import com.lumecard.app.ui.components.LumeCardTopBar
-import com.lumecard.app.ui.components.SettingsSearchBar
 import com.lumecard.app.ui.screens.splash.SplashQuoteListScreen
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.shared.data.SplashQuoteDirection
@@ -32,17 +31,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
-
-private data class SearchableItem(
-    val label: String,
-    val description: String = "",
-)
-
-private data class SearchableSection(
-    val id: String,
-    val title: String,
-    val items: List<SearchableItem>,
-)
 
 class QuoteSettingsScreen : Screen {
     override val key: ScreenKey = "QuoteSettings"
@@ -55,7 +43,6 @@ class QuoteSettingsScreen : Screen {
         val vm: QuoteSettingsViewModel = koinInject()
         val settings by vm.settings.collectAsState()
         val sections by vm.sections.collectAsState()
-        val searchQuery by vm.searchQuery.collectAsState()
         val isDirty by vm.isDirty.collectAsState()
         val scope = rememberCoroutineScope()
         val spacing = LumeCardTheme.spacing
@@ -65,74 +52,6 @@ class QuoteSettingsScreen : Screen {
         var showPreview by remember { mutableStateOf(false) }
 
         LaunchedEffect(Unit) { vm.load() }
-
-        val isSearching = searchQuery.isNotBlank()
-
-        // Define sections with searchable content
-        val sectionDefs = remember(strings) {
-            listOf(
-                SearchableSection("splash", strings.splashQuoteTitle, listOf(
-                    SearchableItem(strings.splashQuoteDuration, strings.splashQuoteDurationDesc),
-                    SearchableItem(strings.splashQuoteStrategy, ""),
-                    SearchableItem(strings.splashQuoteShowAuthor, strings.splashQuoteShowAuthorDesc),
-                )),
-                SearchableSection("screen_saver", strings.settingsScreenSaver, listOf(
-                    SearchableItem(strings.settingsScreenSaverEnabled, strings.settingsScreenSaverDesc),
-                    SearchableItem(strings.settingsScreenSaverIdleMinutes, ""),
-                    SearchableItem(strings.settingsScreenSaverRotation, ""),
-                )),
-                SearchableSection("management", strings.splashQuoteManage, listOf(
-                    SearchableItem(strings.splashQuoteManage, strings.splashQuoteManageDesc),
-                )),
-                SearchableSection("font_layout", strings.splashQuoteFont, listOf(
-                    SearchableItem(strings.splashQuoteDirection, ""),
-                    SearchableItem(strings.splashQuoteFont, ""),
-                    SearchableItem(strings.splashQuoteFontSize, ""),
-                )),
-                SearchableSection("animation", strings.splashQuoteAnimation, emptyList()),
-                SearchableSection("background", strings.splashQuoteBackground, listOf(
-                    SearchableItem(strings.splashQuoteBackgroundDefault, ""),
-                    SearchableItem(strings.splashQuoteBackgroundDesc, ""),
-                )),
-            )
-        }
-
-        // Compute search matches
-        val matchedSections = remember(sectionDefs, searchQuery) {
-            if (searchQuery.isBlank()) {
-                sectionDefs.associate { it.id to it.items.indices.toList() }
-            } else {
-                val q = searchQuery.lowercase()
-                sectionDefs.associate { section ->
-                    val titleMatch = section.title.lowercase().contains(q)
-                    val matchedIndices = section.items.mapIndexedNotNull { i, item ->
-                        if (titleMatch || item.label.lowercase().contains(q) || item.description.lowercase().contains(q)) i else null
-                    }
-                    section.id to matchedIndices
-                }
-            }
-        }
-
-        // Auto-expand matching sections during search
-        LaunchedEffect(searchQuery) {
-            if (searchQuery.isNotBlank()) {
-                matchedSections.forEach { (id, indices) ->
-                    if (indices.isNotEmpty() && !(sections[id] ?: false)) {
-                        vm.setSection(id, true)
-                    }
-                }
-            }
-        }
-
-        fun matchesSearch(sectionId: String): Boolean {
-            val indices = matchedSections[sectionId] ?: emptyList()
-            return !isSearching || indices.isNotEmpty()
-        }
-
-        fun itemVisible(sectionId: String, itemIndex: Int): Boolean {
-            if (!isSearching) return true
-            return matchedSections[sectionId]?.contains(itemIndex) ?: false
-        }
 
         Scaffold(
             topBar = {
@@ -214,295 +133,254 @@ class QuoteSettingsScreen : Screen {
                     return@Column
                 }
 
-                // ── Search Bar ────────────────────────────────
-                SettingsSearchBar(
-                    query = searchQuery,
-                    onQueryChange = { vm.setSearchQuery(it) },
-                    placeholder = strings.actionSearch,
-                )
-
                 // ── 1. Splash Quote Section ─────────────────
-                if (matchesSearch("splash")) {
-                    ConfigSection(
-                        title = strings.splashQuoteTitle,
-                        expanded = sections["splash"] ?: true,
-                        onToggle = { vm.toggleSection("splash") },
-                    ) {
-                        // Duration
-                        if (itemVisible("splash", 0)) {
-                            ListItem(
-                                headlineContent = { Text(strings.splashQuoteDuration) },
-                                supportingContent = { Text(strings.splashQuoteDurationDesc) },
-                                trailingContent = {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        FilledIconButton(
-                                            onClick = { vm.setDuration(settings.durationSeconds - 1) },
-                                            modifier = Modifier.size(32.dp),
-                                        ) {
-                                            Text("-", style = MaterialTheme.typography.titleMedium)
-                                        }
-                                        Text(
-                                            "${settings.durationSeconds}${strings.splashQuoteDurationSeconds}",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            modifier = Modifier.padding(horizontal = 12.dp),
-                                        )
-                                        FilledIconButton(
-                                            onClick = { vm.setDuration(settings.durationSeconds + 1) },
-                                            modifier = Modifier.size(32.dp),
-                                        ) {
-                                            Text("+", style = MaterialTheme.typography.titleMedium)
-                                        }
-                                    }
-                                },
-                            )
-                        }
+                ConfigSection(
+                    title = strings.splashQuoteTitle,
+                    expanded = sections["splash"] ?: true,
+                    onToggle = { vm.toggleSection("splash") },
+                ) {
+                    // Duration
+                    ListItem(
+                        headlineContent = { Text(strings.splashQuoteDuration) },
+                        supportingContent = { Text(strings.splashQuoteDurationDesc) },
+                        trailingContent = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                FilledIconButton(
+                                    onClick = { vm.setDuration(settings.durationSeconds - 1) },
+                                    modifier = Modifier.size(32.dp),
+                                ) {
+                                    Text("-", style = MaterialTheme.typography.titleMedium)
+                                }
+                                Text(
+                                    "${settings.durationSeconds}${strings.splashQuoteDurationSeconds}",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.padding(horizontal = 12.dp),
+                                )
+                                FilledIconButton(
+                                    onClick = { vm.setDuration(settings.durationSeconds + 1) },
+                                    modifier = Modifier.size(32.dp),
+                                ) {
+                                    Text("+", style = MaterialTheme.typography.titleMedium)
+                                }
+                            }
+                        },
+                    )
 
-                        // Strategy
-                        if (itemVisible("splash", 1)) {
-                            HorizontalDivider()
-                            StrategyItem(
-                                strategy = settings.strategy,
-                                strings = strings,
-                                onChange = { vm.setStrategy(it) },
-                            )
-                        }
+                    // Strategy
+                    HorizontalDivider()
+                    StrategyItem(
+                        strategy = settings.strategy,
+                        strings = strings,
+                        onChange = { vm.setStrategy(it) },
+                    )
 
-                        // Show Author
-                        if (itemVisible("splash", 2)) {
-                            HorizontalDivider()
-                            ListItem(
-                                headlineContent = { Text(strings.splashQuoteShowAuthor) },
-                                supportingContent = { Text(strings.splashQuoteShowAuthorDesc) },
-                                trailingContent = {
-                                    Switch(
-                                        checked = settings.showAuthor,
-                                        onCheckedChange = { vm.setShowAuthor(it) },
-                                    )
-                                },
+                    // Show Author
+                    HorizontalDivider()
+                    ListItem(
+                        headlineContent = { Text(strings.splashQuoteShowAuthor) },
+                        supportingContent = { Text(strings.splashQuoteShowAuthorDesc) },
+                        trailingContent = {
+                            Switch(
+                                checked = settings.showAuthor,
+                                onCheckedChange = { vm.setShowAuthor(it) },
                             )
-                        }
-                    }
+                        },
+                    )
                 }
 
                 // ── 2. Screen Saver Section ────────────────
-                if (matchesSearch("screen_saver")) {
-                    ConfigSection(
-                        title = strings.settingsScreenSaver,
-                        expanded = sections["screen_saver"] ?: true,
-                        onToggle = { vm.toggleSection("screen_saver") },
-                    ) {
-                        if (itemVisible("screen_saver", 0)) {
-                            ListItem(
-                                headlineContent = { Text(strings.settingsScreenSaverEnabled) },
-                                supportingContent = { Text(strings.settingsScreenSaverDesc) },
-                                trailingContent = {
-                                    Switch(
-                                        checked = settings.screenSaverEnabled,
-                                        onCheckedChange = { vm.setScreenSaverEnabled(it) },
-                                    )
-                                },
+                ConfigSection(
+                    title = strings.settingsScreenSaver,
+                    expanded = sections["screen_saver"] ?: true,
+                    onToggle = { vm.toggleSection("screen_saver") },
+                ) {
+                    ListItem(
+                        headlineContent = { Text(strings.settingsScreenSaverEnabled) },
+                        supportingContent = { Text(strings.settingsScreenSaverDesc) },
+                        trailingContent = {
+                            Switch(
+                                checked = settings.screenSaverEnabled,
+                                onCheckedChange = { vm.setScreenSaverEnabled(it) },
                             )
-                        }
-                        if (itemVisible("screen_saver", 1)) {
-                            HorizontalDivider()
-                            ListItem(
-                                headlineContent = { Text(strings.settingsScreenSaverIdleMinutes) },
-                                trailingContent = {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        FilledIconButton(
-                                            onClick = {
-                                                vm.setScreenSaverIdleMinutes(settings.screenSaverIdleMinutes - 1)
-                                            },
-                                            modifier = Modifier.size(32.dp),
-                                        ) {
-                                            Text("-", style = MaterialTheme.typography.titleMedium)
-                                        }
-                                        Text(
-                                            "${settings.screenSaverIdleMinutes}",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            modifier = Modifier.padding(horizontal = 8.dp),
-                                        )
-                                        FilledIconButton(
-                                            onClick = {
-                                                vm.setScreenSaverIdleMinutes(settings.screenSaverIdleMinutes + 1)
-                                            },
-                                            modifier = Modifier.size(32.dp),
-                                        ) {
-                                            Text("+", style = MaterialTheme.typography.titleMedium)
-                                        }
-                                    }
-                                },
-                            )
-                        }
-                        if (itemVisible("screen_saver", 2)) {
-                            HorizontalDivider()
-                            ListItem(
-                                headlineContent = { Text(strings.settingsScreenSaverRotation) },
-                                trailingContent = {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        FilledIconButton(
-                                            onClick = {
-                                                vm.setScreenSaverRotationSeconds(settings.screenSaverRotationSeconds - 1)
-                                            },
-                                            modifier = Modifier.size(32.dp),
-                                        ) {
-                                            Text("-", style = MaterialTheme.typography.titleMedium)
-                                        }
-                                        Text(
-                                            "${settings.screenSaverRotationSeconds}",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            modifier = Modifier.padding(horizontal = 8.dp),
-                                        )
-                                        FilledIconButton(
-                                            onClick = {
-                                                vm.setScreenSaverRotationSeconds(settings.screenSaverRotationSeconds + 1)
-                                            },
-                                            modifier = Modifier.size(32.dp),
-                                        ) {
-                                            Text("+", style = MaterialTheme.typography.titleMedium)
-                                        }
-                                    }
-                                },
-                            )
-                        }
-                    }
+                        },
+                    )
+                    HorizontalDivider()
+                    ListItem(
+                        headlineContent = { Text(strings.settingsScreenSaverIdleMinutes) },
+                        trailingContent = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                FilledIconButton(
+                                    onClick = {
+                                        vm.setScreenSaverIdleMinutes(settings.screenSaverIdleMinutes - 1)
+                                    },
+                                    modifier = Modifier.size(32.dp),
+                                ) {
+                                    Text("-", style = MaterialTheme.typography.titleMedium)
+                                }
+                                Text(
+                                    "${settings.screenSaverIdleMinutes}",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.padding(horizontal = 8.dp),
+                                )
+                                FilledIconButton(
+                                    onClick = {
+                                        vm.setScreenSaverIdleMinutes(settings.screenSaverIdleMinutes + 1)
+                                    },
+                                    modifier = Modifier.size(32.dp),
+                                ) {
+                                    Text("+", style = MaterialTheme.typography.titleMedium)
+                                }
+                            }
+                        },
+                    )
+                    HorizontalDivider()
+                    ListItem(
+                        headlineContent = { Text(strings.settingsScreenSaverRotation) },
+                        trailingContent = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                FilledIconButton(
+                                    onClick = {
+                                        vm.setScreenSaverRotationSeconds(settings.screenSaverRotationSeconds - 1)
+                                    },
+                                    modifier = Modifier.size(32.dp),
+                                ) {
+                                    Text("-", style = MaterialTheme.typography.titleMedium)
+                                }
+                                Text(
+                                    "${settings.screenSaverRotationSeconds}",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.padding(horizontal = 8.dp),
+                                )
+                                FilledIconButton(
+                                    onClick = {
+                                        vm.setScreenSaverRotationSeconds(settings.screenSaverRotationSeconds + 1)
+                                    },
+                                    modifier = Modifier.size(32.dp),
+                                ) {
+                                    Text("+", style = MaterialTheme.typography.titleMedium)
+                                }
+                            }
+                        },
+                    )
                 }
 
                 // ── 3. Quote Management Section ─────────────
-                if (matchesSearch("management")) {
-                    ConfigSection(
-                        title = strings.splashQuoteManage,
-                        expanded = sections["management"] ?: true,
-                        onToggle = { vm.toggleSection("management") },
-                    ) {
-                        ListItem(
-                            headlineContent = { Text(strings.splashQuoteManage) },
-                            supportingContent = { Text(strings.splashQuoteManageDesc) },
-                            leadingContent = { Icon(Icons.Default.FormatQuote, contentDescription = null) },
-                            modifier = Modifier.clickable { navigator.push(SplashQuoteListScreen()) },
-                            trailingContent = {
-                                Icon(
-                                    Icons.Default.ChevronRight,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            },
-                        )
-                    }
+                ConfigSection(
+                    title = strings.splashQuoteManage,
+                    expanded = sections["management"] ?: true,
+                    onToggle = { vm.toggleSection("management") },
+                ) {
+                    ListItem(
+                        headlineContent = { Text(strings.splashQuoteManage) },
+                        supportingContent = { Text(strings.splashQuoteManageDesc) },
+                        leadingContent = { Icon(Icons.Default.FormatQuote, contentDescription = null) },
+                        modifier = Modifier.clickable { navigator.push(SplashQuoteListScreen()) },
+                        trailingContent = {
+                            Icon(
+                                Icons.Default.ChevronRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                    )
                 }
 
                 // ── 4. Font & Layout Section ────────────────
-                if (matchesSearch("font_layout")) {
-                    ConfigSection(
-                        title = strings.splashQuoteFont,
-                        expanded = sections["font_layout"] ?: false,
-                        onToggle = { vm.toggleSection("font_layout") },
-                    ) {
-                        if (itemVisible("font_layout", 0)) {
-                            DirectionItem(
-                                direction = settings.direction,
-                                strings = strings,
-                                onChange = { vm.setDirection(it) },
-                            )
-                        }
-                        if (itemVisible("font_layout", 1)) {
-                            HorizontalDivider()
-                            FontItem(
-                                currentFont = settings.font,
-                                strings = strings,
-                                onChange = { vm.setFont(it) },
-                            )
-                        }
-                        if (itemVisible("font_layout", 2)) {
-                            HorizontalDivider()
-                            ListItem(
-                                headlineContent = { Text(strings.splashQuoteFontSize) },
-                                trailingContent = {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        FilledIconButton(
-                                            onClick = {
-                                                val v = (if (settings.fontSize > 0f) settings.fontSize else 24f) - 2f
-                                                vm.setFontSize(v.coerceAtLeast(12f))
-                                            },
-                                            modifier = Modifier.size(32.dp),
-                                        ) {
-                                            Text("-", style = MaterialTheme.typography.titleMedium)
-                                        }
-                                        Text(
-                                            if (settings.fontSize > 0f) "${settings.fontSize.toInt()}" else strings.splashQuoteFontDefault,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            modifier = Modifier.padding(horizontal = 8.dp),
-                                        )
-                                        FilledIconButton(
-                                            onClick = {
-                                                val v = (if (settings.fontSize > 0f) settings.fontSize else 24f) + 2f
-                                                vm.setFontSize(v.coerceAtMost(72f))
-                                            },
-                                            modifier = Modifier.size(32.dp),
-                                        ) {
-                                            Text("+", style = MaterialTheme.typography.titleMedium)
-                                        }
-                                    }
-                                },
-                            )
-                        }
-                    }
+                ConfigSection(
+                    title = strings.splashQuoteFont,
+                    expanded = sections["font_layout"] ?: false,
+                    onToggle = { vm.toggleSection("font_layout") },
+                ) {
+                    DirectionItem(
+                        direction = settings.direction,
+                        strings = strings,
+                        onChange = { vm.setDirection(it) },
+                    )
+                    HorizontalDivider()
+                    FontItem(
+                        currentFont = settings.font,
+                        strings = strings,
+                        onChange = { vm.setFont(it) },
+                    )
+                    HorizontalDivider()
+                    ListItem(
+                        headlineContent = { Text(strings.splashQuoteFontSize) },
+                        trailingContent = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                FilledIconButton(
+                                    onClick = {
+                                        val v = (if (settings.fontSize > 0f) settings.fontSize else 24f) - 2f
+                                        vm.setFontSize(v.coerceAtLeast(12f))
+                                    },
+                                    modifier = Modifier.size(32.dp),
+                                ) {
+                                    Text("-", style = MaterialTheme.typography.titleMedium)
+                                }
+                                Text(
+                                    if (settings.fontSize > 0f) "${settings.fontSize.toInt()}" else strings.splashQuoteFontDefault,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.padding(horizontal = 8.dp),
+                                )
+                                FilledIconButton(
+                                    onClick = {
+                                        val v = (if (settings.fontSize > 0f) settings.fontSize else 24f) + 2f
+                                        vm.setFontSize(v.coerceAtMost(72f))
+                                    },
+                                    modifier = Modifier.size(32.dp),
+                                ) {
+                                    Text("+", style = MaterialTheme.typography.titleMedium)
+                                }
+                            }
+                        },
+                    )
                 }
 
                 // ── 5. Animation Section (placeholder) ──────
-                if (matchesSearch("animation")) {
-                    ConfigSection(
-                        title = strings.splashQuoteAnimation,
-                        expanded = sections["animation"] ?: false,
-                        onToggle = { vm.toggleSection("animation") },
-                    ) {
-                        ListItem(
-                            headlineContent = { Text(strings.splashQuoteAnimation) },
-                            supportingContent = { Text(strings.splashQuoteAnimationDesc) },
-                        )
-                    }
+                ConfigSection(
+                    title = strings.splashQuoteAnimation,
+                    expanded = sections["animation"] ?: false,
+                    onToggle = { vm.toggleSection("animation") },
+                ) {
+                    ListItem(
+                        headlineContent = { Text(strings.splashQuoteAnimation) },
+                        supportingContent = { Text(strings.splashQuoteAnimationDesc) },
+                    )
                 }
 
                 // ── 6. Background Section ─────────────────
-                if (matchesSearch("background")) {
-                    ConfigSection(
-                        title = strings.splashQuoteBackground,
-                        expanded = sections["background"] ?: false,
-                        onToggle = { vm.toggleSection("background") },
-                    ) {
-                        if (itemVisible("background", 0)) {
-                            ListItem(
-                                headlineContent = { Text(strings.splashQuoteBackgroundDefault) },
-                                leadingContent = { Icon(Icons.Default.Image, contentDescription = null) },
-                                modifier = Modifier.clickable { vm.setBackgroundPath("") },
-                                trailingContent = {
-                                    if (settings.backgroundPath.isBlank()) {
-                                        Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                    }
-                                },
-                            )
-                        }
-                        if (itemVisible("background", 1)) {
-                            HorizontalDivider()
-                            ListItem(
-                                headlineContent = { Text(strings.splashQuoteBackgroundDesc) },
-                                leadingContent = { Icon(Icons.Default.AddPhotoAlternate, contentDescription = null) },
-                                modifier = Modifier.clickable {
-                                    scope.launch {
-                                        val path = withContext(Dispatchers.IO) { pickOpenFile("image/*") }
-                                        if (path != null) vm.setBackgroundPath(path)
-                                    }
-                                },
-                            )
-                            if (settings.backgroundPath.isNotBlank()) {
-                                HorizontalDivider()
-                                ListItem(
-                                    headlineContent = { Text(strings.splashQuoteBackgroundClear, color = MaterialTheme.colorScheme.error) },
-                                    leadingContent = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
-                                    modifier = Modifier.clickable { showClearBgConfirm = true },
-                                )
+                ConfigSection(
+                    title = strings.splashQuoteBackground,
+                    expanded = sections["background"] ?: false,
+                    onToggle = { vm.toggleSection("background") },
+                ) {
+                    ListItem(
+                        headlineContent = { Text(strings.splashQuoteBackgroundDefault) },
+                        leadingContent = { Icon(Icons.Default.Image, contentDescription = null) },
+                        modifier = Modifier.clickable { vm.setBackgroundPath("") },
+                        trailingContent = {
+                            if (settings.backgroundPath.isBlank()) {
+                                Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             }
-                        }
+                        },
+                    )
+                    HorizontalDivider()
+                    ListItem(
+                        headlineContent = { Text(strings.splashQuoteBackgroundDesc) },
+                        leadingContent = { Icon(Icons.Default.AddPhotoAlternate, contentDescription = null) },
+                        modifier = Modifier.clickable {
+                            scope.launch {
+                                val path = withContext(Dispatchers.IO) { pickOpenFile("image/*") }
+                                if (path != null) vm.setBackgroundPath(path)
+                            }
+                        },
+                    )
+                    if (settings.backgroundPath.isNotBlank()) {
+                        HorizontalDivider()
+                        ListItem(
+                            headlineContent = { Text(strings.splashQuoteBackgroundClear, color = MaterialTheme.colorScheme.error) },
+                            leadingContent = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                            modifier = Modifier.clickable { showClearBgConfirm = true },
+                        )
                     }
                 }
 
