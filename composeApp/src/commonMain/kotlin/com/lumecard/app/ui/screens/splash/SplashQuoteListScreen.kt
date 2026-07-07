@@ -27,6 +27,8 @@ import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.shared.data.SplashQuoteData
 import com.lumecard.shared.data.SplashQuoteManager
 import com.lumecard.shared.data.SplashQuotesCollection
+import com.lumecard.shared.feature.quote.config.QuoteDisplayConfig
+import com.lumecard.app.feature.quote.viewer.QuoteViewer
 import com.lumecard.app.platform.pickOpenFile
 import com.lumecard.app.platform.pickSaveFile
 import com.lumecard.app.platform.readFileContent
@@ -57,6 +59,7 @@ class SplashQuoteListScreen : Screen {
         var deletingIndex by remember { mutableStateOf(-1) }
         var showBuiltinDeleteConfirm by remember { mutableStateOf(false) }
         var deletingBuiltinQuote by remember { mutableStateOf<SplashQuoteData?>(null) }
+        var previewQuote by remember { mutableStateOf<SplashQuoteData?>(null) }
 
         LaunchedEffect(Unit) { vm.load() }
 
@@ -143,6 +146,7 @@ class SplashQuoteListScreen : Screen {
                             onDelete = {
                                 deletingIndex = index; showDeleteConfirm = true
                             },
+                            onPreview = { previewQuote = quote },
                         )
                     }
                 }
@@ -183,6 +187,7 @@ class SplashQuoteListScreen : Screen {
                             onDelete = {
                                 deletingBuiltinQuote = quote; showBuiltinDeleteConfirm = true
                             },
+                            onPreview = { previewQuote = quote },
                         )
                     }
                 }
@@ -204,6 +209,17 @@ class SplashQuoteListScreen : Screen {
                     TextButton(onClick = { showDeleteConfirm = false }) { Text(strings.actionCancel) }
                 },
             )
+        }
+
+        // ── Preview overlay ────────────────────────────
+        if (previewQuote != null) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                QuoteViewer(
+                    quote = previewQuote!!,
+                    config = QuoteDisplayConfig.STARTUP_DEFAULT,
+                    onDismiss = { previewQuote = null },
+                )
+            }
         }
 
         // ── Delete confirm (built-in quotes) ──────────
@@ -239,6 +255,7 @@ private fun QuoteItem(
     builtin: Boolean,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onPreview: () -> Unit,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onEdit),
@@ -286,6 +303,9 @@ private fun QuoteItem(
             }
 
             if (builtin) {
+                IconButton(onClick = onPreview, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(18.dp))
+                }
                 FilledTonalIconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
                     Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
@@ -294,6 +314,9 @@ private fun QuoteItem(
                     Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
                 }
             } else {
+                IconButton(onClick = onPreview) {
+                    Icon(Icons.Default.Visibility, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 IconButton(onClick = onEdit) {
                     Icon(Icons.Default.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
