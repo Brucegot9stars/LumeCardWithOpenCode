@@ -125,8 +125,7 @@ fun QuoteTextLayout(
     val lineSpacing = (contentSpacing / 3).coerceAtLeast(4.dp)
     val paddingHorizontal = layoutOverride?.pagePadding?.dp ?: 32.dp
     val maxWidthFraction = layoutOverride?.maxWidth
-    val verticalPos = layoutOverride?.verticalPosition ?: VerticalPosition.CENTER
-    val verticalArrangement = when (verticalPos) {
+    val verticalArrangement = when (layoutOverride?.verticalPosition ?: VerticalPosition.CENTER) {
         VerticalPosition.TOP -> Arrangement.Top
         VerticalPosition.CENTER -> Arrangement.Center
         VerticalPosition.BOTTOM -> Arrangement.Bottom
@@ -134,74 +133,60 @@ fun QuoteTextLayout(
 
     val lines = remember(text) { text.splitLines() }
 
-    Box(
+    Column(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = paddingHorizontal),
-        contentAlignment = Alignment.Center,
+        verticalArrangement = verticalArrangement,
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(
+        Column(
             modifier = if (maxWidthFraction != null) {
                 Modifier.fillMaxWidth(maxWidthFraction)
             } else {
                 Modifier.fillMaxWidth()
             },
-            contentAlignment = Alignment.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            lines.forEachIndexed { index, line ->
+                Text(
+                    text = line,
+                    style = TextStyle(
+                        fontFamily = fontFamily,
+                        fontSize = fontSize,
+                        textAlign = textAlign,
+                    ),
+                )
+                if (index < lines.lastIndex) {
+                    Spacer(Modifier.height(lineSpacing))
+                }
+            }
+        }
+        if (showAuthor) {
+            Spacer(Modifier.height(contentSpacing))
+            val authorLines = author.split("\n")
             Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = verticalArrangement,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                lines.forEachIndexed { index, line ->
+                authorLines.forEachIndexed { idx, line ->
                     Text(
                         text = line,
-                        style = TextStyle(
-                            fontFamily = fontFamily,
-                            fontSize = fontSize,
-                            textAlign = textAlign,
-                        ),
-                    )
-                    if (index < lines.lastIndex) {
-                        Spacer(Modifier.height(lineSpacing))
-                    }
-                }
-                if (showAuthor && author.isNotBlank()) {
-                    Spacer(Modifier.height(contentSpacing))
-                    Text(
-                        text = author,
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontFamily = fontFamily,
                             textAlign = authorAlign,
                         ),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    if (idx < authorLines.lastIndex) {
+                        Spacer(Modifier.height(4.dp))
+                    }
                 }
             }
         }
     }
 }
 
-private fun String.splitLines(): List<String> {
-    val punctuation = setOf('。', '！', '？', '；', '，', '、')
-    val result = mutableListOf<String>()
-    val current = StringBuilder()
-    for (char in this) {
-        current.append(char)
-        if (char in punctuation) {
-            val line = current.toString().trim()
-            if (line.isNotBlank()) {
-                result.add(line)
-            }
-            current.clear()
-        }
-    }
-    val remaining = current.toString().trim()
-    if (remaining.isNotBlank()) {
-        result.add(remaining)
-    }
-    return if (result.isEmpty()) listOf(this) else result
-}
+private fun String.splitLines(): List<String> = split("\n")
 
 internal fun resolveTextAlign(override: TextAlignOverride?, default: ComposeTextAlign): ComposeTextAlign {
     return when (override) {

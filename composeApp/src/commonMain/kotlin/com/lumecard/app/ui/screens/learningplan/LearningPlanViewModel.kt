@@ -9,6 +9,7 @@ import com.lumecard.shared.repository.LearningPlanRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
@@ -37,8 +38,22 @@ class LearningPlanViewModel(
     fun loadPlans() {
         screenModelScope.launch {
             _isLoading.value = true
-            planRepository.getAll().collect { list ->
-                _plans.value = list
+            combine(planRepository.getAll(), cardRepository.getAll()) { plans, _ -> plans }.collect { list ->
+                val updated = list.map { plan ->
+                    val cards = getCardsForPlan(plan)
+                    val newTotal = cards.size
+                    val newCompleted = cards.count { it.lastReviewedAt != null }
+                    if (newTotal != plan.totalCards || newCompleted != plan.completedCards) {
+                        val fixed = plan.copy(
+                            totalCards = newTotal,
+                            completedCards = newCompleted.coerceAtMost(newTotal),
+                            updatedAt = kotlin.time.Clock.System.now()
+                        )
+                        planRepository.update(fixed)
+                        fixed
+                    } else plan
+                }
+                _plans.value = updated
                 _isLoading.value = false
             }
         }

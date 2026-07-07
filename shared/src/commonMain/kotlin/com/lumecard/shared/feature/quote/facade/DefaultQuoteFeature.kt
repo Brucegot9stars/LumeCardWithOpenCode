@@ -45,7 +45,10 @@ class DefaultQuoteFeature(
     }
 
     override suspend fun startDisplay(mode: QuoteDisplayMode, settings: SplashQuoteSettings) {
-        val config = loadDisplayConfig(mode)
+        val config = loadDisplayConfig(mode).copy(
+            enableAnimation = settings.enableAnimation,
+            animationStyle = settings.animationStyle,
+        )
         displayController.startDisplay(config, settings)
     }
 

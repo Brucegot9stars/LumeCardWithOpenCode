@@ -82,6 +82,16 @@ class SplashQuoteEditScreen(
         var maxWidthValue by remember { mutableStateOf(initialOverride?.layout?.maxWidth ?: 0.8f) }
         var verticalPosValue by remember { mutableStateOf(initialOverride?.layout?.verticalPosition ?: VerticalPosition.CENTER) }
 
+        // ── Inherit global defaults ────────────────────
+        val quoteManager: SplashQuoteManager = koinInject()
+        LaunchedEffect(Unit) {
+            val global = quoteManager.loadSettings()
+            if (initialOverride?.direction == null) dirValue = global.direction
+            if (initialOverride?.font == null) fontIdValue = global.font
+            if (initialOverride?.fontSize == null && global.fontSize > 0f) fontSizeValue = global.fontSize
+            if (initialOverride?.showAuthor == null) showAuthorValue = global.showAuthor
+        }
+
         // ── Dirty tracking ─────────────────────────────
         fun computeIsDirty(): Boolean {
             val current = buildOverride(layoutEnabled, dirOverrideEnabled, dirValue,
@@ -194,6 +204,7 @@ class SplashQuoteEditScreen(
                     if (dirOverrideEnabled) {
                         DirectionSelector(
                             selected = dirValue,
+                            strings = strings,
                             onSelect = { dirValue = it; updateDirty() },
                         )
                     }
@@ -435,7 +446,11 @@ private fun OverrideToggle(checked: Boolean, strings: com.lumecard.app.i18n.I18n
 }
 
 @Composable
-private fun DirectionSelector(selected: SplashQuoteDirection, onSelect: (SplashQuoteDirection) -> Unit) {
+private fun DirectionSelector(
+    selected: SplashQuoteDirection,
+    strings: com.lumecard.app.i18n.I18nStrings,
+    onSelect: (SplashQuoteDirection) -> Unit,
+) {
     Row(
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -444,7 +459,14 @@ private fun DirectionSelector(selected: SplashQuoteDirection, onSelect: (SplashQ
             FilterChip(
                 selected = selected == dir,
                 onClick = { onSelect(dir) },
-                label = { Text(dir.name) },
+                label = {
+                    Text(
+                        when (dir) {
+                            SplashQuoteDirection.HORIZONTAL -> strings.splashQuoteDirectionHorizontal
+                            SplashQuoteDirection.VERTICAL -> strings.splashQuoteDirectionVertical
+                        }
+                    )
+                },
             )
         }
     }

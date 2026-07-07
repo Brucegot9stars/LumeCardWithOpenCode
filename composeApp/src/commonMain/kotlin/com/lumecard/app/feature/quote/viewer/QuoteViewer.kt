@@ -1,5 +1,6 @@
 package com.lumecard.app.feature.quote.viewer
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
@@ -7,12 +8,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextAlign as ComposeTextAlign
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import com.lumecard.app.font.FontRegistry
 import com.lumecard.shared.data.*
+import com.lumecard.shared.feature.quote.config.QuoteAnimationStyle
 import com.lumecard.shared.feature.quote.config.QuoteDisplayConfig
 import kotlinx.coroutines.delay
 
@@ -51,6 +55,53 @@ fun QuoteViewer(
         }
     }
 
+    var animAlpha by remember { mutableFloatStateOf(if (config.enableAnimation && config.animationStyle == QuoteAnimationStyle.FADE_IN) 0f else 1f) }
+    var animOffsetY by remember { mutableFloatStateOf(if (config.enableAnimation && config.animationStyle == QuoteAnimationStyle.SLIDE_UP) 20f else 0f) }
+
+    LaunchedEffect(config.enableAnimation, config.animationStyle) {
+        if (!config.enableAnimation || config.animationStyle == QuoteAnimationStyle.NONE ||
+            config.animationStyle == QuoteAnimationStyle.TYPEWRITER ||
+            config.animationStyle == QuoteAnimationStyle.SENTENCE_BY_SENTENCE
+        ) {
+            animAlpha = 1f
+            animOffsetY = 0f
+            return@LaunchedEffect
+        }
+        when (config.animationStyle) {
+            QuoteAnimationStyle.FADE_IN -> {
+                animAlpha = 0f
+                delay(50L)
+                val steps = 30
+                val stepMs = 30L
+                for (i in 1..steps) {
+                    animAlpha = i.toFloat() / steps
+                    delay(stepMs)
+                }
+                animAlpha = 1f
+            }
+            QuoteAnimationStyle.SLIDE_UP -> {
+                animOffsetY = 30f
+                delay(50L)
+                val steps = 20
+                val stepMs = 25L
+                for (i in 1..steps) {
+                    animOffsetY = 30f * (steps - i).toFloat() / steps
+                    delay(stepMs)
+                }
+                animOffsetY = 0f
+            }
+            else -> {}
+        }
+    }
+
+    val animModifier = if (config.enableAnimation) {
+        when (config.animationStyle) {
+            QuoteAnimationStyle.FADE_IN -> Modifier.alpha(animAlpha)
+            QuoteAnimationStyle.SLIDE_UP -> Modifier.offset(y = animOffsetY.dp)
+            else -> Modifier
+        }
+    } else Modifier
+
     val tapModifier = if (config.allowTapToSkip) {
         Modifier.clickable {
             if (!autoDismissed) {
@@ -67,7 +118,8 @@ fun QuoteViewer(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .then(tapModifier),
+            .then(tapModifier)
+            .then(animModifier),
     ) {
         if (config.enableBackground) {
             QuoteBackgroundBox(
@@ -165,49 +217,142 @@ private fun VerticalQuoteContent(
     layoutOverride: QuoteLayoutOverride?,
 ) {
     val paddingHorizontal = layoutOverride?.pagePadding?.dp ?: 32.dp
-    val verticalPos = layoutOverride?.verticalPosition ?: VerticalPosition.CENTER
-    val verticalArrangement = when (verticalPos) {
+    val contentSpacing = layoutOverride?.contentSpacing?.dp ?: 24.dp
+    val textAlign = resolveTextAlign(layoutOverride?.textAlign, ComposeTextAlign.Center)
+
+    var visibleChars by remember { mutableStateOf(if (!config.enableAnimation || config.animationStyle == QuoteAnimationStyle.NONE) quote.text.length else 0) }
+    var showFull by remember { mutableStateOf(!config.enableAnimation || config.animationStyle == QuoteAnimationStyle.NONE) }
+
+    LaunchedEffect(quote.text, config.animationStyle, config.enableAnimation) {
+        if (!config.enableAnimation || config.animationStyle == QuoteAnimationStyle.NONE) {
+            visibleChars = quote.text.length
+            showFull = true
+            return@LaunchedEffect
+        }
+        visibleChars = 0
+        showFull = false
+        when (config.animationStyle) {
+            QuoteAnimationStyle.TYPEWRITER -> {
+                val charDelay = when {
+                    quote.text.length > 50 -> 20L
+                    quote.text.length > 20 -> 40L
+                    else -> 60L
+                }
+                for (i in 1..quote.text.length) {
+                    visibleChars = i
+                    delay(charDelay)
+                }
+                showFull = true
+            }
+            QuoteAnimationStyle.FADE_IN -> {
+                delay(100L)
+                showFull = true
+            }
+            QuoteAnimationStyle.SLIDE_UP -> {
+                delay(100L)
+                showFull = true
+            }
+            QuoteAnimationStyle.SENTENCE_BY_SENTENCE -> {
+                val sentences = quote.text.split(Regex("(?<=[。！？.!?\\n])"))
+                val sentenceDelay = when {
+                    sentences.size <= 1 -> 800L
+                    else -> 600L
+                }
+                for (i in 1..sentences.size) {
+                    visibleChars = sentences.take(i).joinToString("").length
+                    delay(sentenceDelay)
+                }
+                showFull = true
+            }
+            QuoteAnimationStyle.NONE -> {
+                showFull = true
+            }
+        }
+    }
+
+    val visibleText = when {
+        !config.enableAnimation || config.animationStyle == QuoteAnimationStyle.NONE -> quote.text
+        config.animationStyle == QuoteAnimationStyle.TYPEWRITER || config.animationStyle == QuoteAnimationStyle.SENTENCE_BY_SENTENCE ->
+            quote.text.substring(0, visibleChars.coerceAtMost(quote.text.length))
+        else -> quote.text
+    }
+
+    val visibleAuthor = when {
+        config.animationStyle == QuoteAnimationStyle.TYPEWRITER && quote.author.length > 0 -> {
+            val progress = visibleChars.toFloat() / quote.text.length.coerceAtLeast(1)
+            val authorChars = (quote.author.length * progress).toInt().coerceIn(0, quote.author.length)
+            quote.author.substring(0, authorChars)
+        }
+        else -> if (showFull) quote.author else ""
+    }
+
+    val verticalArrangement = when (layoutOverride?.verticalPosition ?: VerticalPosition.CENTER) {
         VerticalPosition.TOP -> Arrangement.Top
         VerticalPosition.CENTER -> Arrangement.Center
         VerticalPosition.BOTTOM -> Arrangement.Bottom
     }
-    val textAlign = com.lumecard.app.feature.quote.viewer.resolveTextAlign(layoutOverride?.textAlign, androidx.compose.ui.text.style.TextAlign.Center as androidx.compose.ui.text.style.TextAlign)
 
-    Box(
+    Column(
         modifier = Modifier.fillMaxSize().padding(horizontal = paddingHorizontal),
-        contentAlignment = Alignment.Center,
+        verticalArrangement = verticalArrangement,
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = verticalArrangement,
-            horizontalAlignment = Alignment.CenterHorizontally,
+        val cols = visibleText.split("\n").reversed()
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.Top,
         ) {
-            AnimatedQuoteContent(
-                text = quote.text,
-                author = quote.author,
-                animationStyle = config.animationStyle,
-                enabled = config.enableAnimation,
-            ) { visibleText, visibleAuthor ->
-                visibleText.forEach { char ->
-                    Text(
-                        text = char.toString(),
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            fontFamily = fontFamily,
-                            fontSize = fontSize,
-                        ),
-                        textAlign = textAlign,
-                        modifier = Modifier.padding(vertical = 2.dp),
-                    )
+            cols.forEachIndexed { colIdx, colText ->
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    colText.forEach { char ->
+                        Text(
+                            text = char.toVertical().toString(),
+                            style = MaterialTheme.typography.headlineLarge.copy(
+                                fontFamily = fontFamily,
+                                fontSize = fontSize,
+                            ),
+                            textAlign = textAlign,
+                            modifier = Modifier.padding(vertical = 2.dp),
+                        )
+                    }
                 }
-                if (showAuthor && visibleAuthor.isNotBlank()) {
-                    Spacer(Modifier.height(24.dp))
-                    Text(
-                        text = visibleAuthor,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontFamily = fontFamily),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                if (colIdx < cols.lastIndex) {
+                    Spacer(Modifier.width(32.dp))
+                }
+            }
+        }
+        if (showAuthor) {
+            Spacer(Modifier.height(contentSpacing))
+            val authorCols = visibleAuthor.split("\n").reversed()
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.Top,
+            ) {
+                authorCols.forEachIndexed { colIdx, colText ->
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        colText.forEach { char ->
+                            Text(
+                                text = char.toVertical().toString(),
+                                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = fontFamily),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    if (colIdx < authorCols.lastIndex) {
+                        Spacer(Modifier.width(32.dp))
+                    }
                 }
             }
         }
     }
+}
+
+private fun Char.toVertical(): Char = when (this) {
+    '《' -> '﹁'
+    '》' -> '﹂'
+    else -> this
 }

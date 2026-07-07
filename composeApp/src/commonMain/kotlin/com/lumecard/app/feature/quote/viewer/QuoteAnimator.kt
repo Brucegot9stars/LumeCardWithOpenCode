@@ -1,10 +1,8 @@
 package com.lumecard.app.feature.quote.viewer
 
-import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.lumecard.shared.feature.quote.config.QuoteAnimationStyle
 import kotlinx.coroutines.delay
 
@@ -30,9 +28,14 @@ fun AnimatedQuoteContent(
         showFull = false
         when (animationStyle) {
             QuoteAnimationStyle.TYPEWRITER -> {
+                val charDelay = when {
+                    text.length > 50 -> 20L
+                    text.length > 20 -> 40L
+                    else -> 60L
+                }
                 for (i in 1..text.length) {
                     visibleChars = i
-                    delay(30L)
+                    delay(charDelay)
                 }
                 showFull = true
             }
@@ -46,9 +49,13 @@ fun AnimatedQuoteContent(
             }
             QuoteAnimationStyle.SENTENCE_BY_SENTENCE -> {
                 val sentences = text.split(Regex("(?<=[。！？.!?\\n])"))
+                val sentenceDelay = when {
+                    sentences.size <= 1 -> 800L
+                    else -> 600L
+                }
                 for (i in 1..sentences.size) {
                     visibleChars = sentences.take(i).joinToString("").length
-                    delay(500L)
+                    delay(sentenceDelay)
                 }
                 showFull = true
             }
@@ -72,24 +79,6 @@ fun AnimatedQuoteContent(
             author.substring(0, authorChars)
         }
         else -> if (showFull) author else ""
-    }
-
-    val animModifier = when (animationStyle) {
-        QuoteAnimationStyle.FADE_IN -> {
-            val alpha by animateFloatAsState(
-                targetValue = if (showFull) 1f else 0f,
-                animationSpec = tween(500),
-            )
-            modifier
-        }
-        QuoteAnimationStyle.SLIDE_UP -> {
-            val offsetY by animateDpAsState(
-                targetValue = if (showFull) 0.dp else 20.dp,
-                animationSpec = tween(400),
-            )
-            modifier
-        }
-        else -> modifier
     }
 
     content(visibleText, visibleAuthor)

@@ -696,6 +696,13 @@ interface I18nStrings {
     // Unified Quote Settings sections
     val splashQuoteAnimation: String
     val splashQuoteAnimationDesc: String
+    val splashQuoteAnimationEnable: String
+    val splashQuoteAnimationStyle: String
+    val splashQuoteAnimationNone: String
+    val splashQuoteAnimationTypewriter: String
+    val splashQuoteAnimationFadeIn: String
+    val splashQuoteAnimationSlideUp: String
+    val splashQuoteAnimationSentence: String
     val splashQuoteAdvanced: String
 
     // Screen Saver

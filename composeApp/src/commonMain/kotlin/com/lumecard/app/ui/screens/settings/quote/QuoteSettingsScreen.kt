@@ -26,6 +26,7 @@ import com.lumecard.app.ui.screens.splash.SplashQuoteListScreen
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.shared.data.SplashQuoteDirection
 import com.lumecard.shared.data.SplashQuoteStrategy
+import com.lumecard.shared.feature.quote.config.QuoteAnimationStyle
 import com.lumecard.shared.feature.quote.config.QuoteDisplayConfig
 import com.lumecard.app.feature.quote.viewer.QuoteViewer
 import com.lumecard.app.platform.pickOpenFile
@@ -52,6 +53,7 @@ class QuoteSettingsScreen : Screen {
 
         var showClearBgConfirm by remember { mutableStateOf(false) }
         var showPreview by remember { mutableStateOf(false) }
+        var previewSession by remember { mutableStateOf(0) }
 
         LaunchedEffect(Unit) { vm.load() }
 
@@ -66,7 +68,7 @@ class QuoteSettingsScreen : Screen {
                     action = {
                         Row {
                             IconButton(onClick = {
-                                showPreview = true
+                                showPreview = true; previewSession++
                             }) {
                                 Icon(Icons.Default.Visibility, contentDescription = strings.splashQuotePreview)
                             }
@@ -344,16 +346,30 @@ class QuoteSettingsScreen : Screen {
                     )
                 }
 
-                // ── 5. Animation Section (placeholder) ──────
+                // ── 5. Animation Section ────────────────────
                 ConfigSection(
                     title = strings.splashQuoteAnimation,
                     expanded = sections["animation"] ?: false,
                     onToggle = { vm.toggleSection("animation") },
                 ) {
                     ListItem(
-                        headlineContent = { Text(strings.splashQuoteAnimation) },
+                        headlineContent = { Text(strings.splashQuoteAnimationEnable) },
                         supportingContent = { Text(strings.splashQuoteAnimationDesc) },
+                        trailingContent = {
+                            Switch(
+                                checked = settings.enableAnimation,
+                                onCheckedChange = { vm.setEnableAnimation(it) },
+                            )
+                        },
                     )
+                    if (settings.enableAnimation) {
+                        HorizontalDivider()
+                        AnimationStyleItem(
+                            style = settings.animationStyle,
+                            strings = strings,
+                            onChange = { vm.setAnimationStyle(it) },
+                        )
+                    }
                 }
 
                 // ── 6. Background Section ─────────────────
@@ -417,26 +433,77 @@ class QuoteSettingsScreen : Screen {
         if (showPreview) {
             val previewQuote = remember { vm.getPreviewQuote() }
             if (previewQuote != null) {
-                QuoteViewer(
-                    quote = previewQuote,
-                    config = QuoteDisplayConfig.STARTUP_DEFAULT.copy(
-                        defaultDirection = settings.direction,
-                        defaultFont = settings.font,
-                        defaultFontSize = settings.fontSize,
-                        showAuthor = settings.showAuthor,
-                    ),
-                    globalBackgroundPath = settings.backgroundPath,
-                    onDismiss = { showPreview = false },
-                    onNextQuote = {
-                        showPreview = false
-                    },
-                )
+                key(previewSession) {
+                    QuoteViewer(
+                        quote = previewQuote,
+                        config = QuoteDisplayConfig.STARTUP_DEFAULT.copy(
+                            defaultDirection = settings.direction,
+                            defaultFont = settings.font,
+                            defaultFontSize = settings.fontSize,
+                            showAuthor = settings.showAuthor,
+                            enableAnimation = settings.enableAnimation,
+                            animationStyle = settings.animationStyle,
+                        ),
+                        globalBackgroundPath = settings.backgroundPath,
+                        onDismiss = { showPreview = false },
+                        onNextQuote = {
+                            showPreview = false
+                        },
+                    )
+                }
             }
         }
     }
 }
 
-// ── Helper composables ───────────────────────────────
+@Composable
+private fun AnimationStyleItem(
+    style: QuoteAnimationStyle,
+    strings: I18nStrings,
+    onChange: (QuoteAnimationStyle) -> Unit,
+) {
+    var showDropdown by remember { mutableStateOf(false) }
+    ListItem(
+        headlineContent = { Text(strings.splashQuoteAnimationStyle) },
+        trailingContent = {
+            Box {
+                TextButton(onClick = { showDropdown = true }) {
+                    Text(
+                        when (style) {
+                            QuoteAnimationStyle.NONE -> strings.splashQuoteAnimationNone
+                            QuoteAnimationStyle.TYPEWRITER -> strings.splashQuoteAnimationTypewriter
+                            QuoteAnimationStyle.FADE_IN -> strings.splashQuoteAnimationFadeIn
+                            QuoteAnimationStyle.SLIDE_UP -> strings.splashQuoteAnimationSlideUp
+                            QuoteAnimationStyle.SENTENCE_BY_SENTENCE -> strings.splashQuoteAnimationSentence
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                }
+                DropdownMenu(expanded = showDropdown, onDismissRequest = { showDropdown = false }) {
+                    QuoteAnimationStyle.entries.forEach { s ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(when (s) {
+                                    QuoteAnimationStyle.NONE -> strings.splashQuoteAnimationNone
+                                    QuoteAnimationStyle.TYPEWRITER -> strings.splashQuoteAnimationTypewriter
+                                    QuoteAnimationStyle.FADE_IN -> strings.splashQuoteAnimationFadeIn
+                                    QuoteAnimationStyle.SLIDE_UP -> strings.splashQuoteAnimationSlideUp
+                                    QuoteAnimationStyle.SENTENCE_BY_SENTENCE -> strings.splashQuoteAnimationSentence
+                                })
+                            },
+                            onClick = { onChange(s); showDropdown = false },
+                            leadingIcon = {
+                                if (s == style) Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            },
+                        )
+                    }
+                }
+            }
+        },
+    )
+}
 
 @Composable
 private fun StrategyItem(

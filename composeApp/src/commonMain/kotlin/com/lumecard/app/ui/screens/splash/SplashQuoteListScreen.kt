@@ -50,6 +50,7 @@ class SplashQuoteListScreen : Screen {
         val vm: SplashQuoteViewModel = koinInject()
         val userQuotes by vm.userQuotes.collectAsState()
         val defaultQuotes by vm.defaultQuotes.collectAsState()
+        val settings by vm.settings.collectAsState()
         val scope = rememberCoroutineScope()
         val spacing = LumeCardTheme.spacing
         val snackbar = remember { SnackbarHostState() }
@@ -216,7 +217,14 @@ class SplashQuoteListScreen : Screen {
             Box(modifier = Modifier.fillMaxSize()) {
                 QuoteViewer(
                     quote = previewQuote!!,
-                    config = QuoteDisplayConfig.STARTUP_DEFAULT,
+                    config = QuoteDisplayConfig.STARTUP_DEFAULT.copy(
+                        defaultDirection = settings.direction,
+                        defaultFont = settings.font,
+                        defaultFontSize = if (settings.fontSize > 0f) settings.fontSize else 24f,
+                        showAuthor = settings.showAuthor,
+                        enableAnimation = settings.enableAnimation,
+                        animationStyle = settings.animationStyle,
+                    ),
                     onDismiss = { previewQuote = null },
                 )
             }

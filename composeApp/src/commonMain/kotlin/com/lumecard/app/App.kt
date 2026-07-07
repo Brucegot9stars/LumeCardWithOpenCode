@@ -86,6 +86,7 @@ fun App() {
     var screenSaverGlobalBg by remember { mutableStateOf("") }
 
     // ── Initial load ─────────────────────────────────────
+    var lastSettings: com.lumecard.shared.data.SplashQuoteSettings? by remember { mutableStateOf(null) }
     LaunchedEffect(Unit) {
         settingsStateHolder.isDarkMode = settingsRepository.getBoolean("isDarkMode", false)
         settingsStateHolder.fontScale = settingsRepository.get("fontScale")?.toFloatOrNull() ?: 1.0f
@@ -96,6 +97,7 @@ fun App() {
 
         quoteFeature.load()
         val settings = quoteFeature.loadSettings()
+        lastSettings = settings
         if (settings.enabled) {
             quoteFeature.startDisplay(QuoteDisplayMode.STARTUP, settings)
             startupQuote = quoteFeature.currentQuote.value
@@ -235,10 +237,15 @@ fun App() {
             } else {
                 // Screen saver overlay (on top of main content)
                 if (showScreenSaver && screenSaverEnabled) {
+                    val s = lastSettings
                     ScreenSaverOverlay(
                         currentQuote = quoteFeature.currentQuote.value,
                         config = com.lumecard.shared.feature.quote.config.QuoteDisplayConfig.SCREEN_SAVER_DEFAULT.copy(
                             rotationIntervalMs = screenSaverRotationMs,
+                            defaultDirection = s?.direction ?: com.lumecard.shared.data.SplashQuoteDirection.HORIZONTAL,
+                            showAuthor = s?.showAuthor ?: true,
+                            defaultFont = s?.font ?: "",
+                            defaultFontSize = s?.fontSize ?: 0f,
                         ),
                         globalBackgroundPath = screenSaverGlobalBg,
                         onUserActivity = { reportActivity() },

@@ -24,6 +24,8 @@ class SplashQuoteManager(
         private const val KEY_STRATEGY = "splash_quote_strategy"
         private const val KEY_SEQUENCE_INDEX = "splash_quote_sequence_index"
         private const val KEY_SHOW_AUTHOR = "splash_quote_show_author"
+        private const val KEY_ENABLE_ANIMATION = "splash_quote_enable_animation"
+        private const val KEY_ANIMATION_STYLE = "splash_quote_animation_style"
     }
 
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
@@ -42,6 +44,8 @@ class SplashQuoteManager(
             strategy = try { SplashQuoteStrategy.valueOf(settingsRepository.get(KEY_STRATEGY) ?: "") } catch (_: Exception) { SplashQuoteStrategy.RANDOM },
             sequenceIndex = settingsRepository.getInt(KEY_SEQUENCE_INDEX, 0),
             showAuthor = settingsRepository.getBoolean(KEY_SHOW_AUTHOR, true),
+            enableAnimation = settingsRepository.getBoolean(KEY_ENABLE_ANIMATION, true),
+            animationStyle = try { com.lumecard.shared.feature.quote.config.QuoteAnimationStyle.valueOf(settingsRepository.get(KEY_ANIMATION_STYLE) ?: "") } catch (_: Exception) { com.lumecard.shared.feature.quote.config.QuoteAnimationStyle.FADE_IN },
         )
     }
 
@@ -55,6 +59,8 @@ class SplashQuoteManager(
         settingsRepository.set(KEY_STRATEGY, s.strategy.name)
         settingsRepository.set(KEY_SEQUENCE_INDEX, s.sequenceIndex.toString())
         settingsRepository.set(KEY_SHOW_AUTHOR, s.showAuthor.toString())
+        settingsRepository.set(KEY_ENABLE_ANIMATION, s.enableAnimation.toString())
+        settingsRepository.set(KEY_ANIMATION_STYLE, s.animationStyle.name)
     }
 
     // ── Background ────────────────────────────────────────

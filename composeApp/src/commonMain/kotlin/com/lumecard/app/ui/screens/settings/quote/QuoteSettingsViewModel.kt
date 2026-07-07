@@ -7,6 +7,7 @@ import com.lumecard.shared.data.SplashQuoteDirection
 import com.lumecard.shared.data.SplashQuoteManager
 import com.lumecard.shared.data.SplashQuoteSettings
 import com.lumecard.shared.data.SplashQuoteStrategy
+import com.lumecard.shared.feature.quote.config.QuoteAnimationStyle
 import com.lumecard.shared.feature.quote.facade.QuoteFeature
 import com.lumecard.shared.feature.quote.facade.ScreenSaverSettings
 import com.lumecard.shared.repository.SettingsRepository
@@ -27,6 +28,8 @@ data class UnifiedQuoteSettings(
     val screenSaverEnabled: Boolean = true,
     val screenSaverIdleMinutes: Int = 3,
     val screenSaverRotationSeconds: Int = 3,
+    val enableAnimation: Boolean = true,
+    val animationStyle: QuoteAnimationStyle = QuoteAnimationStyle.FADE_IN,
 )
 
 class QuoteSettingsViewModel(
@@ -70,6 +73,8 @@ class QuoteSettingsViewModel(
                 screenSaverEnabled = saver.enabled,
                 screenSaverIdleMinutes = saver.idleMinutes,
                 screenSaverRotationSeconds = saver.rotationSeconds,
+                enableAnimation = ss.enableAnimation,
+                animationStyle = ss.animationStyle,
             )
             loadSectionStates()
         }
@@ -88,6 +93,8 @@ class QuoteSettingsViewModel(
                     backgroundPath = s.backgroundPath,
                     strategy = s.strategy,
                     showAuthor = s.showAuthor,
+                    enableAnimation = s.enableAnimation,
+                    animationStyle = s.animationStyle,
                 )
             )
             quoteFeature.saveScreenSaverSettings(
@@ -112,6 +119,8 @@ class QuoteSettingsViewModel(
     fun setScreenSaverEnabled(v: Boolean) { _settings.value = _settings.value.copy(screenSaverEnabled = v); markDirty() }
     fun setScreenSaverIdleMinutes(v: Int) { _settings.value = _settings.value.copy(screenSaverIdleMinutes = v.coerceIn(1, 60)); markDirty() }
     fun setScreenSaverRotationSeconds(v: Int) { _settings.value = _settings.value.copy(screenSaverRotationSeconds = v.coerceIn(1, 30)); markDirty() }
+    fun setEnableAnimation(v: Boolean) { _settings.value = _settings.value.copy(enableAnimation = v); markDirty() }
+    fun setAnimationStyle(v: QuoteAnimationStyle) { _settings.value = _settings.value.copy(animationStyle = v); markDirty() }
 
     fun toggleSection(id: String) {
         val current = _sections.value.toMutableMap()
@@ -137,6 +146,8 @@ class QuoteSettingsViewModel(
             backgroundPath = s.backgroundPath,
             strategy = s.strategy,
             showAuthor = s.showAuthor,
+            enableAnimation = s.enableAnimation,
+            animationStyle = s.animationStyle,
         )
         return kotlinx.coroutines.runBlocking { manager.previewQuote(ss) }
     }

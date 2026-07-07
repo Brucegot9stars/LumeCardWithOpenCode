@@ -93,4 +93,6 @@ data class SplashQuoteSettings(
     val strategy: SplashQuoteStrategy = SplashQuoteStrategy.RANDOM,
     val sequenceIndex: Int = 0,
     val showAuthor: Boolean = true,
+    val enableAnimation: Boolean = true,
+    val animationStyle: com.lumecard.shared.feature.quote.config.QuoteAnimationStyle = com.lumecard.shared.feature.quote.config.QuoteAnimationStyle.FADE_IN,
 )
