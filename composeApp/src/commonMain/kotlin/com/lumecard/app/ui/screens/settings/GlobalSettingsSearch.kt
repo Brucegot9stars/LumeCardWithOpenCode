@@ -114,6 +114,7 @@ fun SettingsSearchResults(
     query: String,
     results: List<SettingsSearchResult>,
     onResultClick: (SettingsSearchResult) -> Unit,
+    strings: com.lumecard.app.i18n.I18nStrings,
     modifier: Modifier = Modifier,
 ) {
     AnimatedVisibility(
@@ -128,7 +129,7 @@ fun SettingsSearchResults(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    "No matching settings",
+                    strings.settingsSearchNoResults,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

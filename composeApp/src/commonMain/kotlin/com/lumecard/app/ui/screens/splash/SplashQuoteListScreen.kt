@@ -161,7 +161,7 @@ class SplashQuoteListScreen : Screen {
                             )
                             TextButton(onClick = { vm.restoreAllDefaultQuotes() }) {
                                 Text(
-                                    text = "Restore all",
+                                    text = strings.splashQuoteBuiltinRestoreAll,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary,
                                 )

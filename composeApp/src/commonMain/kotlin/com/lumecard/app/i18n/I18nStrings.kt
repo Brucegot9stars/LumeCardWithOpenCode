@@ -690,6 +690,8 @@ interface I18nStrings {
     val splashQuoteBuiltinSection: String
     val splashQuoteBuiltinHint: String
     val splashQuoteBuiltinDeleteDesc: String
+    val splashQuoteBuiltinRestoreAll: String
+    val settingsSearchNoResults: String
 
     // Unified Quote Settings sections
     val splashQuoteAnimation: String

@@ -691,4 +691,6 @@ object EnStrings : I18nStrings {
     override val settingsStudyTimerIdlePauseDesc = "Pause study timer when inactive for 30s"
     override val settingsStudyTimerIdlePauseThreshold = "Idle pause threshold (seconds)"
     override val splashQuoteBuiltinDeleteDesc = "This built-in quote will be hidden. You can restore it later."
+    override val splashQuoteBuiltinRestoreAll = "Restore all"
+    override val settingsSearchNoResults = "No matching settings"
 }

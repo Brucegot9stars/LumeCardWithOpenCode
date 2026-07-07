@@ -691,4 +691,6 @@ object JaStrings : I18nStrings {
     override val settingsStudyTimerIdlePauseDesc = "30秒間操作がないと学習タイマーを一時停止"
     override val settingsStudyTimerIdlePauseThreshold = "アイドル一時停止しきい値（秒）"
     override val splashQuoteBuiltinDeleteDesc = "この内蔵名言は非表示になります。後で復元できます。"
+    override val splashQuoteBuiltinRestoreAll = "すべて復元"
+    override val settingsSearchNoResults = "該当する設定が見つかりません"
 }

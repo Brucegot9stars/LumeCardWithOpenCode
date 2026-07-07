@@ -168,6 +168,7 @@ class SettingsScreen(
                         query = searchQuery,
                         results = searchResults,
                         onResultClick = { navigateToSearchResult(it) },
+                        strings = strings,
                         modifier = Modifier.weight(1f),
                     )
                 } else {

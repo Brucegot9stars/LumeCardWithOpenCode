@@ -691,4 +691,6 @@ object EsStrings : I18nStrings {
     override val settingsStudyTimerIdlePauseDesc = "Pausar el temporizador tras 30s de inactividad"
     override val settingsStudyTimerIdlePauseThreshold = "Umbral de pausa (segundos)"
     override val splashQuoteBuiltinDeleteDesc = "Esta cita integrada se ocultará. Puede restaurarla más tarde."
+    override val splashQuoteBuiltinRestoreAll = "Restaurar todo"
+    override val settingsSearchNoResults = "No se encontraron configuraciones"
 }

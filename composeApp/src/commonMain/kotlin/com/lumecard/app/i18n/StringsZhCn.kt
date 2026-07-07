@@ -691,4 +691,6 @@ object ZhCnStrings : I18nStrings {
     override val settingsStudyTimerIdlePauseDesc = "闲置30秒后暂停学习计时"
     override val settingsStudyTimerIdlePauseThreshold = "闲置暂停阈值（秒）"
     override val splashQuoteBuiltinDeleteDesc = "该内置名言将被隐藏，之后可以恢复。"
+    override val splashQuoteBuiltinRestoreAll = "全部恢复"
+    override val settingsSearchNoResults = "未找到匹配的设置"
 }
