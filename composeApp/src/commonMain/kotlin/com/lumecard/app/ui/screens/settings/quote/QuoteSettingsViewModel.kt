@@ -2,6 +2,7 @@ package com.lumecard.app.ui.screens.settings.quote
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import com.lumecard.shared.data.SplashQuoteData
 import com.lumecard.shared.data.SplashQuoteDirection
 import com.lumecard.shared.data.SplashQuoteManager
 import com.lumecard.shared.data.SplashQuoteSettings
@@ -123,6 +124,21 @@ class QuoteSettingsViewModel(
         val current = _sections.value.toMutableMap()
         current[id] = expanded
         _sections.value = current
+    }
+
+    fun getPreviewQuote(): SplashQuoteData? {
+        val s = _settings.value
+        val ss = SplashQuoteSettings(
+            enabled = s.enabled,
+            durationSeconds = s.durationSeconds,
+            direction = s.direction,
+            font = s.font,
+            fontSize = s.fontSize,
+            backgroundPath = s.backgroundPath,
+            strategy = s.strategy,
+            showAuthor = s.showAuthor,
+        )
+        return kotlinx.coroutines.runBlocking { manager.previewQuote(ss) }
     }
 
     private fun markDirty() { _isDirty.value = true }

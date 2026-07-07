@@ -26,6 +26,8 @@ import com.lumecard.app.ui.screens.splash.SplashQuoteListScreen
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.shared.data.SplashQuoteDirection
 import com.lumecard.shared.data.SplashQuoteStrategy
+import com.lumecard.shared.feature.quote.config.QuoteDisplayConfig
+import com.lumecard.app.feature.quote.viewer.QuoteViewer
 import com.lumecard.app.platform.pickOpenFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -62,12 +64,19 @@ class QuoteSettingsScreen : Screen {
                         navigator.pop()
                     },
                     action = {
-                        if (isDirty) {
-                            FilledTonalButton(
-                                onClick = { vm.save() },
-                                modifier = Modifier.padding(end = 0.dp),
-                            ) {
-                                Text(strings.actionSave)
+                        Row {
+                            IconButton(onClick = {
+                                showPreview = true
+                            }) {
+                                Icon(Icons.Default.Visibility, contentDescription = strings.splashQuotePreview)
+                            }
+                            if (isDirty) {
+                                FilledTonalButton(
+                                    onClick = { vm.save() },
+                                    modifier = Modifier.padding(end = 0.dp),
+                                ) {
+                                    Text(strings.actionSave)
+                                }
                             }
                         }
                     },
@@ -406,7 +415,23 @@ class QuoteSettingsScreen : Screen {
 
         // ── Preview overlay ────────────────────────────
         if (showPreview) {
-            // Preview functionality kept from original; can be enhanced later
+            val previewQuote = remember { vm.getPreviewQuote() }
+            if (previewQuote != null) {
+                QuoteViewer(
+                    quote = previewQuote,
+                    config = QuoteDisplayConfig.STARTUP_DEFAULT.copy(
+                        defaultDirection = settings.direction,
+                        defaultFont = settings.font,
+                        defaultFontSize = settings.fontSize,
+                        showAuthor = settings.showAuthor,
+                    ),
+                    globalBackgroundPath = settings.backgroundPath,
+                    onDismiss = { showPreview = false },
+                    onNextQuote = {
+                        showPreview = false
+                    },
+                )
+            }
         }
     }
 }
