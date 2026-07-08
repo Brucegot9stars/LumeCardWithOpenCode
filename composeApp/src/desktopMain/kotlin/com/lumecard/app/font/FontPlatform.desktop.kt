@@ -102,3 +102,29 @@ actual fun copyFontToStorage(sourcePath: String, fileName: String): Boolean {
 }
 
 actual fun fontFileExists(filePath: String): Boolean = File(filePath).exists()
+
+actual fun deleteFontFile(filePath: String): Boolean {
+    return try {
+        File(filePath).delete()
+    } catch (_: Exception) { false }
+}
+
+actual fun getBackgroundStorageDir(): String {
+    val dir = "${System.getProperty("user.home")}/.lumecard/backgrounds"
+    File(dir).mkdirs()
+    return dir
+}
+
+actual fun copyBackgroundToStorage(sourcePath: String, fileName: String): String? {
+    return try {
+        val dir = File(getBackgroundStorageDir())
+        if (!dir.exists()) dir.mkdirs()
+        val target = File(dir, fileName)
+        java.nio.file.Files.copy(
+            File(sourcePath).toPath(),
+            target.toPath(),
+            java.nio.file.StandardCopyOption.REPLACE_EXISTING
+        )
+        target.absolutePath
+    } catch (_: Exception) { null }
+}

@@ -10,7 +10,7 @@ import kotlin.time.Clock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-/** Full backup: includes private data (review logs, learning plans). For sync/restore only. */
+/** Full backup: includes private data (review logs, learning plans, splash quotes). For sync/restore only. */
 @Serializable
 data class DataExport(
     val exportType: String = "backup",
@@ -22,7 +22,8 @@ data class DataExport(
     val decks: List<ExportDeck>,
     val cards: List<ExportCard>,
     val reviewLogs: List<ExportReviewLog> = emptyList(),
-    val learningPlans: List<ExportLearningPlan> = emptyList()
+    val learningPlans: List<ExportLearningPlan> = emptyList(),
+    val splashQuotes: ExportSplashQuotes? = null,
 )
 
 /** Share-friendly: only knowledge-base content. No private learning plans or progress. */
@@ -159,6 +160,14 @@ data class ExportLearningPlan(
     val syncedAt: String? = null
 )
 
+/** Splash quotes bundled in data.json sync (whole-collection version for conflict resolution). */
+@Serializable
+data class ExportSplashQuotes(
+    val version: Long = 0,
+    val userQuotes: List<SplashQuoteData> = emptyList(),
+    val hiddenDefaultIndices: String = "",
+)
+
 class ExportManager {
     private val json = Json {
         prettyPrint = true
@@ -227,6 +236,7 @@ class ExportManager {
         cards: List<Card>,
         reviewLogs: List<ReviewLog> = emptyList(),
         learningPlans: List<LearningPlan> = emptyList(),
+        splashQuotes: ExportSplashQuotes? = null,
         deviceId: String? = null
     ): String {
         val export = DataExport(
@@ -236,7 +246,8 @@ class ExportManager {
             decks = exportDecks(decks),
             cards = exportCards(cards),
             reviewLogs = exportReviewLogs(reviewLogs),
-            learningPlans = exportPlans(learningPlans)
+            learningPlans = exportPlans(learningPlans),
+            splashQuotes = splashQuotes,
         )
         return json.encodeToString(DataExport.serializer(), export)
     }

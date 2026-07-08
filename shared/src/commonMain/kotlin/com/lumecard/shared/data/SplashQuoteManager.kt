@@ -14,6 +14,7 @@ class SplashQuoteManager(
         private const val QUOTES_RESOURCE = "/config/quotes.json"
         private const val KEY_USER_QUOTES = "splash_quote_user_quotes"
         private const val KEY_HIDDEN_DEFAULTS = "splash_quote_hidden_defaults"
+        private const val KEY_QUOTES_VERSION = "splash_quotes_version"
 
         private const val KEY_ENABLED = "splash_quote_enabled"
         private const val KEY_DURATION = "splash_quote_duration"
@@ -61,6 +62,40 @@ class SplashQuoteManager(
         settingsRepository.set(KEY_SHOW_AUTHOR, s.showAuthor.toString())
         settingsRepository.set(KEY_ENABLE_ANIMATION, s.enableAnimation.toString())
         settingsRepository.set(KEY_ANIMATION_STYLE, s.animationStyle.name)
+    }
+
+    // ── Quote version (for sync conflict resolution) ──────
+
+    suspend fun getQuotesVersion(): Long {
+        return settingsRepository.get(KEY_QUOTES_VERSION)?.toLongOrNull() ?: 0
+    }
+
+    private suspend fun saveQuotesVersion(version: Long) {
+        settingsRepository.set(KEY_QUOTES_VERSION, version.toString())
+    }
+
+    private suspend fun bumpQuotesVersion() {
+        val v = getQuotesVersion() + 1
+        saveQuotesVersion(v)
+    }
+
+    /** Get all data needed for sync export. */
+    suspend fun getQuotesExportData(): Triple<Long, List<SplashQuoteData>, String> {
+        val version = getQuotesVersion()
+        val userQuotes = loadUserQuotes()
+        val hidden = getHiddenDefaultIndices()
+        val hiddenStr = hidden.joinToString(",")
+        return Triple(version, userQuotes, hiddenStr)
+    }
+
+    /** Replace all user quotes and hidden-indices from a sync import (higher version wins). */
+    suspend fun importQuotesFromSync(version: Long, userQuotes: List<SplashQuoteData>, hiddenStr: String) {
+        val localVersion = getQuotesVersion()
+        if (version > localVersion) {
+            saveUserQuotes(userQuotes)
+            settingsRepository.set(KEY_HIDDEN_DEFAULTS, hiddenStr)
+            saveQuotesVersion(version)
+        }
     }
 
     // ── Background ────────────────────────────────────────
@@ -111,6 +146,7 @@ class SplashQuoteManager(
             hidden.add(originalIndex)
             saveHiddenIndices(hidden)
             clearDefaultCache()
+            bumpQuotesVersion()
         }
     }
 
@@ -119,11 +155,13 @@ class SplashQuoteManager(
         hidden.remove(index)
         saveHiddenIndices(hidden)
         clearDefaultCache()
+        bumpQuotesVersion()
     }
 
     suspend fun restoreAllDefaultQuotes() {
         saveHiddenIndices(emptySet())
         clearDefaultCache()
+        bumpQuotesVersion()
     }
 
     private suspend fun getFilteredDefaultQuotes(): List<SplashQuoteData> {
@@ -148,6 +186,7 @@ class SplashQuoteManager(
         val list = loadUserQuotes().toMutableList()
         list.add(quote)
         saveUserQuotes(list)
+        bumpQuotesVersion()
     }
 
     suspend fun updateQuote(index: Int, quote: SplashQuoteData) {
@@ -155,6 +194,7 @@ class SplashQuoteManager(
         if (index in list.indices) {
             list[index] = quote
             saveUserQuotes(list)
+            bumpQuotesVersion()
         }
     }
 
@@ -163,6 +203,7 @@ class SplashQuoteManager(
         if (index in list.indices) {
             list.removeAt(index)
             saveUserQuotes(list)
+            bumpQuotesVersion()
         }
     }
 
@@ -177,6 +218,7 @@ class SplashQuoteManager(
                 saveUserQuotes(collection.quotes)
             }
         }
+        bumpQuotesVersion()
     }
 
     suspend fun exportQuotes(): SplashQuotesCollection {

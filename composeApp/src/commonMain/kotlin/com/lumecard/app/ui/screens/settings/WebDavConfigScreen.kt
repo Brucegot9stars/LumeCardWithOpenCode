@@ -28,10 +28,12 @@ import com.lumecard.app.platform.scanMediaDirectoryRaw
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.shared.data.ExportManager
+import com.lumecard.shared.data.ExportSplashQuotes
 import com.lumecard.shared.data.MediaManager
 import com.lumecard.shared.data.SyncHistoryEntry
 import com.lumecard.shared.data.MediaManifest
 import com.lumecard.shared.data.MediaManifestEntry
+import com.lumecard.shared.data.SplashQuoteManager
 import com.lumecard.shared.data.SyncManager
 import com.lumecard.shared.data.WebDavConfig
 import com.lumecard.shared.data.WebDavConfigManager
@@ -78,6 +80,7 @@ class WebDavConfigScreen : Screen {
         val reviewLogRepository: ReviewLogRepository = koinInject()
         val planRepository: LearningPlanRepository = koinInject()
         val settingsRepository: SettingsRepository = koinInject()
+        val splashQuoteManager: SplashQuoteManager = koinInject()
         val scope = rememberCoroutineScope()
         val snackbarHostState = remember { SnackbarHostState() }
 
@@ -652,7 +655,7 @@ class WebDavConfigScreen : Screen {
                                     val config = defaultConfig ?: return@launch
                                     val deckCount: Int
                                     withContext(Dispatchers.IO) {
-                                        deckCount = syncIncrementalData(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager)
+                                        deckCount = syncIncrementalData(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager)
                                         val settings = settingsRepository.getAll()
                                         val configJson = exportManager.exportConfig(settings)
                                         syncManager.uploadConfig(config, configJson).getOrThrow()
@@ -692,7 +695,7 @@ class WebDavConfigScreen : Screen {
                                         val config = defaultConfig ?: return@launch
                                         val deckCount: Int
                                         withContext(Dispatchers.IO) {
-                                            deckCount = syncIncrementalData(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager)
+                                            deckCount = syncIncrementalData(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager)
                                             webDavConfigManager.updateLastSync(config.id)
                                         }
                                         syncStatus = strings.settingsSyncSuccess(deckCount)
@@ -949,6 +952,18 @@ class WebDavConfigScreen : Screen {
                                             for (plan in remote.learningPlans) {
                                                 planRepository.insert(plan.toLearningPlan())
                                             }
+                                            // Restore splash quotes from data.json (higher version wins)
+                                            val remoteSplash = remote.splashQuotes
+                                            if (remoteSplash != null) {
+                                                val localVersion = splashQuoteManager.getQuotesVersion()
+                                                if (remoteSplash.version > localVersion) {
+                                                    splashQuoteManager.importQuotesFromSync(
+                                                        remoteSplash.version,
+                                                        remoteSplash.userQuotes,
+                                                        remoteSplash.hiddenDefaultIndices,
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                     restoreSettingsAndFonts(config, syncManager, settingsRepository)
@@ -987,6 +1002,7 @@ private suspend fun syncIncrementalData(
     exportManager: ExportManager,
     syncManager: SyncManager,
     mediaManager: MediaManager,
+    splashQuoteManager: SplashQuoteManager? = null,
 ): Int {
     val now = Clock.System.now()
 
@@ -998,7 +1014,13 @@ private suspend fun syncIncrementalData(
     val allLogs = reviewLogRepository.getAll().first()
     val allPlans = planRepository.getAll().first()
 
-    val json = exportManager.exportData(allKbs, allDecks, allCards, allLogs, allPlans)
+    // Include splash quotes in data.json
+    val quotesExport = if (splashQuoteManager != null) {
+        val (qv, qu, hi) = splashQuoteManager.getQuotesExportData()
+        ExportSplashQuotes(qv, qu, hi)
+    } else null
+
+    val json = exportManager.exportData(allKbs, allDecks, allCards, allLogs, allPlans, quotesExport)
     syncManager.uploadData(config, json).getOrThrow()
 
     kbRepository.markSynced(allKbs.map { it.id }, now)
@@ -1072,6 +1094,15 @@ private suspend fun syncIncrementalData(
             }
         }
 
+        // Delete remote fonts that no longer exist locally (cleaned up after manual font removal)
+        for (name in remoteFontNames) {
+            if (name !in localFontNames) {
+                try {
+                    syncManager.deleteFont(config, name)
+                } catch (_: Exception) { }
+            }
+        }
+
         val currentNames = fontDirFile.listFiles()?.map { it.name }.orEmpty()
         syncManager.uploadFontManifest(config, fontManifestJson.encodeToString(currentNames))
     } catch (_: Exception) { }
@@ -1122,6 +1153,15 @@ private suspend fun restoreSettingsAndFonts(
                     if (data != null) {
                         java.io.File(fontDirFile, name).writeBytes(data)
                     }
+                } catch (_: Exception) { }
+            }
+        }
+
+        // Delete remote fonts that no longer exist locally
+        for (name in remoteFontNames) {
+            if (name !in localFontNames) {
+                try {
+                    syncManager.deleteFont(config, name)
                 } catch (_: Exception) { }
             }
         }

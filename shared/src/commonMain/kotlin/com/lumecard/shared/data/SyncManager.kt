@@ -243,6 +243,19 @@ class SyncManager(
         }
     }
 
+    suspend fun deleteFont(config: WebDavConfig, fileName: String): Result<Unit> {
+        return try {
+            val url = config.url.trimEnd('/') + "/" + FONTS_DIR + "/" + fileName
+            val response = client.delete(url) {
+                basicAuth(config.username, config.password)
+            }
+            if (response.status.isSuccess() || response.status == HttpStatusCode.NotFound) Result.success(Unit)
+            else Result.failure(SyncException("Delete font failed: ${response.status}"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun upload(config: WebDavConfig, json: String): Result<Unit> {
         return uploadData(config, json)
     }
@@ -365,12 +378,16 @@ class SyncManager(
         localReviewLogs: List<com.lumecard.shared.model.ReviewLog>,
         localLearningPlans: List<com.lumecard.shared.model.LearningPlan>,
         exportManager: ExportManager,
+        localQuotesVersion: Long = 0,
+        localUserQuotes: List<SplashQuoteData> = emptyList(),
+        localHiddenIndices: String = "",
     ): SyncResult = syncMutex.withLock {
         val remoteResult = downloadData(config)
 
         if (remoteResult.isFailure) {
             if (localDecks.isEmpty() && localCards.isEmpty()) return SyncResult.Skipped("Nothing to sync")
-            val json = exportManager.exportData(localKnowledgeBases, localDecks, localCards, localReviewLogs, localLearningPlans)
+            val quotesExport = ExportSplashQuotes(localQuotesVersion, localUserQuotes, localHiddenIndices)
+            val json = exportManager.exportData(localKnowledgeBases, localDecks, localCards, localReviewLogs, localLearningPlans, quotesExport)
             val up = uploadData(config, json)
             return if (up.isSuccess) SyncResult.Success(true, false, localDecks.size)
             else SyncResult.Error(up.exceptionOrNull()?.message ?: "Upload failed")
@@ -381,7 +398,8 @@ class SyncManager(
 
         if (remoteExport == null) {
             archiveCurrentSnapshot(config)
-            val json = exportManager.exportData(localKnowledgeBases, localDecks, localCards, localReviewLogs, localLearningPlans)
+            val quotesExport = ExportSplashQuotes(localQuotesVersion, localUserQuotes, localHiddenIndices)
+            val json = exportManager.exportData(localKnowledgeBases, localDecks, localCards, localReviewLogs, localLearningPlans, quotesExport)
             uploadData(config, json)
             return SyncResult.Success(true, false, localDecks.size)
         }
@@ -419,6 +437,14 @@ class SyncManager(
         val mergedLogs = mergeByVersion(localReviewLogs, remoteLogs, { it.id }, { it.version })
         val mergedPlans = mergeByVersion(localLearningPlans, remotePlans, { it.id }, { it.version })
 
+        // Merge splash quotes (whole-collection version — higher wins)
+        val remoteQuotesExport = remoteExport.splashQuotes
+        val mergedQuotesExport = if (remoteQuotesExport != null && remoteQuotesExport.version > localQuotesVersion) {
+            remoteQuotesExport
+        } else {
+            ExportSplashQuotes(localQuotesVersion, localUserQuotes, localHiddenIndices)
+        }
+
         val activeKbs = mergedKbs.filter { it.deletedAt == null }
         val activeDecks = mergedDecks.filter { it.deletedAt == null }
         val activeCards = mergedCards.filter { it.deletedAt == null }
@@ -428,12 +454,14 @@ class SyncManager(
         archiveCurrentSnapshot(config)
         val mergedJson = exportManager.exportData(
             knowledgeBases = activeKbs, decks = activeDecks, cards = activeCards,
-            reviewLogs = activeLogs, learningPlans = activePlans
+            reviewLogs = activeLogs, learningPlans = activePlans,
+            splashQuotes = mergedQuotesExport,
         )
         uploadData(config, mergedJson)
 
         val imported = mergedDecks.size > localDecks.size || mergedCards.size > localCards.size
-        return SyncResult.Success(true, imported, activeDecks.size)
+        val quotesChanged = mergedQuotesExport.version != localQuotesVersion
+        return SyncResult.Success(true, imported || quotesChanged, activeDecks.size)
     }
 }
 

@@ -276,3 +276,32 @@ actual fun copyFontToStorage(sourcePath: String, fileName: String): Boolean {
 }
 
 actual fun fontFileExists(filePath: String): Boolean = File(filePath).exists()
+
+actual fun deleteFontFile(filePath: String): Boolean {
+    return try {
+        File(filePath).delete()
+    } catch (_: Exception) { false }
+}
+
+actual fun getBackgroundStorageDir(): String {
+    return "${AndroidContextHolder.context.filesDir.absolutePath}/backgrounds"
+}
+
+actual fun copyBackgroundToStorage(sourcePath: String, fileName: String): String? {
+    return try {
+        val dir = File(getBackgroundStorageDir())
+        if (!dir.exists()) dir.mkdirs()
+        val target = File(dir, fileName)
+        val uri = android.net.Uri.parse(sourcePath)
+        if (uri.scheme == "content" || uri.scheme == "file") {
+            AndroidContextHolder.context.contentResolver.openInputStream(uri)?.use { input ->
+                target.outputStream().use { output -> input.copyTo(output) }
+            }
+        } else {
+            File(sourcePath).inputStream().use { input ->
+                target.outputStream().use { output -> input.copyTo(output) }
+            }
+        }
+        target.absolutePath
+    } catch (e: Exception) { null }
+}

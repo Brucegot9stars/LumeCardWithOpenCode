@@ -395,7 +395,12 @@ class QuoteSettingsScreen : Screen {
                         modifier = Modifier.clickable {
                             scope.launch {
                                 val path = withContext(Dispatchers.IO) { pickOpenFile("image/*") }
-                                if (path != null) vm.setBackgroundPath(path)
+                                if (path != null) {
+                                    val ext = path.substringAfterLast(".", "png")
+                                    val fileName = "quote_bg.$ext"
+                                    val persistentPath = com.lumecard.app.font.copyBackgroundToStorage(path, fileName)
+                                    vm.setBackgroundPath(persistentPath ?: path)
+                                }
                             }
                         },
                     )

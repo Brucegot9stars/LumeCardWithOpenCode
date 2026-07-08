@@ -63,7 +63,10 @@ object FontRegistry {
         val spec = _fonts.find { it.id == id } ?: return
         _fonts.remove(spec)
         _fontFamilyCache.remove(id)
-        spec.filePath?.let { _userFontPaths.remove(it) }
+        spec.filePath?.let {
+            _userFontPaths.remove(it)
+            deleteFontFile(it)
+        }
     }
 
     @OptIn(ExperimentalTextApi::class)
