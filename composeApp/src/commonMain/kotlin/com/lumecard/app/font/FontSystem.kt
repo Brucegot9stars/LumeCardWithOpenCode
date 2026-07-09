@@ -11,6 +11,7 @@ import androidx.compose.ui.text.font.FontWeight
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import com.lumecard.shared.data.generateUuid
 
 enum class FontSource { SYSTEM, BUNDLED, USER_IMPORTED }
 
@@ -127,12 +128,12 @@ object FontRegistry {
 
     fun importFont(filePath: String, displayName: String): FontSpec? {
         val actualFamily = readFontFamilyName(filePath) ?: displayName
-        val id = "user_${(actualFamily).lowercase().replace(" ", "_")}"
         val ext = filePath.substringAfterLast(".", "ttf")
-        val fileName = "${id}.$ext"
+        val fileName = "${generateUuid()}.$ext"
         if (!copyFontToStorage(filePath, fileName)) return null
         val storagePath = java.io.File(getFontStorageDir(), fileName).absolutePath
         if (!registerFontFile(storagePath)) return null
+        val id = "user_${(actualFamily).lowercase().replace(" ", "_")}"
         val spec = FontSpec(id, actualFamily, actualFamily, FontSource.USER_IMPORTED, filePath = storagePath)
         register(spec)
         return spec

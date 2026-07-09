@@ -182,11 +182,17 @@ class SyncManager(
         }
     }
 
+    private fun fontFileUrl(config: WebDavConfig, fileName: String): String {
+        val segments = FONTS_DIR.split("/") + fileName
+        return URLBuilder(config.url.trimEnd('/')).apply {
+            appendPathSegments(*segments.toTypedArray())
+        }.buildString()
+    }
+
     suspend fun uploadFont(config: WebDavConfig, fileName: String, data: ByteArray): Result<Unit> {
         return try {
             ensureDir(config.url, config.username, config.password, FONTS_DIR)
-            val url = config.url.trimEnd('/') + "/" + FONTS_DIR + "/" + fileName
-            val response = client.put(url) {
+            val response = client.put(fontFileUrl(config, fileName)) {
                 basicAuth(config.username, config.password)
                 contentType(ContentType.Application.OctetStream)
                 setBody(data)
@@ -200,8 +206,7 @@ class SyncManager(
 
     suspend fun downloadFont(config: WebDavConfig, fileName: String): Result<ByteArray> {
         return try {
-            val url = config.url.trimEnd('/') + "/" + FONTS_DIR + "/" + fileName
-            val response = client.get(url) {
+            val response = client.get(fontFileUrl(config, fileName)) {
                 basicAuth(config.username, config.password)
             }
             if (response.status == HttpStatusCode.OK) {
@@ -275,8 +280,7 @@ class SyncManager(
 
     suspend fun deleteFont(config: WebDavConfig, fileName: String): Result<Unit> {
         return try {
-            val url = config.url.trimEnd('/') + "/" + FONTS_DIR + "/" + fileName
-            val response = client.delete(url) {
+            val response = client.delete(fontFileUrl(config, fileName)) {
                 basicAuth(config.username, config.password)
             }
             if (response.status.isSuccess() || response.status == HttpStatusCode.NotFound) Result.success(Unit)

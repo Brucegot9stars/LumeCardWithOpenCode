@@ -1342,9 +1342,13 @@ private suspend fun syncMediaAndFonts(
         // 4. List actual remote files
         val remoteFileNames = syncManager.listRemoteFonts(config).getOrDefault(emptyList()).toSet()
 
-        // 5. Execute file operations
+        // 5. Execute file operations for merged entries
+        val mergedMutable = merged.toMutableList()
+        val activeFileNames = merged.filter { it.deletedAt == null }.map { it.fileName }.toSet()
         for (entry in merged) {
             if (entry.deletedAt != null) {
+                // Skip tombstone if a newer active entry has the same filename (font was re-imported)
+                if (entry.fileName in activeFileNames) continue
                 if (entry.fileName in localFileNames) {
                     java.io.File(fontDirFile, entry.fileName).delete()
                 }
@@ -1370,9 +1374,31 @@ private suspend fun syncMediaAndFonts(
             }
         }
 
-        // 6. Write merged manifest to both sides
-        writeLocalFontManifest(fontDirFile, merged)
-        syncManager.uploadFontManifestEntries(config, merged)
+        // 6. Handle remote orphan files: exist on remote but not tracked in merged manifest
+        for (name in remoteFileNames) {
+            if (name !in activeFileNames && name !in localFileNames) {
+                try {
+                    val data = syncManager.downloadFont(config, name).getOrNull()
+                    if (data != null) {
+                        java.io.File(fontDirFile, name).writeBytes(data)
+                        val now = Clock.System.now().toString()
+                        mergedMutable.add(FontManifestEntry(
+                            id = generateUuid(),
+                            fileName = name,
+                            version = 1,
+                            createdAt = now,
+                            updatedAt = now,
+                        ))
+                    }
+                } catch (e: Exception) {
+                    println("[LumeCard] font download (orphan) failed: $name - ${e.message}")
+                }
+            }
+        }
+
+        // 7. Write merged manifest to both sides
+        writeLocalFontManifest(fontDirFile, mergedMutable)
+        syncManager.uploadFontManifestEntries(config, mergedMutable)
 
         // 7. Reload font registry
         com.lumecard.app.font.FontRegistry.rebuildFromStorageDir(settingsRepository)
@@ -1592,15 +1618,37 @@ private suspend fun restoreSettingsAndFonts(
         val localEntries = readLocalFontManifest(fontDirFile)
         val reconciledLocal = reconcileLocalManifest(localEntries, localFileNames)
         val remoteEntries = syncManager.downloadFontManifestEntries(config).getOrDefault(emptyList())
-        val merged = mergeFontEntries(reconciledLocal, remoteEntries)
+        val merged = mergeFontEntries(reconciledLocal, remoteEntries).toMutableList()
         val remoteFileNames = syncManager.listRemoteFonts(config).getOrDefault(emptyList()).toSet()
 
+        // Download fonts tracked in merged manifest
         for (entry in merged) {
             if (entry.deletedAt == null && entry.fileName !in localFileNames && entry.fileName in remoteFileNames) {
                 try {
                     val data = syncManager.downloadFont(config, entry.fileName).getOrNull()
                     if (data != null) {
                         java.io.File(fontDirFile, entry.fileName).writeBytes(data)
+                    }
+                } catch (_: Exception) { }
+            }
+        }
+
+        // Download orphan remote fonts not tracked in manifest
+        val activeNames = merged.filter { it.deletedAt == null }.map { it.fileName }.toSet()
+        for (name in remoteFileNames) {
+            if (name !in activeNames && name !in localFileNames) {
+                try {
+                    val data = syncManager.downloadFont(config, name).getOrNull()
+                    if (data != null) {
+                        java.io.File(fontDirFile, name).writeBytes(data)
+                        val now = Clock.System.now().toString()
+                        merged.add(FontManifestEntry(
+                            id = generateUuid(),
+                            fileName = name,
+                            version = 1,
+                            createdAt = now,
+                            updatedAt = now,
+                        ))
                     }
                 } catch (_: Exception) { }
             }
