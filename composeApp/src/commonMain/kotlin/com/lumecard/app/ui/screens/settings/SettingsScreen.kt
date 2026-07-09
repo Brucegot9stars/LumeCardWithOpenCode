@@ -587,12 +587,14 @@ class SettingsScreen(
                                 }
                             },
                         )
-                        HorizontalDivider()
-                        ListItem(
-                            headlineContent = { Text(strings.settingsFontOpenDir) },
-                            leadingContent = { Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                            modifier = Modifier.clickable { openDirectory(getFontStorageDir()) },
-                        )
+                        if (isDesktopPlatform()) {
+                            HorizontalDivider()
+                            ListItem(
+                                headlineContent = { Text(strings.settingsFontOpenDir) },
+                                leadingContent = { Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                                modifier = Modifier.clickable { openDirectory(getFontStorageDir()) },
+                            )
+                        }
                         // User imported fonts list (with delete)
                         val userFonts = FontRegistry.fonts.filter { it.source == com.lumecard.app.font.FontSource.USER_IMPORTED }
                         userFonts.forEach { spec ->

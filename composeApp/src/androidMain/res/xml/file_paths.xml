@@ -2,4 +2,5 @@
 <paths>
     <cache-path name="apk_updates" path="apk_updates/" />
     <external-cache-path name="external_apk_updates" path="apk_updates/" />
+    <files-path name="fonts" path="fonts/" />
 </paths>

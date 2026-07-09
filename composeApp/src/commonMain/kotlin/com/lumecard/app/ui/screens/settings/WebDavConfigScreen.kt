@@ -37,8 +37,13 @@ import com.lumecard.shared.data.MediaManifest
 import com.lumecard.shared.data.MediaManifestEntry
 import com.lumecard.shared.data.SplashQuoteData
 import com.lumecard.shared.data.SplashQuoteManager
+import com.lumecard.shared.data.FontManifestEntry
 import com.lumecard.shared.data.SyncManager
 import com.lumecard.shared.data.SyncResult
+import com.lumecard.shared.data.downloadFontManifestEntries
+import com.lumecard.shared.data.generateUuid
+import com.lumecard.shared.data.mergeFontEntries
+import com.lumecard.shared.data.uploadFontManifestEntries
 import com.lumecard.shared.data.WebDavConfig
 import com.lumecard.shared.data.WebDavConfigManager
 import com.lumecard.shared.data.WebDavProviders
@@ -701,7 +706,7 @@ class WebDavConfigScreen : Screen {
                                         val config = defaultConfig ?: return@launch
                                         val deckCount: Int
                                         withContext(Dispatchers.IO) {
-                                            deckCount = bidirectionalSync(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager)
+                                            deckCount = bidirectionalSync(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager, settingsRepository = settingsRepository)
                                             webDavConfigManager.updateLastSync(config.id)
                                         }
                                         syncStatus = strings.settingsSyncSuccess(deckCount)
@@ -938,7 +943,7 @@ class WebDavConfigScreen : Screen {
                                 val config = defaultConfig ?: return@launch
                                 val deckCount: Int
                                 withContext(Dispatchers.IO) {
-                                    deckCount = forceUpload(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager)
+                                    deckCount = forceUpload(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, settingsRepository, splashQuoteManager)
                                     webDavConfigManager.updateLastSync(config.id)
                                 }
                                 syncStatus = strings.settingsSyncSuccess(deckCount)
@@ -1110,7 +1115,7 @@ private suspend fun bidirectionalSync(
     mediaManager: MediaManager,
     splashQuoteManager: SplashQuoteManager? = null,
     uploadConfig: Boolean = false,
-    settingsRepository: SettingsRepository? = null,
+    settingsRepository: SettingsRepository,
 ): Int {
     val allKbs = kbRepository.getAll().first()
     val allDecks = deckRepository.getAll().first()
@@ -1139,13 +1144,13 @@ private suspend fun bidirectionalSync(
                 }
             }
 
-            if (uploadConfig && settingsRepository != null) {
+            if (uploadConfig) {
                 val settings = settingsRepository.getAll()
                 val configJson = exportManager.exportConfig(settings)
                 syncManager.uploadConfig(config, configJson).getOrThrow()
             }
 
-            syncMediaAndFonts(config, syncManager, mediaManager)
+            syncMediaAndFonts(config, syncManager, mediaManager, settingsRepository)
             result.decksSynced
         }
         is SyncResult.RemoteImport -> {
@@ -1158,13 +1163,13 @@ private suspend fun bidirectionalSync(
                 )
             }
 
-            if (uploadConfig && settingsRepository != null) {
+            if (uploadConfig) {
                 val settings = settingsRepository.getAll()
                 val configJson = exportManager.exportConfig(settings)
                 syncManager.uploadConfig(config, configJson).getOrThrow()
             }
 
-            syncMediaAndFonts(config, syncManager, mediaManager)
+            syncMediaAndFonts(config, syncManager, mediaManager, settingsRepository)
             result.export.decks.size
         }
         is SyncResult.Error -> throw Exception(result.message)
@@ -1182,6 +1187,7 @@ private suspend fun forceUpload(
     exportManager: ExportManager,
     syncManager: SyncManager,
     mediaManager: MediaManager,
+    settingsRepository: SettingsRepository,
     splashQuoteManager: SplashQuoteManager? = null,
 ): Int {
     syncManager.archiveCurrentSnapshot(config)
@@ -1207,7 +1213,7 @@ private suspend fun forceUpload(
     reviewLogRepository.markSynced(allLogs.map { it.id }, now)
     planRepository.markSynced(allPlans.map { it.id }, now)
 
-    syncMediaAndFonts(config, syncManager, mediaManager)
+    syncMediaAndFonts(config, syncManager, mediaManager, settingsRepository, forcePush = true)
     return allDecks.size
 }
 
@@ -1267,7 +1273,7 @@ private suspend fun forceDownload(
     reviewLogRepository.markSynced(remote.reviewLogs.map { it.id }, now)
     planRepository.markSynced(remote.learningPlans.map { it.id }, now)
 
-    syncMediaAndFonts(config, syncManager, mediaManager)
+    syncMediaAndFonts(config, syncManager, mediaManager, settingsRepository)
     return deckCount
 }
 
@@ -1275,6 +1281,8 @@ private suspend fun syncMediaAndFonts(
     config: WebDavConfig,
     syncManager: SyncManager,
     mediaManager: MediaManager,
+    settingsRepository: SettingsRepository,
+    forcePush: Boolean = false,
 ) {
     try {
         val userHome = System.getenv("USERPROFILE") ?: System.getenv("HOME") ?: System.getProperty("user.home")
@@ -1312,32 +1320,65 @@ private suspend fun syncMediaAndFonts(
     try {
         val fontDir = com.lumecard.app.font.getFontStorageDir()
         val fontDirFile = java.io.File(fontDir)
+        if (!fontDirFile.exists()) fontDirFile.mkdirs()
+
         val localFontFiles = fontDirFile.listFiles()?.filter { it.isFile }.orEmpty()
+        val localFileNames = localFontFiles.map { it.name }.toSet()
 
-        val remoteListResult = syncManager.downloadFontManifest(config)
-        val remoteFontNames = if (remoteListResult.isSuccess) {
-            try {
-                fontManifestJson.decodeFromString<List<String>>(remoteListResult.getOrThrow())
-            } catch (_: Exception) { emptyList() }
-        } else emptyList()
+        // 1. Read local manifest + reconcile with filesystem
+        val localManifest = readLocalFontManifest(fontDirFile)
+        val reconciledLocal = reconcileLocalManifest(localManifest, localFileNames)
 
-        val localFontNames = localFontFiles.map { it.name }.toSet()
+        // 2. Download remote manifest
+        val remoteEntries = syncManager.downloadFontManifestEntries(config).getOrDefault(emptyList())
 
-        for (file in localFontFiles) {
-            if (file.name !in remoteFontNames) {
-                try { syncManager.uploadFont(config, file.name, file.readBytes()) } catch (_: Exception) { }
+        // 3. Merge or override
+        val merged = if (forcePush) {
+            reconciledLocal
+        } else {
+            mergeFontEntries(reconciledLocal, remoteEntries)
+        }
+
+        // 4. List actual remote files
+        val remoteFileNames = syncManager.listRemoteFonts(config).getOrDefault(emptyList()).toSet()
+
+        // 5. Execute file operations
+        for (entry in merged) {
+            if (entry.deletedAt != null) {
+                if (entry.fileName in localFileNames) {
+                    java.io.File(fontDirFile, entry.fileName).delete()
+                }
+                try { syncManager.deleteFont(config, entry.fileName) } catch (_: Exception) { }
+            } else {
+                val localHas = entry.fileName in localFileNames
+                val remoteHas = entry.fileName in remoteFileNames
+                if (!localHas && remoteHas) {
+                    try {
+                        val data = syncManager.downloadFont(config, entry.fileName).getOrNull()
+                        if (data != null) java.io.File(fontDirFile, entry.fileName).writeBytes(data)
+                    } catch (e: Exception) {
+                        println("[LumeCard] font download failed: ${entry.fileName} - ${e.message}")
+                    }
+                } else if (localHas && !remoteHas) {
+                    try {
+                        val data = java.io.File(fontDirFile, entry.fileName).readBytes()
+                        syncManager.uploadFont(config, entry.fileName, data)
+                    } catch (e: Exception) {
+                        println("[LumeCard] font upload failed: ${entry.fileName} - ${e.message}")
+                    }
+                }
             }
         }
 
-        for (name in remoteFontNames) {
-            if (name !in localFontNames) {
-                try { syncManager.deleteFont(config, name) } catch (_: Exception) { }
-            }
-        }
+        // 6. Write merged manifest to both sides
+        writeLocalFontManifest(fontDirFile, merged)
+        syncManager.uploadFontManifestEntries(config, merged)
 
-        val currentNames = fontDirFile.listFiles()?.map { it.name }.orEmpty()
-        syncManager.uploadFontManifest(config, fontManifestJson.encodeToString(currentNames))
-    } catch (_: Exception) { }
+        // 7. Reload font registry
+        com.lumecard.app.font.FontRegistry.rebuildFromStorageDir(settingsRepository)
+    } catch (e: Exception) {
+        println("[LumeCard] font sync error: ${e.message}")
+    }
 }
 
 private suspend fun syncIncrementalData(
@@ -1459,6 +1500,64 @@ private suspend fun syncIncrementalData(
     return allDecks.size
 }
 
+private fun localFontManifestFile(fontDirFile: java.io.File): java.io.File {
+    return java.io.File(fontDirFile.parentFile, "font_registry.json")
+}
+
+private fun readLocalFontManifest(fontDirFile: java.io.File): List<FontManifestEntry> {
+    val file = localFontManifestFile(fontDirFile)
+    if (!file.exists()) return emptyList()
+    return try {
+        fontManifestJson.decodeFromString<List<FontManifestEntry>>(file.readText())
+    } catch (_: Exception) { emptyList() }
+}
+
+private fun writeLocalFontManifest(fontDirFile: java.io.File, entries: List<FontManifestEntry>) {
+    val file = localFontManifestFile(fontDirFile)
+    file.parentFile?.mkdirs()
+    file.writeText(fontManifestJson.encodeToString(entries))
+}
+
+private fun reconcileLocalManifest(
+    manifest: List<FontManifestEntry>,
+    currentFileNames: Set<String>,
+): MutableList<FontManifestEntry> {
+    val result = manifest.toMutableList()
+    val now = Clock.System.now().toString()
+
+    // Detect new fonts not tracked by manifest
+    for (fileName in currentFileNames) {
+        val tracked = result.any { it.fileName == fileName && it.deletedAt == null }
+        if (!tracked) {
+            result.add(FontManifestEntry(
+                id = generateUuid(),
+                fileName = fileName,
+                version = 1,
+                createdAt = now,
+                updatedAt = now,
+            ))
+        }
+    }
+
+    // Detect deleted fonts (in manifest but file missing) → create tombstones
+    val indicesToRemove = mutableListOf<Int>()
+    val entriesToAdd = mutableListOf<FontManifestEntry>()
+    for ((i, entry) in result.withIndex()) {
+        if (entry.deletedAt == null && entry.fileName !in currentFileNames) {
+            indicesToRemove.add(i)
+            entriesToAdd.add(entry.copy(
+                version = entry.version + 1,
+                updatedAt = now,
+                deletedAt = now,
+            ))
+        }
+    }
+    for (i in indicesToRemove.reversed()) result.removeAt(i)
+    result.addAll(entriesToAdd)
+
+    return result
+}
+
 private suspend fun restoreSettingsAndFonts(
     config: WebDavConfig,
     syncManager: SyncManager,
@@ -1486,36 +1585,28 @@ private suspend fun restoreSettingsAndFonts(
         val fontDirFile = java.io.File(fontDir)
         if (!fontDirFile.exists()) fontDirFile.mkdirs()
 
-        val remoteListResult = syncManager.downloadFontManifest(config)
-        val remoteFontNames = if (remoteListResult.isSuccess) {
-            try {
-                fontManifestJson.decodeFromString<List<String>>(remoteListResult.getOrThrow())
-            } catch (_: Exception) { emptyList() }
-        } else emptyList()
+        val localFontFiles = fontDirFile.listFiles()?.filter { it.isFile }.orEmpty()
+        val localFileNames = localFontFiles.map { it.name }.toSet()
 
-        val localFontNames = fontDirFile.listFiles()?.map { it.name }.orEmpty().toSet()
+        // Sync font files: merge remote state into local
+        val localEntries = readLocalFontManifest(fontDirFile)
+        val reconciledLocal = reconcileLocalManifest(localEntries, localFileNames)
+        val remoteEntries = syncManager.downloadFontManifestEntries(config).getOrDefault(emptyList())
+        val merged = mergeFontEntries(reconciledLocal, remoteEntries)
+        val remoteFileNames = syncManager.listRemoteFonts(config).getOrDefault(emptyList()).toSet()
 
-        for (name in remoteFontNames) {
-            if (name !in localFontNames) {
+        for (entry in merged) {
+            if (entry.deletedAt == null && entry.fileName !in localFileNames && entry.fileName in remoteFileNames) {
                 try {
-                    val data = syncManager.downloadFont(config, name).getOrNull()
+                    val data = syncManager.downloadFont(config, entry.fileName).getOrNull()
                     if (data != null) {
-                        java.io.File(fontDirFile, name).writeBytes(data)
+                        java.io.File(fontDirFile, entry.fileName).writeBytes(data)
                     }
                 } catch (_: Exception) { }
             }
         }
 
-        // Delete remote fonts that no longer exist locally
-        for (name in remoteFontNames) {
-            if (name !in localFontNames) {
-                try {
-                    syncManager.deleteFont(config, name)
-                } catch (_: Exception) { }
-            }
-        }
-
-        com.lumecard.app.font.FontRegistry.loadUserFonts(settingsRepository)
+        writeLocalFontManifest(fontDirFile, merged)
         com.lumecard.app.font.FontRegistry.rebuildFromStorageDir(settingsRepository)
     } catch (_: Exception) { }
 }

@@ -11,6 +11,7 @@ import kotlin.math.sin
 import android.content.Context
 import android.net.Uri
 import android.content.Intent
+import androidx.core.content.FileProvider
 import com.lumecard.shared.database.AndroidContextHolder
 import java.io.File
 import java.io.FileInputStream
@@ -153,19 +154,33 @@ private fun generateSweepTone(
 
 actual fun openDirectory(path: String) {
     try {
+        val context = AndroidContextHolder.context
+        val file = File(path)
+        if (!file.exists()) return
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
         val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(Uri.fromFile(File(path)), "resource/folder")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            setDataAndType(uri, "vnd.android.document/directory")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        AndroidContextHolder.context.startActivity(intent)
+        context.startActivity(intent)
     } catch (_: Exception) {
         try {
+            val context = AndroidContextHolder.context
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", File(path))
             val intent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(Uri.fromFile(File(path)), "*/*")
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                setDataAndType(uri, "resource/folder")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-            AndroidContextHolder.context.startActivity(intent)
-        } catch (_: Exception) { }
+            context.startActivity(intent)
+        } catch (_: Exception) {
+            try {
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(Uri.fromFile(File(path)), "*/*")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                AndroidContextHolder.context.startActivity(intent)
+            } catch (_: Exception) { }
+        }
     }
 }
 

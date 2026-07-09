@@ -243,6 +243,36 @@ class SyncManager(
         }
     }
 
+    suspend fun listRemoteFonts(config: WebDavConfig): Result<List<String>> {
+        return try {
+            val url = config.url.trimEnd('/') + "/" + FONTS_DIR + "/"
+            val response = client.request(url) {
+                method = HttpMethod("PROPFIND")
+                basicAuth(config.username, config.password)
+                header("Depth", "1")
+            }
+            if (response.status == HttpStatusCode.MultiStatus) {
+                val body = response.bodyAsText()
+                val files = mutableListOf<String>()
+                val hrefPattern = Regex("<[dD]:href>([^<]+)</[dD]:href>")
+                for (match in hrefPattern.findAll(body)) {
+                    val href = match.groupValues[1].trimEnd('/')
+                    val name = href.substringAfterLast("/")
+                    if (name.isNotEmpty() && href.endsWith("/")) continue
+                    if (name.isNotEmpty()) files.add(name)
+                }
+                files.removeAll { it == FONTS_DIR.substringAfterLast("/") || it.isEmpty() || it == "fonts" }
+                Result.success(files)
+            } else if (response.status == HttpStatusCode.NotFound) {
+                Result.success(emptyList())
+            } else {
+                Result.failure(SyncException("List fonts failed: ${response.status}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun deleteFont(config: WebDavConfig, fileName: String): Result<Unit> {
         return try {
             val url = config.url.trimEnd('/') + "/" + FONTS_DIR + "/" + fileName
