@@ -25,16 +25,20 @@ import com.lumecard.app.platform.MediaFileEntry
 import com.lumecard.app.platform.hashFileSha1
 import com.lumecard.app.platform.scanMediaDirectory
 import com.lumecard.app.platform.scanMediaDirectoryRaw
+import com.lumecard.app.ui.components.ContextHelpButton
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.theme.LumeCardTheme
+import com.lumecard.shared.data.DataExport
 import com.lumecard.shared.data.ExportManager
 import com.lumecard.shared.data.ExportSplashQuotes
 import com.lumecard.shared.data.MediaManager
 import com.lumecard.shared.data.SyncHistoryEntry
 import com.lumecard.shared.data.MediaManifest
 import com.lumecard.shared.data.MediaManifestEntry
+import com.lumecard.shared.data.SplashQuoteData
 import com.lumecard.shared.data.SplashQuoteManager
 import com.lumecard.shared.data.SyncManager
+import com.lumecard.shared.data.SyncResult
 import com.lumecard.shared.data.WebDavConfig
 import com.lumecard.shared.data.WebDavConfigManager
 import com.lumecard.shared.data.WebDavProviders
@@ -98,6 +102,8 @@ class WebDavConfigScreen : Screen {
         var syncStatus by remember { mutableStateOf("") }
         var deleteConfirmId by remember { mutableStateOf<String?>(null) }
         var showRestoreConfirm by remember { mutableStateOf(false) }
+        var showForceUploadConfirm by remember { mutableStateOf(false) }
+        var showForceDownloadConfirm by remember { mutableStateOf(false) }
         var showRestoreHistory by remember { mutableStateOf(false) }
         var historyEntries by remember { mutableStateOf<List<SyncHistoryEntry>>(emptyList()) }
         var restoreHistoryTarget by remember { mutableStateOf<SyncHistoryEntry?>(null) }
@@ -144,6 +150,9 @@ class WebDavConfigScreen : Screen {
                 LumeCardTopBar(
                     title = strings.settingsCloudSync,
                     onBack = { navigator.pop() },
+                    action = {
+                        ContextHelpButton(articleId = "webdav-sync")
+                    },
                 )
             },
             snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -645,7 +654,7 @@ class WebDavConfigScreen : Screen {
                         )
                     }
 
-                    // Sync Now (data + config)
+                    // Sync Now (bidirectional data sync + config + media/fonts)
                     Button(
                         onClick = {
                             scope.launch {
@@ -655,10 +664,7 @@ class WebDavConfigScreen : Screen {
                                     val config = defaultConfig ?: return@launch
                                     val deckCount: Int
                                     withContext(Dispatchers.IO) {
-                                        deckCount = syncIncrementalData(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager)
-                                        val settings = settingsRepository.getAll()
-                                        val configJson = exportManager.exportConfig(settings)
-                                        syncManager.uploadConfig(config, configJson).getOrThrow()
+                                        deckCount = bidirectionalSync(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager, uploadConfig = true, settingsRepository)
                                         webDavConfigManager.updateLastSync(config.id)
                                     }
                                     syncStatus = strings.settingsSyncSuccess(deckCount)
@@ -695,7 +701,7 @@ class WebDavConfigScreen : Screen {
                                         val config = defaultConfig ?: return@launch
                                         val deckCount: Int
                                         withContext(Dispatchers.IO) {
-                                            deckCount = syncIncrementalData(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager)
+                                            deckCount = bidirectionalSync(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager)
                                             webDavConfigManager.updateLastSync(config.id)
                                         }
                                         syncStatus = strings.settingsSyncSuccess(deckCount)
@@ -755,6 +761,38 @@ class WebDavConfigScreen : Screen {
                         Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(spacing.sm))
                         Text(strings.settingsRestoreFromCloud)
+                    }
+
+                    // Force sync section
+                    Text(
+                        strings.settingsForceSync,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
+                        modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                    ) {
+                        OutlinedButton(
+                            onClick = { showForceUploadConfirm = true },
+                            interactionSource = null,
+                            modifier = Modifier.weight(1f),
+                            enabled = !isSyncing,
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        ) {
+                            Text(strings.syncForceUpload, style = MaterialTheme.typography.labelSmall)
+                        }
+                        OutlinedButton(
+                            onClick = { showForceDownloadConfirm = true },
+                            interactionSource = null,
+                            modifier = Modifier.weight(1f),
+                            enabled = !isSyncing,
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        ) {
+                            Text(strings.syncForceDownload, style = MaterialTheme.typography.labelSmall)
+                        }
                     }
 
                     // Restore history
@@ -837,42 +875,19 @@ class WebDavConfigScreen : Screen {
                                             syncStatus = strings.settingsSyncing
                                             try {
                                                 val config = defaultConfig ?: return@launch
-                                                val result = withContext(Dispatchers.IO) {
-                                                    val remoteResult = syncManager.downloadSnapshot(config, entry.filename)
-                                                    var restoredDecks = 0
-                                                    if (remoteResult.isSuccess) {
-                                                        val remote = exportManager.importData(remoteResult.getOrThrow())
-                                                        if (remote != null) {
-                                                            for (kb in knowledgeBaseRepository.getAll().first()) {
-                                                                knowledgeBaseRepository.delete(kb.id)
+                                                    val result = withContext(Dispatchers.IO) {
+                                                        val remoteResult = syncManager.downloadSnapshot(config, entry.filename)
+                                                        var restoredDecks = 0
+                                                        if (remoteResult.isSuccess) {
+                                                            val remote = exportManager.importData(remoteResult.getOrThrow())
+                                                            if (remote != null) {
+                                                                restoredDecks = remote.decks.size
+                                                                writeMergedToLocal(remote, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository)
                                                             }
-                                                            for (deck in deckRepository.getAll().first()) {
-                                                                deckRepository.delete(deck.id)
-                                                            }
-                                                            for (card in cardRepository.getAll().first()) {
-                                                                cardRepository.delete(card.id)
-                                                            }
-                                                            for (kb in remote.knowledgeBases) {
-                                                                knowledgeBaseRepository.insert(kb.toKnowledgeBase())
-                                                            }
-                                                            for (deck in remote.decks) {
-                                                                deckRepository.insert(deck.toDeck())
-                                                                restoredDecks++
-                                                            }
-                                                            for (card in remote.cards) {
-                                                                cardRepository.insert(card.toCard())
-                                                            }
-                                                            for (log in remote.reviewLogs) {
-                                                                reviewLogRepository.insert(log.toReviewLog())
-                                                            }
-                                                            for (plan in remote.learningPlans) {
-                                                                planRepository.insert(plan.toLearningPlan())
-                                                    }
-                                                }
-                                            }
-                                            restoreSettingsAndFonts(config, syncManager, settingsRepository)
-                                            webDavConfigManager.updateLastSync(config.id)
-                                            restoredDecks
+                                                        }
+                                                        restoreSettingsAndFonts(config, syncManager, settingsRepository)
+                                                        webDavConfigManager.updateLastSync(config.id)
+                                                        restoredDecks
                                         }
                                         syncStatus = strings.settingsSyncSuccess(result)
                                         snackbarHostState.showSnackbar(strings.settingsSyncSuccess(result))
@@ -907,6 +922,80 @@ class WebDavConfigScreen : Screen {
             )
         }
 
+        // Force upload confirm dialog
+        if (showForceUploadConfirm) {
+            AlertDialog(
+                onDismissRequest = { showForceUploadConfirm = false },
+                title = { Text(strings.syncForceUploadConfirm) },
+                text = { Text(strings.syncForceUploadConfirmDesc) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showForceUploadConfirm = false
+                        scope.launch {
+                            isSyncing = true
+                            syncStatus = strings.settingsSyncing
+                            try {
+                                val config = defaultConfig ?: return@launch
+                                val deckCount: Int
+                                withContext(Dispatchers.IO) {
+                                    deckCount = forceUpload(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager)
+                                    webDavConfigManager.updateLastSync(config.id)
+                                }
+                                syncStatus = strings.settingsSyncSuccess(deckCount)
+                                snackbarHostState.showSnackbar(strings.settingsSyncSuccess(deckCount))
+                                reloadConfigs()
+                            } catch (e: Exception) {
+                                syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
+                                snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
+                            } finally {
+                                isSyncing = false
+                            }
+                        }
+                    }, interactionSource = null) { Text(strings.actionConfirm) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showForceUploadConfirm = false }, interactionSource = null) { Text(strings.actionCancel) }
+                },
+            )
+        }
+
+        // Force download confirm dialog
+        if (showForceDownloadConfirm) {
+            AlertDialog(
+                onDismissRequest = { showForceDownloadConfirm = false },
+                title = { Text(strings.syncForceDownloadConfirm) },
+                text = { Text(strings.syncForceDownloadConfirmDesc) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showForceDownloadConfirm = false
+                        scope.launch {
+                            isSyncing = true
+                            syncStatus = strings.settingsSyncing
+                            try {
+                                val config = defaultConfig ?: return@launch
+                                val deckCount: Int
+                                withContext(Dispatchers.IO) {
+                                    deckCount = forceDownload(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, settingsRepository, splashQuoteManager)
+                                    webDavConfigManager.updateLastSync(config.id)
+                                }
+                                syncStatus = strings.settingsSyncSuccess(deckCount)
+                                snackbarHostState.showSnackbar(strings.settingsSyncSuccess(deckCount))
+                                reloadConfigs()
+                            } catch (e: Exception) {
+                                syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
+                                snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
+                            } finally {
+                                isSyncing = false
+                            }
+                        }
+                    }, interactionSource = null) { Text(strings.actionConfirm) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showForceDownloadConfirm = false }, interactionSource = null) { Text(strings.actionCancel) }
+                },
+            )
+        }
+
         // Restore confirm dialog
         if (showRestoreConfirm) {
             AlertDialog(
@@ -921,55 +1010,33 @@ class WebDavConfigScreen : Screen {
                             syncStatus = strings.settingsSyncing
                             try {
                                 val config = defaultConfig ?: return@launch
-                                val result = withContext(Dispatchers.IO) {
-                                    val remoteResult = syncManager.download(config)
-                                    var restoredDecks = 0
-                                    if (remoteResult.isSuccess) {
-                                        val remote = exportManager.importData(remoteResult.getOrThrow())
-                                        if (remote != null) {
-                                            for (kb in knowledgeBaseRepository.getAll().first()) {
-                                                knowledgeBaseRepository.delete(kb.id)
-                                            }
-                                            for (deck in deckRepository.getAll().first()) {
-                                                deckRepository.delete(deck.id)
-                                            }
-                                            for (card in cardRepository.getAll().first()) {
-                                                cardRepository.delete(card.id)
-                                            }
-                                            for (kb in remote.knowledgeBases) {
-                                                knowledgeBaseRepository.insert(kb.toKnowledgeBase())
-                                            }
-                                            for (deck in remote.decks) {
-                                                deckRepository.insert(deck.toDeck())
-                                                restoredDecks++
-                                            }
-                                            for (card in remote.cards) {
-                                                cardRepository.insert(card.toCard())
-                                            }
-                                            for (log in remote.reviewLogs) {
-                                                reviewLogRepository.insert(log.toReviewLog())
-                                            }
-                                            for (plan in remote.learningPlans) {
-                                                planRepository.insert(plan.toLearningPlan())
-                                            }
-                                            // Restore splash quotes from data.json (higher version wins)
-                                            val remoteSplash = remote.splashQuotes
-                                            if (remoteSplash != null) {
-                                                val localVersion = splashQuoteManager.getQuotesVersion()
-                                                if (remoteSplash.version > localVersion) {
-                                                    splashQuoteManager.importQuotesFromSync(
-                                                        remoteSplash.version,
-                                                        remoteSplash.userQuotes,
-                                                        remoteSplash.hiddenDefaultIndices,
-                                                    )
+                    val result = withContext(Dispatchers.IO) {
+                                        val remoteResult = syncManager.download(config)
+                                        var restoredDecks = 0
+                                        if (remoteResult.isSuccess) {
+                                            val remote = exportManager.importData(remoteResult.getOrThrow())
+                                            if (remote != null) {
+                                                restoredDecks = remote.decks.size
+                                                writeMergedToLocal(remote, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository)
+
+                                                // Restore splash quotes from data.json (higher version wins)
+                                                val remoteSplash = remote.splashQuotes
+                                                if (remoteSplash != null) {
+                                                    val localVersion = splashQuoteManager.getQuotesVersion()
+                                                    if (remoteSplash.version > localVersion) {
+                                                        splashQuoteManager.importQuotesFromSync(
+                                                            remoteSplash.version,
+                                                            remoteSplash.userQuotes,
+                                                            remoteSplash.hiddenDefaultIndices,
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
+                                        restoreSettingsAndFonts(config, syncManager, settingsRepository)
+                                        webDavConfigManager.updateLastSync(config.id)
+                                        restoredDecks
                                     }
-                                    restoreSettingsAndFonts(config, syncManager, settingsRepository)
-                                    webDavConfigManager.updateLastSync(config.id)
-                                    restoredDecks
-                                }
                                 syncStatus = strings.settingsSyncSuccess(result)
                                 snackbarHostState.showSnackbar(strings.settingsSyncSuccess(result))
                                 reloadConfigs()
@@ -991,6 +1058,287 @@ class WebDavConfigScreen : Screen {
 }
 
 private val fontManifestJson = Json { ignoreUnknownKeys = true }
+
+private suspend fun writeMergedToLocal(
+    data: DataExport,
+    kbRepository: KnowledgeBaseRepository,
+    deckRepository: DeckRepository,
+    cardRepository: CardRepository,
+    reviewLogRepository: ReviewLogRepository,
+    planRepository: LearningPlanRepository,
+) {
+    val localKbIds = kbRepository.getAll().first().map { it.id }.toSet()
+    for (ekb in data.knowledgeBases) {
+        val kb = ekb.toKnowledgeBase()
+        if (kb.id in localKbIds) kbRepository.update(kb) else kbRepository.insert(kb)
+    }
+
+    val localDeckIds = deckRepository.getAll().first().map { it.id }.toSet()
+    for (edeck in data.decks) {
+        val deck = edeck.toDeck()
+        if (deck.id in localDeckIds) deckRepository.update(deck) else deckRepository.insert(deck)
+    }
+
+    val localCardIds = cardRepository.getAll().first().map { it.id }.toSet()
+    for (ecard in data.cards) {
+        val card = ecard.toCard()
+        if (card.id in localCardIds) cardRepository.update(card) else cardRepository.insert(card)
+    }
+
+    val localLogIds = reviewLogRepository.getAll().first().map { it.id }.toSet()
+    for (elog in data.reviewLogs) {
+        val log = elog.toReviewLog()
+        if (log.id !in localLogIds) reviewLogRepository.insert(log)
+    }
+
+    val localPlanIds = planRepository.getAll().first().map { it.id }.toSet()
+    for (eplan in data.learningPlans) {
+        val plan = eplan.toLearningPlan()
+        if (plan.id in localPlanIds) planRepository.update(plan) else planRepository.insert(plan)
+    }
+}
+
+private suspend fun bidirectionalSync(
+    config: WebDavConfig,
+    kbRepository: KnowledgeBaseRepository,
+    deckRepository: DeckRepository,
+    cardRepository: CardRepository,
+    reviewLogRepository: ReviewLogRepository,
+    planRepository: LearningPlanRepository,
+    exportManager: ExportManager,
+    syncManager: SyncManager,
+    mediaManager: MediaManager,
+    splashQuoteManager: SplashQuoteManager? = null,
+    uploadConfig: Boolean = false,
+    settingsRepository: SettingsRepository? = null,
+): Int {
+    val allKbs = kbRepository.getAll().first()
+    val allDecks = deckRepository.getAll().first()
+    val allCards = cardRepository.getAll().first()
+    val allLogs = reviewLogRepository.getAll().first()
+    val allPlans = planRepository.getAll().first()
+
+    val (qv, qu, hi) = splashQuoteManager?.getQuotesExportData() ?: Triple(0L, emptyList<SplashQuoteData>(), "")
+
+    val result = syncManager.performSync(
+        config, allKbs, allDecks, allCards, allLogs, allPlans,
+        exportManager, qv, qu, hi
+    )
+
+    return when (result) {
+        is SyncResult.Success -> {
+            val merged = result.mergedData
+            if (merged != null) {
+                writeMergedToLocal(merged, kbRepository, deckRepository, cardRepository, reviewLogRepository, planRepository)
+
+                val mergedQuotes = merged.splashQuotes
+                if (mergedQuotes != null && splashQuoteManager != null && mergedQuotes.version > qv) {
+                    splashQuoteManager.importQuotesFromSync(
+                        mergedQuotes.version, mergedQuotes.userQuotes, mergedQuotes.hiddenDefaultIndices
+                    )
+                }
+            }
+
+            if (uploadConfig && settingsRepository != null) {
+                val settings = settingsRepository.getAll()
+                val configJson = exportManager.exportConfig(settings)
+                syncManager.uploadConfig(config, configJson).getOrThrow()
+            }
+
+            syncMediaAndFonts(config, syncManager, mediaManager)
+            result.decksSynced
+        }
+        is SyncResult.RemoteImport -> {
+            writeMergedToLocal(result.export, kbRepository, deckRepository, cardRepository, reviewLogRepository, planRepository)
+
+            val remoteQuotes = result.export.splashQuotes
+            if (remoteQuotes != null && splashQuoteManager != null && remoteQuotes.version > qv) {
+                splashQuoteManager.importQuotesFromSync(
+                    remoteQuotes.version, remoteQuotes.userQuotes, remoteQuotes.hiddenDefaultIndices
+                )
+            }
+
+            if (uploadConfig && settingsRepository != null) {
+                val settings = settingsRepository.getAll()
+                val configJson = exportManager.exportConfig(settings)
+                syncManager.uploadConfig(config, configJson).getOrThrow()
+            }
+
+            syncMediaAndFonts(config, syncManager, mediaManager)
+            result.export.decks.size
+        }
+        is SyncResult.Error -> throw Exception(result.message)
+        is SyncResult.Skipped -> 0
+    }
+}
+
+private suspend fun forceUpload(
+    config: WebDavConfig,
+    kbRepository: KnowledgeBaseRepository,
+    deckRepository: DeckRepository,
+    cardRepository: CardRepository,
+    reviewLogRepository: ReviewLogRepository,
+    planRepository: LearningPlanRepository,
+    exportManager: ExportManager,
+    syncManager: SyncManager,
+    mediaManager: MediaManager,
+    splashQuoteManager: SplashQuoteManager? = null,
+): Int {
+    syncManager.archiveCurrentSnapshot(config)
+
+    val allKbs = kbRepository.getAll().first()
+    val allDecks = deckRepository.getAll().first()
+    val allCards = cardRepository.getAll().first()
+    val allLogs = reviewLogRepository.getAll().first()
+    val allPlans = planRepository.getAll().first()
+
+    val quotesExport = if (splashQuoteManager != null) {
+        val (qv, qu, hi) = splashQuoteManager.getQuotesExportData()
+        ExportSplashQuotes(qv, qu, hi)
+    } else null
+
+    val json = exportManager.exportData(allKbs, allDecks, allCards, allLogs, allPlans, quotesExport)
+    syncManager.uploadData(config, json).getOrThrow()
+
+    val now = Clock.System.now()
+    kbRepository.markSynced(allKbs.map { it.id }, now)
+    deckRepository.markSynced(allDecks.map { it.id }, now)
+    cardRepository.markSynced(allCards.map { it.id }, now)
+    reviewLogRepository.markSynced(allLogs.map { it.id }, now)
+    planRepository.markSynced(allPlans.map { it.id }, now)
+
+    syncMediaAndFonts(config, syncManager, mediaManager)
+    return allDecks.size
+}
+
+private suspend fun forceDownload(
+    config: WebDavConfig,
+    kbRepository: KnowledgeBaseRepository,
+    deckRepository: DeckRepository,
+    cardRepository: CardRepository,
+    reviewLogRepository: ReviewLogRepository,
+    planRepository: LearningPlanRepository,
+    exportManager: ExportManager,
+    syncManager: SyncManager,
+    mediaManager: MediaManager,
+    settingsRepository: SettingsRepository,
+    splashQuoteManager: SplashQuoteManager? = null,
+): Int {
+    syncManager.archiveCurrentSnapshot(config)
+
+    val remoteResult = syncManager.downloadData(config)
+    if (remoteResult.isFailure) throw Exception("No remote data found")
+
+    val remoteJson = remoteResult.getOrThrow()
+    val remote = exportManager.importData(remoteJson) ?: throw Exception("Failed to parse remote data")
+
+    val allKbs = kbRepository.getAll().first()
+    val allDecks = deckRepository.getAll().first()
+    val allCards = cardRepository.getAll().first()
+    val allLogs = reviewLogRepository.getAll().first()
+    val allPlans = planRepository.getAll().first()
+
+    for (kb in allKbs) { kbRepository.delete(kb.id) }
+    for (deck in allDecks) { deckRepository.delete(deck.id) }
+    for (card in allCards) { cardRepository.delete(card.id) }
+    reviewLogRepository.deleteAll()
+    for (plan in allPlans) { planRepository.delete(plan.id) }
+
+    var deckCount = 0
+    for (kb in remote.knowledgeBases) { kbRepository.insert(kb.toKnowledgeBase()) }
+    for (deck in remote.decks) { deckRepository.insert(deck.toDeck()); deckCount++ }
+    for (card in remote.cards) { cardRepository.insert(card.toCard()) }
+    for (log in remote.reviewLogs) { reviewLogRepository.insert(log.toReviewLog()) }
+    for (plan in remote.learningPlans) { planRepository.insert(plan.toLearningPlan()) }
+
+    val remoteSplash = remote.splashQuotes
+    if (remoteSplash != null && splashQuoteManager != null) {
+        splashQuoteManager.importQuotesFromSync(
+            remoteSplash.version, remoteSplash.userQuotes, remoteSplash.hiddenDefaultIndices,
+        )
+    }
+
+    restoreSettingsAndFonts(config, syncManager, settingsRepository)
+
+    val now = Clock.System.now()
+    kbRepository.markSynced(remote.knowledgeBases.map { it.id }, now)
+    deckRepository.markSynced(remote.decks.map { it.id }, now)
+    cardRepository.markSynced(remote.cards.map { it.id }, now)
+    reviewLogRepository.markSynced(remote.reviewLogs.map { it.id }, now)
+    planRepository.markSynced(remote.learningPlans.map { it.id }, now)
+
+    syncMediaAndFonts(config, syncManager, mediaManager)
+    return deckCount
+}
+
+private suspend fun syncMediaAndFonts(
+    config: WebDavConfig,
+    syncManager: SyncManager,
+    mediaManager: MediaManager,
+) {
+    try {
+        val userHome = System.getenv("USERPROFILE") ?: System.getenv("HOME") ?: System.getProperty("user.home")
+        val mediaBase = System.getProperty("lumecard.media.dir") ?: java.io.File(userHome, ".lumecard/media").absolutePath
+    val rawFiles = scanMediaDirectoryRaw(mediaBase)
+        if (rawFiles.isNotEmpty()) {
+            val resolved = rawFiles.map { raw ->
+                val cachedHash = mediaManager.getCachedHash(raw.relativePath, raw.mtime)
+                if (cachedHash != null) {
+                    MediaManifestEntry(raw.relativePath, raw.size, cachedHash)
+                } else {
+                    val sha1 = hashFileSha1("$mediaBase/${raw.relativePath}")
+                    mediaManager.updateCache(raw.relativePath, raw.mtime, sha1)
+                    MediaManifestEntry(raw.relativePath, raw.size, sha1)
+                }
+            }
+
+            val localManifest = MediaManifest(version = 1, entries = resolved)
+            syncManager.uploadManifest(config, mediaManager.manifestToJson(localManifest))
+
+            val remoteResult = syncManager.downloadManifest(config)
+            val remoteManifest = if (remoteResult.isSuccess) mediaManager.manifestFromJson(remoteResult.getOrThrow()) else null
+
+            val needUpload = mediaManager.filesToUpload(resolved, remoteManifest)
+            for (path in needUpload) {
+                val absPath = "$mediaBase/$path"
+                try {
+                    val data = java.io.File(absPath).readBytes()
+                    syncManager.uploadMedia(config, path, data).getOrThrow()
+                } catch (_: Exception) { }
+            }
+        }
+    } catch (_: Exception) { }
+
+    try {
+        val fontDir = com.lumecard.app.font.getFontStorageDir()
+        val fontDirFile = java.io.File(fontDir)
+        val localFontFiles = fontDirFile.listFiles()?.filter { it.isFile }.orEmpty()
+
+        val remoteListResult = syncManager.downloadFontManifest(config)
+        val remoteFontNames = if (remoteListResult.isSuccess) {
+            try {
+                fontManifestJson.decodeFromString<List<String>>(remoteListResult.getOrThrow())
+            } catch (_: Exception) { emptyList() }
+        } else emptyList()
+
+        val localFontNames = localFontFiles.map { it.name }.toSet()
+
+        for (file in localFontFiles) {
+            if (file.name !in remoteFontNames) {
+                try { syncManager.uploadFont(config, file.name, file.readBytes()) } catch (_: Exception) { }
+            }
+        }
+
+        for (name in remoteFontNames) {
+            if (name !in localFontNames) {
+                try { syncManager.deleteFont(config, name) } catch (_: Exception) { }
+            }
+        }
+
+        val currentNames = fontDirFile.listFiles()?.map { it.name }.orEmpty()
+        syncManager.uploadFontManifest(config, fontManifestJson.encodeToString(currentNames))
+    } catch (_: Exception) { }
+}
 
 private suspend fun syncIncrementalData(
     config: WebDavConfig,
@@ -1030,7 +1378,8 @@ private suspend fun syncIncrementalData(
     planRepository.markSynced(allPlans.map { it.id }, now)
 
     // Anki-style media sync: cache mtime + SHA-1 to avoid re-hashing unchanged files
-    val mediaBase = System.getProperty("lumecard.media.dir") ?: "${System.getProperty("user.home")}/.lumecard/media"
+    val mediaHome = System.getenv("USERPROFILE") ?: System.getenv("HOME") ?: System.getProperty("user.home")
+    val mediaBase = System.getProperty("lumecard.media.dir") ?: java.io.File(mediaHome, ".lumecard/media").absolutePath
     val rawFiles = scanMediaDirectoryRaw(mediaBase)
     if (rawFiles.isNotEmpty()) {
         val resolved = rawFiles.map { raw ->
@@ -1167,5 +1516,6 @@ private suspend fun restoreSettingsAndFonts(
         }
 
         com.lumecard.app.font.FontRegistry.loadUserFonts(settingsRepository)
+        com.lumecard.app.font.FontRegistry.rebuildFromStorageDir(settingsRepository)
     } catch (_: Exception) { }
 }

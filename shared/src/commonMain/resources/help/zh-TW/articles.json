@@ -1,0 +1,229 @@
+{
+  "articles": [
+    {
+      "id": "quick-start",
+      "title": "快速入門",
+      "order": 1,
+      "tags": ["beginner", "getting-started"],
+      "keywords": ["開始使用", "第一張卡片", "新手指南", "新用戶", "歡迎"],
+      "relatedArticles": ["basic-usage", "card-management"],
+      "hasDangerContent": false,
+      "sections": [
+        { "type": "paragraph", "title": "歡迎使用 LumeCard", "content": "LumeCard 是一款跨平臺閃卡應用程式，旨在透過間隔重複幫助您有效學習。它可離線執行於 Android、Windows、Linux 和 macOS。" },
+        { "type": "steps", "title": "建立您的第一張卡片", "items": [
+          "啟動應用程式，點選底部欄的 + 按鈕",
+          "從清單中選擇一個牌組，或點選「新增牌組」建立新牌組",
+          "在正面輸入問題，在背面輸入答案",
+          "可選：新增標籤以協助整理卡片",
+          "點選「儲存」將卡片新增至牌組"
+        ]},
+        { "type": "tip", "content": "您可以使用鍵盤快速鍵：Ctrl+N 建立新卡片，Ctrl+S 儲存，Ctrl+Enter 快速儲存並繼續建立。" },
+        { "type": "paragraph", "title": "開始您的第一次學習", "content": "建立至少一個包含卡片的牌組後，點選牌組上的「學習」按鈕即可開始學習。LumeCard 會根據複習計劃呈現卡片。使用「重來」、「困難」、「良好」和「簡單」按鈕來評估您的記憶情況。" },
+        { "type": "warning", "content": "前幾天會感覺比較輕鬆，因為新卡片會根據每日新卡上限（預設 20 張）逐漸引入。您可以在設定中調整此數值。" }
+      ]
+    },
+    {
+      "id": "basic-usage",
+      "title": "基本用法",
+      "order": 2,
+      "tags": ["study", "review", "navigation"],
+      "keywords": ["學習", "複習卡片", "評分答案", "間隔重複", "儀表板", "導航", "每日目標"],
+      "relatedArticles": ["quick-start", "card-management", "settings-guide"],
+      "hasDangerContent": false,
+      "sections": [
+        { "type": "paragraph", "title": "儀表板", "content": "儀表板是您的主螢幕。它顯示您的每日進度、學習統計資訊，以及最近使用的牌組和學習計劃的快速入口。" },
+        { "type": "steps", "title": "應用程式導航", "items": [
+          "底部欄：快速存取首頁、學習、牌組、統計和設定",
+          "複習時在卡片上左右滑動可檢視附加資訊",
+          "長按牌組可存取快速操作（重新命名、刪除、匯出）",
+          "使用搜尋圖示在所有牌組中尋找卡片"
+        ]},
+        { "type": "paragraph", "title": "學習過程", "content": "在學習過程中，卡片會逐張顯示。檢視問題後，點選或按任意鍵顯示答案。評估您的記憶：重來（忘記了）、困難（較難）、良好（正常）、簡單（很容易）。您的評分決定該卡片下次出現的時間。" },
+        { "type": "faq", "title": "常見問題", "items": [
+          { "question": "新卡片如何安排？", "answer": "新卡片會在每日上限（預設 20 張）內逐步展示。它們會與複習卡片交錯出現，具體取決於複習模式的設定。" },
+          { "question": "如果我跳過一天會怎樣？", "answer": "複習卡片會累積。排程器會根據每日複習上限顯示積壓的卡片。您可以暫時提高上限來趕上進度。" },
+          { "question": "可以離線學習嗎？", "answer": "當然可以！LumeCard 完全支援離線使用。WebDAV 同步僅在需要備份或多裝置使用時才需要。" }
+        ]}
+      ]
+    },
+    {
+      "id": "card-management",
+      "title": "卡片管理",
+      "order": 3,
+      "tags": ["cards", "edit", "delete", "organize"],
+      "keywords": ["建立卡片", "編輯卡片", "刪除卡片", "卡片類型", "標籤", "搜尋卡片", "匯入卡片", "匯出卡片", "CSV", "克漏字"],
+      "relatedArticles": ["basic-usage", "knowledge-base"],
+      "hasDangerContent": true,
+      "sections": [
+        { "type": "paragraph", "title": "卡片類型", "content": "LumeCard 支援多種卡片類型：基礎型（正反面）、反轉型（自動產生反向卡片）、克漏字型（填空）、選擇題型、Markdown 和富文字格式。" },
+        { "type": "steps", "title": "編輯卡片", "items": [
+          "導航到包含該卡片的牌組",
+          "點選卡片以開啟詳細資訊檢視",
+          "點選編輯圖示（鉛筆）修改內容",
+          "完成修改後點選儲存"
+        ]},
+        { "type": "danger", "content": "刪除卡片是不可逆的操作。被刪除的卡片將從所有複習計劃中移除且無法復原。如果您想暫時隱藏卡片，建議將其擱置。" },
+        { "type": "paragraph", "title": "標籤與組織", "content": "標籤可以幫助您篩選和尋找卡片。每張卡片可以新增多個標籤。在卡片清單介面使用搜尋列按標籤篩選：輸入 'tag:grammar' 即可只顯示帶有 'grammar' 標籤的卡片。" },
+        { "type": "tip", "content": "您可以將卡片匯出為 CSV 格式以便備份或批次編輯。前往 設定 > 資料管理 > 匯出資料。" }
+      ]
+    },
+    {
+      "id": "knowledge-base",
+      "title": "知識庫與牌組",
+      "order": 4,
+      "tags": ["kb", "deck", "organize", "structure"],
+      "keywords": ["知識庫", "牌組", "建立牌組", "重新命名牌組", "刪除牌組", "移動卡片", "整理牌組", "牌組顏色", "牌組圖示"],
+      "relatedArticles": ["card-management", "backup-restore"],
+      "hasDangerContent": true,
+      "sections": [
+        { "type": "paragraph", "title": "知識庫", "content": "知識庫是用於歸類相關牌組的頂層容器。例如，您可以建立一個「日語」知識庫和一個「程式設計」知識庫，各自包含對應的牌組。" },
+        { "type": "paragraph", "title": "牌組", "content": "牌組是針對特定主題的卡片集合。每個牌組歸屬於一個知識庫。您可以自訂牌組的顏色和圖示以便視覺識別。" },
+        { "type": "steps", "title": "建立新牌組", "items": [
+          "從底部欄進入牌組選項頁",
+          "點選 + 按鈕或「新增牌組」",
+          "輸入牌組名稱",
+          "可選：選擇或建立一個上層知識庫",
+          "選擇顏色和圖示",
+          "點選儲存建立牌組"
+        ]},
+        { "type": "danger", "content": "刪除牌組將永久刪除其中的所有卡片。此操作無法撤銷。刪除前請考慮匯出牌組作為備份。" },
+        { "type": "warning", "content": "將牌組移動到不同的知識庫會更新其所有卡片的關聯資訊。學習進度保持不變。" }
+      ]
+    },
+    {
+      "id": "ai-features",
+      "title": "AI 功能",
+      "order": 5,
+      "tags": ["ai", "generation", "automation"],
+      "keywords": ["AI 卡片產生", "AI 設定", "提供者", "API 金鑰", "提示詞", "批次產生", "AI 模型"],
+      "relatedArticles": ["card-management", "settings-guide"],
+      "hasDangerContent": false,
+      "sections": [
+        { "type": "paragraph", "title": "AI 驅動卡片產生", "content": "LumeCard 可以使用 AI 提供者自動產生閃卡。您可以輸入來源文字，讓 AI 建立結構清晰的問答卡片。" },
+        { "type": "steps", "title": "設定 AI", "items": [
+          "前往 設定 > AI 設定",
+          "選擇一個提供者（OpenAI、Anthropic 或自訂）並輸入您的 API 金鑰",
+          "設定模型和參數（溫度、最大令牌數）",
+          "儲存設定"
+        ]},
+        { "type": "tip", "content": "您可以自訂 AI 提示詞來控制產生卡片的格式和風格。在 AI 設定介面編輯提示詞。" },
+        { "type": "paragraph", "title": "使用 AI 卡片產生", "content": "進入 AI 卡片介面並貼上您的來源材料。您可以產生單張卡片或批次產生。系統會解析 AI 回應並建立可供您審核和儲存的卡片。" },
+        { "type": "warning", "content": "AI 產生的卡片在儲存前應始終進行審核。AI 有時可能產生不正確或結構不佳的內容。在將每張卡片加入學習佇列之前，請仔細核實。" },
+        { "type": "faq", "title": "常見問題", "items": [
+          { "question": "支援哪些 AI 提供者？", "answer": "OpenAI（GPT-4、GPT-3.5）、Anthropic（Claude）以及任何相容 OpenAI 的 API 端點。" },
+          { "question": "我的 API 金鑰儲存安全嗎？", "answer": "是的，API 金鑰儲存在應用程式本地設定資料庫中，絕不會傳輸給第三方。" },
+          { "question": "沒有網路可以用 AI 嗎？", "answer": "不可以，AI 功能需要網際網路連線才能與提供者 API 通訊。" }
+        ]}
+      ]
+    },
+    {
+      "id": "webdav-sync",
+      "title": "WebDAV 同步",
+      "order": 6,
+      "tags": ["sync", "backup", "cloud"],
+      "keywords": ["WebDAV", "雲端同步", "多裝置", "同步設定", "資料同步", "立即同步", "強制同步", "合併衝突"],
+      "relatedArticles": ["backup-restore", "settings-guide"],
+      "hasDangerContent": true,
+      "sections": [
+        { "type": "paragraph", "title": "什麼是 WebDAV 同步？", "content": "WebDAV 同步允許您將資料備份到雲端伺服器，並在多個裝置之間同步。LumeCard 支援任何相容 WebDAV 的服務。" },
+        { "type": "steps", "title": "設定同步", "items": [
+          "前往 設定 > 雲端同步",
+          "點選「新增設定」並輸入伺服器 URL、使用者名稱和密碼",
+          "點選「測試連線」以驗證設定",
+          "將此設定設為預設",
+          "點選「立即同步」執行首次同步"
+        ]},
+        { "type": "paragraph", "title": "同步模式", "content": "立即同步：執行雙向合併並自動解決衝突（較新版本優先）。同步資料：與立即同步相同，但不上傳設定。同步設定：僅上傳設定。強制上傳：用本機資料覆蓋雲端資料。強制下載：用雲端資料覆蓋本機資料。從雲端還原：下載雲端資料但不覆蓋本機未儲存的變更。" },
+        { "type": "danger", "content": "強制上傳和強制下載是具有破壞性的操作。強制上傳會用您的本機資料覆蓋所有雲端資料。強制下載會刪除所有本機資料並用雲端資料取代。請僅在您確定同步方向時使用這些功能。" },
+        { "type": "tip", "content": "同步也會傳輸您的自訂字型和背景圖片。媒體檔案透過 SHA-1 雜湊值比對，避免重複上傳未變更的檔案。" },
+        { "type": "faq", "title": "常見問題", "items": [
+          { "question": "支援哪些 WebDAV 提供者？", "answer": "任何相容 WebDAV 的伺服器。常見選項包括堅果雲、Nextcloud、ownCloud 和群暉 WebDAV。" },
+          { "question": "同步哪些資料？", "answer": "所有卡片、牌組、知識庫、複習記錄、學習計劃、啟動格言、設定、字型和媒體檔案。" },
+          { "question": "衝突如何解決？", "answer": "在雙向同步中，每個實體都有一個版本號。版本較高的實體勝出。這確保了任一裝置上的最新變更都能得到保留。" }
+        ]}
+      ]
+    },
+    {
+      "id": "backup-restore",
+      "title": "資料備份與還原",
+      "order": 7,
+      "tags": ["backup", "restore", "data-safety"],
+      "keywords": ["備份", "還原", "匯出資料", "匯入資料", "CSV 匯出", "資料安全", "同步歷史", "快照"],
+      "relatedArticles": ["webdav-sync", "card-management"],
+      "hasDangerContent": true,
+      "sections": [
+        { "type": "paragraph", "title": "備份選項", "content": "LumeCard 提供多種方式來保護您的資料：WebDAV 雲端同步、本機檔案匯出，以及雲端伺服器上的自動同步歷史快照。" },
+        { "type": "steps", "title": "匯出資料", "items": [
+          "前往 設定 > 資料管理",
+          "點選「匯出資料」建立包含卡片、牌組和複習歷史的完整備份檔案（.json）",
+          "在裝置上選擇儲存位置"
+        ]},
+        { "type": "steps", "title": "匯入資料", "items": [
+          "前往 設定 > 資料管理",
+          "點選「匯入資料」並選擇之前匯出的 .json 檔案",
+          "匯入的資料將與您現有的內容合併"
+        ]},
+        { "type": "danger", "content": "匯入資料時，相同 ID 的實體將被匯入版本覆蓋。匯入中的複習記錄和學習計劃也將一併合併。建議在執行大量匯入前先建立 WebDAV 備份。" },
+        { "type": "tip", "content": "每次同步操作前，同步歷史快照會自動儲存到您的 WebDAV 伺服器。您可以透過雲端同步設定中的「還原歷史」按鈕從任意歷史快照進行還原。" }
+      ]
+    },
+    {
+      "id": "settings-guide",
+      "title": "設定指南",
+      "order": 8,
+      "tags": ["settings", "configuration", "preferences"],
+      "keywords": ["設定", "每日目標", "新卡片", "複習模式", "主題", "語言", "字型", "通知", "學習計劃", "學習計時器"],
+      "relatedArticles": ["basic-usage", "ai-features", "webdav-sync"],
+      "hasDangerContent": false,
+      "sections": [
+        { "type": "paragraph", "title": "學習設定", "content": "設定您的每日學習目標：每日新卡片上限、每日複習上限和複習模式（FSRS、SM-2、Leitner 或 Simple）。這些設定會影響新卡片的引入方式和複習卡片的排程方式。" },
+        { "type": "paragraph", "title": "外觀設定", "content": "切換深色模式、調整字型縮放（70%-150%）以及變更應用程式語言。字型：您可以匯入自訂 .ttf 或 .otf 字型檔案並將其設為預設卡片字型。" },
+        { "type": "paragraph", "title": "學習計時器", "content": "學習計時器記錄您的學習時長。您可以將其設定為閒置一定時間後自動暫停，避免時間記錄不準確。" },
+        { "type": "tip", "content": "學習計劃讓您可以將卡片組織成結構化的學習目標。建立包含特定牌組或知識庫的計劃，追蹤完成進度，並設定預設計劃以便快速存取。" }
+      ]
+    },
+    {
+      "id": "faq",
+      "title": "常見問題解答",
+      "order": 9,
+      "tags": ["faq", "help", "troubleshooting"],
+      "keywords": ["常見問題", "疑難排解", "問題", "錯誤", "無法運作", "幫助", "如何"],
+      "relatedArticles": [],
+      "hasDangerContent": false,
+      "sections": [
+        { "type": "faq", "title": "通用", "items": [
+          { "question": "LumeCard 是免費的嗎？", "answer": "是的，LumeCard 完全免費且開放原始碼。沒有任何訂閱或應用程式內購買。" },
+          { "question": "我可以在多個裝置上使用 LumeCard 嗎？", "answer": "可以，使用 WebDAV 同步即可在 Android、Windows、Linux 和 macOS 裝置之間保持資料同步。" },
+          { "question": "LumeCard 支援 Anki 牌組嗎？", "answer": "LumeCard 使用自有格式。目前不支援直接匯入 Anki .apkg 檔案，但您可以使用 CSV 匯入/匯出進行資料傳輸。" }
+        ]},
+        { "type": "faq", "title": "學習與排程", "items": [
+          { "question": "LumeCard 使用什麼間隔重複演算法？", "answer": "LumeCard 預設使用 FSRS（自由間隔重複排程器），也可選擇 SM-2、Leitner 和 Simple 演算法。" },
+          { "question": "如何重設某張卡片的進度？", "answer": "目前不支援單獨重設卡片進度。您可以刪除並重新建立該卡片以重新開始。" },
+          { "question": "可以為不同牌組設定不同的每日上限嗎？", "answer": "目前不支援。每日上限是全域設定。您可以使用學習計劃按主題組織學習。" }
+        ]},
+        { "type": "faq", "title": "技術相關", "items": [
+          { "question": "我的資料儲存在哪裡？", "answer": "資料儲存在您的裝置本地。WebDAV 同步會在您選擇的雲端伺服器上儲存一份加密副本。" },
+          { "question": "如何回報錯誤？", "answer": "請在 GitHub 上回報錯誤：https://github.com/anomalyco/opencode/issues" },
+          { "question": "應用程式需要網際網路連線嗎？", "answer": "不需要，LumeCard 完全支援離線執行，但 AI 功能和 WebDAV 同步需要網路連線。" }
+        ]}
+      ]
+    },
+    {
+      "id": "changelog",
+      "title": "更新日誌",
+      "order": 10,
+      "tags": ["updates", "version", "release-notes"],
+      "keywords": ["更新日誌", "版本歷史", "新功能", "更新", "發行說明"],
+      "relatedArticles": [],
+      "hasDangerContent": false,
+      "sections": [
+        { "type": "paragraph", "title": "版本 0.17.6", "content": "WebDAV 同步改進，支援基於版本號的雙向合併。啟動格言透過 WebDAV 同步。字型刪除清理。背景圖片持久化。啟動動畫修復。" },
+        { "type": "paragraph", "title": "版本 0.17.2 - 0.17.5", "content": "統一的格言設定介面，帶可摺疊區域。全域設定搜尋。啟動格言動畫支援。螢幕保護模式，活動時自動退出。學習計時器閒置暫停。" },
+        { "type": "paragraph", "title": "版本 0.16.x", "content": "AI 卡片產生，支援串流輸出和事件驅動架構。學習計劃帶完成進度追蹤。增強的統計功能。" },
+        { "type": "paragraph", "title": "版本 0.15.x", "content": "初始 WebDAV 同步實作。多種卡片類型（克漏字、選擇題）。啟動格言功能。" },
+        { "type": "paragraph", "title": "版本 0.14.x", "content": "FSRS 演算法整合。基礎學習功能。牌組和知識庫管理。" },
+        { "type": "paragraph", "title": "版本 0.13.x 及更早", "content": "初始專案搭建。Compose Multiplatform 基礎框架。資料庫架構設計。" }
+      ]
+    }
+  ]
+}

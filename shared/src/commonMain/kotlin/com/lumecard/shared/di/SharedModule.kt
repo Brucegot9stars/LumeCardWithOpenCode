@@ -2,6 +2,7 @@ package com.lumecard.shared.di
 
 import com.lumecard.shared.data.AiCardGenerator
 import com.lumecard.shared.data.AiCardPromptManager
+import com.lumecard.shared.help.HelpRepository
 import com.lumecard.shared.data.AiClient
 import com.lumecard.shared.data.AiConfigManager
 import com.lumecard.shared.data.MediaManager
@@ -63,6 +64,9 @@ val sharedModule = module {
     single { SplashQuoteManager(get()) }
     single { AiEventBus() }
     single { AiBatchGenerator(get(), get()) }
+
+    // Help Center
+    single { HelpRepository() }
 
     // Quote Feature (new unified architecture)
     single { com.lumecard.shared.feature.quote.manager.IdleManager() }

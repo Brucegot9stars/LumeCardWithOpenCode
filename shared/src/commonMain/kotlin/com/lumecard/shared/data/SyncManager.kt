@@ -461,7 +461,17 @@ class SyncManager(
 
         val imported = mergedDecks.size > localDecks.size || mergedCards.size > localCards.size
         val quotesChanged = mergedQuotesExport.version != localQuotesVersion
-        return SyncResult.Success(true, imported || quotesChanged, activeDecks.size)
+
+        val mergedExport = DataExport(
+            exportDate = Clock.System.now().toString(),
+            knowledgeBases = activeKbs.map { it.toExport() },
+            decks = activeDecks.map { it.toExport() },
+            cards = activeCards.map { it.toExport() },
+            reviewLogs = activeLogs.map { it.toExport() },
+            learningPlans = activePlans.map { it.toExport() },
+            splashQuotes = mergedQuotesExport,
+        )
+        return SyncResult.Success(true, imported || quotesChanged, activeDecks.size, mergedExport)
     }
 }
 
@@ -522,8 +532,54 @@ fun ExportLearningPlan.toLearningPlan() = com.lumecard.shared.model.LearningPlan
     syncedAt = syncedAt?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { null } }
 )
 
+fun com.lumecard.shared.model.KnowledgeBase.toExport() = ExportKnowledgeBase(
+    id = id, name = name, description = description,
+    createdAt = createdAt.toString(), updatedAt = updatedAt.toString(),
+    version = version, deletedAt = deletedAt?.toString(),
+    syncedAt = syncedAt?.toString()
+)
+
+fun com.lumecard.shared.model.Deck.toExport() = ExportDeck(
+    id = id, knowledgeBaseId = knowledgeBaseId, name = name,
+    description = description, color = color, icon = icon,
+    parentId = parentId, createdAt = createdAt.toString(),
+    updatedAt = updatedAt.toString(), version = version,
+    deletedAt = deletedAt?.toString(), syncedAt = syncedAt?.toString()
+)
+
+fun com.lumecard.shared.model.Card.toExport() = ExportCard(
+    id = id, deckId = deckId, type = type.name,
+    front = front, back = back, tags = tags,
+    media = media, metadata = metadata,
+    createdAt = createdAt.toString(), updatedAt = updatedAt.toString(),
+    lastReviewedAt = lastReviewedAt?.toString(),
+    nextReviewAt = nextReviewAt?.toString(),
+    version = version, deletedAt = deletedAt?.toString(),
+    syncedAt = syncedAt?.toString()
+)
+
+fun com.lumecard.shared.model.ReviewLog.toExport() = ExportReviewLog(
+    id = id, cardId = cardId, rating = rating,
+    reviewTime = reviewTime, interval = interval,
+    easeFactor = easeFactor, repetitions = repetitions,
+    lapseCount = lapseCount, reviewedAt = reviewedAt.toString(),
+    version = version, deletedAt = deletedAt?.toString(),
+    syncedAt = syncedAt?.toString()
+)
+
+fun com.lumecard.shared.model.LearningPlan.toExport() = ExportLearningPlan(
+    id = id, name = name, description = description,
+    status = status.name, isDefault = isDefault,
+    knowledgeBaseIds = knowledgeBaseIds, deckIds = deckIds,
+    cardIds = cardIds, totalCards = totalCards,
+    completedCards = completedCards,
+    createdAt = createdAt.toString(), updatedAt = updatedAt.toString(),
+    version = version, deletedAt = deletedAt?.toString(),
+    syncedAt = syncedAt?.toString()
+)
+
 sealed class SyncResult {
-    data class Success(val backedUp: Boolean, val imported: Boolean, val decksSynced: Int) : SyncResult()
+    data class Success(val backedUp: Boolean, val imported: Boolean, val decksSynced: Int, val mergedData: DataExport? = null) : SyncResult()
     data class RemoteImport(val export: DataExport) : SyncResult()
     data class Skipped(val reason: String) : SyncResult()
     data class Error(val message: String) : SyncResult()

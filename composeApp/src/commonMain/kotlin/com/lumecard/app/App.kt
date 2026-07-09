@@ -77,6 +77,8 @@ fun App() {
     var startupFontId by remember { mutableStateOf("") }
     var startupFontSize by remember { mutableStateOf(0f) }
     var startupShowAuthor by remember { mutableStateOf(true) }
+    var startupEnableAnimation by remember { mutableStateOf(true) }
+    var startupAnimationStyle by remember { mutableStateOf(com.lumecard.shared.feature.quote.config.QuoteAnimationStyle.FADE_IN) }
     val activityScope = rememberCoroutineScope()
 
     // ── Screen saver state ───────────────────────────────
@@ -84,6 +86,15 @@ fun App() {
     var screenSaverEnabled by remember { mutableStateOf(true) }
     var screenSaverRotationMs by remember { mutableStateOf(3000L) }
     var screenSaverGlobalBg by remember { mutableStateOf("") }
+
+    // ── Welcome tour ─────────────────────────────────────
+    var showWelcomeTour by remember { mutableStateOf(false) }
+    fun dismissWelcomeTour() {
+        showWelcomeTour = false
+        activityScope.launch {
+            settingsRepository.set("welcome_shown", "true")
+        }
+    }
 
     // ── Initial load ─────────────────────────────────────
     var lastSettings: com.lumecard.shared.data.SplashQuoteSettings? by remember { mutableStateOf(null) }
@@ -107,6 +118,8 @@ fun App() {
             startupFontId = settings.font
             startupFontSize = settings.fontSize
             startupShowAuthor = settings.showAuthor
+            startupEnableAnimation = settings.enableAnimation
+            startupAnimationStyle = settings.animationStyle
             showSplash = startupQuote != null
         }
 
@@ -117,6 +130,12 @@ fun App() {
         screenSaverGlobalBg = settings.backgroundPath
         if (ss.enabled) {
             quoteFeature.setIdleThreshold(ss.idleMinutes * 60_000L)
+        }
+
+        // Check welcome tour
+        val welcomeShown = settingsRepository.getBoolean("welcome_shown", false)
+        if (!welcomeShown) {
+            showWelcomeTour = true
         }
 
         // Init idle pause settings (for study timer)
@@ -224,13 +243,15 @@ fun App() {
                 // Startup quote using unified QuoteViewer
                 QuoteViewer(
                     quote = startupQuote!!,
-                    config = com.lumecard.shared.feature.quote.config.QuoteDisplayConfig.STARTUP_DEFAULT.copy(
-                        dismissDurationMs = startupDurationMs,
-                        defaultDirection = startupDirection,
-                        defaultFont = startupFontId,
-                        defaultFontSize = startupFontSize,
-                        showAuthor = startupShowAuthor,
-                    ),
+                config = com.lumecard.shared.feature.quote.config.QuoteDisplayConfig.STARTUP_DEFAULT.copy(
+                    dismissDurationMs = startupDurationMs,
+                    defaultDirection = startupDirection,
+                    defaultFont = startupFontId,
+                    defaultFontSize = startupFontSize,
+                    showAuthor = startupShowAuthor,
+                    enableAnimation = startupEnableAnimation,
+                    animationStyle = startupAnimationStyle,
+                ),
                     globalBackgroundPath = startupBackgroundPath,
                     onDismiss = { showSplash = false },
                 )
@@ -254,93 +275,105 @@ fun App() {
                 }
 
                 // Main app content
-                var currentTab by remember { mutableStateOf(BottomNavItem.Dashboard) }
-
-                Navigator(DashboardScreen()) { navigator ->
-                    LaunchedEffect(currentTab) {
-                        val screen = when (currentTab) {
-                            BottomNavItem.Dashboard -> DashboardScreen()
-                            BottomNavItem.Stats -> StatsScreen()
-                            BottomNavItem.Warehouse -> WarehouseScreen()
-                            BottomNavItem.Settings -> SettingsScreen(onNavigateToHome = { currentTab = BottomNavItem.Dashboard })
-                        }
-                        val currentScreen = navigator.lastItemOrNull
-                        if (currentScreen?.key != screen.key) {
-                            withFrameNanos { navigator.replaceAll(screen) }
-                        }
+                if (showWelcomeTour) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.surface,
+                    ) {
+                        com.lumecard.app.ui.screens.help.WelcomeTourContent(
+                            onGetStarted = { dismissWelcomeTour() },
+                            onSkip = { dismissWelcomeTour() },
+                        )
                     }
+                } else {
+                    var currentTab by remember { mutableStateOf(BottomNavItem.Dashboard) }
 
-                    val manager = koinInject<AiCardGenerationManager>()
-                    val aiState by manager.state.collectAsState()
-                    val batchProgress = aiState.batchProgress
+                    Navigator(DashboardScreen()) { navigator ->
+                        LaunchedEffect(currentTab) {
+                            val screen = when (currentTab) {
+                                BottomNavItem.Dashboard -> DashboardScreen()
+                                BottomNavItem.Stats -> StatsScreen()
+                                BottomNavItem.Warehouse -> WarehouseScreen()
+                                BottomNavItem.Settings -> SettingsScreen(onNavigateToHome = { currentTab = BottomNavItem.Dashboard })
+                            }
+                            val currentScreen = navigator.lastItemOrNull
+                            if (currentScreen?.key != screen.key) {
+                                withFrameNanos { navigator.replaceAll(screen) }
+                            }
+                        }
 
-                    Box(Modifier.fillMaxSize()) {
-                        Scaffold(
-                            bottomBar = {
-                                NavigationBar {
-                                    BottomNavItem.entries.forEach { item ->
-                                        NavigationBarItem(
-                                            selected = currentTab == item,
-                                            onClick = { currentTab = item },
-                                            icon = { Icon(item.icon, contentDescription = null) },
-                                            label = {
-                                                val label = when (item) {
-                                                    BottomNavItem.Dashboard -> strings.navHome
-                                                    BottomNavItem.Stats -> strings.navStats
-                                                    BottomNavItem.Warehouse -> strings.warehouseTitle
-                                                    BottomNavItem.Settings -> strings.navSettings
+                        val manager = koinInject<AiCardGenerationManager>()
+                        val aiState by manager.state.collectAsState()
+                        val batchProgress = aiState.batchProgress
+
+                        Box(Modifier.fillMaxSize()) {
+                            Scaffold(
+                                bottomBar = {
+                                    NavigationBar {
+                                        BottomNavItem.entries.forEach { item ->
+                                            NavigationBarItem(
+                                                selected = currentTab == item,
+                                                onClick = { currentTab = item },
+                                                icon = { Icon(item.icon, contentDescription = null) },
+                                                label = {
+                                                    val label = when (item) {
+                                                        BottomNavItem.Dashboard -> strings.navHome
+                                                        BottomNavItem.Stats -> strings.navStats
+                                                        BottomNavItem.Warehouse -> strings.warehouseTitle
+                                                        BottomNavItem.Settings -> strings.navSettings
+                                                    }
+                                                    Text(label)
                                                 }
-                                                Text(label)
-                                            }
-                                        )
+                                            )
+                                        }
                                     }
                                 }
+                            ) { paddingValues ->
+                                Box(modifier = Modifier.padding(paddingValues)) {
+                                    cafe.adriel.voyager.navigator.CurrentScreen()
+                                }
                             }
-                        ) { paddingValues ->
-                            Box(modifier = Modifier.padding(paddingValues)) {
-                                cafe.adriel.voyager.navigator.CurrentScreen()
-                            }
-                        }
 
-                        val infiniteTransition = rememberInfiniteTransition()
-                        val breatheAlpha by infiniteTransition.animateFloat(
-                            initialValue = 0.5f,
-                            targetValue = 1f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(800, easing = LinearEasing),
-                                repeatMode = RepeatMode.Reverse,
-                            ),
-                        )
+                            val infiniteTransition = rememberInfiniteTransition()
+                            val breatheAlpha by infiniteTransition.animateFloat(
+                                initialValue = 0.5f,
+                                targetValue = 1f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(800, easing = LinearEasing),
+                                    repeatMode = RepeatMode.Reverse,
+                                ),
+                            )
 
-                        AnimatedVisibility(
-                            visible = batchProgress != null,
-                            modifier = Modifier.align(Alignment.TopCenter).padding(top = 12.dp),
-                        ) {
-                            Surface(
-                                modifier = Modifier
-                                    .clickable { navigator.push(AiCardScreen()) }
-                                    .graphicsLayer { alpha = breatheAlpha },
-                                shape = RoundedCornerShape(24.dp),
-                                shadowElevation = 8.dp,
-                                color = MaterialTheme.colorScheme.primaryContainer,
+                            AnimatedVisibility(
+                                visible = batchProgress != null,
+                                modifier = Modifier.align(Alignment.TopCenter).padding(top = 12.dp),
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                Surface(
+                                    modifier = Modifier
+                                        .clickable { navigator.push(AiCardScreen()) }
+                                        .graphicsLayer { alpha = breatheAlpha },
+                                    shape = RoundedCornerShape(24.dp),
+                                    shadowElevation = 8.dp,
+                                    color = MaterialTheme.colorScheme.primaryContainer,
                                 ) {
-                                    Icon(
-                                        Icons.Default.Autorenew,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    )
-                                    val bp = batchProgress
-                                    if (bp != null) {
-                                        Text(
-                                            text = "Batch ${bp.currentBatch}/${bp.totalBatches} · ${bp.savedCards}/${bp.totalTarget}",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Autorenew,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                         )
+                                        val bp = batchProgress
+                                        if (bp != null) {
+                                            Text(
+                                                text = "Batch ${bp.currentBatch}/${bp.totalBatches} · ${bp.savedCards}/${bp.totalTarget}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            )
+                                        }
                                     }
                                 }
                             }

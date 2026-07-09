@@ -1,0 +1,229 @@
+{
+  "articles": [
+    {
+      "id": "quick-start",
+      "title": "Quick Start",
+      "order": 1,
+      "tags": ["beginner", "getting-started"],
+      "keywords": ["getting started", "first card", "beginner guide", "new user", "welcome"],
+      "relatedArticles": ["basic-usage", "card-management"],
+      "hasDangerContent": false,
+      "sections": [
+        { "type": "paragraph", "title": "Welcome to LumeCard", "content": "LumeCard is a cross-platform flashcard application designed to help you learn effectively using spaced repetition. It works offline on Android, Windows, Linux, and macOS." },
+        { "type": "steps", "title": "Creating Your First Card", "items": [
+          "Launch the app and tap the + button on the bottom bar",
+          "Select a deck from the list, or create a new one by tapping 'New Deck'",
+          "Enter the question on the front side and the answer on the back side",
+          "Optionally add tags to help organize your cards",
+          "Tap 'Save' to add the card to your deck"
+        ]},
+        { "type": "tip", "content": "You can use keyboard shortcuts: Ctrl+N to create a new card, Ctrl+S to save, and Ctrl+Enter to quickly save and create another." },
+        { "type": "paragraph", "title": "Starting Your First Study Session", "content": "Once you have created at least one deck with cards, tap the 'Study' button on the deck to start a study session. LumeCard will present cards based on their review schedule. Rate your recall using the Again, Hard, Good, and Easy buttons." },
+        { "type": "warning", "content": "Your first few days will feel light as new cards are introduced gradually based on your daily new card limit (default 20). You can adjust this in Settings." }
+      ]
+    },
+    {
+      "id": "basic-usage",
+      "title": "Basic Usage",
+      "order": 2,
+      "tags": ["study", "review", "navigation"],
+      "keywords": ["study session", "review cards", "rate answer", "spaced repetition", "dashboard", "navigation", "daily goal"],
+      "relatedArticles": ["quick-start", "card-management", "settings-guide"],
+      "hasDangerContent": false,
+      "sections": [
+        { "type": "paragraph", "title": "Dashboard", "content": "The Dashboard is your home screen. It shows your daily progress, study statistics, and quick access to recent decks and learning plans." },
+        { "type": "steps", "title": "Navigating the App", "items": [
+          "Bottom bar: Quick access to Home, Study, Decks, Stats, and Settings",
+          "Swipe left/right on cards during review to see additional info",
+          "Long-press a deck to access quick actions (rename, delete, export)",
+          "Use the search icon to find cards across all decks"
+        ]},
+        { "type": "paragraph", "title": "Study Session", "content": "During a study session, cards are shown one at a time. After viewing the question, tap or press a key to reveal the answer. Rate your recall: Again (forgot), Hard (difficult), Good (normal), Easy (trivial). Your rating determines when the card will appear again." },
+        { "type": "faq", "title": "Common Questions", "items": [
+          { "question": "How are new cards scheduled?", "answer": "New cards are shown up to your daily limit (default 20). They appear interleaved with review cards based on the review mode setting." },
+          { "question": "What happens if I skip a day?", "answer": "Review cards accumulate. The scheduler will show a backlog based on your daily review limit. You can increase the limit temporarily to catch up." },
+          { "question": "Can I study offline?", "answer": "Yes! LumeCard works fully offline. WebDAV sync is only needed for backup or multi-device use." }
+        ]}
+      ]
+    },
+    {
+      "id": "card-management",
+      "title": "Card Management",
+      "order": 3,
+      "tags": ["cards", "edit", "delete", "organize"],
+      "keywords": ["create card", "edit card", "delete card", "card types", "tags", "search cards", "import cards", "export cards", "CSV", "cloze"],
+      "relatedArticles": ["basic-usage", "knowledge-base"],
+      "hasDangerContent": true,
+      "sections": [
+        { "type": "paragraph", "title": "Card Types", "content": "LumeCard supports multiple card types: Basic (front and back), Reversed (auto-generates reverse card), Cloze (fill-in-the-blank), Multiple Choice, Markdown, and Rich Text." },
+        { "type": "steps", "title": "Editing a Card", "items": [
+          "Navigate to the deck containing the card",
+          "Tap the card to open its detail view",
+          "Tap the edit icon (pencil) to modify the content",
+          "Make your changes and tap Save"
+        ]},
+        { "type": "danger", "content": "Deleting a card is permanent. Deleted cards are removed from all review schedules and cannot be recovered. Consider suspending cards instead if you want to temporarily hide them." },
+        { "type": "paragraph", "title": "Tags and Organization", "content": "Tags help you filter and find cards. You can add multiple tags per card. Use the search bar on the card list screen to filter by tags: type 'tag:grammar' to show only cards with the 'grammar' tag." },
+        { "type": "tip", "content": "You can export cards to CSV format for backup or bulk editing. Go to Settings > Data Management > Export Data." }
+      ]
+    },
+    {
+      "id": "knowledge-base",
+      "title": "Knowledge Bases & Decks",
+      "order": 4,
+      "tags": ["kb", "deck", "organize", "structure"],
+      "keywords": ["knowledge base", "deck", "create deck", "rename deck", "delete deck", "move cards", "organize decks", "deck color", "deck icon"],
+      "relatedArticles": ["card-management", "backup-restore"],
+      "hasDangerContent": true,
+      "sections": [
+        { "type": "paragraph", "title": "Knowledge Bases", "content": "Knowledge Bases (KBs) are top-level containers that group related decks. For example, you might have a 'Japanese' KB and a 'Programming' KB, each containing their own decks." },
+        { "type": "paragraph", "title": "Decks", "content": "Decks are collections of cards on a specific topic. Each deck belongs to a knowledge base. You can customize a deck's color and icon for visual identification." },
+        { "type": "steps", "title": "Creating a New Deck", "items": [
+          "Go to the Decks tab from the bottom bar",
+          "Tap the + button or 'New Deck'",
+          "Enter a name for the deck",
+          "Optionally select or create a parent knowledge base",
+          "Choose a color and icon",
+          "Tap Save to create the deck"
+        ]},
+        { "type": "danger", "content": "Deleting a deck will permanently delete ALL cards within it. This action cannot be undone. Before deleting, consider exporting the deck as a backup." },
+        { "type": "warning", "content": "Moving a deck to a different knowledge base will update all its cards' association. Study progress is preserved." }
+      ]
+    },
+    {
+      "id": "ai-features",
+      "title": "AI Features",
+      "order": 5,
+      "tags": ["ai", "generation", "automation"],
+      "keywords": ["AI card generation", "AI config", "provider", "API key", "prompt", "batch generate", "AI model"],
+      "relatedArticles": ["card-management", "settings-guide"],
+      "hasDangerContent": false,
+      "sections": [
+        { "type": "paragraph", "title": "AI-Powered Card Generation", "content": "LumeCard can generate flashcards automatically using AI providers. You can input source text and let AI create well-structured cards with questions and answers." },
+        { "type": "steps", "title": "Setting Up AI", "items": [
+          "Go to Settings > AI Config",
+          "Select a provider (OpenAI, Anthropic, or custom) and enter your API key",
+          "Configure the model and parameters (temperature, max tokens)",
+          "Save the configuration"
+        ]},
+        { "type": "tip", "content": "You can customize the AI prompt to control the format and style of generated cards. Edit the prompt in the AI Configuration screen." },
+        { "type": "paragraph", "title": "Using AI Card Generation", "content": "Navigate to the AI Card screen and paste your source material. You can generate single cards or batches. The system will parse the AI response and create cards that you can review and save." },
+        { "type": "warning", "content": "AI-generated cards should always be reviewed before saving. The AI may occasionally produce incorrect or poorly structured content. Verify each card before adding it to your study queue." },
+        { "type": "faq", "title": "Common Questions", "items": [
+          { "question": "Which AI providers are supported?", "answer": "OpenAI (GPT-4, GPT-3.5), Anthropic (Claude), and any OpenAI-compatible API endpoint." },
+          { "question": "Are my API keys stored securely?", "answer": "Yes, API keys are stored in the app's local settings database and never transmitted to third parties." },
+          { "question": "Can I use AI without internet?", "answer": "No, AI features require an internet connection to communicate with the provider's API." }
+        ]}
+      ]
+    },
+    {
+      "id": "webdav-sync",
+      "title": "WebDAV Sync",
+      "order": 6,
+      "tags": ["sync", "backup", "cloud"],
+      "keywords": ["WebDAV", "cloud sync", "multi-device", "sync settings", "data sync", "sync now", "force sync", "merge conflict"],
+      "relatedArticles": ["backup-restore", "settings-guide"],
+      "hasDangerContent": true,
+      "sections": [
+        { "type": "paragraph", "title": "What is WebDAV Sync?", "content": "WebDAV sync allows you to back up your data to a cloud server and synchronize across multiple devices. LumeCard supports any WebDAV-compatible service." },
+        { "type": "steps", "title": "Setting Up Sync", "items": [
+          "Go to Settings > Cloud Sync",
+          "Tap 'Add Configuration' and enter your server URL, username, and password",
+          "Tap 'Test Connection' to verify the settings",
+          "Select this configuration as default",
+          "Tap 'Sync Now' to perform your first synchronization"
+        ]},
+        { "type": "paragraph", "title": "Sync Modes", "content": "Sync Now: Performs bidirectional merge with automatic conflict resolution (newer version wins). Sync Data: Same as Sync Now but without uploading settings. Sync Config: Upload settings only. Force Upload: Overwrite cloud data with local data. Force Download: Overwrite local data with cloud data. Restore from Cloud: Download cloud data without overwriting local unsaved changes." },
+        { "type": "danger", "content": "Force Upload and Force Download are destructive operations. Force Upload will overwrite ALL cloud data with your local data. Force Download will delete ALL local data and replace it with cloud data. Use these only when you are certain of the direction you want to synchronize." },
+        { "type": "tip", "content": "Sync also transfers your custom fonts and background images across devices. Media files are synchronized by SHA-1 hash to avoid re-uploading unchanged files." },
+        { "type": "faq", "title": "Common Questions", "items": [
+          { "question": "Which WebDAV providers are supported?", "answer": "Any WebDAV-compatible server. Popular options include Jianguoyun (Nutstore), Nextcloud, ownCloud, and Synology WebDAV." },
+          { "question": "What data is synchronized?", "answer": "All cards, decks, knowledge bases, review logs, learning plans, splash quotes, settings, fonts, and media files." },
+          { "question": "How are conflicts resolved?", "answer": "During bidirectional sync, each entity has a version number. The entity with the higher version wins. This ensures that the most recent change on either device is preserved." }
+        ]}
+      ]
+    },
+    {
+      "id": "backup-restore",
+      "title": "Data Backup & Restore",
+      "order": 7,
+      "tags": ["backup", "restore", "data-safety"],
+      "keywords": ["backup", "restore", "export data", "import data", "CSV export", "data safety", "sync history", "snapshot"],
+      "relatedArticles": ["webdav-sync", "card-management"],
+      "hasDangerContent": true,
+      "sections": [
+        { "type": "paragraph", "title": "Backup Options", "content": "LumeCard offers multiple ways to protect your data: WebDAV cloud sync, local file export, and automatic sync history snapshots on the cloud server." },
+        { "type": "steps", "title": "Exporting Data", "items": [
+          "Go to Settings > Data Management",
+          "Tap 'Export Data' to create a full backup file (.json) including cards, decks, and review history",
+          "Choose a save location on your device"
+        ]},
+        { "type": "steps", "title": "Importing Data", "items": [
+          "Go to Settings > Data Management",
+          "Tap 'Import Data' and select a previously exported .json file",
+          "The imported data will be merged with your existing content"
+        ]},
+        { "type": "danger", "content": "When importing data, entities with the same ID will be overwritten by the imported version. Review logs and learning plans from the import will also be merged. It is recommended to create a WebDAV backup before performing a major import." },
+        { "type": "tip", "content": "Sync history snapshots are automatically saved to your WebDAV server before each sync operation. You can restore from any history snapshot via the 'Restore History' button in Cloud Sync settings." }
+      ]
+    },
+    {
+      "id": "settings-guide",
+      "title": "Settings Guide",
+      "order": 8,
+      "tags": ["settings", "configuration", "preferences"],
+      "keywords": ["settings", "daily goal", "new cards", "review mode", "theme", "language", "font", "notification", "learning plan", "study timer"],
+      "relatedArticles": ["basic-usage", "ai-features", "webdav-sync"],
+      "hasDangerContent": false,
+      "sections": [
+        { "type": "paragraph", "title": "Learning Settings", "content": "Configure your daily learning goals: daily new card limit, daily review limit, and review mode (FSRS, SM-2, Leitner, or Simple). These settings affect how new cards are introduced and how review cards are scheduled." },
+        { "type": "paragraph", "title": "Appearance Settings", "content": "Toggle dark mode, adjust font scale (70%-150%), and change the app language. Fonts: you can import custom .ttf or .otf font files and set them as the default card font." },
+        { "type": "paragraph", "title": "Study Timer", "content": "The study timer tracks how much time you spend studying. You can configure it to pause when you are idle for a set duration, preventing inaccurate time tracking." },
+        { "type": "tip", "content": "Learning Plans let you organize cards into structured study goals. Create a plan with specific decks or knowledge bases, track completion progress, and set default plans for quick access." }
+      ]
+    },
+    {
+      "id": "faq",
+      "title": "Frequently Asked Questions",
+      "order": 9,
+      "tags": ["faq", "help", "troubleshooting"],
+      "keywords": ["FAQ", "troubleshooting", "problem", "issue", "error", "not working", "help", "how to"],
+      "relatedArticles": [],
+      "hasDangerContent": false,
+      "sections": [
+        { "type": "faq", "title": "General", "items": [
+          { "question": "Is LumeCard free?", "answer": "Yes, LumeCard is completely free and open source. There are no subscriptions or in-app purchases." },
+          { "question": "Can I use LumeCard on multiple devices?", "answer": "Yes, use WebDAV sync to keep your data synchronized across Android, Windows, Linux, and macOS devices." },
+          { "question": "Does LumeCard support Anki decks?", "answer": "LumeCard uses its own format. Direct Anki .apkg import is not currently supported, but you can use CSV import/export for data transfer." }
+        ]},
+        { "type": "faq", "title": "Study & Scheduling", "items": [
+          { "question": "What spaced repetition algorithm does LumeCard use?", "answer": "LumeCard uses FSRS (Free Spaced Repetition Scheduler) by default, with options for SM-2, Leitner, and Simple algorithms." },
+          { "question": "How do I reset a card's progress?", "answer": "Currently, individual card progress reset is not available. You can delete and recreate the card to start fresh." },
+          { "question": "Can I set different daily limits for different decks?", "answer": "Not currently. Daily limits are global settings. You can use Learning Plans to organize study sessions by topic." }
+        ]},
+        { "type": "faq", "title": "Technical", "items": [
+          { "question": "Where is my data stored?", "answer": "Data is stored locally on your device. WebDAV sync stores an encrypted copy on your chosen cloud server." },
+          { "question": "How do I report a bug?", "answer": "Report bugs on GitHub at https://github.com/anomalyco/opencode/issues" },
+          { "question": "Does the app require an internet connection?", "answer": "No, LumeCard works fully offline except for AI features and WebDAV sync which require network access." }
+        ]}
+      ]
+    },
+    {
+      "id": "changelog",
+      "title": "Changelog",
+      "order": 10,
+      "tags": ["updates", "version", "release-notes"],
+      "keywords": ["changelog", "version history", "what's new", "update", "release notes"],
+      "relatedArticles": [],
+      "hasDangerContent": false,
+      "sections": [
+        { "type": "paragraph", "title": "Version 0.17.6", "content": "WebDAV sync improvements with bidirectional version-based merge. Splash quote sync via WebDAV. Font deletion cleanup. Background image persistence. Startup animation fix." },
+        { "type": "paragraph", "title": "Version 0.17.2 - 0.17.5", "content": "Unified Quote Settings screen with collapsible sections. Global settings search. Animation support for splash quotes. Screen saver mode with auto-exit on activity. Study timer idle pause." },
+        { "type": "paragraph", "title": "Version 0.16.x", "content": "AI card generation with streaming support and event-driven architecture. Learning plans with completion tracking. Enhanced statistics." },
+        { "type": "paragraph", "title": "Version 0.15.x", "content": "Initial WebDAV sync implementation. Multiple card types (Cloze, Multiple Choice). Splash quotes feature." },
+        { "type": "paragraph", "title": "Version 0.14.x", "content": "FSRS algorithm integration. Basic study functionality. Deck and knowledge base management." },
+        { "type": "paragraph", "title": "Version 0.13.x - Earlier", "content": "Initial project setup. Compose Multiplatform foundation. Database schema design." }
+      ]
+    }
+  ]
+}

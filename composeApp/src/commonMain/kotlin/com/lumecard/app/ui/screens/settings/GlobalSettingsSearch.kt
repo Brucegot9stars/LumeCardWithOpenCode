@@ -86,6 +86,8 @@ fun buildGlobalSettingsIndex(strings: I18nStrings): List<SettingsIndexEntry> = b
     add(entry("ai_config", strings.aiConfig, strings.aiConfigDesc, strings.aiConfig, strings.aiConfig, "AIConfig", 1000,
         listOf("ai", "config", "配置", "人工智能")))
 
+    add(entry("help_center", strings.helpCenter, strings.helpCenterSearchPlaceholder, strings.helpCenter, strings.helpCenter, "HelpCenter", 1050,
+        listOf("help", "guide", "FAQ", "帮助", "ガイド", "guía")))
     add(entry("study_timer_idle", strings.settingsStudyTimerIdlePause, strings.settingsStudyTimerIdlePauseDesc, strings.settingsStudyTimer, strings.settingsStudyTimer, "Settings", 1100,
         listOf("study", "timer", "计时", "idle", "暂停")))
 

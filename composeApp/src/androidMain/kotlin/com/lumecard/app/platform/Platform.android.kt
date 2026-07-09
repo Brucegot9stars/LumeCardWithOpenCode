@@ -10,6 +10,7 @@ import kotlin.math.exp
 import kotlin.math.sin
 import android.content.Context
 import android.net.Uri
+import android.content.Intent
 import com.lumecard.shared.database.AndroidContextHolder
 import java.io.File
 import java.io.FileInputStream
@@ -147,6 +148,24 @@ private fun generateSweepTone(
         val fund = sin(2.0 * PI * freq * t)
         val harm = harmonicAmplitude * sin(2.0 * PI * 2.0 * freq * t)
         (amp * (fund + harm)).toInt().toShort()
+    }
+}
+
+actual fun openDirectory(path: String) {
+    try {
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(Uri.fromFile(File(path)), "resource/folder")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        AndroidContextHolder.context.startActivity(intent)
+    } catch (_: Exception) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(Uri.fromFile(File(path)), "*/*")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            AndroidContextHolder.context.startActivity(intent)
+        } catch (_: Exception) { }
     }
 }
 

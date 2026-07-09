@@ -1,0 +1,229 @@
+{
+  "articles": [
+    {
+      "id": "quick-start",
+      "title": "Inicio rápido",
+      "order": 1,
+      "tags": ["beginner", "getting-started"],
+      "keywords": ["primeros pasos", "primera tarjeta", "guía para principiantes", "nuevo usuario", "bienvenido"],
+      "relatedArticles": ["basic-usage", "card-management"],
+      "hasDangerContent": false,
+      "sections": [
+        { "type": "paragraph", "title": "Bienvenido a LumeCard", "content": "LumeCard es una aplicación multiplataforma de tarjetas didácticas diseñada para ayudarte a aprender eficazmente mediante la repetición espaciada. Funciona sin conexión en Android, Windows, Linux y macOS." },
+        { "type": "steps", "title": "Creando tu primera tarjeta", "items": [
+          "Inicia la aplicación y pulsa el botón + en la barra inferior",
+          "Selecciona un mazo de la lista, o crea uno nuevo pulsando 'Nuevo mazo'",
+          "Escribe la pregunta en el anverso y la respuesta en el reverso",
+          "Opcionalmente, añade etiquetas para ayudarte a organizar tus tarjetas",
+          "Pulsa 'Guardar' para añadir la tarjeta a tu mazo"
+        ]},
+        { "type": "tip", "content": "Puedes usar atajos de teclado: Ctrl+N para crear una nueva tarjeta, Ctrl+S para guardar y Ctrl+Intro para guardar rápidamente y crear otra." },
+        { "type": "paragraph", "title": "Iniciando tu primera sesión de estudio", "content": "Una vez que hayas creado al menos un mazo con tarjetas, pulsa el botón 'Estudiar' en el mazo para iniciar una sesión de estudio. LumeCard presentará las tarjetas según su programa de revisión. Califica tu recuerdo usando los botones Again, Hard, Good y Easy." },
+        { "type": "warning", "content": "Tus primeros días se sentirán ligeros ya que las nuevas tarjetas se introducen gradualmente según tu límite diario de tarjetas nuevas (20 por defecto). Puedes ajustarlo en Ajustes." }
+      ]
+    },
+    {
+      "id": "basic-usage",
+      "title": "Uso básico",
+      "order": 2,
+      "tags": ["study", "review", "navigation"],
+      "keywords": ["sesión de estudio", "revisar tarjetas", "calificar respuesta", "repetición espaciada", "panel principal", "navegación", "meta diaria"],
+      "relatedArticles": ["quick-start", "card-management", "settings-guide"],
+      "hasDangerContent": false,
+      "sections": [
+        { "type": "paragraph", "title": "Panel principal", "content": "El Panel principal es tu pantalla de inicio. Muestra tu progreso diario, estadísticas de estudio y acceso rápido a mazos recientes y planes de aprendizaje." },
+        { "type": "steps", "title": "Navegando por la aplicación", "items": [
+          "Barra inferior: Acceso rápido a Inicio, Estudiar, Mazos, Estadísticas y Ajustes",
+          "Desliza a izquierda/derecha en las tarjetas durante la revisión para ver información adicional",
+          "Mantén pulsado un mazo para acceder a acciones rápidas (renombrar, eliminar, exportar)",
+          "Usa el icono de búsqueda para encontrar tarjetas en todos los mazos"
+        ]},
+        { "type": "paragraph", "title": "Sesión de estudio", "content": "Durante una sesión de estudio, las tarjetas se muestran una a la vez. Después de ver la pregunta, pulsa o presiona una tecla para revelar la respuesta. Califica tu recuerdo: Again (olvidado), Hard (difícil), Good (normal), Easy (trivial). Tu calificación determina cuándo volverá a aparecer la tarjeta." },
+        { "type": "faq", "title": "Preguntas comunes", "items": [
+          { "question": "¿Cómo se programan las tarjetas nuevas?", "answer": "Las tarjetas nuevas se muestran hasta tu límite diario (20 por defecto). Aparecen intercaladas con las tarjetas de revisión según la configuración del modo de revisión." },
+          { "question": "¿Qué pasa si me salto un día?", "answer": "Las tarjetas de revisión se acumulan. El programador mostrará un rezago según tu límite de revisión diario. Puedes aumentar el límite temporalmente para ponerte al día." },
+          { "question": "¿Puedo estudiar sin conexión?", "answer": "¡Sí! LumeCard funciona completamente sin conexión. La sincronización WebDAV solo es necesaria para copias de seguridad o uso en múltiples dispositivos." }
+        ]}
+      ]
+    },
+    {
+      "id": "card-management",
+      "title": "Gestión de tarjetas",
+      "order": 3,
+      "tags": ["cards", "edit", "delete", "organize"],
+      "keywords": ["crear tarjeta", "editar tarjeta", "eliminar tarjeta", "tipos de tarjeta", "etiquetas", "buscar tarjetas", "importar tarjetas", "exportar tarjetas", "CSV", "cloze"],
+      "relatedArticles": ["basic-usage", "knowledge-base"],
+      "hasDangerContent": true,
+      "sections": [
+        { "type": "paragraph", "title": "Tipos de tarjeta", "content": "LumeCard admite múltiples tipos de tarjeta: Básica (anverso y reverso), Inversa (genera automáticamente la tarjeta inversa), Cloze (completar espacios), Opción múltiple, Markdown y Texto enriquecido." },
+        { "type": "steps", "title": "Editando una tarjeta", "items": [
+          "Navega al mazo que contiene la tarjeta",
+          "Pulsa la tarjeta para abrir su vista de detalle",
+          "Pulsa el icono de edición (lápiz) para modificar el contenido",
+          "Realiza los cambios y pulsa Guardar"
+        ]},
+        { "type": "danger", "content": "Eliminar una tarjeta es permanente. Las tarjetas eliminadas se eliminan de todos los programas de revisión y no se pueden recuperar. Considera suspender las tarjetas si deseas ocultarlas temporalmente." },
+        { "type": "paragraph", "title": "Etiquetas y organización", "content": "Las etiquetas te ayudan a filtrar y encontrar tarjetas. Puedes añadir múltiples etiquetas por tarjeta. Usa la barra de búsqueda en la pantalla de lista de tarjetas para filtrar por etiquetas: escribe 'tag:grammar' para mostrar solo las tarjetas con la etiqueta 'grammar'." },
+        { "type": "tip", "content": "Puedes exportar tarjetas a formato CSV para copia de seguridad o edición masiva. Ve a Ajustes > Gestión de datos > Exportar datos." }
+      ]
+    },
+    {
+      "id": "knowledge-base",
+      "title": "Bases de conocimiento y mazos",
+      "order": 4,
+      "tags": ["kb", "deck", "organize", "structure"],
+      "keywords": ["base de conocimiento", "mazo", "crear mazo", "renombrar mazo", "eliminar mazo", "mover tarjetas", "organizar mazos", "color de mazo", "icono de mazo"],
+      "relatedArticles": ["card-management", "backup-restore"],
+      "hasDangerContent": true,
+      "sections": [
+        { "type": "paragraph", "title": "Bases de conocimiento", "content": "Las Bases de Conocimiento (KB) son contenedores de nivel superior que agrupan mazos relacionados. Por ejemplo, podrías tener una KB 'Japonés' y una KB 'Programación', cada una con sus propios mazos." },
+        { "type": "paragraph", "title": "Mazos", "content": "Los mazos son colecciones de tarjetas sobre un tema específico. Cada mazo pertenece a una base de conocimiento. Puedes personalizar el color y el icono de un mazo para su identificación visual." },
+        { "type": "steps", "title": "Creando un nuevo mazo", "items": [
+          "Ve a la pestaña Mazos desde la barra inferior",
+          "Pulsa el botón + o 'Nuevo mazo'",
+          "Introduce un nombre para el mazo",
+          "Opcionalmente, selecciona o crea una base de conocimiento padre",
+          "Elige un color y un icono",
+          "Pulsa Guardar para crear el mazo"
+        ]},
+        { "type": "danger", "content": "Eliminar un mazo eliminará permanentemente TODAS las tarjetas que contiene. Esta acción no se puede deshacer. Antes de eliminar, considera exportar el mazo como respaldo." },
+        { "type": "warning", "content": "Mover un mazo a una base de conocimiento diferente actualizará la asociación de todas sus tarjetas. El progreso de estudio se conserva." }
+      ]
+    },
+    {
+      "id": "ai-features",
+      "title": "Funciones de IA",
+      "order": 5,
+      "tags": ["ai", "generation", "automation"],
+      "keywords": ["generación de tarjetas con IA", "configuración de IA", "proveedor", "clave API", "prompt", "generación por lotes", "modelo de IA"],
+      "relatedArticles": ["card-management", "settings-guide"],
+      "hasDangerContent": false,
+      "sections": [
+        { "type": "paragraph", "title": "Generación de tarjetas con IA", "content": "LumeCard puede generar tarjetas didácticas automáticamente usando proveedores de IA. Puedes ingresar texto fuente y dejar que la IA cree tarjetas bien estructuradas con preguntas y respuestas." },
+        { "type": "steps", "title": "Configurando la IA", "items": [
+          "Ve a Ajustes > Configuración de IA",
+          "Selecciona un proveedor (OpenAI, Anthropic o personalizado) e ingresa tu clave API",
+          "Configura el modelo y los parámetros (temperatura, tokens máximos)",
+          "Guarda la configuración"
+        ]},
+        { "type": "tip", "content": "Puedes personalizar el prompt de IA para controlar el formato y estilo de las tarjetas generadas. Edita el prompt en la pantalla de Configuración de IA." },
+        { "type": "paragraph", "title": "Usando la generación de tarjetas con IA", "content": "Navega a la pantalla de Tarjetas IA y pega tu material fuente. Puedes generar tarjetas individuales o por lotes. El sistema analizará la respuesta de la IA y creará tarjetas que podrás revisar y guardar." },
+        { "type": "warning", "content": "Las tarjetas generadas por IA siempre deben revisarse antes de guardarlas. La IA puede producir ocasionalmente contenido incorrecto o mal estructurado. Verifica cada tarjeta antes de añadirla a tu cola de estudio." },
+        { "type": "faq", "title": "Preguntas comunes", "items": [
+          { "question": "¿Qué proveedores de IA están soportados?", "answer": "OpenAI (GPT-4, GPT-3.5), Anthropic (Claude) y cualquier endpoint de API compatible con OpenAI." },
+          { "question": "¿Mis claves API se almacenan de forma segura?", "answer": "Sí, las claves API se almacenan en la base de datos de ajustes locales de la aplicación y nunca se transmiten a terceros." },
+          { "question": "¿Puedo usar la IA sin internet?", "answer": "No, las funciones de IA requieren una conexión a internet para comunicarse con la API del proveedor." }
+        ]}
+      ]
+    },
+    {
+      "id": "webdav-sync",
+      "title": "Sincronización WebDAV",
+      "order": 6,
+      "tags": ["sync", "backup", "cloud"],
+      "keywords": ["WebDAV", "sincronización en la nube", "multidispositivo", "ajustes de sincronización", "sincronización de datos", "sincronizar ahora", "sincronización forzada", "conflicto de fusión"],
+      "relatedArticles": ["backup-restore", "settings-guide"],
+      "hasDangerContent": true,
+      "sections": [
+        { "type": "paragraph", "title": "¿Qué es la sincronización WebDAV?", "content": "La sincronización WebDAV te permite respaldar tus datos en un servidor en la nube y sincronizarlos entre múltiples dispositivos. LumeCard admite cualquier servicio compatible con WebDAV." },
+        { "type": "steps", "title": "Configurando la sincronización", "items": [
+          "Ve a Ajustes > Sincronización en la nube",
+          "Pulsa 'Añadir configuración' e ingresa la URL del servidor, usuario y contraseña",
+          "Pulsa 'Probar conexión' para verificar la configuración",
+          "Selecciona esta configuración como predeterminada",
+          "Pulsa 'Sincronizar ahora' para realizar tu primera sincronización"
+        ]},
+        { "type": "paragraph", "title": "Modos de sincronización", "content": "Sincronizar ahora: Realiza una fusión bidireccional con resolución automática de conflictos (gana la versión más reciente). Sincronizar datos: Igual que Sincronizar ahora pero sin subir la configuración. Sincronizar config: Sube solo la configuración. Subida forzada: Sobrescribe los datos de la nube con los datos locales. Descarga forzada: Sobrescribe los datos locales con los datos de la nube. Restaurar desde la nube: Descarga los datos de la nube sin sobrescribir los cambios locales no guardados." },
+        { "type": "danger", "content": "La Subida forzada y la Descarga forzada son operaciones destructivas. La Subida forzada sobrescribirá TODOS los datos de la nube con tus datos locales. La Descarga forzada eliminará TODOS los datos locales y los reemplazará con los datos de la nube. Úsalas solo cuando estés seguro de la dirección en la que deseas sincronizar." },
+        { "type": "tip", "content": "La sincronización también transfiere tus fuentes personalizadas e imágenes de fondo entre dispositivos. Los archivos multimedia se sincronizan mediante hash SHA-1 para evitar la re-subida de archivos no modificados." },
+        { "type": "faq", "title": "Preguntas comunes", "items": [
+          { "question": "¿Qué proveedores WebDAV están soportados?", "answer": "Cualquier servidor compatible con WebDAV. Las opciones populares incluyen Jianguoyun (Nutstore), Nextcloud, ownCloud y Synology WebDAV." },
+          { "question": "¿Qué datos se sincronizan?", "answer": "Todas las tarjetas, mazos, bases de conocimiento, registros de revisión, planes de aprendizaje, citas de inicio, ajustes, fuentes y archivos multimedia." },
+          { "question": "¿Cómo se resuelven los conflictos?", "answer": "Durante la sincronización bidireccional, cada entidad tiene un número de versión. La entidad con el número de versión más alto gana. Esto asegura que el cambio más reciente en cualquier dispositivo se conserve." }
+        ]}
+      ]
+    },
+    {
+      "id": "backup-restore",
+      "title": "Copia de seguridad y restauración",
+      "order": 7,
+      "tags": ["backup", "restore", "data-safety"],
+      "keywords": ["copia de seguridad", "restaurar", "exportar datos", "importar datos", "exportación CSV", "seguridad de datos", "historial de sincronización", "instantánea"],
+      "relatedArticles": ["webdav-sync", "card-management"],
+      "hasDangerContent": true,
+      "sections": [
+        { "type": "paragraph", "title": "Opciones de copia de seguridad", "content": "LumeCard ofrece múltiples formas de proteger tus datos: sincronización en la nube WebDAV, exportación a archivo local e instantáneas automáticas del historial de sincronización en el servidor en la nube." },
+        { "type": "steps", "title": "Exportando datos", "items": [
+          "Ve a Ajustes > Gestión de datos",
+          "Pulsa 'Exportar datos' para crear un archivo de copia de seguridad completo (.json) que incluye tarjetas, mazos e historial de revisión",
+          "Elige una ubicación de almacenamiento en tu dispositivo"
+        ]},
+        { "type": "steps", "title": "Importando datos", "items": [
+          "Ve a Ajustes > Gestión de datos",
+          "Pulsa 'Importar datos' y selecciona un archivo .json exportado previamente",
+          "Los datos importados se fusionarán con tu contenido existente"
+        ]},
+        { "type": "danger", "content": "Al importar datos, las entidades con el mismo ID serán sobrescritas por la versión importada. Los registros de revisión y los planes de aprendizaje de la importación también se fusionarán. Se recomienda crear una copia de seguridad WebDAV antes de realizar una importación importante." },
+        { "type": "tip", "content": "Las instantáneas del historial de sincronización se guardan automáticamente en tu servidor WebDAV antes de cada operación de sincronización. Puedes restaurar desde cualquier instantánea histórica mediante el botón 'Restaurar historial' en los ajustes de Sincronización en la nube." }
+      ]
+    },
+    {
+      "id": "settings-guide",
+      "title": "Guía de ajustes",
+      "order": 8,
+      "tags": ["settings", "configuration", "preferences"],
+      "keywords": ["ajustes", "meta diaria", "tarjetas nuevas", "modo de revisión", "tema", "idioma", "fuente", "notificación", "plan de aprendizaje", "temporizador de estudio"],
+      "relatedArticles": ["basic-usage", "ai-features", "webdav-sync"],
+      "hasDangerContent": false,
+      "sections": [
+        { "type": "paragraph", "title": "Ajustes de aprendizaje", "content": "Configura tus metas diarias de aprendizaje: límite diario de tarjetas nuevas, límite diario de revisión y modo de revisión (FSRS, SM-2, Leitner o Simple). Estos ajustes afectan cómo se introducen las tarjetas nuevas y cómo se programan las tarjetas de revisión." },
+        { "type": "paragraph", "title": "Ajustes de apariencia", "content": "Activa el modo oscuro, ajusta la escala de fuente (70%-150%) y cambia el idioma de la aplicación. Fuentes: puedes importar archivos de fuente .ttf o .otf personalizados y establecerlos como la fuente de tarjeta predeterminada." },
+        { "type": "paragraph", "title": "Temporizador de estudio", "content": "El temporizador de estudio registra cuánto tiempo pasas estudiando. Puedes configurarlo para que se pause cuando estés inactivo durante un tiempo determinado, evitando un seguimiento incorrecto del tiempo." },
+        { "type": "tip", "content": "Los Planes de aprendizaje te permiten organizar tarjetas en objetivos de estudio estructurados. Crea un plan con mazos o bases de conocimiento específicos, realiza un seguimiento del progreso de finalización y establece planes predeterminados para acceso rápido." }
+      ]
+    },
+    {
+      "id": "faq",
+      "title": "Preguntas frecuentes",
+      "order": 9,
+      "tags": ["faq", "help", "troubleshooting"],
+      "keywords": ["FAQ", "solución de problemas", "problema", "error", "no funciona", "ayuda", "cómo"],
+      "relatedArticles": [],
+      "hasDangerContent": false,
+      "sections": [
+        { "type": "faq", "title": "General", "items": [
+          { "question": "¿Es LumeCard gratuito?", "answer": "Sí, LumeCard es completamente gratuito y de código abierto. No hay suscripciones ni compras dentro de la aplicación." },
+          { "question": "¿Puedo usar LumeCard en múltiples dispositivos?", "answer": "Sí, usa la sincronización WebDAV para mantener tus datos sincronizados entre dispositivos Android, Windows, Linux y macOS." },
+          { "question": "¿LumeCard admite mazos de Anki?", "answer": "LumeCard usa su propio formato. La importación directa de archivos .apkg de Anki no está soportada actualmente, pero puedes usar la importación/exportación CSV para la transferencia de datos." }
+        ]},
+        { "type": "faq", "title": "Estudio y programación", "items": [
+          { "question": "¿Qué algoritmo de repetición espaciada usa LumeCard?", "answer": "LumeCard usa FSRS (Free Spaced Repetition Scheduler) por defecto, con opciones para los algoritmos SM-2, Leitner y Simple." },
+          { "question": "¿Cómo reinicio el progreso de una tarjeta?", "answer": "Actualmente, no está disponible el reinicio de progreso de una tarjeta individual. Puedes eliminar y volver a crear la tarjeta para empezar de nuevo." },
+          { "question": "¿Puedo establecer límites diarios diferentes para distintos mazos?", "answer": "Actualmente no. Los límites diarios son ajustes globales. Puedes usar Planes de aprendizaje para organizar sesiones de estudio por tema." }
+        ]},
+        { "type": "faq", "title": "Técnico", "items": [
+          { "question": "¿Dónde se almacenan mis datos?", "answer": "Los datos se almacenan localmente en tu dispositivo. La sincronización WebDAV guarda una copia cifrada en el servidor en la nube que elijas." },
+          { "question": "¿Cómo reporto un error?", "answer": "Reporta errores en GitHub en https://github.com/anomalyco/opencode/issues" },
+          { "question": "¿La aplicación requiere conexión a internet?", "answer": "No, LumeCard funciona completamente sin conexión, excepto las funciones de IA y la sincronización WebDAV que requieren acceso a la red." }
+        ]}
+      ]
+    },
+    {
+      "id": "changelog",
+      "title": "Registro de cambios",
+      "order": 10,
+      "tags": ["updates", "version", "release-notes"],
+      "keywords": ["registro de cambios", "historial de versiones", "novedades", "actualización", "notas de la versión"],
+      "relatedArticles": [],
+      "hasDangerContent": false,
+      "sections": [
+        { "type": "paragraph", "title": "Versión 0.17.6", "content": "Mejoras en la sincronización WebDAV con fusión bidireccional basada en versiones. Sincronización de citas de inicio mediante WebDAV. Limpieza al eliminar fuentes. Persistencia de imágenes de fondo. Corrección de animación de inicio." },
+        { "type": "paragraph", "title": "Versión 0.17.2 - 0.17.5", "content": "Pantalla unificada de Ajustes de citas con secciones plegables. Búsqueda global de ajustes. Soporte de animación para citas de inicio. Modo protector de pantalla con salida automática al interactuar. Pausa por inactividad en el temporizador de estudio." },
+        { "type": "paragraph", "title": "Versión 0.16.x", "content": "Generación de tarjetas con IA compatible con streaming y arquitectura basada en eventos. Planes de aprendizaje con seguimiento de finalización. Estadísticas mejoradas." },
+        { "type": "paragraph", "title": "Versión 0.15.x", "content": "Implementación inicial de sincronización WebDAV. Múltiples tipos de tarjeta (Cloze, Opción múltiple). Función de citas de inicio." },
+        { "type": "paragraph", "title": "Versión 0.14.x", "content": "Integración del algoritmo FSRS. Funcionalidad básica de estudio. Gestión de mazos y bases de conocimiento." },
+        { "type": "paragraph", "title": "Versión 0.13.x y anteriores", "content": "Configuración inicial del proyecto. Base de Compose Multiplatform. Diseño del esquema de base de datos." }
+      ]
+    }
+  ]
+}

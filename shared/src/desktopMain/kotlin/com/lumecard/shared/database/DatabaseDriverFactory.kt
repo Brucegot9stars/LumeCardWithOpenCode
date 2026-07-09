@@ -4,9 +4,11 @@ import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.lumecard.shared.database.LumeCardDatabase
 import java.io.File
 
+private fun userHome(): String = System.getenv("USERPROFILE") ?: System.getenv("HOME") ?: System.getProperty("user.home")
+
 actual class DatabaseDriverFactory {
     actual fun createDriver(): app.cash.sqldelight.db.SqlDriver {
-        val appDir = File(System.getProperty("user.home"), ".lumecard")
+        val appDir = File(userHome(), ".lumecard")
         if (!appDir.exists()) {
             appDir.mkdirs()
         }

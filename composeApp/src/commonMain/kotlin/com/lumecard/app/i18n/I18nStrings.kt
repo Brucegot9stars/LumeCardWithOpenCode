@@ -230,6 +230,7 @@ interface I18nStrings {
     val settingsFontImportSuccess: String
     val settingsFontImportFailed: String
     val settingsFontDeleteConfirm: String
+    val settingsFontOpenDir: String
     val settingsExport: String
     val settingsExportDesc: String
     fun settingsExportSuccess(length: Int): String
@@ -329,6 +330,13 @@ interface I18nStrings {
     val settingsConnectionStatus: String
     val settingsConnected: String
     val settingsDisconnected: String
+    val settingsForceSync: String
+    val syncForceUpload: String
+    val syncForceDownload: String
+    val syncForceUploadConfirm: String
+    val syncForceUploadConfirmDesc: String
+    val syncForceDownloadConfirm: String
+    val syncForceDownloadConfirmDesc: String
     val syncNoHistoryFound: String
     val syncFailedToLoadHistory: String
     val syncRestoreHistory: String
@@ -717,4 +725,28 @@ interface I18nStrings {
     val settingsStudyTimerIdlePause: String
     val settingsStudyTimerIdlePauseDesc: String
     val settingsStudyTimerIdlePauseThreshold: String
+
+    // Help Center
+    val helpCenter: String
+    val helpCenterSearchPlaceholder: String
+    val helpCenterNoResults: String
+    val helpCenterTableOfContents: String
+    val helpCenterRelatedArticles: String
+    val helpCenterDangerContent: String
+    val helpCenterBackToToc: String
+    val helpCenterTip: String
+    val helpCenterWarning: String
+    val helpCenterDanger: String
+
+    // Welcome Tour
+    val welcomeTourTitle: String
+    val welcomeTourPage1Title: String
+    val welcomeTourPage1Desc: String
+    val welcomeTourPage2Title: String
+    val welcomeTourPage2Desc: String
+    val welcomeTourPage3Title: String
+    val welcomeTourPage3Desc: String
+    val welcomeTourGetStarted: String
+    val welcomeTourNext: String
+    val welcomeTourSkip: String
 }

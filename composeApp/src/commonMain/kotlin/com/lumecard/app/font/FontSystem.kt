@@ -65,7 +65,10 @@ object FontRegistry {
         _fontFamilyCache.remove(id)
         spec.filePath?.let {
             _userFontPaths.remove(it)
-            deleteFontFile(it)
+            val deleted = deleteFontFile(it)
+            if (!deleted) {
+                println("[FontRegistry] failed to delete file: $it")
+            }
         }
     }
 
@@ -99,8 +102,8 @@ object FontRegistry {
     fun saveUserFonts(repository: com.lumecard.shared.repository.SettingsRepository) {
         val currentFontDir = getFontStorageDir()
         val persisted = _fonts.filter { it.source == FontSource.USER_IMPORTED && it.filePath != null }.map {
-            val fileName = it.filePath!!.substringAfterLast("/").substringAfterLast("\\")
-            PersistedUserFont(it.id, it.displayName, it.family, "$currentFontDir/$fileName")
+            val fileName = java.io.File(it.filePath!!).name
+            PersistedUserFont(it.id, it.displayName, it.family, java.io.File(currentFontDir, fileName).absolutePath)
         }
         kotlinx.coroutines.runBlocking {
             repository.set(USER_FONTS_SETTINGS_KEY, fontJson.encodeToString(persisted))
@@ -113,8 +116,8 @@ object FontRegistry {
             val persisted = fontJson.decodeFromString<List<PersistedUserFont>>(raw)
             val currentFontDir = getFontStorageDir()
             persisted.forEach { p ->
-                val fileName = p.filePath.substringAfterLast("/").substringAfterLast("\\")
-                val normalizedPath = "$currentFontDir/$fileName"
+                val fileName = java.io.File(p.filePath).name
+                val normalizedPath = java.io.File(currentFontDir, fileName).absolutePath
                 if (fontFileExists(normalizedPath)) {
                     register(FontSpec(p.id, p.displayName, p.family, FontSource.USER_IMPORTED, filePath = normalizedPath))
                 }
@@ -128,10 +131,43 @@ object FontRegistry {
         val ext = filePath.substringAfterLast(".", "ttf")
         val fileName = "${id}.$ext"
         if (!copyFontToStorage(filePath, fileName)) return null
-        val storagePath = "${getFontStorageDir()}/$fileName"
+        val storagePath = java.io.File(getFontStorageDir(), fileName).absolutePath
         if (!registerFontFile(storagePath)) return null
         val spec = FontSpec(id, actualFamily, actualFamily, FontSource.USER_IMPORTED, filePath = storagePath)
         register(spec)
         return spec
+    }
+
+    fun rebuildFromStorageDir(repository: com.lumecard.shared.repository.SettingsRepository) {
+        val storageDir = getFontStorageDir()
+        val dir = java.io.File(storageDir)
+        if (!dir.exists()) return
+        val fontFiles = dir.listFiles()?.filter {
+            it.isFile && it.name.endsWith(".ttf", ignoreCase = true) || it.name.endsWith(".otf", ignoreCase = true)
+        }.orEmpty()
+
+        val registeredPaths = _fonts.mapNotNull { it.filePath?.let { p -> java.io.File(p).absolutePath } }.toSet()
+
+        for (file in fontFiles) {
+            val absPath = file.absolutePath
+            if (absPath in registeredPaths) continue
+            val name = file.nameWithoutExtension
+            registerFontFile(absPath)
+            val actualFamily = readFontFamilyName(absPath) ?: name
+            val id = "user_${(actualFamily).lowercase().replace(" ", "_")}"
+            val spec = FontSpec(id, actualFamily, actualFamily, FontSource.USER_IMPORTED, filePath = absPath)
+            register(spec)
+        }
+
+        val deadEntries = _fonts.filter {
+            it.source == FontSource.USER_IMPORTED && it.filePath != null && !fontFileExists(it.filePath!!)
+        }
+        for (entry in deadEntries) {
+            _fonts.remove(entry)
+            _fontFamilyCache.remove(entry.id)
+            _userFontPaths.remove(entry.filePath)
+        }
+
+        saveUserFonts(repository)
     }
 }
