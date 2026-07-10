@@ -47,6 +47,12 @@ kotlin {
                 implementation(Dependencies.sqlDelightJvm)
             }
         }
+
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
     }
 }
 

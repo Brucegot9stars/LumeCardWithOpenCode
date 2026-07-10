@@ -211,13 +211,15 @@ actual fun readFontFamilyName(filePath: String): String? {
                 else -> continue
             }
             val score = when {
-                platformID == 3 && encodingID == 1 && languageID == 0x0409 -> 4
-                platformID == 3 && encodingID == 10 -> 3
+                platformID == 3 && encodingID == 10 -> 5
+                platformID == 0 -> 4
+                platformID == 3 && encodingID == 1 && languageID == 0x0409 -> 3
                 platformID == 3 -> 2
                 platformID == 1 -> 1
                 else -> 0
             }
-            if (score > bestScore) {
+            val hasNonAscii = decoded.any { it.code > 127 }
+            if (score > bestScore || (score == bestScore && hasNonAscii && (best?.any { it.code > 127 } != true))) {
                 best = decoded
                 bestScore = score
             }

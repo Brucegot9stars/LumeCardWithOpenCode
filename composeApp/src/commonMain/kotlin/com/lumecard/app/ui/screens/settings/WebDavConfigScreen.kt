@@ -37,6 +37,8 @@ import com.lumecard.shared.data.MediaManifest
 import com.lumecard.shared.data.MediaManifestEntry
 import com.lumecard.shared.data.SplashQuoteData
 import com.lumecard.shared.data.SplashQuoteManager
+import com.lumecard.shared.crypto.SensitiveDataEncryptor
+import com.lumecard.shared.crypto.SensitiveKeys
 import com.lumecard.shared.data.FontManifestEntry
 import com.lumecard.shared.data.SyncManager
 import com.lumecard.shared.data.SyncResult
@@ -1145,7 +1147,8 @@ private suspend fun bidirectionalSync(
             }
 
             if (uploadConfig) {
-                val settings = settingsRepository.getAll()
+                val encryptor = SensitiveDataEncryptor(config.password)
+                val settings = encryptor.encryptSettings(settingsRepository.getAll())
                 val configJson = exportManager.exportConfig(settings)
                 syncManager.uploadConfig(config, configJson).getOrThrow()
             }
@@ -1164,7 +1167,8 @@ private suspend fun bidirectionalSync(
             }
 
             if (uploadConfig) {
-                val settings = settingsRepository.getAll()
+                val encryptor = SensitiveDataEncryptor(config.password)
+                val settings = encryptor.encryptSettings(settingsRepository.getAll())
                 val configJson = exportManager.exportConfig(settings)
                 syncManager.uploadConfig(config, configJson).getOrThrow()
             }
@@ -1601,7 +1605,9 @@ private suspend fun restoreSettingsAndFonts(
                 } catch (_: Exception) { null }
             }
             if (remoteSettings != null) {
-                for ((key, value) in remoteSettings) {
+                val encryptor = SensitiveDataEncryptor(config.password)
+                val decrypted = encryptor.decryptSettings(remoteSettings)
+                for ((key, value) in decrypted) {
                     settingsRepository.set(key, value)
                 }
             }
