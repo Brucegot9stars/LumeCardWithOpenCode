@@ -188,7 +188,7 @@ actual fun readFontFamilyName(filePath: String): String? {
         var bestScore = -1
 
         for (i in 0 until count) {
-            if (nameBuf.position() + 12 > bytes.size - nameOffset) break
+            if (nameBuf.position() + 12 > nameBuf.limit()) break
             val platformID = nameBuf.getShort().toInt() and 0xFFFF
             val encodingID = nameBuf.getShort().toInt() and 0xFFFF
             val languageID = nameBuf.getShort().toInt() and 0xFFFF
