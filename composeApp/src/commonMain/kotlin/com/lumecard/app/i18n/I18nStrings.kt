@@ -290,7 +290,6 @@ interface I18nStrings {
     val settingsSyncing: String
     fun settingsSyncSuccess(decksCount: Int): String
     fun settingsSyncError(msg: String): String
-    val settingsSyncConfigSuccess: String
     val settingsSyncAddConfig: String
     val settingsSyncConfigName: String
     val settingsSyncConfigNamePlaceholder: String
@@ -303,9 +302,6 @@ interface I18nStrings {
     val settingsSyncDeleteConfirm: String
     val settingsSyncSetDefault: String
     val settingsSyncDefault: String
-    val settingsSyncUpload: String
-    val settingsSyncDownload: String
-    val settingsSyncBiDirectional: String
     val settingsSyncNotConfigured: String
     val settingsAutoSync: String
     val settingsAutoSyncDesc: String
@@ -316,27 +312,25 @@ interface I18nStrings {
     val settingsAutoSyncMin120: String
     val settingsAutoSyncRunning: String
     val settingsAutoSyncStopped: String
-    val settingsSyncScope: String
-    val settingsSyncScopeAll: String
-    val settingsSyncScopeSettings: String
-    val settingsSyncScopeData: String
-    val settingsSyncNow: String
-    val settingsSyncData: String
-    val settingsSyncConfig: String
-    val settingsRestoreFromCloud: String
-    val settingsRestoreConfirm: String
-    val settingsRestoreConfirmDesc: String
     val settingsLastSyncTime: String
     val settingsConnectionStatus: String
     val settingsConnected: String
     val settingsDisconnected: String
-    val settingsForceSync: String
     val syncForceUpload: String
     val syncForceDownload: String
     val syncForceUploadConfirm: String
     val syncForceUploadConfirmDesc: String
     val syncForceDownloadConfirm: String
     val syncForceDownloadConfirmDesc: String
+    val syncScopeData: String
+    val syncScopeConfig: String
+    val syncForceUploadConfig: String
+    val syncForceDownloadConfig: String
+    val syncForceUploadConfigConfirm: String
+    val syncForceUploadConfigConfirmDesc: String
+    val syncForceDownloadConfigConfirm: String
+    val syncForceDownloadConfigConfirmDesc: String
+    val syncConfigSyncSuccess: String
     val syncNoHistoryFound: String
     val syncFailedToLoadHistory: String
     val syncRestoreHistory: String

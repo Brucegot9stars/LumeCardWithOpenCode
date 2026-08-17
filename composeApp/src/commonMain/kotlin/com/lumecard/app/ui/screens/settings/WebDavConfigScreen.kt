@@ -41,7 +41,6 @@ import com.lumecard.shared.crypto.SensitiveDataEncryptor
 import com.lumecard.shared.crypto.SensitiveKeys
 import com.lumecard.shared.data.FontManifestEntry
 import com.lumecard.shared.data.SyncManager
-import com.lumecard.shared.data.SyncResult
 import com.lumecard.shared.data.downloadFontManifestEntries
 import com.lumecard.shared.data.generateUuid
 import com.lumecard.shared.data.mergeFontEntries
@@ -108,9 +107,10 @@ class WebDavConfigScreen : Screen {
         var isSyncing by remember { mutableStateOf(false) }
         var syncStatus by remember { mutableStateOf("") }
         var deleteConfirmId by remember { mutableStateOf<String?>(null) }
-        var showRestoreConfirm by remember { mutableStateOf(false) }
         var showForceUploadConfirm by remember { mutableStateOf(false) }
         var showForceDownloadConfirm by remember { mutableStateOf(false) }
+        var showForceUploadConfigConfirm by remember { mutableStateOf(false) }
+        var showForceDownloadConfigConfirm by remember { mutableStateOf(false) }
         var showRestoreHistory by remember { mutableStateOf(false) }
         var historyEntries by remember { mutableStateOf<List<SyncHistoryEntry>>(emptyList()) }
         var restoreHistoryTarget by remember { mutableStateOf<SyncHistoryEntry?>(null) }
@@ -586,10 +586,6 @@ class WebDavConfigScreen : Screen {
                                     },
                                 )
                             }
-                            // TODO: 实现定时自动同步调度逻辑
-                            //   - 用 LaunchedEffect + delay(autoSyncInterval * 60_000) 循环调用 syncIncrementalData
-                            //   - 在 autoSyncEnabled / autoSyncInterval 变化时重启协程
-                            //   - 需要持有 config / repositories 等依赖
                             if (autoSyncEnabled) {
                                 HorizontalDivider(modifier = Modifier.padding(horizontal = spacing.md))
                                 Row(
@@ -661,121 +657,46 @@ class WebDavConfigScreen : Screen {
                         )
                     }
 
-                    // Sync Now (bidirectional data sync + config + media/fonts)
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                isSyncing = true
-                                syncStatus = strings.settingsSyncing
-                                try {
-                                    val config = defaultConfig ?: return@launch
-                                    val deckCount: Int
-                                    withContext(Dispatchers.IO) {
-                                        deckCount = bidirectionalSync(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager, uploadConfig = true, settingsRepository)
-                                        webDavConfigManager.updateLastSync(config.id)
-                                    }
-                                    syncStatus = strings.settingsSyncSuccess(deckCount)
-                                    snackbarHostState.showSnackbar(strings.settingsSyncSuccess(deckCount))
-                                    reloadConfigs()
-                                } catch (e: Exception) {
-                                    syncStatus = strings.settingsSyncError(e.message ?: strings.errorUnknown)
-                                    snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: strings.errorUnknown))
-                                } finally {
-                                    isSyncing = false
-                                }
-                            }
-                        },
-                        interactionSource = null,
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isSyncing,
-                    ) {
-                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(spacing.sm))
-                        Text(strings.settingsSyncNow)
-                    }
-
-                    // Sync Data / Sync Config / Sync Media
+                    // 数据（学习数据）
+                    Text(
+                        strings.syncScopeData,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
+                    )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(spacing.sm),
                     ) {
-                        OutlinedButton(
-                            onClick = {
-                                scope.launch {
-                                    isSyncing = true
-                                    syncStatus = strings.settingsSyncing
-                                    try {
-                                        val config = defaultConfig ?: return@launch
-                                        val deckCount: Int
-                                        withContext(Dispatchers.IO) {
-                                            deckCount = bidirectionalSync(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager, settingsRepository = settingsRepository)
-                                            webDavConfigManager.updateLastSync(config.id)
-                                        }
-                                        syncStatus = strings.settingsSyncSuccess(deckCount)
-                                        snackbarHostState.showSnackbar(strings.settingsSyncSuccess(deckCount))
-                                    } catch (e: Exception) {
-                                        syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
-                                        snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
-                                    } finally {
-                                        isSyncing = false
-                                    }
-                                }
-                            },
+                        Button(
+                            onClick = { showForceUploadConfirm = true },
                             interactionSource = null,
                             modifier = Modifier.weight(1f),
                             enabled = !isSyncing,
                         ) {
-                            Text(strings.settingsSyncData)
+                            Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(spacing.sm))
+                            Text(strings.syncForceUpload, style = MaterialTheme.typography.labelMedium)
                         }
-                        OutlinedButton(
-                            onClick = {
-                                scope.launch {
-                                    isSyncing = true
-                                    syncStatus = strings.settingsSyncing
-                                    try {
-                                        val config = defaultConfig ?: return@launch
-                                        withContext(Dispatchers.IO) {
-                                            val settings = settingsRepository.getAll()
-                                            val configJson = exportManager.exportConfig(settings)
-                                            syncManager.uploadConfig(config, configJson).getOrThrow()
-                                            webDavConfigManager.updateLastSync(config.id)
-                                        }
-                                        syncStatus = strings.settingsSyncConfigSuccess
-                                        snackbarHostState.showSnackbar(strings.settingsSyncConfigSuccess)
-                                    } catch (e: Exception) {
-                                        syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
-                                        snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
-                                    } finally {
-                                        isSyncing = false
-                                    }
-                                }
-                            },
+                        Button(
+                            onClick = { showForceDownloadConfirm = true },
                             interactionSource = null,
                             modifier = Modifier.weight(1f),
                             enabled = !isSyncing,
                         ) {
-                            Text(strings.settingsSyncConfig)
+                            Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(spacing.sm))
+                            Text(strings.syncForceDownload, style = MaterialTheme.typography.labelMedium)
                         }
                     }
 
-                    // Restore from cloud
-                    OutlinedButton(
-                        onClick = { showRestoreConfirm = true },
-                        interactionSource = null,
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isSyncing,
-                    ) {
-                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(spacing.sm))
-                        Text(strings.settingsRestoreFromCloud)
-                    }
-
-                    // Force sync section
+                    // 配置（设置）
                     Text(
-                        strings.settingsForceSync,
+                        strings.syncScopeConfig,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
                     )
                     Row(
@@ -783,22 +704,24 @@ class WebDavConfigScreen : Screen {
                         horizontalArrangement = Arrangement.spacedBy(spacing.sm),
                     ) {
                         OutlinedButton(
-                            onClick = { showForceUploadConfirm = true },
+                            onClick = { showForceUploadConfigConfirm = true },
                             interactionSource = null,
                             modifier = Modifier.weight(1f),
                             enabled = !isSyncing,
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                         ) {
-                            Text(strings.syncForceUpload, style = MaterialTheme.typography.labelSmall)
+                            Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(spacing.sm))
+                            Text(strings.syncForceUploadConfig, style = MaterialTheme.typography.labelMedium)
                         }
                         OutlinedButton(
-                            onClick = { showForceDownloadConfirm = true },
+                            onClick = { showForceDownloadConfigConfirm = true },
                             interactionSource = null,
                             modifier = Modifier.weight(1f),
                             enabled = !isSyncing,
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                         ) {
-                            Text(strings.syncForceDownload, style = MaterialTheme.typography.labelSmall)
+                            Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(spacing.sm))
+                            Text(strings.syncForceDownloadConfig, style = MaterialTheme.typography.labelMedium)
                         }
                     }
 
@@ -945,7 +868,7 @@ class WebDavConfigScreen : Screen {
                                 val config = defaultConfig ?: return@launch
                                 val deckCount: Int
                                 withContext(Dispatchers.IO) {
-                                    deckCount = forceUpload(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, settingsRepository, splashQuoteManager)
+                                    deckCount = forceUpload(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager)
                                     webDavConfigManager.updateLastSync(config.id)
                                 }
                                 syncStatus = strings.settingsSyncSuccess(deckCount)
@@ -982,7 +905,7 @@ class WebDavConfigScreen : Screen {
                                 val config = defaultConfig ?: return@launch
                                 val deckCount: Int
                                 withContext(Dispatchers.IO) {
-                                    deckCount = forceDownload(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, settingsRepository, splashQuoteManager)
+                                    deckCount = forceDownload(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager)
                                     webDavConfigManager.updateLastSync(config.id)
                                 }
                                 syncStatus = strings.settingsSyncSuccess(deckCount)
@@ -1003,50 +926,26 @@ class WebDavConfigScreen : Screen {
             )
         }
 
-        // Restore confirm dialog
-        if (showRestoreConfirm) {
+        // Force upload config confirm dialog
+        if (showForceUploadConfigConfirm) {
             AlertDialog(
-                onDismissRequest = { showRestoreConfirm = false },
-                title = { Text(strings.settingsRestoreConfirm) },
-                text = { Text(strings.settingsRestoreConfirmDesc) },
+                onDismissRequest = { showForceUploadConfigConfirm = false },
+                title = { Text(strings.syncForceUploadConfigConfirm) },
+                text = { Text(strings.syncForceUploadConfigConfirmDesc) },
                 confirmButton = {
                     TextButton(onClick = {
-                        showRestoreConfirm = false
+                        showForceUploadConfigConfirm = false
                         scope.launch {
                             isSyncing = true
                             syncStatus = strings.settingsSyncing
                             try {
                                 val config = defaultConfig ?: return@launch
-                    val result = withContext(Dispatchers.IO) {
-                                        val remoteResult = syncManager.download(config)
-                                        var restoredDecks = 0
-                                        if (remoteResult.isSuccess) {
-                                            val remote = exportManager.importData(remoteResult.getOrThrow())
-                                            if (remote != null) {
-                                                restoredDecks = remote.decks.size
-                                                writeMergedToLocal(remote, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository)
-
-                                                // Restore splash quotes from data.json (higher version wins)
-                                                val remoteSplash = remote.splashQuotes
-                                                if (remoteSplash != null) {
-                                                    val localVersion = splashQuoteManager.getQuotesVersion()
-                                                    if (remoteSplash.version > localVersion) {
-                                                        splashQuoteManager.importQuotesFromSync(
-                                                            remoteSplash.version,
-                                                            remoteSplash.userQuotes,
-                                                            remoteSplash.hiddenDefaultIndices,
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        restoreSettingsAndFonts(config, syncManager, settingsRepository)
-                                        webDavConfigManager.updateLastSync(config.id)
-                                        restoredDecks
-                                    }
-                                syncStatus = strings.settingsSyncSuccess(result)
-                                snackbarHostState.showSnackbar(strings.settingsSyncSuccess(result))
-                                reloadConfigs()
+                                withContext(Dispatchers.IO) {
+                                    forceUploadConfig(config, exportManager, syncManager, settingsRepository)
+                                    webDavConfigManager.updateLastSync(config.id)
+                                }
+                                syncStatus = strings.syncConfigSyncSuccess
+                                snackbarHostState.showSnackbar(strings.syncConfigSyncSuccess)
                             } catch (e: Exception) {
                                 syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
                                 snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
@@ -1057,10 +956,46 @@ class WebDavConfigScreen : Screen {
                     }, interactionSource = null) { Text(strings.actionConfirm) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showRestoreConfirm = false }, interactionSource = null) { Text(strings.actionCancel) }
+                    TextButton(onClick = { showForceUploadConfigConfirm = false }, interactionSource = null) { Text(strings.actionCancel) }
                 },
             )
         }
+
+        // Force download config confirm dialog
+        if (showForceDownloadConfigConfirm) {
+            AlertDialog(
+                onDismissRequest = { showForceDownloadConfigConfirm = false },
+                title = { Text(strings.syncForceDownloadConfigConfirm) },
+                text = { Text(strings.syncForceDownloadConfigConfirmDesc) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showForceDownloadConfigConfirm = false
+                        scope.launch {
+                            isSyncing = true
+                            syncStatus = strings.settingsSyncing
+                            try {
+                                val config = defaultConfig ?: return@launch
+                                withContext(Dispatchers.IO) {
+                                    forceDownloadConfig(config, syncManager, settingsRepository)
+                                    webDavConfigManager.updateLastSync(config.id)
+                                }
+                                syncStatus = strings.syncConfigSyncSuccess
+                                snackbarHostState.showSnackbar(strings.syncConfigSyncSuccess)
+                            } catch (e: Exception) {
+                                syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
+                                snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
+                            } finally {
+                                isSyncing = false
+                            }
+                        }
+                    }, interactionSource = null) { Text(strings.actionConfirm) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showForceDownloadConfigConfirm = false }, interactionSource = null) { Text(strings.actionCancel) }
+                },
+            )
+        }
+
     }
 }
 
@@ -1105,82 +1040,6 @@ private suspend fun writeMergedToLocal(
     }
 }
 
-private suspend fun bidirectionalSync(
-    config: WebDavConfig,
-    kbRepository: KnowledgeBaseRepository,
-    deckRepository: DeckRepository,
-    cardRepository: CardRepository,
-    reviewLogRepository: ReviewLogRepository,
-    planRepository: LearningPlanRepository,
-    exportManager: ExportManager,
-    syncManager: SyncManager,
-    mediaManager: MediaManager,
-    splashQuoteManager: SplashQuoteManager? = null,
-    uploadConfig: Boolean = false,
-    settingsRepository: SettingsRepository,
-): Int {
-    val allKbs = kbRepository.getAll().first()
-    val allDecks = deckRepository.getAll().first()
-    val allCards = cardRepository.getAll().first()
-    val allLogs = reviewLogRepository.getAll().first()
-    val allPlans = planRepository.getAll().first()
-
-    val (qv, qu, hi) = splashQuoteManager?.getQuotesExportData() ?: Triple(0L, emptyList<SplashQuoteData>(), "")
-
-    val result = syncManager.performSync(
-        config, allKbs, allDecks, allCards, allLogs, allPlans,
-        exportManager, qv, qu, hi
-    )
-
-    return when (result) {
-        is SyncResult.Success -> {
-            val merged = result.mergedData
-            if (merged != null) {
-                writeMergedToLocal(merged, kbRepository, deckRepository, cardRepository, reviewLogRepository, planRepository)
-
-                val mergedQuotes = merged.splashQuotes
-                if (mergedQuotes != null && splashQuoteManager != null && mergedQuotes.version > qv) {
-                    splashQuoteManager.importQuotesFromSync(
-                        mergedQuotes.version, mergedQuotes.userQuotes, mergedQuotes.hiddenDefaultIndices
-                    )
-                }
-            }
-
-            if (uploadConfig) {
-                val encryptor = SensitiveDataEncryptor(config.password)
-                val settings = encryptor.encryptSettings(settingsRepository.getAll())
-                val configJson = exportManager.exportConfig(settings)
-                syncManager.uploadConfig(config, configJson).getOrThrow()
-            }
-
-            syncMediaAndFonts(config, syncManager, mediaManager, settingsRepository)
-            result.decksSynced
-        }
-        is SyncResult.RemoteImport -> {
-            writeMergedToLocal(result.export, kbRepository, deckRepository, cardRepository, reviewLogRepository, planRepository)
-
-            val remoteQuotes = result.export.splashQuotes
-            if (remoteQuotes != null && splashQuoteManager != null && remoteQuotes.version > qv) {
-                splashQuoteManager.importQuotesFromSync(
-                    remoteQuotes.version, remoteQuotes.userQuotes, remoteQuotes.hiddenDefaultIndices
-                )
-            }
-
-            if (uploadConfig) {
-                val encryptor = SensitiveDataEncryptor(config.password)
-                val settings = encryptor.encryptSettings(settingsRepository.getAll())
-                val configJson = exportManager.exportConfig(settings)
-                syncManager.uploadConfig(config, configJson).getOrThrow()
-            }
-
-            syncMediaAndFonts(config, syncManager, mediaManager, settingsRepository)
-            result.export.decks.size
-        }
-        is SyncResult.Error -> throw Exception(result.message)
-        is SyncResult.Skipped -> 0
-    }
-}
-
 private suspend fun forceUpload(
     config: WebDavConfig,
     kbRepository: KnowledgeBaseRepository,
@@ -1191,7 +1050,6 @@ private suspend fun forceUpload(
     exportManager: ExportManager,
     syncManager: SyncManager,
     mediaManager: MediaManager,
-    settingsRepository: SettingsRepository,
     splashQuoteManager: SplashQuoteManager? = null,
 ): Int {
     syncManager.archiveCurrentSnapshot(config)
@@ -1217,7 +1075,7 @@ private suspend fun forceUpload(
     reviewLogRepository.markSynced(allLogs.map { it.id }, now)
     planRepository.markSynced(allPlans.map { it.id }, now)
 
-    syncMediaAndFonts(config, syncManager, mediaManager, settingsRepository, forcePush = true)
+    syncMedia(config, syncManager, mediaManager)
     return allDecks.size
 }
 
@@ -1231,7 +1089,6 @@ private suspend fun forceDownload(
     exportManager: ExportManager,
     syncManager: SyncManager,
     mediaManager: MediaManager,
-    settingsRepository: SettingsRepository,
     splashQuoteManager: SplashQuoteManager? = null,
 ): Int {
     syncManager.archiveCurrentSnapshot(config)
@@ -1268,8 +1125,6 @@ private suspend fun forceDownload(
         )
     }
 
-    restoreSettingsAndFonts(config, syncManager, settingsRepository)
-
     val now = Clock.System.now()
     kbRepository.markSynced(remote.knowledgeBases.map { it.id }, now)
     deckRepository.markSynced(remote.decks.map { it.id }, now)
@@ -1277,16 +1132,14 @@ private suspend fun forceDownload(
     reviewLogRepository.markSynced(remote.reviewLogs.map { it.id }, now)
     planRepository.markSynced(remote.learningPlans.map { it.id }, now)
 
-    syncMediaAndFonts(config, syncManager, mediaManager, settingsRepository)
+    syncMedia(config, syncManager, mediaManager)
     return deckCount
 }
 
-private suspend fun syncMediaAndFonts(
+private suspend fun syncMedia(
     config: WebDavConfig,
     syncManager: SyncManager,
     mediaManager: MediaManager,
-    settingsRepository: SettingsRepository,
-    forcePush: Boolean = false,
 ) {
     try {
         val userHome = System.getenv("USERPROFILE") ?: System.getenv("HOME") ?: System.getProperty("user.home")
@@ -1320,7 +1173,14 @@ private suspend fun syncMediaAndFonts(
             }
         }
     } catch (_: Exception) { }
+}
 
+private suspend fun syncFonts(
+    config: WebDavConfig,
+    syncManager: SyncManager,
+    settingsRepository: SettingsRepository,
+    forcePush: Boolean = false,
+) {
     try {
         val fontDir = com.lumecard.app.font.getFontStorageDir()
         val fontDirFile = java.io.File(fontDir)
@@ -1411,125 +1271,6 @@ private suspend fun syncMediaAndFonts(
     }
 }
 
-private suspend fun syncIncrementalData(
-    config: WebDavConfig,
-    kbRepository: KnowledgeBaseRepository,
-    deckRepository: DeckRepository,
-    cardRepository: CardRepository,
-    reviewLogRepository: ReviewLogRepository,
-    planRepository: LearningPlanRepository,
-    exportManager: ExportManager,
-    syncManager: SyncManager,
-    mediaManager: MediaManager,
-    splashQuoteManager: SplashQuoteManager? = null,
-): Int {
-    val now = Clock.System.now()
-
-    syncManager.archiveCurrentSnapshot(config)
-
-    val allKbs = kbRepository.getAll().first()
-    val allDecks = deckRepository.getAll().first()
-    val allCards = cardRepository.getAll().first()
-    val allLogs = reviewLogRepository.getAll().first()
-    val allPlans = planRepository.getAll().first()
-
-    // Include splash quotes in data.json
-    val quotesExport = if (splashQuoteManager != null) {
-        val (qv, qu, hi) = splashQuoteManager.getQuotesExportData()
-        ExportSplashQuotes(qv, qu, hi)
-    } else null
-
-    val json = exportManager.exportData(allKbs, allDecks, allCards, allLogs, allPlans, quotesExport)
-    syncManager.uploadData(config, json).getOrThrow()
-
-    kbRepository.markSynced(allKbs.map { it.id }, now)
-    deckRepository.markSynced(allDecks.map { it.id }, now)
-    cardRepository.markSynced(allCards.map { it.id }, now)
-    reviewLogRepository.markSynced(allLogs.map { it.id }, now)
-    planRepository.markSynced(allPlans.map { it.id }, now)
-
-    // Anki-style media sync: cache mtime + SHA-1 to avoid re-hashing unchanged files
-    val mediaHome = System.getenv("USERPROFILE") ?: System.getenv("HOME") ?: System.getProperty("user.home")
-    val mediaBase = System.getProperty("lumecard.media.dir") ?: java.io.File(mediaHome, ".lumecard/media").absolutePath
-    val rawFiles = scanMediaDirectoryRaw(mediaBase)
-    if (rawFiles.isNotEmpty()) {
-        val resolved = rawFiles.map { raw ->
-            val cachedHash = mediaManager.getCachedHash(raw.relativePath, raw.mtime)
-            if (cachedHash != null) {
-                MediaManifestEntry(raw.relativePath, raw.size, cachedHash)
-            } else {
-                val sha1 = hashFileSha1("$mediaBase/${raw.relativePath}")
-                mediaManager.updateCache(raw.relativePath, raw.mtime, sha1)
-                MediaManifestEntry(raw.relativePath, raw.size, sha1)
-            }
-        }
-
-        val localManifest = MediaManifest(version = 1, entries = resolved)
-        syncManager.uploadManifest(config, mediaManager.manifestToJson(localManifest))
-
-        val remoteResult = syncManager.downloadManifest(config)
-        val remoteManifest = if (remoteResult.isSuccess) mediaManager.manifestFromJson(remoteResult.getOrThrow()) else null
-
-        val needUpload = mediaManager.filesToUpload(resolved, remoteManifest)
-        for (path in needUpload) {
-            val absPath = "$mediaBase/$path"
-            try {
-                val data = java.io.File(absPath).readBytes()
-                syncManager.uploadMedia(config, path, data).getOrThrow()
-            } catch (_: Exception) { }
-        }
-    }
-
-    // Font sync: sync user-imported font files across devices
-    try {
-        val fontDir = com.lumecard.app.font.getFontStorageDir()
-        val fontDirFile = java.io.File(fontDir)
-        val localFontFiles = fontDirFile.listFiles()?.filter { it.isFile }.orEmpty()
-
-        val remoteListResult = syncManager.downloadFontManifest(config)
-        val remoteFontNames = if (remoteListResult.isSuccess) {
-            try {
-                fontManifestJson.decodeFromString<List<String>>(remoteListResult.getOrThrow())
-            } catch (_: Exception) { emptyList() }
-        } else emptyList()
-
-        val localFontNames = localFontFiles.map { it.name }.toSet()
-
-        for (file in localFontFiles) {
-            if (file.name !in remoteFontNames) {
-                try {
-                    syncManager.uploadFont(config, file.name, file.readBytes())
-                } catch (_: Exception) { }
-            }
-        }
-
-        for (name in remoteFontNames) {
-            if (name !in localFontNames) {
-                try {
-                    val data = syncManager.downloadFont(config, name).getOrNull()
-                    if (data != null) {
-                        java.io.File(fontDirFile, name).writeBytes(data)
-                    }
-                } catch (_: Exception) { }
-            }
-        }
-
-        // Delete remote fonts that no longer exist locally (cleaned up after manual font removal)
-        for (name in remoteFontNames) {
-            if (name !in localFontNames) {
-                try {
-                    syncManager.deleteFont(config, name)
-                } catch (_: Exception) { }
-            }
-        }
-
-        val currentNames = fontDirFile.listFiles()?.map { it.name }.orEmpty()
-        syncManager.uploadFontManifest(config, fontManifestJson.encodeToString(currentNames))
-    } catch (_: Exception) { }
-
-    return allDecks.size
-}
-
 private fun localFontManifestFile(fontDirFile: java.io.File): java.io.File {
     return java.io.File(fontDirFile.parentFile, "font_registry.json")
 }
@@ -1588,28 +1329,67 @@ private fun reconcileLocalManifest(
     return result
 }
 
+private suspend fun downloadRemoteSettings(
+    config: WebDavConfig,
+    syncManager: SyncManager,
+): Map<String, String>? {
+    val configResult = syncManager.downloadConfig(config)
+    if (configResult.isFailure) return null
+    val remoteSettings = try {
+        fontManifestJson.decodeFromString<com.lumecard.shared.data.ConfigExport>(configResult.getOrThrow()).settings
+    } catch (_: Exception) {
+        try {
+            fontManifestJson.decodeFromString<Map<String, String>>(configResult.getOrThrow())
+        } catch (_: Exception) { null }
+    }
+    if (remoteSettings == null) return null
+    val encryptor = SensitiveDataEncryptor(config.password)
+    return encryptor.decryptSettings(remoteSettings)
+}
+
+private suspend fun forceUploadConfig(
+    config: WebDavConfig,
+    exportManager: ExportManager,
+    syncManager: SyncManager,
+    settingsRepository: SettingsRepository,
+) {
+    val encryptor = SensitiveDataEncryptor(config.password)
+    val settings = encryptor.encryptSettings(settingsRepository.getAll())
+    val configJson = exportManager.exportConfig(settings)
+    syncManager.uploadConfig(config, configJson).getOrThrow()
+
+    // 字体归配置：上传本地字体（覆盖远端）
+    syncFonts(config, syncManager, settingsRepository, forcePush = true)
+}
+
+private suspend fun forceDownloadConfig(
+    config: WebDavConfig,
+    syncManager: SyncManager,
+    settingsRepository: SettingsRepository,
+) {
+    val remoteSettings = downloadRemoteSettings(config, syncManager)
+        ?: throw Exception("No remote config found")
+    for (key in settingsRepository.getAll().keys) {
+        settingsRepository.delete(key)
+    }
+    for ((key, value) in remoteSettings) {
+        settingsRepository.set(key, value)
+    }
+
+    // 字体归配置：下载远端字体到本地
+    syncFonts(config, syncManager, settingsRepository, forcePush = false)
+}
+
 private suspend fun restoreSettingsAndFonts(
     config: WebDavConfig,
     syncManager: SyncManager,
     settingsRepository: SettingsRepository,
 ) {
     try {
-        val configResult = syncManager.downloadConfig(config)
-        if (configResult.isSuccess) {
-            val remoteSettings = try {
-                val export = fontManifestJson.decodeFromString<com.lumecard.shared.data.ConfigExport>(configResult.getOrThrow())
-                export.settings
-            } catch (_: Exception) {
-                try {
-                    fontManifestJson.decodeFromString<Map<String, String>>(configResult.getOrThrow())
-                } catch (_: Exception) { null }
-            }
-            if (remoteSettings != null) {
-                val encryptor = SensitiveDataEncryptor(config.password)
-                val decrypted = encryptor.decryptSettings(remoteSettings)
-                for ((key, value) in decrypted) {
-                    settingsRepository.set(key, value)
-                }
+        val remoteSettings = downloadRemoteSettings(config, syncManager)
+        if (remoteSettings != null) {
+            for ((key, value) in remoteSettings) {
+                settingsRepository.set(key, value)
             }
         }
 

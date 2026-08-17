@@ -9,16 +9,14 @@ import java.awt.GraphicsEnvironment
 import java.io.File
 
 private fun userHome(): String {
-    // JVM on Windows may garble non-ASCII usernames when reading env vars.
-    // Spawn cmd.exe to get the correct value.
-    if (System.getProperty("os.name")?.lowercase()?.contains("windows") == true) {
-        try {
-            val process = java.lang.Runtime.getRuntime().exec(arrayOf("cmd.exe", "/c", "echo", "%USERPROFILE%"))
-            val line = process.inputStream.bufferedReader().readText().trim()
-            if (line.isNotBlank() && java.io.File(line).exists()) return line
-        } catch (_: Exception) { }
-    }
-    return System.getenv("USERPROFILE") ?: System.getenv("HOME") ?: System.getProperty("user.home")
+    // 注意：不要用 cmd.exe echo %USERPROFILE% 再 readText() —— JDK 18+ 默认 UTF-8，
+    // 会把 cmd 输出的 GBK 字节解码成乱码（U+FFFD），导致非 ASCII 用户名下的路径失效
+    // （表现为 NoSuchFileException / 无法写入存储目录）。
+    // System.getProperty("user.home") 在 JDK 21 下能正确返回非 ASCII 路径。
+    return System.getProperty("user.home")
+        ?: System.getenv("USERPROFILE")
+        ?: System.getenv("HOME")
+        ?: "."
 }
 
 actual fun detectSystemFonts(): List<FontSpec> {
@@ -63,13 +61,16 @@ actual fun registerFontFile(filePath: String): Boolean {
         val font = java.awt.Font.createFont(java.awt.Font.TRUETYPE_FONT, java.io.ByteArrayInputStream(bytes))
         GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(font)
         true
-    } catch (_: Exception) {
+    } catch (e: Exception) {
         try {
             val bytes = java.io.File(filePath).readBytes()
             val font = java.awt.Font.createFont(java.awt.Font.TYPE1_FONT, java.io.ByteArrayInputStream(bytes))
             GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(font)
             true
-        } catch (_: Exception) { false }
+        } catch (e2: Exception) {
+            println("[FontImport] registerFontFile FAILED: $filePath -> ${e2.javaClass.simpleName}: ${e2.message} | firstTry: ${e.javaClass.simpleName}: ${e.message}")
+            false
+        }
     }
 }
 
@@ -112,7 +113,10 @@ actual fun copyFontToStorage(sourcePath: String, fileName: String): Boolean {
             java.nio.file.StandardCopyOption.REPLACE_EXISTING
         )
         true
-    } catch (_: Exception) { false }
+    } catch (e: Exception) {
+        println("[FontImport] copyFontToStorage FAILED: $sourcePath -> $fileName -> ${e.javaClass.simpleName}: ${e.message}")
+        false
+    }
 }
 
 actual fun fontFileExists(filePath: String): Boolean = File(filePath).exists()

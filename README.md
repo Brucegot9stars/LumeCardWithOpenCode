@@ -23,7 +23,7 @@
 - ✅ **数据导入导出** — JSON 格式完整导出/导入，支持分享导出（不含学习进度）与完整备份导出分离
 - ✅ **全文搜索** — SQL LIKE 搜索 + FTS5 虚拟表全文索引（FTS5 不可用时自动降级 LIKE）
 - ✅ **排序功能** — 牌组与卡片列表支持按名称、创建时间、更新时间排序（升序/降序）
-- ✅ **WebDAV 云同步** — 增量数据同步 + 版本冲突解决 + Anki 风格媒体同步（SHA-1 + mtime 缓存，仅哈希变更文件）+ 多配置管理
+- ✅ **WebDAV 云同步** — 手动强制覆盖（学习数据 / 配置分开独立同步）+ 覆盖前云端快照自动归档（可回滚）+ Anki 风格媒体同步（SHA-1 + mtime 缓存，仅哈希变更文件）+ 多配置管理
 - ✅ **级联软删除** — 删除知识库级联软删除下属牌组与卡片，删除牌组级联软删除下属卡片
 - ✅ **媒体贴入** — 粘贴图片到卡片编辑器字段（Desktop: AWT / Android: ClipboardManager），自动 SHA-1 去重保存，插入 Markdown 图片引用
 - ✅ **AI 制卡助手** — SSE 流式生成 + 增量 JSON 解析 + 批量自动分类到牌组/知识库 + 实时进度气泡 + 交互日志面板 + 停止生成（保留已完成卡片）
@@ -130,7 +130,7 @@ LumeCard/
 │       │   │   │   ├── AiClient.kt         # AI API 客户端
 │       │   │   │   └── AiModels.kt         # 数据模型
 │       │   │   ├── ExportManager.kt       # 导入导出（v2 格式）
-│       │   │   ├── SyncManager.kt         # WebDAV 增量同步
+│       │   │   ├── SyncManager.kt         # WebDAV 文件级传输（上传/下载/快照归档/历史）
 │       │   │   ├── MediaManager.kt        # 媒体 Manifest & 缓存管理
 │       │   │   ├── WebDavConfigManager.kt # 多配置管理
 │       │   │   └── WebDavProviders.kt     # 服务商配置
@@ -157,30 +157,84 @@ LumeCard/
 
 ### 环境要求
 
-- JDK 17+（推荐使用 Android Studio 自带 JBR）
+- JDK 17+（推荐使用 Android Studio 自带 JBR；打包安装包需 JDK 21+，含 `jpackage`）
 - Android Studio（最新版，含 Android SDK 35）
-- Gradle 8.12.1 (已内嵌)
+- Gradle 8.12.1 (已内嵌，通过 `gradlew` 使用)
 - Android SDK 编译目标 35
+
+> **Windows 用户名含非 ASCII 字符（如中文）时**，必须事先设置 `JAVA_HOME` 与 `GRADLE_USER_HOME`，否则 Gradle 会因缓存/临时目录路径含中文而失败。
+
+**PowerShell**（推荐）：
+```powershell
+$env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"
+$env:GRADLE_USER_HOME="C:\gradle-home"
+```
+
+**cmd.exe**：
+```cmd
+set JAVA_HOME=C:\Program Files\Android\Android Studio\jbr
+set GRADLE_USER_HOME=C:\gradle-home
+```
+
+> 以下命令均假设已按上述方式设置环境变量。打包安装包需改用 JDK 21+（见「构建 Desktop 安装包」）。
 
 ### 构建 Android APK
 
 ```bash
-set JAVA_HOME=C:\Program Files\Android\Android Studio\jbr
-set GRADLE_USER_HOME=C:\gradle-home
 .\gradlew.bat :composeApp:assembleDebug
 ```
 
 APK 输出: `composeApp/build/outputs/apk/debug/LumeCard-v{version}-debug.apk`
 
-### 运行 Desktop 版本
+### 调试启动 Desktop 客户端
+
+#### 方式一：开发模式直接启动（最常用）
+
+编译并启动桌面窗口，适合边改代码边调试：
 
 ```bash
 .\gradlew.bat :composeApp:run
 ```
 
+入口为 `composeApp/src/desktopMain/kotlin/com/lumecard/app/main.kt` 的 `main()`（`mainClass = "com.lumecard.app.MainKt"`），无需额外参数。
+
+#### 方式二：免安装「绿色版」直接运行
+
+生成免安装、可直接运行的程序目录：
+
+```bash
+.\gradlew.bat :composeApp:createDistributable
+```
+
+产物目录 `composeApp/build/compose/binaries/main/app/LumeCard/`，其中的 `LumeCard.exe` 可直接启动：
+
+```powershell
+.\composeApp\build\compose\binaries\main\app\LumeCard\LumeCard.exe
+```
+
+#### 方式三：构建并运行安装包
+
+`packageExe` / `packageMsi` 生成的是 **jpackage 安装器**（`.exe` / `.msi`），运行后会先安装到系统、而非免安装启动，见下文「构建 Desktop 安装包」。
+
+### 常用调试命令
+
+```bash
+# 快速 Desktop 编译（跳过 Android 与测试，仅校验编译）
+.\gradlew.bat :shared:compileKotlinDesktop :composeApp:compileKotlinDesktop
+
+# 快速 Android 编译检查（跳过 APK 打包）
+.\gradlew.bat :shared:compileDebugKotlinAndroid :composeApp:compileDebugKotlinAndroid
+
+# 运行共享模块测试（CI 同款）
+.\gradlew.bat :shared:desktopTest
+
+# 构建/依赖异常时强制刷新依赖
+.\gradlew.bat --refresh-dependencies
+```
+
 ### 构建 Desktop 安装包
 
-需要 JDK 21+（含 `jpackage`）：
+需要 JDK 21+（含 `jpackage`；Android Studio 自带 JBR 不含 `jpackage.exe`）：
 
 ```bash
 set JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot
@@ -188,15 +242,25 @@ set GRADLE_USER_HOME=C:\gradle-home
 .\gradlew.bat :composeApp:packageExe :composeApp:packageMsi
 ```
 
-EXE 输出: `composeApp/build/compose/binaries/main/exe/LumeCard-{version}.exe`
+- EXE 安装器输出: `composeApp/build/compose/binaries/main/exe/LumeCard-{version}.exe`
+- MSI 安装包输出: `composeApp/build/compose/binaries/main/msi/LumeCard-{version}.msi`
 
-### Windows 注意事项
+### 常见构建问题排查
 
-若 Windows 用户名包含非 ASCII 字符（如中文），需要额外设置：
+**`AccessDeniedException` / `Could not create ZIP`（Windows）**
 
-```bash
-set JAVA_HOME=C:\Program Files\Android\Android Studio\jbr
-set GRADLE_USER_HOME=C:\gradle-home
+表现为：`desktopJar` 或 `run` 报 `Could not create ZIP '...-desktop.jar'`、`AccessDeniedException: build/reports/problems/problems-report.html`、末尾 `Could not update ...last-build.bin`。
+
+原因是残留的 Gradle daemon 进程锁住了 `build/` 下的产物文件（常见于多次后台编译之后）。先停掉所有 daemon 再重试：
+
+```powershell
+.\gradlew.bat --stop
+```
+
+若仍被占用，可改用单次运行模式（不常驻 daemon）：
+
+```powershell
+.\gradlew.bat :composeApp:run --no-daemon
 ```
 
 ## 数据库
@@ -241,7 +305,7 @@ Knowledge Base → Deck → Card
 - **Repository 模式**：`Repositories.kt` 定义接口，`SqlDelightRepositories` 与 `InMemoryRepositories` 两套实现，便于测试
 - **MVVM 架构**：Voyager `ScreenModel` + Koin DI，状态通过 `StateFlow` 驱动 UI
 - **算法接口解耦**：`StudyViewModel` 通过 DI 注入 `ReviewAlgorithm`，可配置不同算法
-- **WebDAV 多配置管理**：支持多个同步配置保存、默认标记、连接测试、双向同步
+- **WebDAV 多配置管理**：支持多个同步配置保存、默认标记、连接测试、手动强制覆盖（学习数据与配置分开同步）
 - **平台抽象**：使用 Kotlin `expect/actual` 机制处理数据库驱动、平台样式等差异
 
 ## License

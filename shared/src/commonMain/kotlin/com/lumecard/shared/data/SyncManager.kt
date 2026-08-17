@@ -6,15 +6,12 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.utils.io.core.readBytes
 import kotlin.time.Clock
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 
 class SyncManager(
     private val client: HttpClient
 ) {
-    private val syncMutex = Mutex()
     companion object {
         private const val BACKUP_DIR = "LumeCard"
         private const val DATA_FILENAME = "data.json"
@@ -401,112 +398,6 @@ class SyncManager(
         }
     }
 
-    /**
-     * Full bidirectional data sync with version-based conflict resolution.
-     */
-    suspend fun performSync(
-        config: WebDavConfig,
-        localKnowledgeBases: List<com.lumecard.shared.model.KnowledgeBase>,
-        localDecks: List<com.lumecard.shared.model.Deck>,
-        localCards: List<com.lumecard.shared.model.Card>,
-        localReviewLogs: List<com.lumecard.shared.model.ReviewLog>,
-        localLearningPlans: List<com.lumecard.shared.model.LearningPlan>,
-        exportManager: ExportManager,
-        localQuotesVersion: Long = 0,
-        localUserQuotes: List<SplashQuoteData> = emptyList(),
-        localHiddenIndices: String = "",
-    ): SyncResult = syncMutex.withLock {
-        val remoteResult = downloadData(config)
-
-        if (remoteResult.isFailure) {
-            if (localDecks.isEmpty() && localCards.isEmpty()) return SyncResult.Skipped("Nothing to sync")
-            val quotesExport = ExportSplashQuotes(localQuotesVersion, localUserQuotes, localHiddenIndices)
-            val json = exportManager.exportData(localKnowledgeBases, localDecks, localCards, localReviewLogs, localLearningPlans, quotesExport)
-            val up = uploadData(config, json)
-            return if (up.isSuccess) SyncResult.Success(true, false, localDecks.size)
-            else SyncResult.Error(up.exceptionOrNull()?.message ?: "Upload failed")
-        }
-
-        val remoteJson = remoteResult.getOrThrow()
-        val remoteExport = exportManager.importData(remoteJson)
-
-        if (remoteExport == null) {
-            archiveCurrentSnapshot(config)
-            val quotesExport = ExportSplashQuotes(localQuotesVersion, localUserQuotes, localHiddenIndices)
-            val json = exportManager.exportData(localKnowledgeBases, localDecks, localCards, localReviewLogs, localLearningPlans, quotesExport)
-            uploadData(config, json)
-            return SyncResult.Success(true, false, localDecks.size)
-        }
-
-        if (localDecks.isEmpty() && localCards.isEmpty()) return SyncResult.RemoteImport(remoteExport)
-
-        fun <T> mergeByVersion(
-            local: List<T>,
-            remote: List<T>,
-            key: (T) -> String,
-            version: (T) -> Long,
-        ): List<T> {
-            val localMap = local.associateBy { key(it) }
-            val remoteMap = remote.associateBy { key(it) }
-            return (localMap.keys + remoteMap.keys).mapNotNull { id ->
-                val l = localMap[id]; val r = remoteMap[id]
-                when {
-                    l != null && r == null -> l
-                    l == null && r != null -> r
-                    l != null && r != null -> if (version(r) > version(l)) r else l
-                    else -> null
-                }
-            }
-        }
-
-        val remoteKbs = remoteExport.knowledgeBases.map { it.toKnowledgeBase() }
-        val remoteDecks = remoteExport.decks.map { it.toDeck() }
-        val remoteCards = remoteExport.cards.map { it.toCard() }
-        val remoteLogs = remoteExport.reviewLogs.map { it.toReviewLog() }
-        val remotePlans = remoteExport.learningPlans.map { it.toLearningPlan() }
-
-        val mergedKbs = mergeByVersion(localKnowledgeBases, remoteKbs, { it.id }, { it.version })
-        val mergedDecks = mergeByVersion(localDecks, remoteDecks, { it.id }, { it.version })
-        val mergedCards = mergeByVersion(localCards, remoteCards, { it.id }, { it.version })
-        val mergedLogs = mergeByVersion(localReviewLogs, remoteLogs, { it.id }, { it.version })
-        val mergedPlans = mergeByVersion(localLearningPlans, remotePlans, { it.id }, { it.version })
-
-        // Merge splash quotes (whole-collection version — higher wins)
-        val remoteQuotesExport = remoteExport.splashQuotes
-        val mergedQuotesExport = if (remoteQuotesExport != null && remoteQuotesExport.version > localQuotesVersion) {
-            remoteQuotesExport
-        } else {
-            ExportSplashQuotes(localQuotesVersion, localUserQuotes, localHiddenIndices)
-        }
-
-        val activeKbs = mergedKbs.filter { it.deletedAt == null }
-        val activeDecks = mergedDecks.filter { it.deletedAt == null }
-        val activeCards = mergedCards.filter { it.deletedAt == null }
-        val activeLogs = mergedLogs.filter { it.deletedAt == null }
-        val activePlans = mergedPlans.filter { it.deletedAt == null }
-
-        archiveCurrentSnapshot(config)
-        val mergedJson = exportManager.exportData(
-            knowledgeBases = activeKbs, decks = activeDecks, cards = activeCards,
-            reviewLogs = activeLogs, learningPlans = activePlans,
-            splashQuotes = mergedQuotesExport,
-        )
-        uploadData(config, mergedJson)
-
-        val imported = mergedDecks.size > localDecks.size || mergedCards.size > localCards.size
-        val quotesChanged = mergedQuotesExport.version != localQuotesVersion
-
-        val mergedExport = DataExport(
-            exportDate = Clock.System.now().toString(),
-            knowledgeBases = activeKbs.map { it.toExport() },
-            decks = activeDecks.map { it.toExport() },
-            cards = activeCards.map { it.toExport() },
-            reviewLogs = activeLogs.map { it.toExport() },
-            learningPlans = activePlans.map { it.toExport() },
-            splashQuotes = mergedQuotesExport,
-        )
-        return SyncResult.Success(true, imported || quotesChanged, activeDecks.size, mergedExport)
-    }
 }
 
 class SyncException(message: String) : Exception(message)
@@ -611,10 +502,3 @@ fun com.lumecard.shared.model.LearningPlan.toExport() = ExportLearningPlan(
     version = version, deletedAt = deletedAt?.toString(),
     syncedAt = syncedAt?.toString()
 )
-
-sealed class SyncResult {
-    data class Success(val backedUp: Boolean, val imported: Boolean, val decksSynced: Int, val mergedData: DataExport? = null) : SyncResult()
-    data class RemoteImport(val export: DataExport) : SyncResult()
-    data class Skipped(val reason: String) : SyncResult()
-    data class Error(val message: String) : SyncResult()
-}
