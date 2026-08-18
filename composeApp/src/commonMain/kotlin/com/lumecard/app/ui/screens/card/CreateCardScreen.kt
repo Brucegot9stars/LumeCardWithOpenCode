@@ -306,6 +306,10 @@ private fun CardTypeInput(
                 back = back, onBackChange = onBackChange,
                 frontLabel = strings.cardFrontLabel,
                 backLabel = strings.cardBackLabel,
+                horizontalCenter = horizontalCenter,
+                verticalCenter = verticalCenter,
+                onHorizontalCenterChange = onHorizontalCenterChange,
+                onVerticalCenterChange = onVerticalCenterChange,
             )
         }
         CardType.MARKDOWN, CardType.AI_GENERATED -> {

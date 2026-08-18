@@ -417,8 +417,8 @@ class StudyScreen(
                                         modifier = Modifier.fillMaxSize().padding(20.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        val nextHCenter = (nextCard.type == CardType.BASIC || nextCard.type == CardType.REVERSED) && nextCard.metadata["hcenter"].toBoolean()
-                                        val nextVCenter = (nextCard.type == CardType.BASIC || nextCard.type == CardType.REVERSED) && nextCard.metadata["vcenter"].toBoolean()
+                                        val nextHCenter = (nextCard.type == CardType.BASIC || nextCard.type == CardType.REVERSED || nextCard.type == CardType.RICH_TEXT) && nextCard.metadata["hcenter"].toBoolean()
+                                        val nextVCenter = (nextCard.type == CardType.BASIC || nextCard.type == CardType.REVERSED || nextCard.type == CardType.RICH_TEXT) && nextCard.metadata["vcenter"].toBoolean()
                                         val nextFontSize = nextCard.metadata["fontSize"]?.toIntOrNull() ?: 16
                                         val nextFontFamily = nextCard.metadata["fontFamily"]?.takeIf { it.isNotBlank() }?.let { FontRegistry.resolveFontFamily(it) }
                                         CardContent(card = nextCard, isFlipped = false, displayMode = settingsState.answerDisplayMode, horizontalCenter = nextHCenter, verticalCenter = nextVCenter, fontSize = nextFontSize, fontFamily = nextFontFamily)
@@ -502,9 +502,9 @@ class StudyScreen(
                                     }
                                 )
                             ) {
-                                        val isBasicCard = currentCard.type == CardType.BASIC || currentCard.type == CardType.REVERSED
-                                val hCenter = isBasicCard && currentCard.metadata["hcenter"].toBoolean()
-                                val vCenter = isBasicCard && currentCard.metadata["vcenter"].toBoolean()
+                                        val centerable = currentCard.type == CardType.BASIC || currentCard.type == CardType.REVERSED || currentCard.type == CardType.RICH_TEXT
+                                val hCenter = centerable && currentCard.metadata["hcenter"].toBoolean()
+                                val vCenter = centerable && currentCard.metadata["vcenter"].toBoolean()
                                 val fontSize = currentCard.metadata["fontSize"]?.toIntOrNull() ?: 16
                                 Box(
                                     modifier = Modifier

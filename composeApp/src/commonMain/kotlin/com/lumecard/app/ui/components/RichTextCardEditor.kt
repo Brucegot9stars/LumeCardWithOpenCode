@@ -19,7 +19,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.lumecard.app.i18n.I18nManager
 import com.mohamedrejeb.richeditor.model.rememberRichTextState
+import org.koin.compose.koinInject
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditor
 import kotlinx.coroutines.delay
 
@@ -57,12 +59,38 @@ fun RichTextCardEditor(
     onBackChange: (String) -> Unit,
     frontLabel: String,
     backLabel: String,
+    horizontalCenter: Boolean = false,
+    verticalCenter: Boolean = false,
+    onHorizontalCenterChange: ((Boolean) -> Unit)? = null,
+    onVerticalCenterChange: ((Boolean) -> Unit)? = null,
 ) {
+    val strings = koinInject<I18nManager>().strings
     Text(frontLabel, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
     RichEditField(initialHtml = front, onHtmlChange = onFrontChange)
     Spacer(Modifier.height(8.dp))
     Text(backLabel, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
     RichEditField(initialHtml = back, onHtmlChange = onBackChange)
+    // 卡片级居中开关（与基础卡 BasicCardFields 同款），让富文本卡也能设置水平/垂直居中
+    if (onHorizontalCenterChange != null) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(strings.cardHorizontalCenter, style = MaterialTheme.typography.bodyMedium)
+            Switch(checked = horizontalCenter, onCheckedChange = onHorizontalCenterChange)
+        }
+    }
+    if (onVerticalCenterChange != null) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(strings.cardVerticalCenter, style = MaterialTheme.typography.bodyMedium)
+            Switch(checked = verticalCenter, onCheckedChange = onVerticalCenterChange)
+        }
+    }
 }
 
 @Composable

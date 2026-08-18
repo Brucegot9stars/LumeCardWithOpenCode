@@ -189,7 +189,7 @@ internal fun CardFace(
             }
             CardType.RICH_TEXT -> {
                 val html = if (showBack) card.back else card.front
-                RichTextCardFace(html = html)
+                RichTextCardFace(html = html, horizontalCenter = horizontalCenter)
             }
             CardType.MARKDOWN, CardType.AI_GENERATED -> {
                 MarkdownText(
@@ -316,7 +316,7 @@ internal fun cardTypeName(type: CardType): String {
 }
 
 @Composable
-internal fun RichTextCardFace(html: String) {
+internal fun RichTextCardFace(html: String, horizontalCenter: Boolean = false) {
     if (html.isBlank()) return
     // 用 Compose Rich Editor 的 setHtml 解析 HTML 得到 AnnotatedString（含加粗/颜色/字号等 SpanStyle），
     // 但渲染改用 compose 原生 BasicText —— 绕开 richeditor 1.0.0 的 BasicRichText 渲染 bug
@@ -329,7 +329,7 @@ internal fun RichTextCardFace(html: String) {
     // BasicText 把它当成透明 → 不可见；而显式设了颜色的（如红色）正常。
     // 这里把 alpha==0 的 span 颜色替换为 Color.Unspecified，让 BasicText 正确
     // 回退到样式基础色，加粗/颜色/字号等 SpanStyle 正常显示。
-    val annotated = remember(state.annotatedString) {
+    val annotated = remember(state.annotatedString, horizontalCenter) {
         val src = state.annotatedString
         val builder = AnnotatedString.Builder()
         builder.append(src.text)
@@ -341,17 +341,22 @@ internal fun RichTextCardFace(html: String) {
             } else item
             builder.addStyle(fixed, range.start, range.end)
         }
-        // 段落样式（如标题对齐/行高）一并保留，避免 h1-h6 等结构信息丢失
+        // 段落样式（如标题对齐/行高）一并保留，避免 h1-h6 等结构信息丢失。
+        // 若开启了卡片级水平居中，则强制覆盖每个段落的对齐为 Center，
+        // 保证「水平居中」开关对所有段落（含 HTML 内单独设了左对齐的）都生效。
         for (range in src.paragraphStyles) {
             if (range.start >= range.end) continue
-            builder.addStyle(range.item, range.start, range.end)
+            val item = if (horizontalCenter) range.item.copy(textAlign = TextAlign.Center) else range.item
+            builder.addStyle(item, range.start, range.end)
         }
         builder.toAnnotatedString()
     }
     BasicText(
         text = annotated,
         modifier = Modifier.fillMaxWidth(),
-        style = MaterialTheme.typography.bodyLarge,
+        style = MaterialTheme.typography.bodyLarge.copy(
+            textAlign = if (horizontalCenter) TextAlign.Center else TextAlign.Unspecified
+        ),
     )
 }
 
