@@ -259,7 +259,14 @@ actual fun playRatingSound(rating: Rating) {
             }
             track.write(buf, 0, buf.size)
             track.play()
-            track.release()
+            try {
+                // AudioTrack.play() 是异步的，必须等待播放完成再 release，
+                // 否则声音刚响起就被截断（表现为 Android 端提示音短促）
+                Thread.sleep(durationMs.toLong() + 50)
+            } finally {
+                track.stop()
+                track.release()
+            }
         } catch (_: Exception) { }
     }, "RatingSound").apply { isDaemon = true }.start()
 }

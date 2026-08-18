@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -11,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
@@ -22,8 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.i18n.I18nStrings
-import com.lumecard.app.ui.util.htmlToAnnotatedString
 import com.lumecard.app.ui.components.MarkdownText
+import com.mohamedrejeb.richeditor.model.rememberRichTextState
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
 import com.lumecard.app.ui.screens.settings.AnswerDisplayMode
@@ -316,10 +318,40 @@ internal fun cardTypeName(type: CardType): String {
 @Composable
 internal fun RichTextCardFace(html: String) {
     if (html.isBlank()) return
-    val annotated = remember(html) { htmlToAnnotatedString(html) }
-    Text(
+    // 用 Compose Rich Editor 的 setHtml 解析 HTML 得到 AnnotatedString（含加粗/颜色/字号等 SpanStyle），
+    // 但渲染改用 compose 原生 BasicText —— 绕开 richeditor 1.0.0 的 BasicRichText 渲染 bug
+    // （它在渲染 colorSpace=Uninitialized 的 Color 时当成透明，导致无显式颜色的文字不可见）。
+    val state = rememberRichTextState()
+    LaunchedEffect(html) {
+        state.setHtml(html)
+    }
+    // setHtml 对「无显式 color」的文字会写入一个完全透明（alpha=0）的 Color，
+    // BasicText 把它当成透明 → 不可见；而显式设了颜色的（如红色）正常。
+    // 这里把 alpha==0 的 span 颜色替换为 Color.Unspecified，让 BasicText 正确
+    // 回退到样式基础色，加粗/颜色/字号等 SpanStyle 正常显示。
+    val annotated = remember(state.annotatedString) {
+        val src = state.annotatedString
+        val builder = AnnotatedString.Builder()
+        builder.append(src.text)
+        for (range in src.spanStyles) {
+            if (range.start >= range.end) continue
+            val item = range.item
+            val fixed = if (item.color.alpha == 0f) {
+                item.copy(color = Color.Unspecified)
+            } else item
+            builder.addStyle(fixed, range.start, range.end)
+        }
+        // 段落样式（如标题对齐/行高）一并保留，避免 h1-h6 等结构信息丢失
+        for (range in src.paragraphStyles) {
+            if (range.start >= range.end) continue
+            builder.addStyle(range.item, range.start, range.end)
+        }
+        builder.toAnnotatedString()
+    }
+    BasicText(
         text = annotated,
         modifier = Modifier.fillMaxWidth(),
+        style = MaterialTheme.typography.bodyLarge,
     )
 }
 

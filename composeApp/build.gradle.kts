@@ -57,6 +57,8 @@ kotlin {
                 implementation(Dependencies.mikepenzMarkdown)
                 implementation(Dependencies.mikepenzMarkdownM3)
 
+                implementation(Dependencies.composeRichEditor)
+
                 implementation(Dependencies.kotlinxCoroutines)
                 implementation(Dependencies.kotlinxDateTime)
                 implementation(Dependencies.kotlinxSerialization)
@@ -74,6 +76,7 @@ kotlin {
             dependencies {
                 implementation("org.jetbrains.skiko:skiko-awt-runtime-windows-x64:0.8.15")
                 implementation(Dependencies.kotlinxCoroutinesSwing)
+                implementation(Dependencies.slf4jNop)
             }
         }
     }

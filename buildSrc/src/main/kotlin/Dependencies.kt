@@ -9,6 +9,8 @@ object Versions {
     const val kotlinxDateTime = "0.7.1"
     const val kotlinxSerialization = "1.11.0"
     const val mikepenzMarkdown = "0.41.0"
+    const val slf4j = "1.7.36"
+    const val composeRichEditor = "1.0.0"
 }
 
 object Dependencies {
@@ -41,6 +43,12 @@ object Dependencies {
     // Mikepenz Markdown Renderer
     const val mikepenzMarkdown = "com.mikepenz:multiplatform-markdown-renderer:${Versions.mikepenzMarkdown}"
     const val mikepenzMarkdownM3 = "com.mikepenz:multiplatform-markdown-renderer-m3:${Versions.mikepenzMarkdown}"
+
+    // Compose Rich Editor (WYSIWYG 富文本编辑器)
+    const val composeRichEditor = "com.mohamedrejeb.richeditor:richeditor-compose:${Versions.composeRichEditor}"
+
+    // SLF4J (JVM 日志门面 — 绑定 NOP 消除 Ktor 带来的 StaticLoggerBinder 警告)
+    const val slf4jNop = "org.slf4j:slf4j-nop:${Versions.slf4j}"
 
     // Kotlinx
     const val kotlinxCoroutines = "org.jetbrains.kotlinx:kotlinx-coroutines-core:${Versions.kotlinxCoroutines}"
