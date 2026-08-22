@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
-import java.util.UUID
+import com.lumecard.shared.data.generateId
 
 class KnowledgeBaseViewModel(
     private val knowledgeBaseRepository: KnowledgeBaseRepository,
@@ -40,7 +40,7 @@ class KnowledgeBaseViewModel(
 
     suspend fun createKnowledgeBase(name: String, description: String?): KnowledgeBase {
         val kb = KnowledgeBase(
-            id = "kb_${UUID.randomUUID().toString().take(8)}",
+            id = generateId("kb"),
             name = name,
             description = description,
             createdAt = Clock.System.now(),

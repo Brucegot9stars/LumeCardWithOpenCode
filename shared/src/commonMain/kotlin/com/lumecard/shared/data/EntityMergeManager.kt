@@ -7,8 +7,7 @@ import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
 import com.lumecard.shared.repository.KnowledgeBaseRepository
 import kotlin.time.Clock
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
+
 import kotlinx.coroutines.flow.first
 
 class EntityMergeManager(
@@ -204,9 +203,8 @@ class EntityMergeManager(
         }
     }
 
-    @OptIn(ExperimentalUuidApi::class)
     private fun generateDefaultCardName(index: Int): String {
-        return "Card_${Uuid.random().toString().take(6)}_$index"
+        return "Card_${generateId()}_$index"
     }
 
     private fun resolveCardFrontConflict(originalFront: String, existingFronts: Set<String>): String {

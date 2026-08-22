@@ -23,7 +23,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.time.Clock
 import kotlinx.serialization.json.Json
-import java.util.UUID
+import com.lumecard.shared.data.generateId
 
 enum class CardsStudyMode {
     DUE_FIRST,
@@ -260,7 +260,7 @@ class StudyViewModel(
         screenModelScope.launch {
             try {
                 val reviewLog = ReviewLog(
-                    id = UUID.randomUUID().toString(),
+                    id = generateId("review"),
                     cardId = currentCard.id,
                     rating = rating.value,
                     reviewTime = reviewTimeMs,

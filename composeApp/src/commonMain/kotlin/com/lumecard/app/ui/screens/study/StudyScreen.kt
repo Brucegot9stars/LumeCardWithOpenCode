@@ -151,7 +151,7 @@ class StudyScreen(
             @Suppress("DEPRECATION")
             val clipboardManager = LocalClipboardManager.current
             AlertDialog(
-                onDismissRequest = { crashError = null },
+                onDismissRequest = { viewModel.clearError() },
                 title = { Text(strings.crashCompositionError) },
                 text = {
                     Column {
@@ -166,7 +166,7 @@ class StudyScreen(
                                 .padding(8.dp)
                         ) {
                             Text(
-                                text = crashError ?: "",
+                                text = error ?: "",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -175,11 +175,11 @@ class StudyScreen(
                 },
                 confirmButton = {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = { crashError = null }, interactionSource = null) {
+                        TextButton(onClick = { viewModel.clearError() }, interactionSource = null) {
                             Text(strings.actionCancel)
                         }
                         Button(onClick = {
-                            crashError?.let { clipboardManager.setText(AnnotatedString(it)) }
+                            error?.let { clipboardManager.setText(AnnotatedString(it)) }
                         }, interactionSource = null) {
                             Text(strings.actionCopy)
                         }

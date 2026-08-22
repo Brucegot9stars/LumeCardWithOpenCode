@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
-import java.util.UUID
+import com.lumecard.shared.data.generateId
 
 class LearningPlanViewModel(
     private val planRepository: LearningPlanRepository,
@@ -73,7 +73,7 @@ class LearningPlanViewModel(
     ): LearningPlan {
         val allCardIds = resolveCardIds(knowledgeBaseIds, deckIds, cardIds)
         val plan = LearningPlan(
-            id = "plan_${UUID.randomUUID().toString().take(8)}",
+            id = generateId("plan"),
             name = name,
             description = description,
             status = PlanStatus.NOT_STARTED,

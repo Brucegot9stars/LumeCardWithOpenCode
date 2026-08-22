@@ -36,6 +36,7 @@ import com.lumecard.app.ui.screens.ai.AiConfigScreen
 import com.lumecard.app.ui.screens.aicard.AiCardScreen
 import com.lumecard.app.ui.screens.dashboard.DashboardScreen
 import com.lumecard.app.ui.screens.settings.quote.QuoteSettingsScreen
+import com.lumecard.app.ui.screens.stats.StatsScreen
 import com.lumecard.shared.settings.SettingsSearchResult
 import com.lumecard.app.ui.components.UpdateCheckDialog
 import com.lumecard.app.i18n.I18nManager
@@ -118,7 +119,7 @@ class SettingsScreen(
                 "WebDAV" -> navigator.push(WebDavConfigScreen())
                 "AIConfig" -> navigator.push(AiConfigScreen())
                 "AICards" -> navigator.push(com.lumecard.app.ui.screens.aicard.AiCardScreen())
-                "Stats" -> navigator.push(com.lumecard.app.ui.screens.dashboard.DashboardScreen())
+                "Stats" -> navigator.push(StatsScreen())
                 "HelpCenter" -> navigator.push(com.lumecard.app.ui.screens.help.HelpScreen())
                 else -> {} // "Settings" entries are on the current page
             }

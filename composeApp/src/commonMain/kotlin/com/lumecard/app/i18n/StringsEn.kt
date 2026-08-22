@@ -432,6 +432,18 @@ object EnStrings : I18nStrings {
     override fun aiCardErrorBatch(batch: Int, message: String) = "Batch $batch generation failed: $message"
     override fun aiCardErrorGeneration(message: String) = "Generation failed: $message"
 
+    override val aiCardStopGeneration = "Stop Generation"
+    override val aiCardErrorHeader = "Error"
+    override val aiCardErrorClipboardLabel = "AI Error Info"
+    override val aiCardErrorCopied = "Error info copied"
+    override val aiCardErrorCopyButton = "Copy Error Info"
+    override fun aiCardLogTitle(count: Int) = "Interaction Log ($count)"
+    override val aiCardLogEmpty = "No logs yet"
+    override val aiCardStopDialogTitle = "Stop Generation"
+    override val aiCardStopDialogText = "Are you sure you want to stop? Already-generated partial cards will be kept."
+    override val aiCardDeletePartial = "Delete partially generated cards"
+    override val aiCardStopConfirm = "Stop"
+
     override val actionMove = "Move"
     override val actionMerge = "Merge"
     override val moveDeckTitle = "Move Deck"

@@ -6,6 +6,7 @@ import kotlinx.datetime.DateTimePeriod
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
 import kotlin.math.max
+import kotlin.math.roundToInt
 
 class SM2Algorithm : ReviewAlgorithm {
     override val mode: ReviewMode = ReviewMode.SM2
@@ -35,7 +36,7 @@ class SM2Algorithm : ReviewAlgorithm {
         val interval = when (newReps) {
             1 -> 1
             2 -> 6
-            else -> (state.repetitions.toDouble() * ef).toInt().coerceAtLeast(1)
+            else -> (state.intervalDays.toDouble() * ef).roundToInt().coerceAtLeast(1)
         }
         val due = Clock.System.now().plus(DateTimePeriod(days = interval), TimeZone.UTC)
 

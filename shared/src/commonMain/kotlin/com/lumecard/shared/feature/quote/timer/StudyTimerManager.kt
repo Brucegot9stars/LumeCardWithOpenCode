@@ -1,6 +1,8 @@
 package com.lumecard.shared.feature.quote.timer
 
 import com.lumecard.shared.feature.quote.manager.IdleManager
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
@@ -18,7 +20,8 @@ class StudyTimerManager(
     private var idleSubJob: Job? = null
     private var timerJob: Job? = null
     private var accumulatedMs: Long = 0L
-    private var lastTickNanos: Long = 0L
+    private val timeSource = TimeSource.Monotonic
+    private var lastTickMark: TimeMark = timeSource.markNow()
     private var isStudyActive = false
 
     private val _isPaused = MutableStateFlow(false)
@@ -57,14 +60,14 @@ class StudyTimerManager(
         accumulatedMs = 0L
         isStudyActive = true
         _isPaused.value = false
-        lastTickNanos = currentTimeNanos()
+        lastTickMark = timeSource.markNow()
         startTimer()
     }
 
     fun stopStudy() {
         if (isStudyActive) {
             if (!_isPaused.value) {
-                accumulatedMs += (currentTimeNanos() - lastTickNanos) / 1_000_000L
+                accumulatedMs += elapsedMsSinceLastTick()
             }
             _studyTimeSeconds.value = accumulatedMs / 1000L
         }
@@ -76,7 +79,7 @@ class StudyTimerManager(
 
     private fun pauseStudy() {
         if (isStudyActive && !_isPaused.value) {
-            accumulatedMs += (currentTimeNanos() - lastTickNanos) / 1_000_000L
+            accumulatedMs += elapsedMsSinceLastTick()
             _isPaused.value = true
             stopTimer()
         }
@@ -84,7 +87,7 @@ class StudyTimerManager(
 
     private fun resumeStudy() {
         if (isStudyActive && _isPaused.value) {
-            lastTickNanos = currentTimeNanos()
+            lastTickMark = timeSource.markNow()
             _isPaused.value = false
             startTimer()
         }
@@ -94,7 +97,7 @@ class StudyTimerManager(
         timerJob = scope.launch {
             while (isActive) {
                 if (!_isPaused.value && isStudyActive) {
-                    val total = accumulatedMs + (currentTimeNanos() - lastTickNanos) / 1_000_000L
+                    val total = accumulatedMs + elapsedMsSinceLastTick()
                     _studyTimeSeconds.value = total / 1000L
                 }
                 delay(1000L)
@@ -107,8 +110,7 @@ class StudyTimerManager(
         timerJob = null
     }
 
-    private fun currentTimeNanos(): Long =
-        kotlin.time.TimeSource.Monotonic.markNow().elapsedNow().inWholeNanoseconds
+    private fun elapsedMsSinceLastTick(): Long = lastTickMark.elapsedNow().inWholeMilliseconds
 
     fun dispose() {
         idleSubJob?.cancel()

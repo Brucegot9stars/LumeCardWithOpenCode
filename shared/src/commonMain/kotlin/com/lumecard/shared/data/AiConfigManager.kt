@@ -17,29 +17,32 @@ class AiConfigManager(
         val raw = settingsRepository.get(configsKey) ?: return emptyList()
         return try {
             val configs = json.decodeFromString<List<AiConfig>>(raw)
-            migrateConfigs(configs)
+            val migrated = migrateConfigs(configs)
+            if (migrated !== configs) {
+                settingsRepository.set(configsKey, json.encodeToString(migrated))
+            }
+            migrated
         } catch (_: Exception) {
             emptyList()
         }
     }
 
-    private suspend fun migrateConfigs(configs: List<AiConfig>): List<AiConfig> {
+    private fun migrateConfigs(configs: List<AiConfig>): List<AiConfig> {
+        var changed = false
         val migrated = configs.map { c ->
-            var changed = false
-            var result = c
-            if (result.fallbackConfigId == null && result.isDefault) {
-                val sibling = configs.firstOrNull { it.id != result.id && it.provider == result.provider }
+            if (c.fallbackConfigId == null && c.isDefault) {
+                val sibling = configs.firstOrNull { it.id != c.id && it.provider == c.provider }
                 if (sibling != null) {
-                    result = result.copy(fallbackConfigId = sibling.id)
                     changed = true
+                    c.copy(fallbackConfigId = sibling.id)
+                } else {
+                    c
                 }
+            } else {
+                c
             }
-            if (changed) {
-                save(result)
-            }
-            result
         }
-        return migrated
+        return if (changed) migrated else configs
     }
 
     suspend fun getById(id: String): AiConfig? {

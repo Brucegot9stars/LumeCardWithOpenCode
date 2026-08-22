@@ -8,6 +8,7 @@ import kotlinx.datetime.DateTimeUnit
 import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
+import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
@@ -52,7 +53,7 @@ class FSRSAlgorithm(
     private fun initialSchedule(card: FSRSCard, rating: Rating): FSRSCard {
         val w = parameters.w
         val stability = w[0] + w[1] * rating.value
-        val difficulty = w[2] + w[3] * (rating.value - 3)
+        val difficulty = (w[4] - exp(w[5] * (rating.value - 1)) + 1.0).coerceIn(1.0, 10.0)
 
         val scheduledDays = when (rating) {
             Rating.AGAIN -> 1
@@ -138,7 +139,7 @@ class FSRSAlgorithm(
 
     private fun calculateDifficulty(currentDifficulty: Double, rating: Rating): Double {
         val w = parameters.w
-        val newDifficulty = currentDifficulty + w[6] * (rating.value - 3)
+        val newDifficulty = currentDifficulty - w[6] * (rating.value - 3)
         return max(1.0, min(10.0, newDifficulty))
     }
 

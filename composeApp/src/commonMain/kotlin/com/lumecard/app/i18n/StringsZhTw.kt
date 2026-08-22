@@ -432,6 +432,18 @@ object ZhTwStrings : I18nStrings {
     override fun aiCardErrorBatch(batch: Int, message: String) = "第 $batch 批生成失敗：$message"
     override fun aiCardErrorGeneration(message: String) = "生成失敗：$message"
 
+    override val aiCardStopGeneration = "停止製卡"
+    override val aiCardErrorHeader = "錯誤"
+    override val aiCardErrorClipboardLabel = "AI 錯誤資訊"
+    override val aiCardErrorCopied = "錯誤資訊已複製"
+    override val aiCardErrorCopyButton = "複製錯誤資訊"
+    override fun aiCardLogTitle(count: Int) = "互動日誌 ($count)"
+    override val aiCardLogEmpty = "暫無日誌"
+    override val aiCardStopDialogTitle = "停止製卡"
+    override val aiCardStopDialogText = "確定要停止製卡嗎？已完成的部分卡片將被保留。"
+    override val aiCardDeletePartial = "刪除已完成的部分製卡"
+    override val aiCardStopConfirm = "停止"
+
     override val actionMove = "移動"
     override val actionMerge = "合併"
     override val moveDeckTitle = "移動牌組"

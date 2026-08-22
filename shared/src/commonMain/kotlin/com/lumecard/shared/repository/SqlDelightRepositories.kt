@@ -10,7 +10,9 @@ import com.lumecard.shared.model.KnowledgeBase
 import com.lumecard.shared.model.ReviewLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlinx.serialization.encodeToString
@@ -57,7 +59,7 @@ class SqlDelightKnowledgeBaseRepository(
         queries.updateKnowledgeBase(
             name = knowledgeBase.name,
             description = knowledgeBase.description,
-            updated_at = Clock.System.now().toString(),
+            updated_at = knowledgeBase.updatedAt.toString(),
             deleted_at = knowledgeBase.deletedAt?.toString(),
             synced_at = knowledgeBase.syncedAt?.toString(),
             id = knowledgeBase.id
@@ -77,7 +79,7 @@ class SqlDelightKnowledgeBaseRepository(
 
     override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
         val ts = syncedAt.toString()
-        ids.forEach { queries.updateKnowledgeBaseSyncedAt(ts, it) }
+        database.transaction { ids.forEach { queries.updateKnowledgeBaseSyncedAt(ts, it) } }
     }
 }
 
@@ -132,7 +134,7 @@ class SqlDelightDeckRepository(
             color = deck.color,
             icon = deck.icon,
             parent_id = deck.parentId,
-            updated_at = Clock.System.now().toString(),
+            updated_at = deck.updatedAt.toString(),
             deleted_at = deck.deletedAt?.toString(),
             synced_at = deck.syncedAt?.toString(),
             id = deck.id
@@ -151,7 +153,7 @@ class SqlDelightDeckRepository(
 
     override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
         val ts = syncedAt.toString()
-        ids.forEach { queries.updateDeckSyncedAt(ts, it) }
+        database.transaction { ids.forEach { queries.updateDeckSyncedAt(ts, it) } }
     }
 }
 
@@ -177,11 +179,12 @@ class SqlDelightCardRepository(
         return queries.selectCardById(id).executeAsOneOrNull()?.toDomain()
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     override suspend fun getDueCards(): Flow<List<Card>> {
-        val now = Clock.System.now().toString()
-        return queries.selectDueCards(now).asFlow().mapToList(Dispatchers.Default).map { list ->
-            list.map { it.toDomain() }
-        }
+        return queries.selectDueCards("UNUSED").asFlow()
+            .flatMapLatest { queries.selectDueCards(Clock.System.now().toString()).asFlow() }
+            .mapToList(Dispatchers.Default)
+            .map { list -> list.map { it.toDomain() } }
     }
 
     override suspend fun insert(card: Card) {
@@ -214,7 +217,7 @@ class SqlDelightCardRepository(
             tags = Json.encodeToString(card.tags),
             media = Json.encodeToString(card.media),
             metadata = Json.encodeToString(card.metadata),
-            updated_at = Clock.System.now().toString(),
+            updated_at = card.updatedAt.toString(),
             last_reviewed_at = card.lastReviewedAt?.toString(),
             next_review_at = card.nextReviewAt?.toString(),
             id = card.id
@@ -242,7 +245,7 @@ class SqlDelightCardRepository(
 
     override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
         val ts = syncedAt.toString()
-        ids.forEach { queries.updateCardSyncedAt(ts, it) }
+        database.transaction { ids.forEach { queries.updateCardSyncedAt(ts, it) } }
     }
 
     override suspend fun rebuildFtsIndex() {
@@ -314,7 +317,7 @@ class SqlDelightReviewLogRepository(
 
     override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
         val ts = syncedAt.toString()
-        ids.forEach { queries.updateReviewLogSyncedAt(ts, it) }
+        database.transaction { ids.forEach { queries.updateReviewLogSyncedAt(ts, it) } }
     }
 
     override suspend fun deleteAll() {
@@ -535,7 +538,7 @@ class SqlDelightLearningPlanRepository(
             card_ids = Json.encodeToString(plan.cardIds),
             total_cards = plan.totalCards.toLong(),
             completed_cards = plan.completedCards.toLong(),
-            updated_at = Clock.System.now().toString(),
+            updated_at = plan.updatedAt.toString(),
             deleted_at = plan.deletedAt?.toString(),
             synced_at = plan.syncedAt?.toString(),
             id = plan.id
@@ -553,7 +556,7 @@ class SqlDelightLearningPlanRepository(
 
     override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
         val ts = syncedAt.toString()
-        ids.forEach { queries.updateLearningPlanSyncedAt(ts, it) }
+        database.transaction { ids.forEach { queries.updateLearningPlanSyncedAt(ts, it) } }
     }
 }
 

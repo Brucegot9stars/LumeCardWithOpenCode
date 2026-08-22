@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.UUID
+import com.lumecard.shared.data.generateId
 
 enum class SortField { NAME, CREATED_AT, UPDATED_AT, STUDY_TIME }
 enum class SortOrder { ASC, DESC }
@@ -103,7 +103,7 @@ class DeckViewModel(
     suspend fun createDeck(name: String, description: String?) {
         val existingCount = _decks.value.size
         val deck = Deck(
-            id = "deck_${UUID.randomUUID().toString().take(8)}",
+            id = generateId("deck"),
             knowledgeBaseId = currentKnowledgeBaseId,
             name = name,
             description = description,

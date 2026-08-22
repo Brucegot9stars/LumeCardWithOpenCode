@@ -7,6 +7,7 @@ import com.lumecard.app.ui.screens.deck.SortField
 import com.lumecard.app.ui.screens.deck.SortOrder
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
+import com.lumecard.shared.data.generateId
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -104,7 +105,7 @@ class CardViewModel(
 
         screenModelScope.launch {
             val card = Card(
-                id = kotlin.uuid.Uuid.random().toString(),
+                id = generateId("card"),
                 deckId = deckId,
                 type = type,
                 front = front,

@@ -432,6 +432,18 @@ object EsStrings : I18nStrings {
     override fun aiCardErrorBatch(batch: Int, message: String) = "Error en el lote $batch: $message"
     override fun aiCardErrorGeneration(message: String) = "Error de generación: $message"
 
+    override val aiCardStopGeneration = "Detener Generación"
+    override val aiCardErrorHeader = "Error"
+    override val aiCardErrorClipboardLabel = "Info de Error AI"
+    override val aiCardErrorCopied = "Info de error copiada"
+    override val aiCardErrorCopyButton = "Copiar Info de Error"
+    override fun aiCardLogTitle(count: Int) = "Registro de Interacción ($count)"
+    override val aiCardLogEmpty = "Sin registros"
+    override val aiCardStopDialogTitle = "Detener Generación"
+    override val aiCardStopDialogText = "¿Está seguro de que desea detener? Las tarjetas parcialmente generadas se conservarán."
+    override val aiCardDeletePartial = "Eliminar tarjetas parcialmente generadas"
+    override val aiCardStopConfirm = "Detener"
+
     override val actionMove = "Mover"
     override val actionMerge = "Fusionar"
     override val moveDeckTitle = "Mover mazo"

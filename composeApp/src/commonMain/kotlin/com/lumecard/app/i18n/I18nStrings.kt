@@ -437,6 +437,17 @@ interface I18nStrings {
     fun aiCardErrorLoadData(message: String): String
     fun aiCardErrorBatch(batch: Int, message: String): String
     fun aiCardErrorGeneration(message: String): String
+    val aiCardStopGeneration: String
+    val aiCardErrorHeader: String
+    val aiCardErrorClipboardLabel: String
+    val aiCardErrorCopied: String
+    val aiCardErrorCopyButton: String
+    fun aiCardLogTitle(count: Int): String
+    val aiCardLogEmpty: String
+    val aiCardStopDialogTitle: String
+    val aiCardStopDialogText: String
+    val aiCardDeletePartial: String
+    val aiCardStopConfirm: String
 
     // Move / Merge
     val actionMove: String

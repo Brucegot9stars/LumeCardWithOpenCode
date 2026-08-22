@@ -23,6 +23,11 @@ fun generateUuid(): String {
     }
 }
 
+fun generateId(prefix: String = ""): String {
+    val uuid = generateUuid().take(8)
+    return if (prefix.isEmpty()) uuid else "${prefix}_$uuid"
+}
+
 fun mergeFontEntries(
     local: List<FontManifestEntry>,
     remote: List<FontManifestEntry>,

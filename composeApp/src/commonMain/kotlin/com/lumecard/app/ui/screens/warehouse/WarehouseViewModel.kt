@@ -13,8 +13,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import com.lumecard.shared.data.generateId
 import kotlin.time.Clock
-import java.util.UUID
 
 data class TreeNode(
     val id: String,
@@ -147,7 +147,7 @@ class WarehouseViewModel(
 
     suspend fun createKnowledgeBase(name: String, description: String?) {
         kbRepository.insert(KnowledgeBase(
-            id = "kb_${UUID.randomUUID().toString().take(8)}",
+            id = generateId("kb"),
             name = name, description = description,
             createdAt = Clock.System.now(), updatedAt = Clock.System.now()
         ))
@@ -178,7 +178,7 @@ class WarehouseViewModel(
         val decks = deckRepository.getAll().first()
         val existingCount = decks.size
         deckRepository.insert(Deck(
-            id = "deck_${UUID.randomUUID().toString().take(8)}",
+            id = generateId("deck"),
             knowledgeBaseId = kbId, name = name, description = description,
             color = Deck.colors[existingCount % Deck.colors.size], icon = Deck.icons[existingCount % Deck.icons.size],
             createdAt = Clock.System.now(), updatedAt = Clock.System.now()
@@ -209,7 +209,7 @@ class WarehouseViewModel(
 
     suspend fun createCard(deckId: String, front: String, back: String, type: CardType = CardType.BASIC) {
         cardRepository.insert(Card(
-            id = "card_${UUID.randomUUID().toString().take(8)}",
+            id = generateId("card"),
             deckId = deckId, type = type, front = front, back = back,
             createdAt = Clock.System.now(), updatedAt = Clock.System.now()
         ))

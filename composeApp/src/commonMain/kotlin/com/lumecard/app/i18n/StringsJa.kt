@@ -432,6 +432,18 @@ object JaStrings : I18nStrings {
     override fun aiCardErrorBatch(batch: Int, message: String) = "バッチ $batch の生成に失敗しました：$message"
     override fun aiCardErrorGeneration(message: String) = "生成に失敗しました：$message"
 
+    override val aiCardStopGeneration = "生成を停止"
+    override val aiCardErrorHeader = "エラー"
+    override val aiCardErrorClipboardLabel = "AI エラー情報"
+    override val aiCardErrorCopied = "エラー情報をコピーしました"
+    override val aiCardErrorCopyButton = "エラー情報をコピー"
+    override fun aiCardLogTitle(count: Int) = "操作ログ ($count)"
+    override val aiCardLogEmpty = "ログはありません"
+    override val aiCardStopDialogTitle = "生成を停止"
+    override val aiCardStopDialogText = "生成を停止しますか？既に生成された部分的なカードは保持されます。"
+    override val aiCardDeletePartial = "部分的に生成されたカードを削除"
+    override val aiCardStopConfirm = "停止"
+
     override val actionMove = "移動"
     override val actionMerge = "マージ"
     override val moveDeckTitle = "デッキを移動"

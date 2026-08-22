@@ -278,29 +278,6 @@ class ExportManager {
         }
     }
 
-    /** Export only records changed since [since]. Returns full snapshot if [since] is null. */
-    fun exportIncrementalData(
-        knowledgeBases: List<KnowledgeBase>,
-        decks: List<Deck>,
-        cards: List<Card>,
-        reviewLogs: List<ReviewLog> = emptyList(),
-        learningPlans: List<LearningPlan> = emptyList(),
-        since: String? = null,
-        deviceId: String? = null
-    ): String {
-        val export = IncrementalExport(
-            exportDate = Clock.System.now().toString(),
-            since = since,
-            deviceId = deviceId,
-            knowledgeBases = exportKbs(knowledgeBases),
-            decks = exportDecks(decks),
-            cards = exportCards(cards),
-            reviewLogs = exportReviewLogs(reviewLogs),
-            learningPlans = exportPlans(learningPlans)
-        )
-        return json.encodeToString(IncrementalExport.serializer(), export)
-    }
-
     fun exportConfig(
         settings: Map<String, String>,
         deviceId: String? = null
