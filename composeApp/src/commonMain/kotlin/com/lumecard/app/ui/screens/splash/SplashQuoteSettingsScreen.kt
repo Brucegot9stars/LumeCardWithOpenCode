@@ -21,6 +21,7 @@ import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.shared.data.SplashQuoteDirection
 import com.lumecard.shared.data.SplashQuoteStrategy
+import com.lumecard.shared.data.SplashQuoteData
 import com.lumecard.app.platform.pickOpenFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -364,17 +365,20 @@ class SplashQuoteSettingsScreen : Screen {
 
         // ── Preview overlay ────────────────────────────
         if (showPreview) {
-            val quote = vm.getQuoteForPreview()
+            val quote by produceState<SplashQuoteData?>(null) {
+                value = vm.getQuoteForPreview()
+            }
             if (quote != null) {
+                val q = quote!!
                 SplashQuoteScreen(
-                    quote = quote,
+                    quote = q,
                     direction = settings.direction,
                     splashFontId = settings.font,
                     splashFontSize = settings.fontSize,
                     durationMs = settings.durationSeconds * 1000L,
                     backgroundPath = settings.backgroundPath,
                     showAuthor = settings.showAuthor,
-                    overrideConfig = quote.overrideConfig,
+                    overrideConfig = q.overrideConfig,
                     onDismiss = { showPreview = false },
                 )
             } else {

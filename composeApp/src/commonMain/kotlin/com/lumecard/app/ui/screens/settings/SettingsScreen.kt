@@ -637,8 +637,10 @@ class SettingsScreen(
                                                 text = { Text(strings.settingsFontDeleteConfirm) },
                                                 confirmButton = {
                                                     Button(onClick = {
-                                                        FontRegistry.remove(spec.id)
-                                                        FontInitializer.saveUserFonts()
+                                                        scope.launch {
+                                                            FontRegistry.remove(spec.id)
+                                                            FontInitializer.saveUserFonts()
+                                                        }
                                                         showDeleteConfirm = false
                                                     }) { Text(strings.actionConfirm) }
                                                 },

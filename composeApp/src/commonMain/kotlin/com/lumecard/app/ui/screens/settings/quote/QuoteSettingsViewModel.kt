@@ -135,7 +135,7 @@ class QuoteSettingsViewModel(
         _sections.value = current
     }
 
-    fun getPreviewQuote(): SplashQuoteData? {
+    suspend fun getPreviewQuote(): SplashQuoteData? {
         val s = _settings.value
         val ss = SplashQuoteSettings(
             enabled = s.enabled,
@@ -149,7 +149,7 @@ class QuoteSettingsViewModel(
             enableAnimation = s.enableAnimation,
             animationStyle = s.animationStyle,
         )
-        return kotlinx.coroutines.runBlocking { manager.previewQuote(ss) }
+        return manager.previewQuote(ss)
     }
 
     private fun markDirty() { _isDirty.value = true }

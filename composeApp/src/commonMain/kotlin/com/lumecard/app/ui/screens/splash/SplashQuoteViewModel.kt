@@ -99,12 +99,12 @@ class SplashQuoteViewModel(
         }
     }
 
-    fun getQuoteForPreview(): SplashQuoteData? {
+    suspend fun getQuoteForPreview(): SplashQuoteData? {
         val s = _settings.value
         val quotes = run {
             val uq = _userQuotes.value
             if (uq.isNotEmpty()) uq else {
-                kotlinx.coroutines.runBlocking { manager.getAllQuotes() }
+                manager.getAllQuotes()
             }
         }
         val (quote, _) = manager.getQuoteForDisplay(s.strategy, s.sequenceIndex, quotes)

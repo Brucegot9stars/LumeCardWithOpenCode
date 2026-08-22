@@ -24,6 +24,7 @@ import com.lumecard.app.ui.components.ConfigSection
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.screens.splash.SplashQuoteListScreen
 import com.lumecard.app.ui.theme.LumeCardTheme
+import com.lumecard.shared.data.SplashQuoteData
 import com.lumecard.shared.data.SplashQuoteDirection
 import com.lumecard.shared.data.SplashQuoteStrategy
 import com.lumecard.shared.feature.quote.config.QuoteAnimationStyle
@@ -436,11 +437,14 @@ class QuoteSettingsScreen : Screen {
 
         // ── Preview overlay ────────────────────────────
         if (showPreview) {
-            val previewQuote = remember { vm.getPreviewQuote() }
+            val previewQuote by produceState<SplashQuoteData?>(null) {
+                value = vm.getPreviewQuote()
+            }
             if (previewQuote != null) {
+                val pq = previewQuote!!
                 key(previewSession) {
                     QuoteViewer(
-                        quote = previewQuote,
+                        quote = pq,
                         config = QuoteDisplayConfig.STARTUP_DEFAULT.copy(
                             defaultDirection = settings.direction,
                             defaultFont = settings.font,

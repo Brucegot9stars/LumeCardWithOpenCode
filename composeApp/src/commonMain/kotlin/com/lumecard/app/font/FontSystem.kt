@@ -100,19 +100,17 @@ object FontRegistry {
 
     fun findByFamily(family: String): FontSpec? = _fonts.find { it.family == family }
 
-    fun saveUserFonts(repository: com.lumecard.shared.repository.SettingsRepository) {
+    suspend fun saveUserFonts(repository: com.lumecard.shared.repository.SettingsRepository) {
         val currentFontDir = getFontStorageDir()
         val persisted = _fonts.filter { it.source == FontSource.USER_IMPORTED && it.filePath != null }.map {
             val fileName = java.io.File(it.filePath!!).name
             PersistedUserFont(it.id, it.displayName, it.family, java.io.File(currentFontDir, fileName).absolutePath)
         }
-        kotlinx.coroutines.runBlocking {
-            repository.set(USER_FONTS_SETTINGS_KEY, fontJson.encodeToString(persisted))
-        }
+        repository.set(USER_FONTS_SETTINGS_KEY, fontJson.encodeToString(persisted))
     }
 
-    fun loadUserFonts(repository: com.lumecard.shared.repository.SettingsRepository) {
-        val raw = kotlinx.coroutines.runBlocking { repository.get(USER_FONTS_SETTINGS_KEY) } ?: return
+    suspend fun loadUserFonts(repository: com.lumecard.shared.repository.SettingsRepository) {
+        val raw = repository.get(USER_FONTS_SETTINGS_KEY) ?: return
         try {
             val persisted = fontJson.decodeFromString<List<PersistedUserFont>>(raw)
             val currentFontDir = getFontStorageDir()
@@ -139,7 +137,7 @@ object FontRegistry {
         return spec
     }
 
-    fun rebuildFromStorageDir(repository: com.lumecard.shared.repository.SettingsRepository) {
+    suspend fun rebuildFromStorageDir(repository: com.lumecard.shared.repository.SettingsRepository) {
         val storageDir = getFontStorageDir()
         val dir = java.io.File(storageDir)
         if (!dir.exists()) return

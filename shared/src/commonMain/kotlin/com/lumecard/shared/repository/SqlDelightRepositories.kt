@@ -68,9 +68,11 @@ class SqlDelightKnowledgeBaseRepository(
 
     override suspend fun delete(id: String) {
         val now = Clock.System.now().toString()
-        queries.softDeleteCardsByKnowledgeBase(now, now, id)
-        queries.softDeleteDecksByKnowledgeBase(now, now, id)
-        queries.softDeleteKnowledgeBase(now, now, id)
+        database.transaction {
+            queries.softDeleteCardsByKnowledgeBase(now, now, id)
+            queries.softDeleteDecksByKnowledgeBase(now, now, id)
+            queries.softDeleteKnowledgeBase(now, now, id)
+        }
     }
 
     override suspend fun getUpdatedSince(since: Instant): List<KnowledgeBase> {
@@ -143,8 +145,10 @@ class SqlDelightDeckRepository(
 
     override suspend fun delete(id: String) {
         val now = Clock.System.now().toString()
-        queries.softDeleteCardsByDeck(now, now, id)
-        queries.softDeleteDeck(now, now, id)
+        database.transaction {
+            queries.softDeleteCardsByDeck(now, now, id)
+            queries.softDeleteDeck(now, now, id)
+        }
     }
 
     override suspend fun getUpdatedSince(since: Instant): List<Deck> {
@@ -188,48 +192,54 @@ class SqlDelightCardRepository(
     }
 
     override suspend fun insert(card: Card) {
-        queries.insertCard(
-            id = card.id,
-            deck_id = card.deckId,
-            type = card.type.name,
-            front = card.front,
-            back = card.back,
-            tags = Json.encodeToString(card.tags),
-            media = Json.encodeToString(card.media),
-            metadata = Json.encodeToString(card.metadata),
-            created_at = card.createdAt.toString(),
-            updated_at = card.updatedAt.toString(),
-            last_reviewed_at = card.lastReviewedAt?.toString(),
-            next_review_at = card.nextReviewAt?.toString(),
-            version = card.version,
-            deleted_at = card.deletedAt?.toString(),
-            synced_at = card.syncedAt?.toString()
-        )
-        queries.insertCardFts(card.id, card.front, card.back, card.tags.joinToString(" "))
+        database.transaction {
+            queries.insertCard(
+                id = card.id,
+                deck_id = card.deckId,
+                type = card.type.name,
+                front = card.front,
+                back = card.back,
+                tags = Json.encodeToString(card.tags),
+                media = Json.encodeToString(card.media),
+                metadata = Json.encodeToString(card.metadata),
+                created_at = card.createdAt.toString(),
+                updated_at = card.updatedAt.toString(),
+                last_reviewed_at = card.lastReviewedAt?.toString(),
+                next_review_at = card.nextReviewAt?.toString(),
+                version = card.version,
+                deleted_at = card.deletedAt?.toString(),
+                synced_at = card.syncedAt?.toString()
+            )
+            queries.insertCardFts(card.id, card.front, card.back, card.tags.joinToString(" "))
+        }
     }
 
     override suspend fun update(card: Card) {
-        queries.updateCard(
-            deck_id = card.deckId,
-            type = card.type.name,
-            front = card.front,
-            back = card.back,
-            tags = Json.encodeToString(card.tags),
-            media = Json.encodeToString(card.media),
-            metadata = Json.encodeToString(card.metadata),
-            updated_at = card.updatedAt.toString(),
-            last_reviewed_at = card.lastReviewedAt?.toString(),
-            next_review_at = card.nextReviewAt?.toString(),
-            id = card.id
-        )
-        queries.deleteCardFts(card.id)
-        queries.insertCardFts(card.id, card.front, card.back, card.tags.joinToString(" "))
+        database.transaction {
+            queries.updateCard(
+                deck_id = card.deckId,
+                type = card.type.name,
+                front = card.front,
+                back = card.back,
+                tags = Json.encodeToString(card.tags),
+                media = Json.encodeToString(card.media),
+                metadata = Json.encodeToString(card.metadata),
+                updated_at = card.updatedAt.toString(),
+                last_reviewed_at = card.lastReviewedAt?.toString(),
+                next_review_at = card.nextReviewAt?.toString(),
+                id = card.id
+            )
+            queries.deleteCardFts(card.id)
+            queries.insertCardFts(card.id, card.front, card.back, card.tags.joinToString(" "))
+        }
     }
 
     override suspend fun delete(id: String) {
         val now = Clock.System.now().toString()
-        queries.softDeleteCard(now, now, id)
-        queries.deleteCardFts(id)
+        database.transaction {
+            queries.softDeleteCard(now, now, id)
+            queries.deleteCardFts(id)
+        }
     }
 
     override suspend fun search(query: String): Flow<List<Card>> {

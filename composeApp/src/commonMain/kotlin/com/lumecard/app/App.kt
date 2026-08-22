@@ -31,6 +31,7 @@ import com.lumecard.app.feature.quote.viewer.QuoteViewer
 import com.lumecard.app.i18n.AppLocale
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.screens.aicard.AiCardScreen
+import com.lumecard.app.ui.components.ErrorDialog
 import com.lumecard.app.ui.screens.dashboard.DashboardScreen
 import com.lumecard.app.ui.screens.settings.SettingsScreen
 import com.lumecard.app.ui.screens.settings.SettingsStateHolder
@@ -56,7 +57,7 @@ var savedCrashLog: String? = null
 @Composable
 fun App() {
     val settingsRepository: SettingsRepository = koinInject()
-    FontInitializer.ensureInitialized(settingsRepository)
+    LaunchedEffect(settingsRepository) { FontInitializer.ensureInitialized(settingsRepository) }
     val settingsStateHolder: SettingsStateHolder = koinInject()
     val i18nManager: I18nManager = koinInject()
     val strings = i18nManager.strings
@@ -172,52 +173,15 @@ fun App() {
     }
 
     // ── Crash dialog ─────────────────────────────────────
-    if (crashLog != null) {
-        @Suppress("DEPRECATION")
-        val clipboardManager = LocalClipboardManager.current
-        AlertDialog(
-            onDismissRequest = {
-                crashLog = null
-                savedCrashLog = null
-            },
-            title = { Text(strings.crashAppError) },
-            text = {
-                Column {
-                    Text(strings.crashAppErrorDesc, style = MaterialTheme.typography.bodyMedium)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 100.dp, max = 300.dp)
-                            .verticalScroll(rememberScrollState())
-                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
-                            .padding(8.dp)
-                    ) {
-                        Text(
-                            text = crashLog ?: "",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = {
-                        crashLog?.let { clipboardManager.setText(AnnotatedString(it)) }
-                    }) {
-                        Text(strings.actionCopy)
-                    }
-                    Button(onClick = {
-                        crashLog = null
-                        savedCrashLog = null
-                    }) {
-                        Text(strings.actionOk)
-                    }
-                }
-            },
-        )
-    }
+    ErrorDialog(
+        error = crashLog,
+        title = strings.crashAppError,
+        description = strings.crashAppErrorDesc,
+        onDismiss = {
+            crashLog = null
+            savedCrashLog = null
+        },
+    )
 
     LumeCardTheme(darkTheme = settingsStateHolder.isDarkMode, fontScale = settingsStateHolder.fontScale) {
         // ── Wrap all content to capture user activity ─────

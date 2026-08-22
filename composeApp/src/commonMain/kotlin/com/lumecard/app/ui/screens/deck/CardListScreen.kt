@@ -172,7 +172,7 @@ class CardListScreen(
                             modifier = Modifier.padding(top = 8.dp)
                         )
                     }
-                    items(cards) { card ->
+                    items(cards, key = { it.id }) { card ->
                         CardItem(
                             card = card,
                             onEdit = { navigator.push(CreateCardScreen(deckId, deckName, editCardId = card.id)) },

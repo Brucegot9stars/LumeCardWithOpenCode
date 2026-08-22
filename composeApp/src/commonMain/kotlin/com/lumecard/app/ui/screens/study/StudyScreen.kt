@@ -33,6 +33,7 @@ import com.lumecard.app.font.FontRegistry
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.components.LumeCardRatingBar
 import com.lumecard.app.ui.components.ProgressRing
+import com.lumecard.app.ui.components.ErrorDialog
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.app.ui.screens.card.CreateCardScreen
 import com.lumecard.app.ui.screens.settings.AnswerDisplayMode
@@ -71,43 +72,13 @@ class StudyScreen(
         var crashError by remember { mutableStateOf<String?>(null) }
         val strings = koinInject<I18nManager>().strings
 
-        if (crashError != null) {
-            @Suppress("DEPRECATION")
-            val clipboardManager = LocalClipboardManager.current
-            AlertDialog(
-                onDismissRequest = { crashError = null },
-                title = { Text(strings.crashCompositionError) },
-                text = {
-                    Column {
-                        Text(strings.crashRenderErrorDesc, style = MaterialTheme.typography.bodyMedium)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 100.dp, max = 300.dp)
-                                .verticalScroll(rememberScrollState())
-                                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
-                                .padding(8.dp)
-                        ) {
-                            Text(
-                                text = crashError ?: "",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                },
-                confirmButton = {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = {
-                            crashError?.let { clipboardManager.setText(AnnotatedString(it)) }
-                        }, interactionSource = null) { Text(strings.actionCopy) }
-                        Button(onClick = { crashError = null }, interactionSource = null) { Text(strings.actionOk) }
-                    }
-                },
-            )
-            return
-        }
+        ErrorDialog(
+            error = crashError,
+            title = strings.crashCompositionError,
+            description = strings.crashRenderErrorDesc,
+            onDismiss = { crashError = null },
+        )
+        if (crashError != null) return
 
         val navigator = LocalNavigator.currentOrThrow
         val viewModel: StudyViewModel = koinInject()
@@ -147,49 +118,14 @@ class StudyScreen(
         val totalAvail = viewModel.totalCardCount
         val unlearnedAvail = viewModel.unlearnedCardCount
 
-        if (error != null) {
-            @Suppress("DEPRECATION")
-            val clipboardManager = LocalClipboardManager.current
-            AlertDialog(
-                onDismissRequest = { viewModel.clearError() },
-                title = { Text(strings.crashCompositionError) },
-                text = {
-                    Column {
-                        Text(strings.crashRenderErrorDesc, style = MaterialTheme.typography.bodyMedium)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 100.dp, max = 300.dp)
-                                .verticalScroll(rememberScrollState())
-                                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
-                                .padding(8.dp)
-                        ) {
-                            Text(
-                                text = error ?: "",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                },
-                confirmButton = {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = { viewModel.clearError() }, interactionSource = null) {
-                            Text(strings.actionCancel)
-                        }
-                        Button(onClick = {
-                            error?.let { clipboardManager.setText(AnnotatedString(it)) }
-                        }, interactionSource = null) {
-                            Text(strings.actionCopy)
-                        }
-                        Button(onClick = { viewModel.clearError() }, interactionSource = null) {
-                            Text(strings.actionOk)
-                        }
-                    }
-                },
-            )
-        }
+        ErrorDialog(
+            error = error,
+            title = strings.crashCompositionError,
+            description = strings.crashRenderErrorDesc,
+            onDismiss = { viewModel.clearError() },
+            showCancel = true,
+            onCancel = { viewModel.clearError() },
+        )
 
         LaunchedEffect(deckIds) {
             if (viewModel.cards.value.isEmpty()) {
