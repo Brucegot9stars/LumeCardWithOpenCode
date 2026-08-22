@@ -100,7 +100,7 @@ class SettingsScreen(
         var showUpdateDialog by remember { mutableStateOf(false) }
         var updateState by remember { mutableStateOf<UpdateState>(UpdateState.Idle) }
         var downloadJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
-        var currentDestFile by remember { mutableStateOf<java.io.File?>(null) }
+        var currentDestPath by remember { mutableStateOf<String?>(null) }
         var lastFontImportDir by remember { mutableStateOf<String?>(null) }
 
         // ── Global Settings Search ──────────────────────────
@@ -1164,13 +1164,13 @@ class SettingsScreen(
                                 val extension = platformAsset?.name?.substringAfterLast('.')
                                     ?: if (isDesktop) "exe" else "apk"
                                 val filename = "LumeCard-v${info.version}.$extension"
-                                currentDestFile = java.io.File(getApkCacheDir(), filename)
-                                val success = updateManager.downloadApk(downloadUrl, currentDestFile!!) { downloaded, total ->
+                                currentDestPath = com.lumecard.app.platform.platformJoinPath(getApkCacheDir().absolutePath, filename)
+                                val success = updateManager.downloadApk(downloadUrl, currentDestPath!!) { downloaded, total ->
                                     updateState = UpdateState.Downloading(downloaded, total)
                                 }
                                 if (success) {
                                     updateState = UpdateState.Installing
-                                    val installed = installApk(currentDestFile!!.absolutePath)
+                                    val installed = installApk(currentDestPath!!)
                                     if (installed) {
                                         updateState = UpdateState.Complete
                                     } else {
@@ -1189,10 +1189,12 @@ class SettingsScreen(
                     onCancel = {
                         downloadJob?.cancel()
                         downloadJob = null
-                        if (currentDestFile != null && currentDestFile!!.exists()) {
-                            currentDestFile!!.delete()
+                        currentDestPath?.let { path ->
+                            if (com.lumecard.app.platform.platformPathExists(path)) {
+                                com.lumecard.app.platform.platformDeleteFile(path)
+                            }
                         }
-                        currentDestFile = null
+                        currentDestPath = null
                         updateState = UpdateState.Idle
                         showUpdateDialog = false
                     },
