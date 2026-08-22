@@ -26,6 +26,7 @@ import com.lumecard.app.ui.components.LumeCardTextField
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.screens.dashboard.DashboardScreen
 import com.lumecard.app.ui.theme.LumeCardTheme
+import com.lumecard.app.util.formatDouble
 import com.lumecard.app.i18n.I18nManager
 import org.koin.compose.koinInject
 
@@ -687,7 +688,7 @@ private fun CardCountItem(count: Int, label: String, color: Color) {
 }
 
 private fun fmtPct(rate: Double): String {
-    return "${"%.0f".format(rate * 100)}%"
+    return "${formatDouble(rate * 100, 0)}%"
 }
 
 @Suppress("OverloadResolutionAmbiguity")

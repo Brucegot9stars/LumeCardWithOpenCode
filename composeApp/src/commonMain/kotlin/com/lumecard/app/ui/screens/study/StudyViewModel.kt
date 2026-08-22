@@ -90,7 +90,7 @@ class StudyViewModel(
         }
     }
 
-    private val _cardStartTimes = java.util.concurrent.ConcurrentHashMap<String, kotlin.time.Instant>()
+    private val _cardStartTimes: MutableMap<String, kotlin.time.Instant> = java.util.Collections.synchronizedMap(mutableMapOf())
 
     private var activePlanIds: List<String> = emptyList()
     private var activeDeckIds: List<String> = emptyList()

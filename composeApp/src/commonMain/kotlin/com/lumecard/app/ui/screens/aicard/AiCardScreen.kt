@@ -26,6 +26,7 @@ import com.lumecard.app.platform.pickOpenFile
 import com.lumecard.app.platform.readFileContent
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.theme.LumeCardTheme
+import com.lumecard.app.util.formatDouble
 import com.lumecard.shared.data.AiCardMode
 import com.lumecard.shared.data.AiConfig
 import com.lumecard.shared.data.LogEntry
@@ -615,7 +616,7 @@ private fun formatDataSize(bytes: Long): String {
     return when {
         bytes < 1024L -> "$bytes B"
         bytes < 1024L * 1024L -> "${bytes / 1024L} KB"
-        else -> "${"%.1f".format(bytes.toDouble() / (1024.0 * 1024.0))} MB"
+        else -> "${formatDouble(bytes.toDouble() / (1024.0 * 1024.0))} MB"
     }
 }
 

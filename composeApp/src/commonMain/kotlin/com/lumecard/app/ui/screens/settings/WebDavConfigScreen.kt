@@ -23,6 +23,19 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.platform.MediaFileEntry
 import com.lumecard.app.platform.hashFileSha1
+import com.lumecard.app.platform.platformGetUserHome
+import com.lumecard.app.platform.platformGetSystemProperty
+import com.lumecard.app.platform.platformJoinPath
+import com.lumecard.app.platform.platformPathExists
+import com.lumecard.app.platform.platformMkdirs
+import com.lumecard.app.platform.platformListFileNames
+import com.lumecard.app.platform.platformFileExists
+import com.lumecard.app.platform.platformGetParentDir
+import com.lumecard.app.platform.platformReadFileBytes
+import com.lumecard.app.platform.platformReadFileText
+import com.lumecard.app.platform.platformWriteFileBytes
+import com.lumecard.app.platform.platformWriteFileText
+import com.lumecard.app.platform.platformDeleteFile
 import com.lumecard.app.platform.scanMediaDirectory
 import com.lumecard.app.platform.scanMediaDirectoryRaw
 import com.lumecard.app.ui.components.ContextHelpButton
@@ -1142,8 +1155,8 @@ private suspend fun syncMedia(
     mediaManager: MediaManager,
 ) {
     try {
-        val userHome = System.getenv("USERPROFILE") ?: System.getenv("HOME") ?: System.getProperty("user.home")
-        val mediaBase = System.getProperty("lumecard.media.dir") ?: java.io.File(userHome, ".lumecard/media").absolutePath
+        val userHome = platformGetUserHome() ?: ""
+        val mediaBase = platformGetSystemProperty("lumecard.media.dir") ?: platformJoinPath(userHome, ".lumecard/media")
     val rawFiles = scanMediaDirectoryRaw(mediaBase)
         if (rawFiles.isNotEmpty()) {
             val resolved = rawFiles.map { raw ->
@@ -1167,7 +1180,7 @@ private suspend fun syncMedia(
             for (path in needUpload) {
                 val absPath = "$mediaBase/$path"
                 try {
-                    val data = java.io.File(absPath).readBytes()
+                    val data = platformReadFileBytes(absPath) ?: byteArrayOf()
                     syncManager.uploadMedia(config, path, data).getOrThrow()
                 } catch (_: Exception) { }
             }
@@ -1183,14 +1196,12 @@ private suspend fun syncFonts(
 ) {
     try {
         val fontDir = com.lumecard.app.font.getFontStorageDir()
-        val fontDirFile = java.io.File(fontDir)
-        if (!fontDirFile.exists()) fontDirFile.mkdirs()
+        if (!platformPathExists(fontDir)) platformMkdirs(fontDir)
 
-        val localFontFiles = fontDirFile.listFiles()?.filter { it.isFile }.orEmpty()
-        val localFileNames = localFontFiles.map { it.name }.toSet()
+        val localFileNames = platformListFileNames(fontDir).toSet()
 
         // 1. Read local manifest + reconcile with filesystem
-        val localManifest = readLocalFontManifest(fontDirFile)
+        val localManifest = readLocalFontManifest(fontDir)
         val reconciledLocal = reconcileLocalManifest(localManifest, localFileNames)
 
         // 2. Download remote manifest
@@ -1214,7 +1225,7 @@ private suspend fun syncFonts(
                 // Skip tombstone if a newer active entry has the same filename (font was re-imported)
                 if (entry.fileName in activeFileNames) continue
                 if (entry.fileName in localFileNames) {
-                    java.io.File(fontDirFile, entry.fileName).delete()
+                    platformDeleteFile(platformJoinPath(fontDir, entry.fileName))
                 }
                 try { syncManager.deleteFont(config, entry.fileName) } catch (_: Exception) { }
             } else {
@@ -1223,13 +1234,13 @@ private suspend fun syncFonts(
                 if (!localHas && remoteHas) {
                     try {
                         val data = syncManager.downloadFont(config, entry.fileName).getOrNull()
-                        if (data != null) java.io.File(fontDirFile, entry.fileName).writeBytes(data)
+                        if (data != null) platformWriteFileBytes(platformJoinPath(fontDir, entry.fileName), data)
                     } catch (e: Exception) {
                         println("[LumeCard] font download failed: ${entry.fileName} - ${e.message}")
                     }
                 } else if (localHas && !remoteHas) {
                     try {
-                        val data = java.io.File(fontDirFile, entry.fileName).readBytes()
+                        val data = platformReadFileBytes(platformJoinPath(fontDir, entry.fileName)) ?: byteArrayOf()
                         syncManager.uploadFont(config, entry.fileName, data)
                     } catch (e: Exception) {
                         println("[LumeCard] font upload failed: ${entry.fileName} - ${e.message}")
@@ -1244,7 +1255,7 @@ private suspend fun syncFonts(
                 try {
                     val data = syncManager.downloadFont(config, name).getOrNull()
                     if (data != null) {
-                        java.io.File(fontDirFile, name).writeBytes(data)
+                        platformWriteFileBytes(platformJoinPath(fontDir, name), data)
                         val now = Clock.System.now().toString()
                         mergedMutable.add(FontManifestEntry(
                             id = generateUuid(),
@@ -1261,7 +1272,7 @@ private suspend fun syncFonts(
         }
 
         // 7. Write merged manifest to both sides
-        writeLocalFontManifest(fontDirFile, mergedMutable)
+        writeLocalFontManifest(fontDir, mergedMutable)
         syncManager.uploadFontManifestEntries(config, mergedMutable)
 
         // 7. Reload font registry
@@ -1271,22 +1282,23 @@ private suspend fun syncFonts(
     }
 }
 
-private fun localFontManifestFile(fontDirFile: java.io.File): java.io.File {
-    return java.io.File(fontDirFile.parentFile, "font_registry.json")
+private fun localFontManifestFile(fontDir: String): String {
+    return platformJoinPath(platformGetParentDir(fontDir), "font_registry.json")
 }
 
-private fun readLocalFontManifest(fontDirFile: java.io.File): List<FontManifestEntry> {
-    val file = localFontManifestFile(fontDirFile)
-    if (!file.exists()) return emptyList()
+private fun readLocalFontManifest(fontDir: String): List<FontManifestEntry> {
+    val filePath = localFontManifestFile(fontDir)
+    if (!platformFileExists(filePath)) return emptyList()
     return try {
-        fontManifestJson.decodeFromString<List<FontManifestEntry>>(file.readText())
+        val text = platformReadFileText(filePath) ?: return emptyList()
+        fontManifestJson.decodeFromString<List<FontManifestEntry>>(text)
     } catch (_: Exception) { emptyList() }
 }
 
-private fun writeLocalFontManifest(fontDirFile: java.io.File, entries: List<FontManifestEntry>) {
-    val file = localFontManifestFile(fontDirFile)
-    file.parentFile?.mkdirs()
-    file.writeText(fontManifestJson.encodeToString(entries))
+private fun writeLocalFontManifest(fontDir: String, entries: List<FontManifestEntry>) {
+    val filePath = localFontManifestFile(fontDir)
+    platformMkdirs(platformGetParentDir(filePath))
+    platformWriteFileText(filePath, fontManifestJson.encodeToString(entries))
 }
 
 private fun reconcileLocalManifest(
@@ -1394,14 +1406,12 @@ private suspend fun restoreSettingsAndFonts(
         }
 
         val fontDir = com.lumecard.app.font.getFontStorageDir()
-        val fontDirFile = java.io.File(fontDir)
-        if (!fontDirFile.exists()) fontDirFile.mkdirs()
+        if (!platformPathExists(fontDir)) platformMkdirs(fontDir)
 
-        val localFontFiles = fontDirFile.listFiles()?.filter { it.isFile }.orEmpty()
-        val localFileNames = localFontFiles.map { it.name }.toSet()
+        val localFileNames = platformListFileNames(fontDir).toSet()
 
         // Sync font files: merge remote state into local
-        val localEntries = readLocalFontManifest(fontDirFile)
+        val localEntries = readLocalFontManifest(fontDir)
         val reconciledLocal = reconcileLocalManifest(localEntries, localFileNames)
         val remoteEntries = syncManager.downloadFontManifestEntries(config).getOrDefault(emptyList())
         val merged = mergeFontEntries(reconciledLocal, remoteEntries).toMutableList()
@@ -1413,7 +1423,7 @@ private suspend fun restoreSettingsAndFonts(
                 try {
                     val data = syncManager.downloadFont(config, entry.fileName).getOrNull()
                     if (data != null) {
-                        java.io.File(fontDirFile, entry.fileName).writeBytes(data)
+                        platformWriteFileBytes(platformJoinPath(fontDir, entry.fileName), data)
                     }
                 } catch (_: Exception) { }
             }
@@ -1426,7 +1436,7 @@ private suspend fun restoreSettingsAndFonts(
                 try {
                     val data = syncManager.downloadFont(config, name).getOrNull()
                     if (data != null) {
-                        java.io.File(fontDirFile, name).writeBytes(data)
+                        platformWriteFileBytes(platformJoinPath(fontDir, name), data)
                         val now = Clock.System.now().toString()
                         merged.add(FontManifestEntry(
                             id = generateUuid(),
@@ -1440,7 +1450,7 @@ private suspend fun restoreSettingsAndFonts(
             }
         }
 
-        writeLocalFontManifest(fontDirFile, merged)
+        writeLocalFontManifest(fontDir, merged)
         com.lumecard.app.font.FontRegistry.rebuildFromStorageDir(settingsRepository)
     } catch (_: Exception) { }
 }

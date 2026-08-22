@@ -1,5 +1,7 @@
 package com.lumecard.app.i18n
 
+import com.lumecard.app.util.formatDouble
+
 object JaStrings : I18nStrings {
     override val appName = "LumeCard"
     override val navHome = "ホーム"
@@ -524,7 +526,7 @@ object JaStrings : I18nStrings {
     override val statsTodayLearning = "今日の学習"
     override val statsTodayReviews = "今日の復習"
     override val statsRetentionRate = "保持率"
-    override fun statsRetentionValue(rate: Double) = "${"%.1f".format(rate)}%"
+    override fun statsRetentionValue(rate: Double) = "${formatDouble(rate)}%"
     override val statsStudyTime = "学習時間"
     override fun statsStudyTimeValue(minutes: Int) = "$minutes 分"
     override val statsStreak = "連続日数"
@@ -552,7 +554,7 @@ object JaStrings : I18nStrings {
     override val statsForecastDueAllTime = "全期間"
     override val statsReviewIntervals = "復習間隔"
     override val statsReviewIntervalAvg = "平均間隔"
-    override fun statsReviewIntervalAvgValue(days: Double) = "${"%.1f".format(days)} 日"
+    override fun statsReviewIntervalAvgValue(days: Double) = "${formatDouble(days)} 日"
     override val statsReviewIntervalMax = "最大間隔"
     override fun statsReviewIntervalMaxValue(days: Int) = "$days 日"
     override val statsRetention = "記憶保持率"

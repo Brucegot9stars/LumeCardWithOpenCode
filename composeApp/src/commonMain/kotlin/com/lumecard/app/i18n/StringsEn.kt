@@ -1,5 +1,7 @@
 package com.lumecard.app.i18n
 
+import com.lumecard.app.util.formatDouble
+
 object EnStrings : I18nStrings {
     override val appName = "LumeCard"
     override val navHome = "Home"
@@ -524,7 +526,7 @@ object EnStrings : I18nStrings {
     override val statsTodayLearning = "Today's Learning"
     override val statsTodayReviews = "Today's Reviews"
     override val statsRetentionRate = "Retention Rate"
-    override fun statsRetentionValue(rate: Double) = "${"%.1f".format(rate)}%"
+    override fun statsRetentionValue(rate: Double) = "${formatDouble(rate)}%"
     override val statsStudyTime = "Study Time"
     override fun statsStudyTimeValue(minutes: Int) = "$minutes min"
     override val statsStreak = "Streak"
@@ -552,7 +554,7 @@ object EnStrings : I18nStrings {
     override val statsForecastDueAllTime = "All Time"
     override val statsReviewIntervals = "Review Intervals"
     override val statsReviewIntervalAvg = "Average Interval"
-    override fun statsReviewIntervalAvgValue(days: Double) = "${"%.1f".format(days)} days"
+    override fun statsReviewIntervalAvgValue(days: Double) = "${formatDouble(days)} days"
     override val statsReviewIntervalMax = "Longest Interval"
     override fun statsReviewIntervalMaxValue(days: Int) = "$days days"
     override val statsRetention = "Retention"
