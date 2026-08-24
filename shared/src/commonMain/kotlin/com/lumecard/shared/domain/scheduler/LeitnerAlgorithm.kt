@@ -19,10 +19,11 @@ class LeitnerAlgorithm : ReviewAlgorithm {
 
     override fun schedule(state: AlgorithmState, rating: Rating, daysElapsed: Int): AlgorithmState {
         val currentBox = state.stage.coerceIn(0, boxIntervals.size - 1)
-        val newBox = if (rating.value >= 3) {
-            (currentBox + 1).coerceAtMost(boxIntervals.size - 1)
-        } else {
-            0
+        val newBox = when (rating) {
+            Rating.AGAIN -> 0                    // Reset to box 0
+            Rating.HARD -> currentBox            // Stay in current box
+            Rating.GOOD -> (currentBox + 1).coerceAtMost(boxIntervals.size - 1)  // Advance one box
+            Rating.EASY -> (currentBox + 1).coerceAtMost(boxIntervals.size - 1)  // Advance one box
         }
         val interval = boxIntervals[newBox]
         val due = Clock.System.now().plus(DateTimePeriod(days = interval), TimeZone.UTC)
@@ -30,8 +31,8 @@ class LeitnerAlgorithm : ReviewAlgorithm {
         return state.copy(
             intervalDays = interval,
             nextReviewAt = due,
-            repetitions = if (rating.value >= 3) state.repetitions + 1 else 0,
-            lapses = state.lapses + if (rating.value < 3) 1 else 0,
+            repetitions = if (rating != Rating.AGAIN) state.repetitions + 1 else 0,
+            lapses = state.lapses + if (rating == Rating.AGAIN) 1 else 0,
             stage = newBox
         )
     }

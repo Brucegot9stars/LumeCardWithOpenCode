@@ -162,8 +162,10 @@ class StudyViewModel(
                 _cards.value = shuffled
                 shuffled.forEach { card ->
                     if (!_algorithmStates.value.containsKey(card.id)) {
+                        val existingMode = algorithmStateRepository.getMode(card.id)
                         val existing = algorithmStateRepository.get(card.id)
-                        val state = if (existing != null) {
+                        // Reinitialize if mode doesn't match (user switched algorithms)
+                        val state = if (existing != null && existingMode == algorithm.mode.name) {
                             deserializeState(existing)
                         } else {
                             algorithm.initCard()

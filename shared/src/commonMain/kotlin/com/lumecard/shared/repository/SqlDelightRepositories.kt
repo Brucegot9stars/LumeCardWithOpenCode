@@ -378,6 +378,10 @@ class SqlDelightAlgorithmStateRepository(
         return queries.selectAlgorithmState(cardId).executeAsOneOrNull()?.state_json
     }
 
+    override suspend fun getMode(cardId: String): String? {
+        return queries.selectAlgorithmState(cardId).executeAsOneOrNull()?.mode
+    }
+
     override suspend fun getAll(): Map<String, String> {
         return queries.selectAllAlgorithmStates().executeAsList().associate { it.card_id to it.state_json }
     }

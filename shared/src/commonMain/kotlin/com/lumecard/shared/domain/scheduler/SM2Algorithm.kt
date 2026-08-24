@@ -20,7 +20,8 @@ class SM2Algorithm : ReviewAlgorithm {
     override fun schedule(state: AlgorithmState, rating: Rating, daysElapsed: Int): AlgorithmState {
         val ef = calculateEaseFactor(state.easeFactor, rating).coerceIn(1.3f, Float.MAX_VALUE)
 
-        if (rating.value < 3) {
+        if (rating == Rating.AGAIN) {
+            // ONLY AGAIN is a fail: reset to 1 day
             val interval = 1
             val due = Clock.System.now().plus(DateTimePeriod(days = interval), TimeZone.UTC)
             return state.copy(
@@ -36,7 +37,14 @@ class SM2Algorithm : ReviewAlgorithm {
         val interval = when (newReps) {
             1 -> 1
             2 -> 6
-            else -> (state.intervalDays.toDouble() * ef).roundToInt().coerceAtLeast(1)
+            else -> {
+                val baseInterval = (state.intervalDays.toDouble() * ef).roundToInt().coerceAtLeast(1)
+                when (rating) {
+                    Rating.HARD -> (baseInterval * 0.8).roundToInt().coerceAtLeast(1)  // HARD: shorter interval
+                    Rating.EASY -> (baseInterval * 1.3).roundToInt()                    // EASY: longer interval
+                    else -> baseInterval                                                  // GOOD: normal interval
+                }
+            }
         }
         val due = Clock.System.now().plus(DateTimePeriod(days = interval), TimeZone.UTC)
 

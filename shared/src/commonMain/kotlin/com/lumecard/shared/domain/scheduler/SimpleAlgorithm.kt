@@ -19,10 +19,11 @@ class SimpleAlgorithm : ReviewAlgorithm {
 
     override fun schedule(state: AlgorithmState, rating: Rating, daysElapsed: Int): AlgorithmState {
         val currentStage = state.stage.coerceIn(0, fixedIntervals.size - 1)
-        val newStage = if (rating.value >= 3) {
-            (currentStage + 1).coerceAtMost(fixedIntervals.size - 1)
-        } else {
-            0
+        val newStage = when (rating) {
+            Rating.AGAIN -> 0                    // Reset to stage 0
+            Rating.HARD -> currentStage          // Stay in current stage
+            Rating.GOOD -> (currentStage + 1).coerceAtMost(fixedIntervals.size - 1)  // Advance one stage
+            Rating.EASY -> (currentStage + 1).coerceAtMost(fixedIntervals.size - 1)  // Advance one stage
         }
         val interval = fixedIntervals[newStage]
         val due = Clock.System.now().plus(DateTimePeriod(days = interval), TimeZone.UTC)
@@ -30,8 +31,8 @@ class SimpleAlgorithm : ReviewAlgorithm {
         return state.copy(
             intervalDays = interval,
             nextReviewAt = due,
-            repetitions = if (rating.value >= 3) state.repetitions + 1 else 0,
-            lapses = state.lapses + if (rating.value < 3) 1 else 0,
+            repetitions = if (rating != Rating.AGAIN) state.repetitions + 1 else 0,
+            lapses = state.lapses + if (rating == Rating.AGAIN) 1 else 0,
             stage = newStage
         )
     }

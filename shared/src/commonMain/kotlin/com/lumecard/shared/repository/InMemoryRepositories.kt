@@ -155,6 +155,8 @@ class InMemoryAlgorithmStateRepository : AlgorithmStateRepository {
 
     override suspend fun get(cardId: String): String? = states[cardId]?.second
 
+    override suspend fun getMode(cardId: String): String? = states[cardId]?.first
+
     override suspend fun getAll(): Map<String, String> = states.mapValues { it.value.second }
 
     override suspend fun save(cardId: String, mode: String, stateJson: String) {

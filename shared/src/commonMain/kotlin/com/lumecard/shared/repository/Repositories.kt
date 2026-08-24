@@ -73,6 +73,7 @@ interface SettingsRepository {
 
 interface AlgorithmStateRepository {
     suspend fun get(cardId: String): String? // returns state_json
+    suspend fun getMode(cardId: String): String? // returns mode
     suspend fun getAll(): Map<String, String> // card_id -> state_json
     suspend fun save(cardId: String, mode: String, stateJson: String)
     suspend fun delete(cardId: String)

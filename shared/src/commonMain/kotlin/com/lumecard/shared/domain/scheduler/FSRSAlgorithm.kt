@@ -78,11 +78,13 @@ class FSRSAlgorithm(
         val newDifficulty = calculateDifficulty(card.difficulty, rating)
         val newStability = calculateStability(card.stability, card.difficulty, rating, daysElapsed)
 
-        val scheduledDays = when (rating) {
-            Rating.AGAIN -> 1
-            Rating.HARD -> 1
-            Rating.GOOD -> 1
-            Rating.EASY -> 4
+        val scheduledDays = if (rating == Rating.EASY) {
+            // EASY in learning: graduate to REVIEW with calculated interval
+            max(1, calculateInterval(newStability, rating))
+        } else {
+            // AGAIN/HARD/GOOD in learning: short interval (1-3 days based on stability)
+            val baseInterval = (newStability * 0.1).toInt().coerceIn(1, 3)
+            if (rating == Rating.GOOD && card.reps >= 1) baseInterval.coerceAtLeast(2) else baseInterval
         }
 
         val due = Clock.System.now().plus(scheduledDays, DateTimeUnit.DAY, TimeZone.UTC)
@@ -118,11 +120,13 @@ class FSRSAlgorithm(
         val newDifficulty = calculateDifficulty(card.difficulty, rating)
         val newStability = calculateStability(card.stability, card.difficulty, rating, daysElapsed)
 
-        val scheduledDays = when (rating) {
-            Rating.AGAIN -> 1
-            Rating.HARD -> 1
-            Rating.GOOD -> 1
-            Rating.EASY -> max(1, (newStability * 0.5).toInt())
+        val scheduledDays = if (rating == Rating.EASY) {
+            // EASY in relearning: graduate to REVIEW with calculated interval
+            max(1, (newStability * 0.5).toInt())
+        } else {
+            // AGAIN/HARD/GOOD in relearning: short interval (1-3 days)
+            val baseInterval = (newStability * 0.1).toInt().coerceIn(1, 3)
+            if (rating == Rating.GOOD) baseInterval.coerceAtLeast(2) else baseInterval
         }
 
         val due = Clock.System.now().plus(scheduledDays, DateTimeUnit.DAY, TimeZone.UTC)
