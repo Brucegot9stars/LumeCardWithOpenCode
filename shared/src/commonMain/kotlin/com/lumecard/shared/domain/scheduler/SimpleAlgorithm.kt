@@ -23,7 +23,7 @@ class SimpleAlgorithm : ReviewAlgorithm {
             Rating.AGAIN -> 0                    // Reset to stage 0
             Rating.HARD -> currentStage          // Stay in current stage
             Rating.GOOD -> (currentStage + 1).coerceAtMost(fixedIntervals.size - 1)  // Advance one stage
-            Rating.EASY -> (currentStage + 1).coerceAtMost(fixedIntervals.size - 1)  // Advance one stage
+            Rating.EASY -> (currentStage + 2).coerceAtMost(fixedIntervals.size - 1)  // Advance two stages (skip ahead)
         }
         val interval = fixedIntervals[newStage]
         val due = Clock.System.now().plus(DateTimePeriod(days = interval), TimeZone.UTC)

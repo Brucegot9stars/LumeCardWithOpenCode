@@ -23,7 +23,7 @@ class LeitnerAlgorithm : ReviewAlgorithm {
             Rating.AGAIN -> 0                    // Reset to box 0
             Rating.HARD -> currentBox            // Stay in current box
             Rating.GOOD -> (currentBox + 1).coerceAtMost(boxIntervals.size - 1)  // Advance one box
-            Rating.EASY -> (currentBox + 1).coerceAtMost(boxIntervals.size - 1)  // Advance one box
+            Rating.EASY -> (currentBox + 2).coerceAtMost(boxIntervals.size - 1)  // Advance two boxes (skip ahead)
         }
         val interval = boxIntervals[newBox]
         val due = Clock.System.now().plus(DateTimePeriod(days = interval), TimeZone.UTC)

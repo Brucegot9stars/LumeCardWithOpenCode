@@ -29,7 +29,7 @@ class SM2Algorithm : ReviewAlgorithm {
                 nextReviewAt = due,
                 repetitions = 0,
                 lapses = state.lapses + 1,
-                easeFactor = ef
+                easeFactor = state.easeFactor  // 严格 SM-2：失败时 EF 不变
             )
         }
 
