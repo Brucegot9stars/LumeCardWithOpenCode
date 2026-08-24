@@ -57,6 +57,14 @@ package-lock.json
 .env.local
 *.log
 
+# Secrets / Keys
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+
 # Kotlin
 .kotlin/
 
