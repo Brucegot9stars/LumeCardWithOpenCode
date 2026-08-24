@@ -424,7 +424,7 @@ fun ExportDeck.toDeck() = com.lumecard.shared.model.Deck(
 fun ExportCard.toCard() = com.lumecard.shared.model.Card(
     id = id, deckId = deckId,
     type = try { com.lumecard.shared.model.CardType.valueOf(type) } catch (_: Exception) { com.lumecard.shared.model.CardType.BASIC },
-    front = front, back = back, tags = tags,
+    front = front, back = back, title = title, tags = tags,
     media = media, metadata = metadata,
     createdAt = try { kotlin.time.Instant.parse(createdAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
     updatedAt = try { kotlin.time.Instant.parse(updatedAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
@@ -474,7 +474,7 @@ fun com.lumecard.shared.model.Deck.toExport() = ExportDeck(
 
 fun com.lumecard.shared.model.Card.toExport() = ExportCard(
     id = id, deckId = deckId, type = type.name,
-    front = front, back = back, tags = tags,
+    front = front, back = back, title = title, tags = tags,
     media = media, metadata = metadata,
     createdAt = createdAt.toString(), updatedAt = updatedAt.toString(),
     lastReviewedAt = lastReviewedAt?.toString(),

@@ -56,6 +56,7 @@ class WarehouseScreen : Screen {
         var createParentId by remember { mutableStateOf<String?>(null) }
         var dialogName by remember { mutableStateOf("") }
         var dialogDesc by remember { mutableStateOf("") }
+        var dialogTitle by remember { mutableStateOf("") }
         var editingNode by remember { mutableStateOf<TreeNode?>(null) }
         var showDeleteConfirm by remember { mutableStateOf(false) }
         var deleteTargetId by remember { mutableStateOf<String?>(null) }
@@ -232,14 +233,17 @@ class WarehouseScreen : Screen {
                                                     createParentId = child.id
                                                     dialogName = ""
                                                     dialogDesc = ""
+                                                    dialogTitle = ""
                                                     showCreateDialog = true
                                                 }
                                             } else null,
                                             onEditCard = if (child.type == NodeType.CARD) {
                                                 {
+                                                    val cardObj = child.data as? Card
                                                     editingNode = child
-                                                    dialogName = child.name
-                                                    dialogDesc = ""
+                                                    dialogName = cardObj?.front ?: child.name
+                                                    dialogDesc = cardObj?.back ?: ""
+                                                    dialogTitle = cardObj?.title ?: ""
                                                     showCreateDialog = true
                                                 }
                                             } else null,
@@ -267,9 +271,11 @@ class WarehouseScreen : Screen {
                                                         onToggleSelect = { viewModel.toggleSelect(card.id) },
                                                         onAddDeck = null,
                                                         onEdit = {
+                                                            val cardObj = card.data as? Card
                                                             editingNode = card
-                                                            dialogName = card.name
-                                                            dialogDesc = ""
+                                                            dialogName = cardObj?.front ?: card.name
+                                                            dialogDesc = cardObj?.back ?: ""
+                                                            dialogTitle = cardObj?.title ?: ""
                                                             showCreateDialog = true
                                                         },
                                                         onDelete = {
@@ -307,20 +313,20 @@ class WarehouseScreen : Screen {
             }
             LumeCardDialog(
                 title = title,
-                onDismiss = { showCreateDialog = false; editingNode = null },
+                onDismiss = { showCreateDialog = false; editingNode = null; dialogTitle = "" },
                 onConfirm = {
                     scope.launch {
                         if (editingNode != null) {
                             when (editingNode!!.type) {
                                 NodeType.KNOWLEDGE_BASE -> viewModel.updateKnowledgeBase(editingNode!!.id, dialogName, dialogDesc.ifBlank { null })
                                 NodeType.DECK -> viewModel.updateDeck(editingNode!!.id, dialogName, dialogDesc.ifBlank { null })
-                                NodeType.CARD -> viewModel.updateCard(editingNode!!.id, dialogName, dialogDesc)
+                                NodeType.CARD -> viewModel.updateCard(editingNode!!.id, dialogName, dialogDesc, dialogTitle)
                             }
                         } else {
                             when (createType) {
                                 NodeType.KNOWLEDGE_BASE -> viewModel.createKnowledgeBase(dialogName, dialogDesc.ifBlank { null })
                                 NodeType.DECK -> viewModel.createDeck(createParentId!!, dialogName, dialogDesc.ifBlank { null })
-                                NodeType.CARD -> viewModel.createCard(createParentId!!, dialogName, dialogDesc)
+                                NodeType.CARD -> viewModel.createCard(createParentId!!, dialogName, dialogDesc, title = dialogTitle)
                             }
                         }
                         showCreateDialog = false
@@ -330,6 +336,9 @@ class WarehouseScreen : Screen {
                 confirmText = strings.actionSave,
                 confirmEnabled = dialogName.isNotBlank(),
             ) {
+                if (createType == NodeType.CARD || editingNode?.type == NodeType.CARD) {
+                    LumeCardTextField(value = dialogTitle, onValueChange = { dialogTitle = it }, label = strings.cardTitle)
+                }
                 LumeCardTextField(value = dialogName, onValueChange = { dialogName = it }, label = strings.fieldName)
                 LumeCardTextField(
                     value = dialogDesc,

@@ -99,6 +99,7 @@ data class ExportCard(
     val type: String,
     val front: String,
     val back: String,
+    val title: String = "",
     val tags: List<String>,
     val media: List<com.lumecard.shared.model.Media> = emptyList(),
     val metadata: Map<String, String> = emptyMap(),
@@ -196,7 +197,7 @@ class ExportManager {
     private fun exportCards(cards: List<Card>) = cards.map { c ->
         ExportCard(
             id = c.id, deckId = c.deckId, type = c.type.name,
-            front = c.front, back = c.back, tags = c.tags,
+            front = c.front, back = c.back, title = c.title, tags = c.tags,
             media = c.media, metadata = c.metadata,
             createdAt = c.createdAt.toString(), updatedAt = c.updatedAt.toString(),
             lastReviewedAt = c.lastReviewedAt?.toString(),

@@ -139,6 +139,7 @@ object EsStrings : I18nStrings {
     override val cardAnswerLabel = "Respuesta:"
     override val cardFrontLabel = "Anverso (pregunta)"
     override val cardBackLabel = "Reverso (respuesta)"
+    override val cardTitle = "Título"
     override val cardFrontLabelRev = "Anverso (el reverso se mostrará primero)"
     override val cardBackLabelRev = "Reverso (el anverso se mostrará primero)"
     override val cardFrontPlaceholder = "Introduce el contenido del anverso..."

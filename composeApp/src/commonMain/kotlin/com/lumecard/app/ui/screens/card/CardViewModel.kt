@@ -95,6 +95,7 @@ class CardViewModel(
         back: String,
         type: CardType = CardType.BASIC,
         tags: List<String> = emptyList(),
+        title: String = "",
         horizontalCenter: Boolean = false,
         verticalCenter: Boolean = false,
         fontSize: Int = 16,
@@ -110,6 +111,7 @@ class CardViewModel(
                 type = type,
                 front = front,
                 back = back,
+                title = title,
                 tags = tags,
                 metadata = mutableMapOf<String, String>().apply {
                     if (horizontalCenter) put("hcenter", "true")
@@ -129,6 +131,7 @@ class CardViewModel(
         back: String,
         type: CardType,
         tags: List<String>,
+        title: String = "",
         horizontalCenter: Boolean = false,
         verticalCenter: Boolean = false,
         fontSize: Int = 16,
@@ -145,6 +148,7 @@ class CardViewModel(
             val updated = card.copy(
                 front = front,
                 back = back,
+                title = title,
                 type = type,
                 tags = tags,
                 metadata = metadata,

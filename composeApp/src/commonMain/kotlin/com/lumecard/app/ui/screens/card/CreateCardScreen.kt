@@ -60,6 +60,7 @@ class CreateCardScreen(
         var verticalCenter by remember(editCard) { mutableStateOf(editCard?.metadata?.get("vcenter")?.toBoolean() ?: false) }
         var fontSize by remember(editCard) { mutableStateOf(editCard?.metadata?.get("fontSize")?.toIntOrNull() ?: 16) }
         var fontFamily by remember(editCard) { mutableStateOf(editCard?.metadata?.get("fontFamily") ?: "") }
+        var title by remember(editCard) { mutableStateOf(editCard?.title ?: "") }
         var showTypeMenu by remember { mutableStateOf(false) }
         var showTypeHelp by remember { mutableStateOf(true) }
         val isEditing = editCardId != null
@@ -82,6 +83,7 @@ class CreateCardScreen(
                                         back = saveBack,
                                         type = cardType,
                                         tags = saveTags,
+                                        title = title,
                                         horizontalCenter = horizontalCenter,
                                         verticalCenter = verticalCenter,
                                         fontSize = fontSize,
@@ -98,6 +100,7 @@ class CreateCardScreen(
                                         back = saveBack,
                                         type = cardType,
                                         tags = saveTags,
+                                        title = title,
                                         horizontalCenter = horizontalCenter,
                                         verticalCenter = verticalCenter,
                                         fontSize = fontSize,
@@ -137,8 +140,17 @@ class CreateCardScreen(
                     )
                 }
 
-                // 卡片类型选择
-                Text(strings.cardType, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            OutlinedTextField(
+                value = title,
+                onValueChange = { title = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(strings.cardTitle) },
+                placeholder = { Text(strings.cardTitle) },
+                singleLine = false,
+            )
+
+            // 卡片类型选择
+            Text(strings.cardType, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                 CardTypeSelector(
                     selectedType = cardType,
                     onTypeSelected = { cardType = it },

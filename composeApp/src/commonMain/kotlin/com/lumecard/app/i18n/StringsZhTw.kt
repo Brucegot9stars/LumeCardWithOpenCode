@@ -139,6 +139,7 @@ object ZhTwStrings : I18nStrings {
     override val cardAnswerLabel = "答案："
     override val cardFrontLabel = "正面（問題）"
     override val cardBackLabel = "背面（答案）"
+    override val cardTitle = "標題"
     override val cardFrontLabelRev = "正面（背面將先顯示）"
     override val cardBackLabelRev = "背面（正面將先顯示）"
     override val cardFrontPlaceholder = "輸入卡片正面內容..."

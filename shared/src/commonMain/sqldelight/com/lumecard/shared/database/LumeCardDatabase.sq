@@ -32,6 +32,7 @@ CREATE TABLE Card (
     type TEXT NOT NULL,
     front TEXT NOT NULL,
     back TEXT NOT NULL,
+    title TEXT,
     tags TEXT DEFAULT '[]',
     media TEXT DEFAULT '[]',
     metadata TEXT DEFAULT '{}',
@@ -139,15 +140,15 @@ updateDeck:
 UPDATE Deck SET knowledge_base_id = ?, name = ?, description = ?, color = ?, icon = ?, parent_id = ?, updated_at = ?, version = version + 1, deleted_at = ?, synced_at = ? WHERE id = ?;
 
 insertCard:
-INSERT OR REPLACE INTO Card(id, deck_id, type, front, back, tags, media, metadata, created_at, updated_at, last_reviewed_at, next_review_at, version, deleted_at, synced_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO Card(id, deck_id, type, title, front, back, tags, media, metadata, created_at, updated_at, last_reviewed_at, next_review_at, version, deleted_at, synced_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 insertReviewLog:
 INSERT OR REPLACE INTO ReviewLog(id, card_id, rating, review_time, interval, ease_factor, repetitions, lapse_count, reviewed_at, version, deleted_at, synced_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 updateCard:
-UPDATE Card SET deck_id = ?, type = ?, front = ?, back = ?, tags = ?, media = ?, metadata = ?, updated_at = ?, last_reviewed_at = ?, next_review_at = ?, version = version + 1, synced_at = NULL WHERE id = ?;
+UPDATE Card SET deck_id = ?, type = ?, title = ?, front = ?, back = ?, tags = ?, media = ?, metadata = ?, updated_at = ?, last_reviewed_at = ?, next_review_at = ?, version = version + 1, synced_at = NULL WHERE id = ?;
 
 softDeleteCard:
 UPDATE Card SET deleted_at = ?, updated_at = ?, version = version + 1, synced_at = NULL WHERE id = ?;

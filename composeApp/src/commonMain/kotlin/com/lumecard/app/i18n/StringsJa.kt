@@ -139,6 +139,7 @@ object JaStrings : I18nStrings {
     override val cardAnswerLabel = "答え："
     override val cardFrontLabel = "表面（問題）"
     override val cardBackLabel = "裏面（答え）"
+    override val cardTitle = "タイトル"
     override val cardFrontLabelRev = "表面（裏面が先に表示）"
     override val cardBackLabelRev = "裏面（表面が先に表示）"
     override val cardFrontPlaceholder = "カードの表面を入力..."

@@ -139,6 +139,7 @@ object EnStrings : I18nStrings {
     override val cardAnswerLabel = "Answer:"
     override val cardFrontLabel = "Front (Question)"
     override val cardBackLabel = "Back (Answer)"
+    override val cardTitle = "Title"
     override val cardFrontLabelRev = "Front (Back will show first)"
     override val cardBackLabelRev = "Back (Front will show first)"
     override val cardFrontPlaceholder = "Enter front content..."

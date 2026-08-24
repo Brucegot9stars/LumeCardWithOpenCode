@@ -85,14 +85,14 @@ class WarehouseViewModel(
                 val deckNameMatch = !hasQuery || deck.name.lowercase().contains(query)
                 val deckCards = cards.filter { it.deckId == deck.id }
                 val matchedCards = if (hasQuery) {
-                    deckCards.filter { it.front.lowercase().contains(query) || it.back.lowercase().contains(query) }
+                    deckCards.filter { it.front.lowercase().contains(query) || it.back.lowercase().contains(query) || it.title.lowercase().contains(query) }
                 } else deckCards
 
                 val showDeck = !hasQuery || deckNameMatch || matchedCards.isNotEmpty()
                 if (!showDeck) return@mapNotNull null
 
                 val cardNodes = (if (hasQuery && !deckNameMatch && !kbNameMatch) matchedCards else deckCards).map { card ->
-                    TreeNode(id = card.id, name = card.front.take(50), type = NodeType.CARD, data = card)
+                    TreeNode(id = card.id, name = card.title.ifBlank { card.front.take(50) }, type = NodeType.CARD, data = card)
                 }
                 TreeNode(id = deck.id, name = deck.name, type = NodeType.DECK, isExpanded = if (hasQuery) cardNodes.isNotEmpty() else deck.id in _expandedIds.value, children = cardNodes)
             }
@@ -207,18 +207,18 @@ class WarehouseViewModel(
         loadData()
     }
 
-    suspend fun createCard(deckId: String, front: String, back: String, type: CardType = CardType.BASIC) {
+    suspend fun createCard(deckId: String, front: String, back: String, type: CardType = CardType.BASIC, title: String = "") {
         cardRepository.insert(Card(
             id = generateId("card"),
-            deckId = deckId, type = type, front = front, back = back,
+            deckId = deckId, type = type, front = front, back = back, title = title,
             createdAt = Clock.System.now(), updatedAt = Clock.System.now()
         ))
         loadData()
     }
 
-    suspend fun updateCard(id: String, front: String, back: String) {
+    suspend fun updateCard(id: String, front: String, back: String, title: String = "") {
         val card = cardRepository.getById(id) ?: return
-        cardRepository.update(card.copy(front = front, back = back, updatedAt = Clock.System.now()))
+        cardRepository.update(card.copy(front = front, back = back, title = title, updatedAt = Clock.System.now()))
         loadData()
     }
 

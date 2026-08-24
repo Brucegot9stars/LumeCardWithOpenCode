@@ -44,6 +44,7 @@ data class Card(
     val type: CardType,
     val front: String,
     val back: String,
+    val title: String = "",
     val tags: List<String> = emptyList(),
     val media: List<Media> = emptyList(),
     val metadata: Map<String, String> = emptyMap(),

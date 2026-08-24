@@ -16,8 +16,9 @@ actual class DatabaseDriverFactory {
         val driver = JdbcSqliteDriver("jdbc:sqlite:${dbFile.absolutePath}")
         driver.execute(null, "PRAGMA foreign_keys = ON", 0, null)
         if (dbFile.exists()) {
-            val currentVersion = driver.execute(null, "PRAGMA user_version", 0, null).value as Long
-            if (currentVersion > 0) {
+            val rawVersion = driver.execute(null, "PRAGMA user_version", 0, null).value as Long
+            val currentVersion = if (rawVersion == 0L) 1L else rawVersion
+            if (currentVersion < LumeCardDatabase.Schema.version) {
                 LumeCardDatabase.Schema.migrate(driver, currentVersion, LumeCardDatabase.Schema.version)
             }
         } else {

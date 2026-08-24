@@ -140,6 +140,7 @@ interface I18nStrings {
     val cardAnswerLabel: String
     val cardFrontLabel: String
     val cardBackLabel: String
+    val cardTitle: String
     val cardFrontLabelRev: String
     val cardBackLabelRev: String
     val cardFrontPlaceholder: String
