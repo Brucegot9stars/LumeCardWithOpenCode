@@ -39,6 +39,7 @@ import com.lumecard.app.ui.screens.stats.StatsScreen
 import com.lumecard.app.ui.screens.warehouse.WarehouseScreen
 import com.lumecard.app.font.FontInitializer
 import com.lumecard.app.ui.theme.LumeCardTheme
+import com.lumecard.shared.data.DemoDataManager
 import com.lumecard.shared.feature.quote.config.QuoteDisplayMode
 import com.lumecard.shared.feature.quote.facade.QuoteFeature
 import com.lumecard.shared.repository.SettingsRepository
@@ -57,6 +58,7 @@ var savedCrashLog: String? = null
 @Composable
 fun App() {
     val settingsRepository: SettingsRepository = koinInject()
+    val demoDataManager: DemoDataManager = koinInject()
     LaunchedEffect(settingsRepository) { FontInitializer.ensureInitialized(settingsRepository) }
     val settingsStateHolder: SettingsStateHolder = koinInject()
     val i18nManager: I18nManager = koinInject()
@@ -145,6 +147,9 @@ fun App() {
         if (ips.enabled) {
             quoteFeature.setIdlePauseThreshold(ips.thresholdSeconds * 1000L)
         }
+
+        // Insert demo data on first launch
+        demoDataManager.ensureDemoData()
     }
 
     // ── Screen saver idle detection ──────────────────────
