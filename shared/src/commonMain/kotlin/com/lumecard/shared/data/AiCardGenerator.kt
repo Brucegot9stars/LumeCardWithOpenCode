@@ -231,6 +231,7 @@ class AiCardGenerator(
                 type = cardType,
                 front = item.front,
                 back = item.back,
+                title = item.title,
                 tags = item.tags,
                 createdAt = now,
                 updatedAt = now,
