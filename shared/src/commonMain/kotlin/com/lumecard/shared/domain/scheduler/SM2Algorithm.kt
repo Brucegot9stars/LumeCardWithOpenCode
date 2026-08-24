@@ -49,7 +49,7 @@ class SM2Algorithm : ReviewAlgorithm {
     }
 
     private fun calculateEaseFactor(current: Float, rating: Rating): Float {
-        val q = rating.value
+        val q = rating.value + 1  // Map Rating(1-4) to SM-2 quality(2-5)
         return current + (0.1f - (5 - q) * (0.08f + (5 - q) * 0.02f))
     }
 }

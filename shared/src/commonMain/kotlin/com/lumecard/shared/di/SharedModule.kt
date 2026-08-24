@@ -88,6 +88,17 @@ val sharedModule = module {
     // Algorithm implementations
     single { FSRSAlgorithm() }
 
-    // Default algorithm (FSRS) — uses the FSRSAlgorithm singleton via get()
-    factory<ReviewAlgorithm> { FSRSAlgorithmAdapter(get()) }
+    factory<ReviewAlgorithm> {
+        val settings = get<SettingsRepository>()
+        val modeStr = kotlinx.coroutines.runBlocking {
+            settings.get("reviewMode") ?: ReviewMode.FSRS.name
+        }
+        val mode = try { ReviewMode.valueOf(modeStr) } catch (_: Exception) { ReviewMode.FSRS }
+        when (mode) {
+            ReviewMode.FSRS -> FSRSAlgorithmAdapter(get())
+            ReviewMode.SM2 -> SM2Algorithm()
+            ReviewMode.LEITNER -> LeitnerAlgorithm()
+            ReviewMode.SIMPLE -> SimpleAlgorithm()
+        }
+    }
 }

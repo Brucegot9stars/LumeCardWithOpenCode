@@ -157,10 +157,11 @@ class FSRSAlgorithm(
     private fun calculateInterval(stability: Double, rating: Rating): Int {
         if (rating == Rating.AGAIN) return 1
 
+        val decayFactor = desiredRetention.pow(-1.0 / parameters.w[20]) - 1.0
         val rawDays = when (rating) {
-            Rating.HARD -> stability * ((1.0 - desiredRetention) / desiredRetention).pow(1.0 / parameters.w[20])
-            Rating.GOOD -> stability * ((1.0 - desiredRetention) / desiredRetention).pow(1.0 / parameters.w[20])
-            Rating.EASY -> stability * 1.3 * ((1.0 - desiredRetention) / desiredRetention).pow(1.0 / parameters.w[20])
+            Rating.HARD -> stability * decayFactor
+            Rating.GOOD -> stability * decayFactor
+            Rating.EASY -> stability * 1.3 * decayFactor
             else -> 0.0
         }
 
