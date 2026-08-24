@@ -6,7 +6,7 @@
 
 ## 功能特性
 
-- ✅ **复习算法选择** — FSRS（先进间隔重复）/ SM-2（Anki 标准算法）/ 莱特纳盒子 / 简单固定间隔，四种算法可随时切换，算法状态持久化存储
+- ✅ **复习算法选择** — FSRS-6（21 参数，可训练遗忘曲线）/ SM-2（经典 Anki 算法）/ 莱特纳盒子 / 简单固定间隔，四种算法可随时切换，算法状态持久化存储
 - ✅ **多人算法** — StudyViewModel 通过 `ReviewAlgorithm` 接口解耦，可扩展自定义算法
 - ✅ **每日学习目标** — 设置每日复习卡片数与每日新卡片数，支持进度追踪
 - ✅ **深色/浅色模式** — Material Design 3 主题，设置页面切换即生效
@@ -42,7 +42,6 @@
 - ❌ 知识图谱
 - ❌ 学习热力图 / 日历贡献图
 - ❌ iOS 平台
-- ❌ 单元测试
 
 ## 技术栈
 
@@ -111,9 +110,9 @@ LumeCard/
 │       ├── kotlin/
 │       │   ├── AppVersion.kt              # 统一版本管理
 │       │   ├── model/Models.kt            # 数据模型
-│       │   ├── domain/scheduler/          # 复习算法
-│       │   ├── repository/                # 仓库接口 + 实现
-│       │   ├── data/
+│       │       ├── domain/scheduler/          # 复习算法（FSRS-6 / SM-2 / Leitner / Simple）
+│       │       ├── repository/                # 仓库接口 + 实现
+│       │       ├── data/
 │       │   │   ├── ai/
 │       │   │   │   ├── event/
 │       │   │   │   │   ├── AiEvent.kt     # 14 种事件类型
@@ -137,6 +136,9 @@ LumeCard/
 │       │   └── di/SharedModule.kt         # Koin 共享模块
 │       └── sqldelight/
 │           └── LumeCardDatabase.sq        # 10 张表
+│   └── src/commonTest/
+│       └── kotlin/.../scheduler/
+│           └── FSRSAlgorithmTest.kt       # FSRS-6 算法单元测试
 │
 ├── buildSrc/src/main/kotlin/
 │   └── Dependencies.kt                    # 统一版本管理
@@ -290,15 +292,30 @@ Knowledge Base → Deck → Card
 
 - **KnowledgeBase** — 顶层知识库，卡片与牌组的容器
 - **Deck** — 牌组，支持层级嵌套（`parentId` 引用），配有颜色与 emoji 图标
-- **Card** — 闪卡，6 种类型（Basic、Reversed、Cloze、Multiple Choice、Markdown、AI），支持标签（tags）、媒体附件（media）、元数据（metadata）
+- **Card** — 闪卡，6 种类型（Basic、Reversed、Cloze、Multiple Choice、Markdown、AI），支持标题（title）、标签（tags）、媒体附件（media）、元数据（metadata）
 
 ### 复习算法架构
 
 所有算法实现 `ReviewAlgorithm` 接口：
 - `initCard()` → 返回初始 `AlgorithmState`
-- `schedule(state, rating)` → 根据评分返回新的 `AlgorithmState`
+- `schedule(state, rating, daysElapsed)` → 根据评分返回新的 `AlgorithmState`
 
-状态通过 `AlgorithmStateRepository` 序列化为字符串持久化到数据库，支持算法间切换。
+状态通过 `AlgorithmStateRepository` 序列化为字符串持久化到数据库，支持算法间切换（切换时自动重置算法状态）。
+
+**FSRS-6 算法**（默认）：
+- 21 个可训练参数（w[0]..w[20]），支持指数初始难度、可训练遗忘曲线、同日复习稳定性增长
+- 遗忘曲线：`R(t,S) = (1 + factor·t/S)^(-w[20])`，`factor = 0.9^(1/w[20]) - 1`
+- 同日复习增长：`S' = S · e^{w[17]·(G-3+w[18])·S^(-w[19])}`
+- 状态机：NEW → LEARNING → REVIEW → RELEARNING（ lapse 时回退）
+- 遗忘稳定性：`S' = w[11]·D^(-w[12})·((S+1)^w[13}-1)·e^{w[14]·(1-R)}`，下限 `sMin = S/e^{w[17]·w[18]}`
+
+**SM-2 算法**：
+- 映射 Rating(1-4) → SM-2 quality(2-5)
+- 仅 AGAIN 重置（reps=0，EF 不变），HARD/EASY 有区间乘数（0.8x/1.3x）
+
+**Leitner 盒子**：AGAIN → box 0，HARD → 保持，GOOD → +1，EASY → +2
+
+**简单固定间隔**：AGAIN → stage 0，HARD → 保持，GOOD → +1，EASY → +2
 
 ## 关键架构决策
 
