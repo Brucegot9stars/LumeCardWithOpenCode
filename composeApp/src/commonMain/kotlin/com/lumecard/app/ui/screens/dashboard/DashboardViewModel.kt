@@ -77,6 +77,10 @@ class DashboardViewModel(
         loadDecks()
     }
 
+    suspend fun deleteDeck(id: String) {
+        deckRepository.delete(id)
+    }
+
     private fun loadGoal() {
         screenModelScope.launch {
             _dailyGoal.update { settingsRepository.getInt("dailyGoal", 20) }
