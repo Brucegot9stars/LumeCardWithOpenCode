@@ -99,14 +99,15 @@ class DashboardViewModel(
                     }
                 }
                 launch {
-                    val deckList = withContext(Dispatchers.IO) { deckRepository.getAll().first() }
-                    val withCount = deckList.map { deck ->
-                        val cards = withContext(Dispatchers.IO) { cardRepository.getByDeck(deck.id).first() }
-                        DeckWithCount(deck, cards.size)
+                    deckRepository.getAll().collect { deckList ->
+                        val withCount = deckList.map { deck ->
+                            val cards = withContext(Dispatchers.IO) { cardRepository.getByDeck(deck.id).first() }
+                            DeckWithCount(deck, cards.size)
+                        }
+                        _decks.update { deckList }
+                        _decksWithCount.update { withCount }
+                        _isLoading.value = false
                     }
-                    _decks.update { deckList }
-                    _decksWithCount.update { withCount }
-                    _isLoading.value = false
                 }
             }
         }
