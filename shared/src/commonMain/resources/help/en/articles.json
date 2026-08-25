@@ -18,6 +18,7 @@
           "Tap 'Save' to add the card to your deck"
         ]},
         { "type": "tip", "content": "You can use keyboard shortcuts: Ctrl+N to create a new card, Ctrl+S to save, and Ctrl+Enter to quickly save and create another." },
+        { "type": "tip", "content": "On first launch, the app automatically creates a sample knowledge base with 4 decks and 18 cards covering all 7 card types. You can freely delete the demo data." },
         { "type": "paragraph", "title": "Starting Your First Study Session", "content": "Once you have created at least one deck with cards, tap the 'Study' button on the deck to start a study session. LumeCard will present cards based on their review schedule. Rate your recall using the Again, Hard, Good, and Easy buttons." },
         { "type": "warning", "content": "Your first few days will feel light as new cards are introduced gradually based on your daily new card limit (default 20). You can adjust this in Settings." }
       ]
@@ -35,7 +36,7 @@
         { "type": "steps", "title": "Navigating the App", "items": [
           "Bottom bar: Quick access to Home, Study, Decks, Stats, and Settings",
           "Swipe left/right on cards during review to see additional info",
-          "Long-press a deck to access quick actions (rename, delete, export)",
+          "Tap the ⋮ menu on a deck to delete it",
           "Use the search icon to find cards across all decks"
         ]},
         { "type": "paragraph", "title": "Study Session", "content": "During a study session, cards are shown one at a time. After viewing the question, tap or press a key to reveal the answer. Rate your recall: Again (forgot), Hard (difficult), Good (normal), Easy (trivial). Your rating determines when the card will appear again." },
@@ -176,7 +177,7 @@
       "relatedArticles": ["basic-usage", "ai-features", "webdav-sync"],
       "hasDangerContent": false,
       "sections": [
-        { "type": "paragraph", "title": "Learning Settings", "content": "Configure your daily learning goals: daily new card limit, daily review limit, and review mode (FSRS, SM-2, Leitner, or Simple). These settings affect how new cards are introduced and how review cards are scheduled." },
+        { "type": "paragraph", "title": "Learning Settings", "content": "Configure your daily learning goals: daily new card limit, daily review limit, and review mode (FSRS-6, SM-2, Leitner, or Simple). These settings affect how new cards are introduced and how review cards are scheduled." },
         { "type": "paragraph", "title": "Appearance Settings", "content": "Toggle dark mode, adjust font scale (70%-150%), and change the app language. Fonts: you can import custom .ttf or .otf font files and set them as the default card font." },
         { "type": "paragraph", "title": "Study Timer", "content": "The study timer tracks how much time you spend studying. You can configure it to pause when you are idle for a set duration, preventing inaccurate time tracking." },
         { "type": "tip", "content": "Learning Plans let you organize cards into structured study goals. Create a plan with specific decks or knowledge bases, track completion progress, and set default plans for quick access." }
@@ -197,7 +198,7 @@
           { "question": "Does LumeCard support Anki decks?", "answer": "LumeCard uses its own format. Direct Anki .apkg import is not currently supported, but you can use CSV import/export for data transfer." }
         ]},
         { "type": "faq", "title": "Study & Scheduling", "items": [
-          { "question": "What spaced repetition algorithm does LumeCard use?", "answer": "LumeCard uses FSRS (Free Spaced Repetition Scheduler) by default, with options for SM-2, Leitner, and Simple algorithms." },
+          { "question": "What spaced repetition algorithm does LumeCard use?", "answer": "LumeCard uses FSRS-6 (21-parameter Free Spaced Repetition Scheduler) by default, with options for SM-2, Leitner, and Simple algorithms." },
           { "question": "How do I reset a card's progress?", "answer": "Currently, individual card progress reset is not available. You can delete and recreate the card to start fresh." },
           { "question": "Can I set different daily limits for different decks?", "answer": "Not currently. Daily limits are global settings. You can use Learning Plans to organize study sessions by topic." }
         ]},
@@ -217,6 +218,7 @@
       "relatedArticles": [],
       "hasDangerContent": false,
       "sections": [
+        { "type": "paragraph", "title": "Version 0.25.x", "content": "FSRS-6 algorithm upgrade (21 parameters, trainable forgetting curve). Sample knowledge base (auto-created on first launch). Dashboard deck deletion. Card title field. Database migration to schema v2. Windows installer desktop shortcut option. Algorithm stability fixes (NaN crash, negative stability)." },
         { "type": "paragraph", "title": "Version 0.17.6", "content": "WebDAV sync improvements with bidirectional version-based merge. Splash quote sync via WebDAV. Font deletion cleanup. Background image persistence. Startup animation fix." },
         { "type": "paragraph", "title": "Version 0.17.2 - 0.17.5", "content": "Unified Quote Settings screen with collapsible sections. Global settings search. Animation support for splash quotes. Screen saver mode with auto-exit on activity. Study timer idle pause." },
         { "type": "paragraph", "title": "Version 0.16.x", "content": "AI card generation with streaming support and event-driven architecture. Learning plans with completion tracking. Enhanced statistics." },

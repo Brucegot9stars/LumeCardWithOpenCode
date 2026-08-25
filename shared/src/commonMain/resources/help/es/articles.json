@@ -18,6 +18,7 @@
           "Pulsa 'Guardar' para añadir la tarjeta a tu mazo"
         ]},
         { "type": "tip", "content": "Puedes usar atajos de teclado: Ctrl+N para crear una nueva tarjeta, Ctrl+S para guardar y Ctrl+Intro para guardar rápidamente y crear otra." },
+        { "type": "tip", "content": "En el primer lanzamiento, la aplicación crea automáticamente una base de conocimientos de ejemplo con 4 mazos y 18 tarjetas que cubren los 7 tipos de tarjetas. Puede eliminar libremente los datos de demostración." },
         { "type": "paragraph", "title": "Iniciando tu primera sesión de estudio", "content": "Una vez que hayas creado al menos un mazo con tarjetas, pulsa el botón 'Estudiar' en el mazo para iniciar una sesión de estudio. LumeCard presentará las tarjetas según su programa de revisión. Califica tu recuerdo usando los botones Again, Hard, Good y Easy." },
         { "type": "warning", "content": "Tus primeros días se sentirán ligeros ya que las nuevas tarjetas se introducen gradualmente según tu límite diario de tarjetas nuevas (20 por defecto). Puedes ajustarlo en Ajustes." }
       ]
@@ -35,7 +36,7 @@
         { "type": "steps", "title": "Navegando por la aplicación", "items": [
           "Barra inferior: Acceso rápido a Inicio, Estudiar, Mazos, Estadísticas y Ajustes",
           "Desliza a izquierda/derecha en las tarjetas durante la revisión para ver información adicional",
-          "Mantén pulsado un mazo para acceder a acciones rápidas (renombrar, eliminar, exportar)",
+          "Toque el menú ⋮ en un mazo para eliminarlo",
           "Usa el icono de búsqueda para encontrar tarjetas en todos los mazos"
         ]},
         { "type": "paragraph", "title": "Sesión de estudio", "content": "Durante una sesión de estudio, las tarjetas se muestran una a la vez. Después de ver la pregunta, pulsa o presiona una tecla para revelar la respuesta. Califica tu recuerdo: Again (olvidado), Hard (difícil), Good (normal), Easy (trivial). Tu calificación determina cuándo volverá a aparecer la tarjeta." },
@@ -176,7 +177,7 @@
       "relatedArticles": ["basic-usage", "ai-features", "webdav-sync"],
       "hasDangerContent": false,
       "sections": [
-        { "type": "paragraph", "title": "Ajustes de aprendizaje", "content": "Configura tus metas diarias de aprendizaje: límite diario de tarjetas nuevas, límite diario de revisión y modo de revisión (FSRS, SM-2, Leitner o Simple). Estos ajustes afectan cómo se introducen las tarjetas nuevas y cómo se programan las tarjetas de revisión." },
+        { "type": "paragraph", "title": "Ajustes de aprendizaje", "content": "Configura tus metas diarias de aprendizaje: límite diario de tarjetas nuevas, límite diario de revisión y modo de revisión (FSRS-6, SM-2, Leitner o Simple). Estos ajustes afectan cómo se introducen las tarjetas nuevas y cómo se programan las tarjetas de revisión." },
         { "type": "paragraph", "title": "Ajustes de apariencia", "content": "Activa el modo oscuro, ajusta la escala de fuente (70%-150%) y cambia el idioma de la aplicación. Fuentes: puedes importar archivos de fuente .ttf o .otf personalizados y establecerlos como la fuente de tarjeta predeterminada." },
         { "type": "paragraph", "title": "Temporizador de estudio", "content": "El temporizador de estudio registra cuánto tiempo pasas estudiando. Puedes configurarlo para que se pause cuando estés inactivo durante un tiempo determinado, evitando un seguimiento incorrecto del tiempo." },
         { "type": "tip", "content": "Los Planes de aprendizaje te permiten organizar tarjetas en objetivos de estudio estructurados. Crea un plan con mazos o bases de conocimiento específicos, realiza un seguimiento del progreso de finalización y establece planes predeterminados para acceso rápido." }
@@ -197,7 +198,7 @@
           { "question": "¿LumeCard admite mazos de Anki?", "answer": "LumeCard usa su propio formato. La importación directa de archivos .apkg de Anki no está soportada actualmente, pero puedes usar la importación/exportación CSV para la transferencia de datos." }
         ]},
         { "type": "faq", "title": "Estudio y programación", "items": [
-          { "question": "¿Qué algoritmo de repetición espaciada usa LumeCard?", "answer": "LumeCard usa FSRS (Free Spaced Repetition Scheduler) por defecto, con opciones para los algoritmos SM-2, Leitner y Simple." },
+          { "question": "¿Qué algoritmo de repetición espaciada usa LumeCard?", "answer": "LumeCard usa FSRS-6 (21 parámetros Free Spaced Repetition Scheduler) por defecto, con opciones para los algoritmos SM-2, Leitner y Simple." },
           { "question": "¿Cómo reinicio el progreso de una tarjeta?", "answer": "Actualmente, no está disponible el reinicio de progreso de una tarjeta individual. Puedes eliminar y volver a crear la tarjeta para empezar de nuevo." },
           { "question": "¿Puedo establecer límites diarios diferentes para distintos mazos?", "answer": "Actualmente no. Los límites diarios son ajustes globales. Puedes usar Planes de aprendizaje para organizar sesiones de estudio por tema." }
         ]},
@@ -217,6 +218,7 @@
       "relatedArticles": [],
       "hasDangerContent": false,
       "sections": [
+        { "type": "paragraph", "title": "Versión 0.25.x", "content": "Actualización del algoritmo FSRS-6 (21 parámetros, curva de olvido entrenable). Base de conocimientos de ejemplo (creada automáticamente en el primer inicio). Eliminación de mazos en el panel. Campo de título de tarjeta. Migración de base de datos a schema v2. Opción de acceso directo del escritorio en el instalador de Windows. Correcciones de estabilidad del algoritmo (crash NaN, estabilidad negativa)." },
         { "type": "paragraph", "title": "Versión 0.17.6", "content": "Mejoras en la sincronización WebDAV con fusión bidireccional basada en versiones. Sincronización de citas de inicio mediante WebDAV. Limpieza al eliminar fuentes. Persistencia de imágenes de fondo. Corrección de animación de inicio." },
         { "type": "paragraph", "title": "Versión 0.17.2 - 0.17.5", "content": "Pantalla unificada de Ajustes de citas con secciones plegables. Búsqueda global de ajustes. Soporte de animación para citas de inicio. Modo protector de pantalla con salida automática al interactuar. Pausa por inactividad en el temporizador de estudio." },
         { "type": "paragraph", "title": "Versión 0.16.x", "content": "Generación de tarjetas con IA compatible con streaming y arquitectura basada en eventos. Planes de aprendizaje con seguimiento de finalización. Estadísticas mejoradas." },

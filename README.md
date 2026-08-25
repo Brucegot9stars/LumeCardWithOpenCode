@@ -247,6 +247,7 @@ set GRADLE_USER_HOME=C:\gradle-home
 
 - EXE 安装器输出: `composeApp/build/compose/binaries/main/exe/LumeCard-{version}.exe`
 - MSI 安装包输出: `composeApp/build/compose/binaries/main/msi/LumeCard-{version}.msi`
+- 安装时提供「创建桌面快捷方式」选项
 
 ### 常见构建问题排查
 
@@ -268,7 +269,7 @@ set GRADLE_USER_HOME=C:\gradle-home
 
 ## 数据库
 
-SQLDelight 管理 10 张表，全部查询在 `LumeCardDatabase.sq` 中定义：
+SQLDelight 管理 10 张表（schema v2），全部查询在 `LumeCardDatabase.sq` 中定义：
 
 | 表 | 用途 |
 |------|---------|
