@@ -66,6 +66,7 @@ import com.lumecard.shared.data.toDeck
 import com.lumecard.shared.data.toKnowledgeBase
 import com.lumecard.shared.data.toLearningPlan
 import com.lumecard.shared.data.toReviewLog
+import com.lumecard.shared.database.LumeCardDatabase
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
 import com.lumecard.shared.repository.KnowledgeBaseRepository
@@ -97,6 +98,7 @@ class WebDavConfigScreen : Screen {
         val syncManager: SyncManager = koinInject()
         val exportManager: ExportManager = koinInject()
         val mediaManager: MediaManager = koinInject()
+        val database: LumeCardDatabase = koinInject()
         val deckRepository: DeckRepository = koinInject()
         val cardRepository: CardRepository = koinInject()
         val knowledgeBaseRepository: KnowledgeBaseRepository = koinInject()
@@ -918,7 +920,7 @@ class WebDavConfigScreen : Screen {
                                 val config = defaultConfig ?: return@launch
                                 val deckCount: Int
                                 withContext(Dispatchers.IO) {
-                                    deckCount = forceDownload(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager)
+                                    deckCount = forceDownload(config, database, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager)
                                     webDavConfigManager.updateLastSync(config.id)
                                 }
                                 syncStatus = strings.settingsSyncSuccess(deckCount)
@@ -1094,6 +1096,7 @@ private suspend fun forceUpload(
 
 private suspend fun forceDownload(
     config: WebDavConfig,
+    database: LumeCardDatabase,
     kbRepository: KnowledgeBaseRepository,
     deckRepository: DeckRepository,
     cardRepository: CardRepository,
@@ -1112,17 +1115,17 @@ private suspend fun forceDownload(
     val remoteJson = remoteResult.getOrThrow()
     val remote = exportManager.importData(remoteJson) ?: throw Exception("Failed to parse remote data")
 
-    val allKbs = kbRepository.getAll().first()
-    val allDecks = deckRepository.getAll().first()
-    val allCards = cardRepository.getAll().first()
-    val allLogs = reviewLogRepository.getAll().first()
-    val allPlans = planRepository.getAll().first()
-
-    for (kb in allKbs) { kbRepository.delete(kb.id) }
-    for (deck in allDecks) { deckRepository.delete(deck.id) }
-    for (card in allCards) { cardRepository.delete(card.id) }
-    reviewLogRepository.deleteAll()
-    for (plan in allPlans) { planRepository.delete(plan.id) }
+    // Hard-delete ALL local data in child-first order to avoid FK constraint violations.
+    // INSERT OR REPLACE internally does DELETE+INSERT; if soft-deleted children still
+    // reference the parent row, the DELETE fails with FOREIGN KEY constraint error.
+    val q = database.lumeCardDatabaseQueries
+    q.deleteAllCardFts()
+    q.deleteAllAlgorithmStates()
+    q.deleteAllReviewLogs()
+    q.hardDeleteAllCards()
+    q.hardDeleteAllDecks()
+    q.hardDeleteAllKnowledgeBases()
+    q.hardDeleteAllLearningPlans()
 
     var deckCount = 0
     for (kb in remote.knowledgeBases) { kbRepository.insert(kb.toKnowledgeBase()) }

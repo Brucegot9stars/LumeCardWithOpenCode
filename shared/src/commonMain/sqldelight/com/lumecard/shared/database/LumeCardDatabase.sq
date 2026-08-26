@@ -197,6 +197,18 @@ DELETE FROM ReviewLog;
 deleteAllAlgorithmStates:
 DELETE FROM AlgorithmState;
 
+hardDeleteAllCards:
+DELETE FROM Card;
+
+hardDeleteAllDecks:
+DELETE FROM Deck;
+
+hardDeleteAllKnowledgeBases:
+DELETE FROM KnowledgeBase;
+
+hardDeleteAllLearningPlans:
+DELETE FROM LearningPlan;
+
 resetCardScheduling:
 UPDATE Card SET last_reviewed_at = NULL, next_review_at = NULL, updated_at = ?, version = version + 1, synced_at = NULL WHERE deleted_at IS NULL;
 
