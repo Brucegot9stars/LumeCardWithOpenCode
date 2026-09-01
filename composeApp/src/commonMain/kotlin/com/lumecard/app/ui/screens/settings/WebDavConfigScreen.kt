@@ -66,13 +66,13 @@ import com.lumecard.shared.data.toDeck
 import com.lumecard.shared.data.toKnowledgeBase
 import com.lumecard.shared.data.toLearningPlan
 import com.lumecard.shared.data.toReviewLog
+import com.lumecard.shared.database.DatabaseDriverHolder
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
 import com.lumecard.shared.repository.KnowledgeBaseRepository
 import com.lumecard.shared.repository.LearningPlanRepository
 import com.lumecard.shared.repository.ReviewLogRepository
 import com.lumecard.shared.repository.SettingsRepository
-import app.cash.sqldelight.db.SqlDriver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -98,7 +98,6 @@ class WebDavConfigScreen : Screen {
         val syncManager: SyncManager = koinInject()
         val exportManager: ExportManager = koinInject()
         val mediaManager: MediaManager = koinInject()
-        val sqlDriver: SqlDriver = koinInject()
         val deckRepository: DeckRepository = koinInject()
         val cardRepository: CardRepository = koinInject()
         val knowledgeBaseRepository: KnowledgeBaseRepository = koinInject()
@@ -920,7 +919,7 @@ class WebDavConfigScreen : Screen {
                                 val config = defaultConfig ?: return@launch
                                 val deckCount: Int
                                 withContext(Dispatchers.IO) {
-                                    deckCount = forceDownload(config, sqlDriver, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager)
+                                    deckCount = forceDownload(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager)
                                     webDavConfigManager.updateLastSync(config.id)
                                 }
                                 syncStatus = strings.settingsSyncSuccess(deckCount)
@@ -1096,7 +1095,6 @@ private suspend fun forceUpload(
 
 private suspend fun forceDownload(
     config: WebDavConfig,
-    sqlDriver: SqlDriver,
     kbRepository: KnowledgeBaseRepository,
     deckRepository: DeckRepository,
     cardRepository: CardRepository,
@@ -1115,23 +1113,26 @@ private suspend fun forceDownload(
     val remoteJson = remoteResult.getOrThrow()
     val remote = exportManager.importData(remoteJson) ?: throw Exception("Failed to parse remote data")
 
+    val driver = DatabaseDriverHolder.driver
+        ?: throw IllegalStateException("Database driver not initialized")
+
     // Disable FK constraints for the entire delete+insert operation.
     // This is necessary because:
     // 1. INSERT OR REPLACE internally does DELETE+INSERT; soft-deleted children
     //    still reference parent rows, blocking the DELETE.
-    // 2. Deck has self-referencing FK (parent_id → Deck.id); if export order
+    // 2. Deck has self-referencing FK (parent_id -> Deck.id); if export order
     //    puts a child deck before its parent, the INSERT would fail.
-    sqlDriver.execute(null, "PRAGMA foreign_keys = OFF", 0, null)
+    driver.execute(null, "PRAGMA foreign_keys = OFF", 0, null)
 
     try {
         // Hard-delete ALL local data
-        sqlDriver.execute(null, "DELETE FROM CardFTS", 0, null)
-        sqlDriver.execute(null, "DELETE FROM AlgorithmState", 0, null)
-        sqlDriver.execute(null, "DELETE FROM ReviewLog", 0, null)
-        sqlDriver.execute(null, "DELETE FROM Card", 0, null)
-        sqlDriver.execute(null, "DELETE FROM Deck", 0, null)
-        sqlDriver.execute(null, "DELETE FROM KnowledgeBase", 0, null)
-        sqlDriver.execute(null, "DELETE FROM LearningPlan", 0, null)
+        driver.execute(null, "DELETE FROM CardFTS", 0, null)
+        driver.execute(null, "DELETE FROM AlgorithmState", 0, null)
+        driver.execute(null, "DELETE FROM ReviewLog", 0, null)
+        driver.execute(null, "DELETE FROM Card", 0, null)
+        driver.execute(null, "DELETE FROM Deck", 0, null)
+        driver.execute(null, "DELETE FROM KnowledgeBase", 0, null)
+        driver.execute(null, "DELETE FROM LearningPlan", 0, null)
 
         // Insert remote data
         for (kb in remote.knowledgeBases) { kbRepository.insert(kb.toKnowledgeBase()) }
@@ -1155,7 +1156,7 @@ private suspend fun forceDownload(
         planRepository.markSynced(remote.learningPlans.map { it.id }, now)
     } finally {
         // Always re-enable FK constraints
-        sqlDriver.execute(null, "PRAGMA foreign_keys = ON", 0, null)
+        driver.execute(null, "PRAGMA foreign_keys = ON", 0, null)
     }
 
     syncMedia(config, syncManager, mediaManager)

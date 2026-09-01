@@ -24,8 +24,7 @@ import org.koin.dsl.module
 
 val sharedModule = module {
     // Database (DatabaseDriverFactory must be provided by platform module)
-    single { get<com.lumecard.shared.database.DatabaseDriverFactory>().createDriver() }
-    single { LumeCardDatabase(get()) }
+    single { LumeCardDatabase(get<com.lumecard.shared.database.DatabaseDriverFactory>().createDriver()) }
 
     // HTTP client with timeout configuration
     single {

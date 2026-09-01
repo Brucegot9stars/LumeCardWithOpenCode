@@ -14,6 +14,7 @@ actual class DatabaseDriverFactory {
         }
         val dbFile = File(appDir, "lumecard.db")
         val driver = JdbcSqliteDriver("jdbc:sqlite:${dbFile.absolutePath}")
+        DatabaseDriverHolder.driver = driver
         driver.execute(null, "PRAGMA foreign_keys = ON", 0, null)
         val targetVersion = LumeCardDatabase.Schema.version
         if (dbFile.exists()) {

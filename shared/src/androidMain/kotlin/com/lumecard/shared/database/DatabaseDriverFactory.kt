@@ -16,6 +16,7 @@ actual class DatabaseDriverFactory {
             context = AndroidContextHolder.context,
             name = "lumecard.db"
         )
+        DatabaseDriverHolder.driver = driver
         driver.execute(null, "PRAGMA foreign_keys = ON", 0, null)
         upgradeToFts5(driver)
         ensureMediaCacheTable(driver)
