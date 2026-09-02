@@ -38,11 +38,12 @@ class KnowledgeBaseViewModel(
         }
     }
 
-    suspend fun createKnowledgeBase(name: String, description: String?): KnowledgeBase {
+    suspend fun createKnowledgeBase(name: String, description: String?, icon: String = KnowledgeBase.emojis.first()): KnowledgeBase {
         val kb = KnowledgeBase(
             id = generateId("kb"),
             name = name,
             description = description,
+            icon = icon,
             createdAt = Clock.System.now(),
             updatedAt = Clock.System.now()
         )
@@ -50,13 +51,13 @@ class KnowledgeBaseViewModel(
         return kb
     }
 
-    suspend fun updateKnowledgeBase(id: String, name: String, description: String?) {
+    suspend fun updateKnowledgeBase(id: String, name: String, description: String?, icon: String? = null) {
         val kb = knowledgeBaseRepository.getById(id) ?: return
         val updated = kb.copy(
             name = name,
             description = description,
             updatedAt = Clock.System.now()
-        )
+        ).let { if (icon != null) it.copy(icon = icon) else it }
         knowledgeBaseRepository.update(updated)
     }
 

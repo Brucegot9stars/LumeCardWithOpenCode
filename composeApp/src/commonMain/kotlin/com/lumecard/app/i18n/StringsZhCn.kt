@@ -629,6 +629,8 @@ object ZhCnStrings : I18nStrings {
     override val noteOptional = "（可选）"
 
     override val pasteMedia = "粘贴媒体"
+    override val emojiChoose = "选择图标"
+    override val emojiSearchHint = "搜索 emoji…"
     override val browseMedia = "浏览..."
 
     override val splashQuoteTitle = "启动名言（Splash Quote）"

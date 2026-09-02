@@ -264,6 +264,8 @@ interface I18nStrings {
     val updateDownload: String
     val updateError: String
     val actionClose: String
+    val emojiChoose: String
+    val emojiSearchHint: String
     val settingsCheckUpdate: String
     val updateDownloading: String
     val updateInstalling: String

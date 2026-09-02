@@ -629,6 +629,8 @@ object EsStrings : I18nStrings {
     override val noteOptional = "(Opcional)"
 
     override val pasteMedia = "Pegar medio"
+    override val emojiChoose = "Elegir icono"
+    override val emojiSearchHint = "Buscar emoji…"
     override val browseMedia = "Examinar..."
 
     override val splashQuoteTitle = "Cita de Inicio"

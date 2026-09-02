@@ -100,7 +100,7 @@ class DeckViewModel(
         return if (config.order == SortOrder.DESC) sorted.reversed() else sorted
     }
 
-    suspend fun createDeck(name: String, description: String?) {
+    suspend fun createDeck(name: String, description: String?, icon: String? = null) {
         val existingCount = _decks.value.size
         val deck = Deck(
             id = generateId("deck"),
@@ -108,20 +108,20 @@ class DeckViewModel(
             name = name,
             description = description,
             color = deckColors[existingCount % deckColors.size],
-            icon = deckIcons[existingCount % deckIcons.size],
+            icon = icon ?: deckIcons[existingCount % deckIcons.size],
             createdAt = kotlin.time.Clock.System.now(),
             updatedAt = kotlin.time.Clock.System.now()
         )
         deckRepository.insert(deck)
     }
 
-    suspend fun updateDeck(id: String, name: String, description: String?) {
+    suspend fun updateDeck(id: String, name: String, description: String?, icon: String? = null) {
         val deck = deckRepository.getById(id) ?: return
         val updated = deck.copy(
             name = name,
             description = description,
             updatedAt = kotlin.time.Clock.System.now()
-        )
+        ).let { if (icon != null) it.copy(icon = icon) else it }
         deckRepository.update(updated)
     }
 

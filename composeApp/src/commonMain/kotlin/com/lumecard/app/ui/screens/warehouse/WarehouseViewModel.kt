@@ -94,11 +94,11 @@ class WarehouseViewModel(
                 val cardNodes = (if (hasQuery && !deckNameMatch && !kbNameMatch) matchedCards else deckCards).map { card ->
                     TreeNode(id = card.id, name = card.title.ifBlank { card.front.take(50) }, type = NodeType.CARD, data = card)
                 }
-                TreeNode(id = deck.id, name = deck.name, type = NodeType.DECK, isExpanded = if (hasQuery) cardNodes.isNotEmpty() else deck.id in _expandedIds.value, children = cardNodes)
+                TreeNode(id = deck.id, name = deck.name, type = NodeType.DECK, isExpanded = if (hasQuery) cardNodes.isNotEmpty() else deck.id in _expandedIds.value, children = cardNodes, data = deck)
             }
 
             if (!hasQuery || kbNameMatch || deckNodes.isNotEmpty()) {
-                TreeNode(id = kb.id, name = kb.name, type = NodeType.KNOWLEDGE_BASE, isExpanded = if (hasQuery) deckNodes.isNotEmpty() else kb.id in _expandedIds.value, children = deckNodes)
+                TreeNode(id = kb.id, name = kb.name, type = NodeType.KNOWLEDGE_BASE, isExpanded = if (hasQuery) deckNodes.isNotEmpty() else kb.id in _expandedIds.value, children = deckNodes, data = kb)
             } else null
         }
         _treeNodes.value = tree
@@ -145,18 +145,21 @@ class WarehouseViewModel(
         }
     }
 
-    suspend fun createKnowledgeBase(name: String, description: String?) {
+    suspend fun createKnowledgeBase(name: String, description: String?, icon: String? = null) {
         kbRepository.insert(KnowledgeBase(
             id = generateId("kb"),
             name = name, description = description,
+            icon = icon ?: KnowledgeBase.emojis.first(),
             createdAt = Clock.System.now(), updatedAt = Clock.System.now()
         ))
         loadData()
     }
 
-    suspend fun updateKnowledgeBase(id: String, name: String, description: String?) {
+    suspend fun updateKnowledgeBase(id: String, name: String, description: String?, icon: String? = null) {
         val kb = kbRepository.getById(id) ?: return
-        kbRepository.update(kb.copy(name = name, description = description, updatedAt = Clock.System.now()))
+        val updated = kb.copy(name = name, description = description, updatedAt = Clock.System.now())
+            .let { if (icon != null) it.copy(icon = icon) else it }
+        kbRepository.update(updated)
         loadData()
     }
 
@@ -174,22 +177,25 @@ class WarehouseViewModel(
         loadData()
     }
 
-    suspend fun createDeck(kbId: String, name: String, description: String?) {
+    suspend fun createDeck(kbId: String, name: String, description: String?, icon: String? = null) {
         val decks = deckRepository.getAll().first()
         val existingCount = decks.size
         deckRepository.insert(Deck(
             id = generateId("deck"),
             knowledgeBaseId = kbId, name = name, description = description,
-            color = Deck.colors[existingCount % Deck.colors.size], icon = Deck.icons[existingCount % Deck.icons.size],
+            color = Deck.colors[existingCount % Deck.colors.size],
+            icon = icon ?: Deck.icons[existingCount % Deck.icons.size],
             createdAt = Clock.System.now(), updatedAt = Clock.System.now()
         ))
         _expandedIds.value = _expandedIds.value + kbId
         loadData()
     }
 
-    suspend fun updateDeck(id: String, name: String, description: String?) {
+    suspend fun updateDeck(id: String, name: String, description: String?, icon: String? = null) {
         val deck = deckRepository.getById(id) ?: return
-        deckRepository.update(deck.copy(name = name, description = description, updatedAt = Clock.System.now()))
+        val updated = deck.copy(name = name, description = description, updatedAt = Clock.System.now())
+            .let { if (icon != null) it.copy(icon = icon) else it }
+        deckRepository.update(updated)
         loadData()
     }
 

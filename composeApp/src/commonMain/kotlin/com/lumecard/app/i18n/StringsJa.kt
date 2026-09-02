@@ -629,6 +629,8 @@ object JaStrings : I18nStrings {
     override val noteOptional = "（任意）"
 
     override val pasteMedia = "メディアを貼り付け"
+    override val emojiChoose = "アイコンを選択"
+    override val emojiSearchHint = "絵文字を検索…"
     override val browseMedia = "参照..."
 
     override val splashQuoteTitle = "スプラッシュ名言"

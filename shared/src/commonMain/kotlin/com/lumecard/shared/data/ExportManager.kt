@@ -69,6 +69,7 @@ data class ExportKnowledgeBase(
     val id: String,
     val name: String,
     val description: String? = null,
+    val icon: String = "\uD83D\uDCC1",
     val createdAt: String,
     val updatedAt: String,
     val version: Long = 1,
@@ -177,7 +178,7 @@ class ExportManager {
 
     private fun exportKbs(kbs: List<KnowledgeBase>) = kbs.map { kb ->
         ExportKnowledgeBase(
-            id = kb.id, name = kb.name, description = kb.description,
+            id = kb.id, name = kb.name, description = kb.description, icon = kb.icon,
             createdAt = kb.createdAt.toString(), updatedAt = kb.updatedAt.toString(),
             version = kb.version, deletedAt = kb.deletedAt?.toString(),
             syncedAt = kb.syncedAt?.toString()

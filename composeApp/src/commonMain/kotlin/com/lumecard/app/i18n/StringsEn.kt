@@ -629,6 +629,8 @@ object EnStrings : I18nStrings {
     override val noteOptional = "(optional)"
 
     override val pasteMedia = "Paste Media"
+    override val emojiChoose = "Choose icon"
+    override val emojiSearchHint = "Search emoji…"
     override val browseMedia = "Browse..."
 
     override val splashQuoteTitle = "Splash Quote"

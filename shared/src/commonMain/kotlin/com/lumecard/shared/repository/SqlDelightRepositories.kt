@@ -47,6 +47,7 @@ class SqlDelightKnowledgeBaseRepository(
             id = knowledgeBase.id,
             name = knowledgeBase.name,
             description = knowledgeBase.description,
+            icon = knowledgeBase.icon,
             created_at = knowledgeBase.createdAt.toString(),
             updated_at = knowledgeBase.updatedAt.toString(),
             version = knowledgeBase.version,
@@ -59,6 +60,7 @@ class SqlDelightKnowledgeBaseRepository(
         queries.updateKnowledgeBase(
             name = knowledgeBase.name,
             description = knowledgeBase.description,
+            icon = knowledgeBase.icon,
             updated_at = knowledgeBase.updatedAt.toString(),
             deleted_at = knowledgeBase.deletedAt?.toString(),
             synced_at = knowledgeBase.syncedAt?.toString(),
@@ -403,6 +405,7 @@ private fun com.lumecard.shared.database.KnowledgeBase.toKnowledgeBase() = Knowl
     id = id,
     name = name,
     description = description,
+    icon = icon ?: "\uD83D\uDCC1",
     createdAt = safeInstant(created_at),
     updatedAt = safeInstant(updated_at),
     version = version,

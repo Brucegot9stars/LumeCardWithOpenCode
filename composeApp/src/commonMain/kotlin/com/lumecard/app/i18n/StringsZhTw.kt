@@ -629,6 +629,8 @@ object ZhTwStrings : I18nStrings {
     override val noteOptional = "（選填）"
 
     override val pasteMedia = "貼上媒體"
+    override val emojiChoose = "選擇圖示"
+    override val emojiSearchHint = "搜尋 emoji…"
     override val browseMedia = "瀏覽..."
 
     override val splashQuoteTitle = "啟動名言（Splash Quote）"

@@ -30,6 +30,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.components.ConfirmOperationDialog
+import com.lumecard.app.ui.components.EmojiPickerField
 import com.lumecard.app.ui.components.LumeCardDialog
 import com.lumecard.app.ui.components.LumeCardTextField
 import com.lumecard.app.ui.components.LumeCardTopBar
@@ -228,7 +229,11 @@ class KnowledgeBaseScreen : Screen {
                                     modifier = Modifier.size(44.dp),
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
-                                        Icon(Icons.AutoMirrored.Filled.List, contentDescription = null, modifier = Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                                        if (kb.icon.isNotBlank()) {
+                                            Text(kb.icon, style = MaterialTheme.typography.headlineSmall)
+                                        } else {
+                                            Icon(Icons.AutoMirrored.Filled.List, contentDescription = null, modifier = Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                                        }
                                     }
                                 }
                                 Spacer(Modifier.width(spacing.md))
@@ -320,10 +325,11 @@ class KnowledgeBaseScreen : Screen {
         if (showCreateDialog) {
             KnowledgeBaseDialog(
                 title = strings.kbCreate,
+                initialIcon = KnowledgeBase.emojis[knowledgeBases.size % KnowledgeBase.emojis.size],
                 onDismiss = { showCreateDialog = false },
-                onConfirm = { name, desc ->
+                onConfirm = { name, desc, icon ->
                     showCreateDialog = false
-                    scope.launch { viewModel.createKnowledgeBase(name, desc) }
+                    scope.launch { viewModel.createKnowledgeBase(name, desc, icon) }
                 }
             )
         }
@@ -334,10 +340,11 @@ class KnowledgeBaseScreen : Screen {
                 title = strings.kbEdit,
                 initialName = currentKb.name,
                 initialDescription = currentKb.description,
+                initialIcon = currentKb.icon,
                 onDismiss = { editingKb = null },
-                onConfirm = { name, desc ->
+                onConfirm = { name, desc, icon ->
                     editingKb = null
-                    scope.launch { viewModel.updateKnowledgeBase(currentKb.id, name, desc) }
+                    scope.launch { viewModel.updateKnowledgeBase(currentKb.id, name, desc, icon) }
                 }
             )
         }
@@ -381,17 +388,19 @@ private fun KnowledgeBaseDialog(
     title: String,
     initialName: String = "",
     initialDescription: String? = null,
+    initialIcon: String = "\uD83D\uDCC1",
     onDismiss: () -> Unit,
-    onConfirm: (name: String, description: String?) -> Unit,
+    onConfirm: (name: String, description: String?, icon: String) -> Unit,
 ) {
     var name by remember { mutableStateOf(initialName) }
     var description by remember { mutableStateOf(initialDescription ?: "") }
+    var icon by remember { mutableStateOf(initialIcon) }
     val strings = koinInject<I18nManager>().strings
 
     LumeCardDialog(
         title = title,
         onDismiss = onDismiss,
-        onConfirm = { onConfirm(name, description.ifBlank { null }) },
+        onConfirm = { onConfirm(name, description.ifBlank { null }, icon) },
         confirmText = strings.actionSave,
         confirmEnabled = name.isNotBlank(),
     ) {
@@ -399,6 +408,11 @@ private fun KnowledgeBaseDialog(
             value = name,
             onValueChange = { name = it },
             label = strings.fieldName,
+        )
+        EmojiPickerField(
+            icon = icon,
+            onIconChange = { icon = it },
+            label = strings.emojiChoose,
         )
         LumeCardTextField(
             value = description,

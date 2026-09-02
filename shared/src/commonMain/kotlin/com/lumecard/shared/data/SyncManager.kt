@@ -403,7 +403,7 @@ class SyncManager(
 class SyncException(message: String) : Exception(message)
 
 fun ExportKnowledgeBase.toKnowledgeBase() = com.lumecard.shared.model.KnowledgeBase(
-    id = id, name = name, description = description,
+    id = id, name = name, description = description, icon = icon,
     createdAt = try { kotlin.time.Instant.parse(createdAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
     updatedAt = try { kotlin.time.Instant.parse(updatedAt) } catch (_: Exception) { kotlin.time.Clock.System.now() },
     version = version,
@@ -458,7 +458,7 @@ fun ExportLearningPlan.toLearningPlan() = com.lumecard.shared.model.LearningPlan
 )
 
 fun com.lumecard.shared.model.KnowledgeBase.toExport() = ExportKnowledgeBase(
-    id = id, name = name, description = description,
+    id = id, name = name, description = description, icon = icon,
     createdAt = createdAt.toString(), updatedAt = updatedAt.toString(),
     version = version, deletedAt = deletedAt?.toString(),
     syncedAt = syncedAt?.toString()

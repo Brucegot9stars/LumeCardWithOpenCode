@@ -17,6 +17,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.shared.model.Deck
 import kotlinx.coroutines.launch
+import com.lumecard.app.ui.components.EmojiPickerField
 import com.lumecard.app.ui.components.LumeCardDialog
 import com.lumecard.app.ui.components.LumeCardTextField
 import com.lumecard.app.ui.components.LumeCardTopBar
@@ -136,18 +137,20 @@ class DeckManagementScreen : Screen {
         if (showCreateDialog) {
             var name by remember { mutableStateOf("") }
             var description by remember { mutableStateOf("") }
+            var icon by remember { mutableStateOf(com.lumecard.shared.model.Deck.icons[0]) }
             LumeCardDialog(
                 title = strings.deckCreate,
                 onDismiss = { showCreateDialog = false },
                 onConfirm = {
                     if (name.isNotBlank()) {
-                        scope.launch { viewModel.createDeck(name, description.ifBlank { null }); showCreateDialog = false }
+                        scope.launch { viewModel.createDeck(name, description.ifBlank { null }, icon); showCreateDialog = false }
                     }
                 },
                 confirmText = strings.actionCreate,
                 confirmEnabled = name.isNotBlank(),
             ) {
                 LumeCardTextField(value = name, onValueChange = { name = it }, label = strings.deckName)
+                EmojiPickerField(icon = icon, onIconChange = { icon = it }, label = strings.emojiChoose)
                 LumeCardTextField(value = description, onValueChange = { description = it }, label = strings.deckDescPlaceholder, singleLine = false)
             }
         }
@@ -156,18 +159,20 @@ class DeckManagementScreen : Screen {
         if (editingDeck != null) {
             var name by remember(editingDeck) { mutableStateOf(editingDeck!!.name) }
             var description by remember(editingDeck) { mutableStateOf(editingDeck!!.description ?: "") }
+            var icon by remember(editingDeck) { mutableStateOf(editingDeck!!.icon) }
             LumeCardDialog(
                 title = strings.deckEdit,
                 onDismiss = { editingDeck = null },
                 onConfirm = {
                     if (name.isNotBlank()) {
-                        scope.launch { viewModel.updateDeck(editingDeck!!.id, name, description.ifBlank { null }); editingDeck = null }
+                        scope.launch { viewModel.updateDeck(editingDeck!!.id, name, description.ifBlank { null }, icon); editingDeck = null }
                     }
                 },
                 confirmText = strings.actionSave,
                 confirmEnabled = name.isNotBlank(),
             ) {
                 LumeCardTextField(value = name, onValueChange = { name = it }, label = strings.deckName)
+                EmojiPickerField(icon = icon, onIconChange = { icon = it }, label = strings.emojiChoose)
                 LumeCardTextField(value = description, onValueChange = { description = it }, label = strings.deckDescPlaceholder, singleLine = false)
             }
         }
