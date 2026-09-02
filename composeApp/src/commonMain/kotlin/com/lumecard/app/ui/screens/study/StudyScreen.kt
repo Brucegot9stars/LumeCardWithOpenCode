@@ -6,6 +6,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -446,7 +447,18 @@ class StudyScreen(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .padding(horizontal = 20.dp, vertical = 12.dp)
-                                        .then(if (vCenter) Modifier else Modifier.verticalScroll(rememberScrollState())),
+                                        .then(if (vCenter) Modifier else Modifier.verticalScroll(rememberScrollState()))
+                                        .then(
+                                            if (settingsState.answerDisplayMode == AnswerDisplayMode.FLIP
+                                                && currentCard.type != CardType.MULTIPLE_CHOICE
+                                            ) {
+                                                Modifier.pointerInput(currentCard.id) {
+                                                    detectTapGestures {
+                                                        viewModel.flipCard()
+                                                    }
+                                                }
+                                            } else Modifier
+                                        ),
                                     contentAlignment = if (vCenter) Alignment.Center else Alignment.TopStart
                                 ) {
                                     val onConfirmChoice: (() -> Unit)? = remember(currentCard) {
