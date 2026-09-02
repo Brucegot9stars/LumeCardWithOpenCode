@@ -4,15 +4,42 @@ import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.lumecard.shared.database.LumeCardDatabase
 import java.io.File
 
-private fun userHome(): String = System.getenv("USERPROFILE") ?: System.getenv("HOME") ?: System.getProperty("user.home")
+private fun log(msg: String) = System.err.println("[LumeCard] $msg")
+
+private fun resolveAppDir(): File {
+    // Primary: user home ~/.lumecard
+    val userHome = System.getenv("USERPROFILE") ?: System.getenv("HOME") ?: System.getProperty("user.home")
+    if (userHome != null) {
+        val primary = File(userHome, ".lumecard")
+        try {
+            if (!primary.exists()) primary.mkdirs()
+            // Write-test: create and delete a temp file to confirm the path is usable
+            val probe = File(primary, ".probe")
+            probe.createNewFile()
+            probe.delete()
+            return primary
+        } catch (e: Exception) {
+            log("WARNING: Cannot use $primary (${e.message}), falling back to app-local directory")
+        }
+    }
+    // Fallback: directory next to the running JAR (portable mode)
+    val codeLocation = DatabaseDriverFactory::class.java.protectionDomain?.codeSource?.location?.toURI()
+    val appDir = if (codeLocation != null) {
+        File(File(codeLocation).parentFile, ".lumecard")
+    } else {
+        File(System.getProperty("java.io.tmpdir"), "lumecard")
+    }
+    if (!appDir.exists()) appDir.mkdirs()
+    log("Using fallback app directory: ${appDir.absolutePath}")
+    return appDir
+}
 
 actual class DatabaseDriverFactory {
     actual fun createDriver(): app.cash.sqldelight.db.SqlDriver {
-        val appDir = File(userHome(), ".lumecard")
-        if (!appDir.exists()) {
-            appDir.mkdirs()
-        }
+        val appDir = resolveAppDir()
         val dbFile = File(appDir, "lumecard.db")
+        log("Database path: ${dbFile.absolutePath}")
+
         val driver = JdbcSqliteDriver("jdbc:sqlite:${dbFile.absolutePath}")
         DatabaseDriverHolder.driver = driver
         driver.execute(null, "PRAGMA foreign_keys = ON", 0, null)
