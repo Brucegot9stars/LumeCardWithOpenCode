@@ -107,7 +107,15 @@ private fun RichEditField(initialHtml: String, onHtmlChange: (String) -> Unit) {
     // 编辑变化 → 防抖导出 HTML
     LaunchedEffect(state.annotatedString) {
         delay(200)
-        onHtmlChange(state.toHtml())
+        val html = state.toHtml()
+        // Strip empty HTML artifacts (e.g. "<p></p>", "<p><br></p>") so that
+        // switching away from RICH_TEXT type doesn't leave ghost tags in the
+        // front/back fields.
+        val stripped = html
+            .replace(Regex("<p>\\s*</p>"), "")
+            .replace(Regex("<p><br\\s*/?>\\s*</p>"), "")
+            .trim()
+        onHtmlChange(stripped)
     }
 
     val currentStyle = state.currentSpanStyle
