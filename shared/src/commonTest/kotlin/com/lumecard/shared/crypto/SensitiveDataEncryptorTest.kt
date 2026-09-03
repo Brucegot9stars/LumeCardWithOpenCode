@@ -46,8 +46,14 @@ class SensitiveDataEncryptorTest {
         val plain = "sensitive-data"
         val encrypted = SensitiveDataEncryptor(password).encrypt(plain)
         val data = Json.decodeFromString<EncryptedData>(encrypted)
+        // Flip the 3rd character so the ciphertext is guaranteed to differ
+        // (tampering the last character may be a no-op if it happens to be 'A').
+        val charIndex = 2
+        val flipped = data.cipherText[charIndex].let {
+            if (it == 'A') 'B' else 'A'
+        }
         val tampered = data.copy(
-            cipherText = data.cipherText.dropLast(1) + "A"
+            cipherText = data.cipherText.substring(0, charIndex) + flipped + data.cipherText.substring(charIndex + 1)
         )
         val tamperedJson = Json.encodeToString(tampered)
         assertFailsWith<SecurityException> {
