@@ -1,5 +1,6 @@
 package com.lumecard.shared.database
 
+import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.lumecard.shared.database.LumeCardDatabase
 import java.io.File
@@ -45,7 +46,7 @@ actual class DatabaseDriverFactory {
         driver.execute(null, "PRAGMA foreign_keys = ON", 0, null)
         val targetVersion = LumeCardDatabase.Schema.version
         if (dbFile.exists()) {
-            val rawVersion = driver.execute(null, "PRAGMA user_version", 0, null).value as Long
+            val rawVersion = readUserVersion(driver)
             val currentVersion = if (rawVersion == 0L) 1L else rawVersion
             if (currentVersion < targetVersion) {
                 var migrated = false
@@ -74,6 +75,30 @@ actual class DatabaseDriverFactory {
     }
 }
 
+/**
+ * Read PRAGMA user_version via executeQuery (execute() returns the affected-row
+ * count for non-query statements, which is always 0 for a SELECT-like pragma).
+ */
+private fun readUserVersion(driver: JdbcSqliteDriver): Long {
+    var result = 0L
+    try {
+        val queryResult = driver.executeQuery(
+            null,
+            "PRAGMA user_version",
+            { cursor ->
+                if (cursor.next().value) QueryResult.Value(cursor.getLong(0))
+                else QueryResult.Value(0L)
+            },
+            0,
+            null
+        )
+        result = queryResult.value ?: 0L
+    } catch (e: Exception) {
+        log("WARNING: failed to read user_version: ${e.message}")
+    }
+    return result
+}
+
 actual fun upgradeToFts5(driver: app.cash.sqldelight.db.SqlDriver) {
     try {
         val tableExists = driver.execute(null, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='CardFTS'", 0, null)
@@ -90,42 +115,28 @@ actual fun upgradeToFts5(driver: app.cash.sqldelight.db.SqlDriver) {
 
 /**
  * Manual migration fallback when SQLDelight Schema.migrate() fails.
- * Applies known migrations one-by-one, skipping columns that already exist.
+ * Tries each ALTER TABLE; "duplicate column name" means already applied (skip).
  */
 private fun applyManualMigrations(driver: JdbcSqliteDriver, from: Long, to: Long): Boolean {
+    val migrations = mutableListOf<Pair<Long, String>>()
     if (from < 2 && to >= 2) {
-        if (!columnExists(driver, "Card", "title")) {
-            try {
-                driver.execute(null, "ALTER TABLE Card ADD COLUMN title TEXT", 0, null)
-                log("Manual migration 1→2: added Card.title")
-            } catch (e: Exception) {
-                log("WARNING: migration 1→2 failed: ${e.message}")
-                return false
-            }
-        }
+        migrations.add(2L to "ALTER TABLE Card ADD COLUMN title TEXT")
     }
     if (from < 3 && to >= 3) {
-        if (!columnExists(driver, "KnowledgeBase", "icon")) {
-            try {
-                driver.execute(null, "ALTER TABLE KnowledgeBase ADD COLUMN icon TEXT DEFAULT '📁'", 0, null)
-                log("Manual migration 2→3: added KnowledgeBase.icon")
-            } catch (e: Exception) {
-                log("WARNING: migration 2→3 failed: ${e.message}")
+        migrations.add(3L to "ALTER TABLE KnowledgeBase ADD COLUMN icon TEXT DEFAULT '📁'")
+    }
+    for ((targetVer, sql) in migrations) {
+        try {
+            driver.execute(null, sql, 0, null)
+            log("Manual migration → v$targetVer: applied")
+        } catch (e: Exception) {
+            if (e.message?.contains("duplicate column") == true) {
+                log("Manual migration → v$targetVer: column already exists, skipping")
+            } else {
+                log("WARNING: manual migration → v$targetVer failed: ${e.message}")
                 return false
             }
         }
     }
     return true
-}
-
-private fun columnExists(driver: JdbcSqliteDriver, table: String, column: String): Boolean {
-    val rs = driver.execute(null, "PRAGMA table_info($table)", 0, null).value as java.sql.ResultSet
-    while (rs.next()) {
-        if (rs.getString("name") == column) {
-            rs.close()
-            return true
-        }
-    }
-    rs.close()
-    return false
 }
