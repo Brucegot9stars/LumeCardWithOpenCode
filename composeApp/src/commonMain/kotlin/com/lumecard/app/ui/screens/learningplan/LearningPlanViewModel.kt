@@ -5,6 +5,7 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import com.lumecard.shared.model.*
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
+import com.lumecard.shared.repository.KnowledgeBaseRepository
 import com.lumecard.shared.repository.LearningPlanRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,6 +18,7 @@ import com.lumecard.shared.data.generateId
 
 class LearningPlanViewModel(
     private val planRepository: LearningPlanRepository,
+    private val knowledgeBaseRepository: KnowledgeBaseRepository,
     private val deckRepository: DeckRepository,
     private val cardRepository: CardRepository
 ) : ScreenModel {
@@ -24,11 +26,35 @@ class LearningPlanViewModel(
     private val _plans = MutableStateFlow<List<LearningPlan>>(emptyList())
     val plans: StateFlow<List<LearningPlan>> = _plans.asStateFlow()
 
+    private val _knowledgeBases = MutableStateFlow<List<KnowledgeBase>>(emptyList())
+    val knowledgeBases: StateFlow<List<KnowledgeBase>> = _knowledgeBases.asStateFlow()
+
+    private val _decks = MutableStateFlow<List<Deck>>(emptyList())
+    val decks: StateFlow<List<Deck>> = _decks.asStateFlow()
+
+    private val _cards = MutableStateFlow<List<Card>>(emptyList())
+    val cards: StateFlow<List<Card>> = _cards.asStateFlow()
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     init {
         loadPlans()
+        loadSelectionData()
+    }
+
+    fun loadSelectionData() {
+        screenModelScope.launch {
+            combine(
+                knowledgeBaseRepository.getAll(),
+                deckRepository.getAll(),
+                cardRepository.getAll()
+            ) { kbs, decks, cards -> Triple(kbs, decks, cards) }.collect { (kbs, decks, cards) ->
+                _knowledgeBases.value = kbs.filter { it.deletedAt == null }
+                _decks.value = decks.filter { it.deletedAt == null }
+                _cards.value = cards.filter { it.deletedAt == null }
+            }
+        }
     }
 
     suspend fun getPlanById(id: String): com.lumecard.shared.model.LearningPlan? {

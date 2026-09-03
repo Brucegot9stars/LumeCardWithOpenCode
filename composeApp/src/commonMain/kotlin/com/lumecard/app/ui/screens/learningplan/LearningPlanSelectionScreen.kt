@@ -23,15 +23,12 @@ import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.i18n.I18nManager
-import com.lumecard.app.ui.components.LumeCardDialog
-import com.lumecard.app.ui.components.LumeCardTextField
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.screens.study.CardsStudyMode
 import com.lumecard.app.ui.screens.study.StudyModeScreen
 import com.lumecard.app.ui.screens.study.StudyScreen
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.shared.model.PlanStatus
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
@@ -51,13 +48,7 @@ class LearningPlanSelectionScreen : Screen {
         val scope = rememberCoroutineScope()
 
         val snackbarHostState = remember { SnackbarHostState() }
-        var showCreateDialog by remember { mutableStateOf(false) }
-        var editPlanId by remember { mutableStateOf<String?>(null) }
-        var dialogName by remember { mutableStateOf("") }
-        var dialogDesc by remember { mutableStateOf("") }
         var deletePlanId by remember { mutableStateOf<String?>(null) }
-        var renamePlanId by remember { mutableStateOf<String?>(null) }
-        var renameText by remember { mutableStateOf("") }
         var errorMsg by remember { mutableStateOf<String?>(null) }
 
         LaunchedEffect(Unit) {
@@ -112,10 +103,7 @@ class LearningPlanSelectionScreen : Screen {
                     onBack = { navigator.pop() },
                     action = {
                         IconButton(onClick = {
-                            dialogName = ""
-                            dialogDesc = ""
-                            editPlanId = null
-                            showCreateDialog = true
+                            navigator.push(LearningPlanScreen())
                         }) {
                             Icon(Icons.Default.Add, contentDescription = strings.planCreate)
                         }
@@ -210,7 +198,7 @@ class LearningPlanSelectionScreen : Screen {
                                         }
                                     }
                                     Spacer(Modifier.width(spacing.xs))
-                                    IconButton(onClick = { renameText = plan.name; renamePlanId = plan.id }, modifier = Modifier.size(28.dp)) {
+                                    IconButton(onClick = { navigator.push(LearningPlanScreen(editPlanId = plan.id)) }, modifier = Modifier.size(28.dp)) {
                                         Icon(Icons.Default.Edit, contentDescription = strings.actionEdit, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                                     }
                                     IconButton(onClick = { deletePlanId = plan.id }, modifier = Modifier.size(28.dp)) {
@@ -326,44 +314,6 @@ class LearningPlanSelectionScreen : Screen {
             }
         }
 
-        // Create / Edit dialog
-        if (showCreateDialog) {
-            LumeCardDialog(
-                title = if (editPlanId != null) strings.planEdit else strings.planCreate,
-                onDismiss = { showCreateDialog = false },
-                onConfirm = {
-                    scope.launch {
-                        val saved = try {
-                            if (editPlanId != null) {
-                                val existing = viewModel.plans.value.find { it.id == editPlanId }
-                                if (existing != null) {
-                                    viewModel.updatePlan(editPlanId!!, dialogName, dialogDesc.ifBlank { null }, existing.knowledgeBaseIds, existing.deckIds, existing.cardIds, existing.isDefault)
-                                }
-                            } else {
-                                viewModel.createPlan(dialogName, dialogDesc.ifBlank { null }, emptyList(), emptyList(), emptyList())
-                            }
-                            true
-                        } catch (_: Exception) { false }
-                        showCreateDialog = false
-                        val job = launch {
-                            snackbarHostState.showSnackbar(
-                                message = if (saved) (if (editPlanId != null) strings.planUpdated else strings.planCreated) else strings.errorDesc,
-                                duration = SnackbarDuration.Indefinite
-                            )
-                        }
-                        delay(1000)
-                        job.cancel()
-                        snackbarHostState.currentSnackbarData?.dismiss()
-                    }
-                },
-                confirmText = strings.actionSave,
-                confirmEnabled = dialogName.isNotBlank(),
-            ) {
-                LumeCardTextField(value = dialogName, onValueChange = { dialogName = it }, label = strings.fieldName)
-                LumeCardTextField(value = dialogDesc, onValueChange = { dialogDesc = it }, label = strings.fieldDescription, singleLine = false)
-            }
-        }
-
         // Delete confirmation dialog
         if (deletePlanId != null) {
             AlertDialog(
@@ -385,50 +335,6 @@ class LearningPlanSelectionScreen : Screen {
                 },
                 dismissButton = {
                     OutlinedButton(onClick = { deletePlanId = null }) {
-                        Text(strings.actionCancel)
-                    }
-                }
-            )
-        }
-
-        // Rename dialog
-        if (renamePlanId != null) {
-            AlertDialog(
-                onDismissRequest = { renamePlanId = null },
-                title = { Text(strings.planEdit) },
-                text = {
-                    OutlinedTextField(
-                        value = renameText,
-                        onValueChange = { renameText = it },
-                        label = { Text(strings.fieldName) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                val existing = viewModel.plans.value.find { it.id == renamePlanId }
-                                if (existing != null) {
-                                    viewModel.updatePlan(renamePlanId!!, renameText, existing.description, existing.knowledgeBaseIds, existing.deckIds, existing.cardIds, existing.isDefault)
-                                }
-                                val job = launch {
-                                    snackbarHostState.showSnackbar(strings.planUpdated, duration = SnackbarDuration.Indefinite)
-                                }
-                                delay(1000)
-                                job.cancel()
-                                snackbarHostState.currentSnackbarData?.dismiss()
-                                renamePlanId = null
-                            }
-                        },
-                        enabled = renameText.isNotBlank(),
-                    ) {
-                        Text(strings.actionSave)
-                    }
-                },
-                dismissButton = {
-                    OutlinedButton(onClick = { renamePlanId = null }) {
                         Text(strings.actionCancel)
                     }
                 }

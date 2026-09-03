@@ -42,7 +42,7 @@ val appModule = module {
     factory { SplashQuoteViewModel(get()) }
     factory { QuoteSettingsViewModel(get(), get(), get()) }
     factory { KnowledgeBaseViewModel(get(), get()) }
-    factory { LearningPlanViewModel(get(), get(), get()) }
+    factory { LearningPlanViewModel(get(), get(), get(), get()) }
     factory { WarehouseViewModel(get(), get(), get(), get()) }
 }
 

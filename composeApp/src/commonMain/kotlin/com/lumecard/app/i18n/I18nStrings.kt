@@ -508,6 +508,9 @@ interface I18nStrings {
     val planAllDoneDesc: String
     val planReviewAgain: String
     fun planCardsCount(count: Int): String
+    val planSelectCardsTitle: String
+    val planNoDecksInKb: String
+    val planNoCardsInDeck: String
 
     val fieldName: String
     val fieldDescription: String
