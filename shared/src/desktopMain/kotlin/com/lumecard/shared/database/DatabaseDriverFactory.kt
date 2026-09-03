@@ -48,13 +48,21 @@ actual class DatabaseDriverFactory {
             val rawVersion = driver.execute(null, "PRAGMA user_version", 0, null).value as Long
             val currentVersion = if (rawVersion == 0L) 1L else rawVersion
             if (currentVersion < targetVersion) {
+                var migrated = false
                 try {
                     LumeCardDatabase.Schema.migrate(driver, currentVersion, targetVersion)
-                } catch (_: Exception) {
-                    // Migration may fail if column already exists from a partial previous run.
-                    // The schema is already correct, so we just set the version and continue.
+                    migrated = true
+                } catch (e: Exception) {
+                    log("WARNING: Schema.migrate($currentVersion → $targetVersion) failed: ${e.message}")
+                    // Manual fallback: apply known migrations one-by-one
+                    migrated = applyManualMigrations(driver, currentVersion, targetVersion)
                 }
-                driver.execute(null, "PRAGMA user_version = $targetVersion", 0, null)
+                if (migrated) {
+                    driver.execute(null, "PRAGMA user_version = $targetVersion", 0, null)
+                    log("Schema migrated to version $targetVersion")
+                } else {
+                    log("ERROR: Migration incomplete, user_version NOT updated — will retry next launch")
+                }
             }
         } else {
             LumeCardDatabase.Schema.create(driver)
@@ -78,4 +86,46 @@ actual fun upgradeToFts5(driver: app.cash.sqldelight.db.SqlDriver) {
         driver.execute(null, "CREATE TABLE IF NOT EXISTS CardFTS(card_id TEXT NOT NULL, front TEXT NOT NULL, back TEXT NOT NULL, tags TEXT NOT NULL)", 0, null)
         driver.execute(null, "INSERT OR IGNORE INTO CardFTS(card_id, front, back, tags) SELECT id, front, back, tags FROM Card WHERE deleted_at IS NULL", 0, null)
     }
+}
+
+/**
+ * Manual migration fallback when SQLDelight Schema.migrate() fails.
+ * Applies known migrations one-by-one, skipping columns that already exist.
+ */
+private fun applyManualMigrations(driver: JdbcSqliteDriver, from: Long, to: Long): Boolean {
+    if (from < 2 && to >= 2) {
+        if (!columnExists(driver, "Card", "title")) {
+            try {
+                driver.execute(null, "ALTER TABLE Card ADD COLUMN title TEXT", 0, null)
+                log("Manual migration 1→2: added Card.title")
+            } catch (e: Exception) {
+                log("WARNING: migration 1→2 failed: ${e.message}")
+                return false
+            }
+        }
+    }
+    if (from < 3 && to >= 3) {
+        if (!columnExists(driver, "KnowledgeBase", "icon")) {
+            try {
+                driver.execute(null, "ALTER TABLE KnowledgeBase ADD COLUMN icon TEXT DEFAULT '📁'", 0, null)
+                log("Manual migration 2→3: added KnowledgeBase.icon")
+            } catch (e: Exception) {
+                log("WARNING: migration 2→3 failed: ${e.message}")
+                return false
+            }
+        }
+    }
+    return true
+}
+
+private fun columnExists(driver: JdbcSqliteDriver, table: String, column: String): Boolean {
+    val rs = driver.execute(null, "PRAGMA table_info($table)", 0, null).value as java.sql.ResultSet
+    while (rs.next()) {
+        if (rs.getString("name") == column) {
+            rs.close()
+            return true
+        }
+    }
+    rs.close()
+    return false
 }
