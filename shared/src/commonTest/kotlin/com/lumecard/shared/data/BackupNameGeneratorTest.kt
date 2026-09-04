@@ -1,6 +1,7 @@
 package com.lumecard.shared.data
 
 import kotlin.test.Test
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class BackupNameGeneratorTest {
@@ -9,9 +10,7 @@ class BackupNameGeneratorTest {
     fun `generateName produces full backup name format`() {
         val generator = BackupNameGenerator()
         val name = generator.generateName("上行", "D")
-        // <fun-name>-<direction>-<type>-<yyyymmdd-HHMMSS>
         assertTrue(name.contains("-上行-D-"), "expected '-上行-D-' in: $name")
-        // timestamp suffix: -YYYYMMDD-HHMMSS
         assertTrue(name.matches(Regex(".*-\\d{8}-\\d{6}$")), "timestamp suffix malformed: $name")
     }
 
@@ -28,5 +27,15 @@ class BackupNameGeneratorTest {
         val a = generator.generateName("上行", "D")
         val b = generator.generateName("上行", "D")
         assertTrue(a != b, "names should differ (randomized), got both '$a'")
+    }
+
+    @Test
+    fun `no double 的 in generated fun names`() {
+        val generator = BackupNameGenerator()
+        repeat(200) {
+            val name = generator.generateName("上行", "D")
+            val funPart = name.substringBefore("-上行-")
+            assertFalse(funPart.contains("的的"), "double 的 found in: $name")
+        }
     }
 }
