@@ -339,6 +339,9 @@ interface I18nStrings {
     val syncRestoreHistory: String
     val syncNoHistoryAvailable: String
     fun syncHistoryEntryFormat(timestamp: String, deviceId: String): String
+    val syncRestoreData: String
+    val syncRestoreConfig: String
+    val syncBackupNameFallback: String
     fun syncIntervalMinutes(minutes: Int): String
     val webdavProviderLabel: String
     val webdavProviderCustom: String

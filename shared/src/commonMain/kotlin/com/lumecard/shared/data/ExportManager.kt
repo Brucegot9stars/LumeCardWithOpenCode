@@ -134,7 +134,8 @@ data class ExportReviewLog(
 data class SyncHistoryEntry(
     val timestamp: String,
     val deviceId: String,
-    val filename: String
+    val filename: String,
+    val name: String? = null
 )
 
 /** Index of all sync snapshots on the remote. */

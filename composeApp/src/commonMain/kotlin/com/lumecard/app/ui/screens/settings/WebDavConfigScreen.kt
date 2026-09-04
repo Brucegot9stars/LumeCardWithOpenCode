@@ -127,7 +127,6 @@ class WebDavConfigScreen : Screen {
         var showForceDownloadConfigConfirm by remember { mutableStateOf(false) }
         var showRestoreHistory by remember { mutableStateOf(false) }
         var historyEntries by remember { mutableStateOf<List<SyncHistoryEntry>>(emptyList()) }
-        var restoreHistoryTarget by remember { mutableStateOf<SyncHistoryEntry?>(null) }
         var autoSyncEnabled by remember { mutableStateOf(false) }
         var autoSyncInterval by remember { mutableStateOf(30) }
         var showIntervalDropdown by remember { mutableStateOf(false) }
@@ -773,6 +772,45 @@ class WebDavConfigScreen : Screen {
             }
         }
 
+        // Restore a history entry: restore only data (snapshot merge) or only config (remote config + fonts).
+        val restoreHistory: (SyncHistoryEntry, Boolean) -> Unit = { entry, restoreData ->
+            showRestoreHistory = false
+            scope.launch {
+                isSyncing = true
+                syncStatus = strings.settingsSyncing
+                try {
+                    val config = defaultConfig ?: return@launch
+                    val result = withContext(Dispatchers.IO) {
+                        if (restoreData) {
+                            val remoteResult = syncManager.downloadSnapshot(config, entry.filename)
+                            var restoredDecks = 0
+                            if (remoteResult.isSuccess) {
+                                val remote = exportManager.importData(remoteResult.getOrThrow())
+                                if (remote != null) {
+                                    restoredDecks = remote.decks.size
+                                    writeMergedToLocal(remote, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository)
+                                }
+                            }
+                            webDavConfigManager.updateLastSync(config.id)
+                            restoredDecks
+                        } else {
+                            restoreSettingsAndFonts(config, syncManager, settingsRepository)
+                            webDavConfigManager.updateLastSync(config.id)
+                            0
+                        }
+                    }
+                    syncStatus = strings.settingsSyncSuccess(result)
+                    snackbarHostState.showSnackbar(strings.settingsSyncSuccess(result))
+                    reloadConfigs()
+                } catch (e: Exception) {
+                    syncStatus = strings.settingsSyncError(e.message ?: strings.errorUnknown)
+                    snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: strings.errorUnknown))
+                } finally {
+                    isSyncing = false
+                }
+            }
+        }
+
         // Delete confirm dialog
         if (deleteConfirmId != null) {
             AlertDialog(
@@ -810,50 +848,48 @@ class WebDavConfigScreen : Screen {
                     } else {
                         Column {
                             historyEntries.forEach { entry ->
-                                TextButton(
-                                    onClick = {
-                                        restoreHistoryTarget = entry
-                                        showRestoreHistory = false
-                                        scope.launch {
-                                            isSyncing = true
-                                            syncStatus = strings.settingsSyncing
-                                            try {
-                                                val config = defaultConfig ?: return@launch
-                                                    val result = withContext(Dispatchers.IO) {
-                                                        val remoteResult = syncManager.downloadSnapshot(config, entry.filename)
-                                                        var restoredDecks = 0
-                                                        if (remoteResult.isSuccess) {
-                                                            val remote = exportManager.importData(remoteResult.getOrThrow())
-                                                            if (remote != null) {
-                                                                restoredDecks = remote.decks.size
-                                                                writeMergedToLocal(remote, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository)
-                                                            }
-                                                        }
-                                                        restoreSettingsAndFonts(config, syncManager, settingsRepository)
-                                                        webDavConfigManager.updateLastSync(config.id)
-                                                        restoredDecks
-                                        }
-                                        syncStatus = strings.settingsSyncSuccess(result)
-                                        snackbarHostState.showSnackbar(strings.settingsSyncSuccess(result))
-                                                reloadConfigs()
-                                            } catch (e: Exception) {
-                                                syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
-                                                snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: strings.errorUnknown))
-                                            } finally {
-                                                isSyncing = false
+                                val displayName = entry.name ?: strings.syncHistoryEntryFormat(entry.timestamp, entry.deviceId)
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                    ),
+                                ) {
+                                    Column(modifier = Modifier.fillMaxWidth().padding(10.dp)) {
+                                        Text(
+                                            displayName,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Medium,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                        Spacer(Modifier.height(6.dp))
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        ) {
+                                            OutlinedButton(
+                                                onClick = { restoreHistory(entry, true) },
+                                                interactionSource = null,
+                                                modifier = Modifier.weight(1f),
+                                            ) {
+                                                Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(16.dp))
+                                                Spacer(Modifier.width(4.dp))
+                                                Text(strings.syncRestoreData, style = MaterialTheme.typography.labelSmall)
+                                            }
+                                            OutlinedButton(
+                                                onClick = { restoreHistory(entry, false) },
+                                                interactionSource = null,
+                                                modifier = Modifier.weight(1f),
+                                            ) {
+                                                Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
+                                                Spacer(Modifier.width(4.dp))
+                                                Text(strings.syncRestoreConfig, style = MaterialTheme.typography.labelSmall)
                                             }
                                         }
-                                    },
-                                    interactionSource = null,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(
-                                        strings.syncHistoryEntryFormat(entry.timestamp, entry.deviceId),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                                    }
                                 }
+                                Spacer(Modifier.height(6.dp))
                             }
                         }
                     }
@@ -1066,7 +1102,7 @@ private suspend fun forceUpload(
     mediaManager: MediaManager,
     splashQuoteManager: SplashQuoteManager? = null,
 ): Int {
-    syncManager.archiveCurrentSnapshot(config)
+    syncManager.archiveCurrentSnapshot(config, direction = "上行", type = "D")
 
     val allKbs = kbRepository.getAll().first()
     val allDecks = deckRepository.getAll().first()
@@ -1105,7 +1141,7 @@ private suspend fun forceDownload(
     mediaManager: MediaManager,
     splashQuoteManager: SplashQuoteManager? = null,
 ): Int {
-    syncManager.archiveCurrentSnapshot(config)
+    syncManager.archiveCurrentSnapshot(config, direction = "下行", type = "D")
 
     val remoteResult = syncManager.downloadData(config)
     if (remoteResult.isFailure) throw Exception("No remote data found")

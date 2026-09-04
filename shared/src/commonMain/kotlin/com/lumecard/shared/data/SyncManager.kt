@@ -296,7 +296,11 @@ class SyncManager(
     }
 
     /** Download the current remote data.json, archive it to history/ with timestamp + deviceId. */
-    suspend fun archiveCurrentSnapshot(config: WebDavConfig): Result<SyncHistoryEntry?> {
+    suspend fun archiveCurrentSnapshot(
+        config: WebDavConfig,
+        direction: String = "上行",
+        type: String = "D"
+    ): Result<SyncHistoryEntry?> {
         return try {
             val currentResult = downloadData(config)
             if (currentResult.isFailure) return Result.success(null)
@@ -318,10 +322,12 @@ class SyncManager(
                 setBody(currentJson)
             }
             if (response.status.isSuccess()) {
+                val name = BackupNameGenerator().generateName(direction, type)
                 val entry = SyncHistoryEntry(
                     timestamp = Clock.System.now().toString(),
                     deviceId = deviceId,
-                    filename = filename
+                    filename = filename,
+                    name = name
                 )
                 updateHistoryIndex(config, entry)
                 Result.success(entry)
