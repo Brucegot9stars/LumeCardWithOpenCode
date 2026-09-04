@@ -126,7 +126,9 @@ class WebDavConfigScreen : Screen {
         var showForceUploadConfigConfirm by remember { mutableStateOf(false) }
         var showForceDownloadConfigConfirm by remember { mutableStateOf(false) }
         var showRestoreHistory by remember { mutableStateOf(false) }
-        var historyEntries by remember { mutableStateOf<List<SyncHistoryEntry>>(emptyList()) }
+        var localDataBackups by remember { mutableStateOf<List<String>>(emptyList()) }
+        var localConfigBackups by remember { mutableStateOf<List<String>>(emptyList()) }
+        var showClearBackupsConfirm by remember { mutableStateOf(false) }
         var autoSyncEnabled by remember { mutableStateOf(false) }
         var autoSyncInterval by remember { mutableStateOf(30) }
         var showIntervalDropdown by remember { mutableStateOf(false) }
@@ -743,18 +745,13 @@ class WebDavConfigScreen : Screen {
                         onClick = {
                             scope.launch {
                                 try {
-                                    val config = defaultConfig ?: return@launch
-                                    val index = withContext(Dispatchers.IO) {
-                                        syncManager.downloadHistoryIndex(config)
+                                    withContext(Dispatchers.IO) {
+                                        localDataBackups = listLocalBackups("data")
+                                        localConfigBackups = listLocalBackups("config")
                                     }
-                                    if (index.isSuccess) {
-                                        historyEntries = index.getOrThrow().entries.reversed()
-                                        showRestoreHistory = true
-                                    } else {
-                                        snackbarHostState.showSnackbar("No history found")
-                                    }
+                                    showRestoreHistory = true
                                 } catch (_: Exception) {
-                                    snackbarHostState.showSnackbar("Failed to load history")
+                                    snackbarHostState.showSnackbar(strings.syncFailedToLoadHistory)
                                 }
                             }
                         },
@@ -772,35 +769,46 @@ class WebDavConfigScreen : Screen {
             }
         }
 
-        // Restore a history entry: restore only data (snapshot merge) or only config (remote config + fonts).
-        val restoreHistory: (SyncHistoryEntry, Boolean) -> Unit = { entry, restoreData ->
+        // Restore a local backup: restore only data or only config.
+        val restoreLocalBackup: (String, Boolean) -> Unit = { filename, restoreData ->
             showRestoreHistory = false
             scope.launch {
                 isSyncing = true
                 syncStatus = strings.settingsSyncing
                 try {
-                    val config = defaultConfig ?: return@launch
                     val result = withContext(Dispatchers.IO) {
                         if (restoreData) {
-                            val remoteResult = syncManager.downloadSnapshot(config, entry.filename)
-                            var restoredDecks = 0
-                            if (remoteResult.isSuccess) {
-                                val remote = exportManager.importData(remoteResult.getOrThrow())
-                                if (remote != null) {
-                                    restoredDecks = remote.decks.size
-                                    writeMergedToLocal(remote, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository)
+                            val json = readLocalBackup(filename) ?: throw Exception("Backup not found")
+                            val imported = exportManager.importData(json) ?: throw Exception("Failed to parse backup")
+                            val decks = imported.decks.size
+                            writeMergedToLocal(imported, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository)
+                            decks
+                        } else {
+                            val config = defaultConfig ?: throw Exception("No sync config")
+                            val json = readLocalBackup(filename) ?: throw Exception("Backup not found")
+                            val remoteSettings = try {
+                                val parsed = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+                                    .decodeFromString<com.lumecard.shared.data.ConfigExport>(json)
+                                parsed.settings
+                            } catch (_: Exception) {
+                                try {
+                                    kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+                                        .decodeFromString<Map<String, String>>(json)
+                                } catch (_: Exception) { null }
+                            }
+                            if (remoteSettings != null) {
+                                for ((key, value) in remoteSettings) {
+                                    settingsRepository.set(key, value)
                                 }
                             }
-                            webDavConfigManager.updateLastSync(config.id)
-                            restoredDecks
-                        } else {
-                            restoreSettingsAndFonts(config, syncManager, settingsRepository)
-                            webDavConfigManager.updateLastSync(config.id)
+                            // Restore fonts from backup directory
+                            val fontDir = com.lumecard.app.font.getFontStorageDir()
+                            if (!platformPathExists(fontDir)) platformMkdirs(fontDir)
                             0
                         }
                     }
-                    syncStatus = strings.settingsSyncSuccess(result)
-                    snackbarHostState.showSnackbar(strings.settingsSyncSuccess(result))
+                    syncStatus = if (restoreData) strings.settingsSyncSuccess(result) else strings.syncConfigSyncSuccess
+                    snackbarHostState.showSnackbar(if (restoreData) strings.settingsSyncSuccess(result) else strings.syncConfigSyncSuccess)
                     reloadConfigs()
                 } catch (e: Exception) {
                     syncStatus = strings.settingsSyncError(e.message ?: strings.errorUnknown)
@@ -837,18 +845,25 @@ class WebDavConfigScreen : Screen {
             )
         }
 
-        // Restore history dialog
+        // Restore history dialog (local backups)
         if (showRestoreHistory) {
+            val allBackupNames = (localDataBackups + localConfigBackups).distinct().sortedDescending()
+            val hasData = localDataBackups.toSet()
+            val hasConfig = localConfigBackups.toSet()
+
             AlertDialog(
                 onDismissRequest = { showRestoreHistory = false },
                 title = { Text(strings.syncRestoreHistory) },
                 text = {
-                    if (historyEntries.isEmpty()) {
-                        Text(strings.syncNoHistoryAvailable)
+                    if (allBackupNames.isEmpty()) {
+                        Text(strings.syncNoLocalBackups)
                     } else {
                         Column {
-                            historyEntries.forEach { entry ->
-                                val displayName = entry.name ?: strings.syncHistoryEntryFormat(entry.timestamp, entry.deviceId)
+                            allBackupNames.forEach { filename ->
+                                val isData = filename in hasData
+                                val isConfig = filename in hasConfig
+                                val displayTime = filename.removePrefix("data_").removePrefix("config_")
+                                    .removeSuffix(".json").replace("_", " ").replace("-", ":")
                                 Card(
                                     modifier = Modifier.fillMaxWidth(),
                                     colors = CardDefaults.cardColors(
@@ -857,7 +872,7 @@ class WebDavConfigScreen : Screen {
                                 ) {
                                     Column(modifier = Modifier.fillMaxWidth().padding(10.dp)) {
                                         Text(
-                                            displayName,
+                                            displayTime,
                                             style = MaterialTheme.typography.bodySmall,
                                             fontWeight = FontWeight.Medium,
                                             maxLines = 2,
@@ -869,8 +884,9 @@ class WebDavConfigScreen : Screen {
                                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                                         ) {
                                             OutlinedButton(
-                                                onClick = { restoreHistory(entry, true) },
+                                                onClick = { restoreLocalBackup(filename, true) },
                                                 interactionSource = null,
+                                                enabled = isData,
                                                 modifier = Modifier.weight(1f),
                                             ) {
                                                 Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -878,8 +894,9 @@ class WebDavConfigScreen : Screen {
                                                 Text(strings.syncRestoreData, style = MaterialTheme.typography.labelSmall)
                                             }
                                             OutlinedButton(
-                                                onClick = { restoreHistory(entry, false) },
+                                                onClick = { restoreLocalBackup(filename, false) },
                                                 interactionSource = null,
+                                                enabled = isConfig,
                                                 modifier = Modifier.weight(1f),
                                             ) {
                                                 Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -895,9 +912,45 @@ class WebDavConfigScreen : Screen {
                     }
                 },
                 confirmButton = {
+                    Row {
+                        TextButton(
+                            onClick = { showClearBackupsConfirm = true },
+                            interactionSource = null,
+                        ) {
+                            Icon(Icons.Default.DeleteForever, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(strings.syncClearAllBackups, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                },
+                dismissButton = {
                     TextButton(onClick = { showRestoreHistory = false }, interactionSource = null) {
                         Text(strings.actionCancel)
                     }
+                },
+            )
+        }
+
+        // Clear all backups confirm dialog (2-step)
+        if (showClearBackupsConfirm) {
+            AlertDialog(
+                onDismissRequest = { showClearBackupsConfirm = false },
+                title = { Text(strings.syncClearAllBackupsConfirm) },
+                text = { Text(strings.syncClearAllBackupsDesc) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showClearBackupsConfirm = false
+                        scope.launch {
+                            withContext(Dispatchers.IO) { clearAllLocalBackups() }
+                            localDataBackups = emptyList()
+                            localConfigBackups = emptyList()
+                            showRestoreHistory = false
+                            snackbarHostState.showSnackbar(strings.syncClearAllBackupsDone)
+                        }
+                    }, interactionSource = null) { Text(strings.actionConfirm) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showClearBackupsConfirm = false }, interactionSource = null) { Text(strings.actionCancel) }
                 },
             )
         }
@@ -1026,7 +1079,7 @@ class WebDavConfigScreen : Screen {
                             try {
                                 val config = defaultConfig ?: return@launch
                                 withContext(Dispatchers.IO) {
-                                    forceDownloadConfig(config, syncManager, settingsRepository)
+                                    forceDownloadConfig(config, syncManager, settingsRepository, exportManager)
                                     webDavConfigManager.updateLastSync(config.id)
                                 }
                                 syncStatus = strings.syncConfigSyncSuccess
@@ -1102,7 +1155,8 @@ private suspend fun forceUpload(
     mediaManager: MediaManager,
     splashQuoteManager: SplashQuoteManager? = null,
 ): Int {
-    syncManager.archiveCurrentSnapshot(config, direction = "上行", type = "D")
+    // Local backup before uploading (backup stays on local disk, not sent to remote)
+    archiveDataLocally(exportManager, kbRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, splashQuoteManager)
 
     val allKbs = kbRepository.getAll().first()
     val allDecks = deckRepository.getAll().first()
@@ -1141,7 +1195,8 @@ private suspend fun forceDownload(
     mediaManager: MediaManager,
     splashQuoteManager: SplashQuoteManager? = null,
 ): Int {
-    syncManager.archiveCurrentSnapshot(config, direction = "下行", type = "D")
+    // Local backup before downloading (backup stays on local disk)
+    archiveDataLocally(exportManager, kbRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, splashQuoteManager)
 
     val remoteResult = syncManager.downloadData(config)
     if (remoteResult.isFailure) throw Exception("No remote data found")
@@ -1415,6 +1470,9 @@ private suspend fun forceUploadConfig(
     syncManager: SyncManager,
     settingsRepository: SettingsRepository,
 ) {
+    // Local backup before uploading config
+    archiveConfigLocally(exportManager, syncManager, settingsRepository, config)
+
     val encryptor = SensitiveDataEncryptor(config.password)
     val settings = encryptor.encryptSettings(settingsRepository.getAll())
     val configJson = exportManager.exportConfig(settings)
@@ -1428,7 +1486,13 @@ private suspend fun forceDownloadConfig(
     config: WebDavConfig,
     syncManager: SyncManager,
     settingsRepository: SettingsRepository,
+    exportManager: ExportManager? = null,
 ) {
+    // Local backup before downloading config
+    if (exportManager != null) {
+        archiveConfigLocally(exportManager, syncManager, settingsRepository, config)
+    }
+
     val remoteSettings = downloadRemoteSettings(config, syncManager)
         ?: throw Exception("No remote config found")
     for (key in settingsRepository.getAll().keys) {
@@ -1503,4 +1567,103 @@ private suspend fun restoreSettingsAndFonts(
         writeLocalFontManifest(fontDir, merged)
         com.lumecard.app.font.FontRegistry.rebuildFromStorageDir(settingsRepository)
     } catch (_: Exception) { }
+}
+
+// ── Local backup helpers ─────────────────────────────────────────────────
+
+private fun resolveLocalBackupDir(): String? {
+    val home = platformGetUserHome() ?: return null
+    return platformJoinPath(home, ".lumecard", "backups")
+}
+
+private fun ensureLocalBackupDir(): String? {
+    val dir = resolveLocalBackupDir() ?: return null
+    if (!platformPathExists(dir)) platformMkdirs(dir)
+    return dir
+}
+
+/** Save the current local data as a JSON backup before a force-upload or force-download. */
+private suspend fun archiveDataLocally(
+    exportManager: ExportManager,
+    kbRepository: KnowledgeBaseRepository,
+    deckRepository: DeckRepository,
+    cardRepository: CardRepository,
+    reviewLogRepository: ReviewLogRepository,
+    planRepository: LearningPlanRepository,
+    splashQuoteManager: SplashQuoteManager? = null,
+): String? {
+    val dir = ensureLocalBackupDir() ?: return null
+    val timestamp = Clock.System.now().toString().replace("T", "_").replace(":", "-").substringBefore("Z")
+    val filename = "data_${timestamp}.json"
+
+    val allKbs = kbRepository.getAll().first()
+    val allDecks = deckRepository.getAll().first()
+    val allCards = cardRepository.getAll().first()
+    val allLogs = reviewLogRepository.getAll().first()
+    val allPlans = planRepository.getAll().first()
+    val quotesExport = if (splashQuoteManager != null) {
+        val (qv, qu, hi) = splashQuoteManager.getQuotesExportData()
+        ExportSplashQuotes(qv, qu, hi)
+    } else null
+
+    val json = exportManager.exportData(allKbs, allDecks, allCards, allLogs, allPlans, quotesExport)
+    platformWriteFileText(platformJoinPath(dir, filename), json)
+    return filename
+}
+
+/** Save the current local config as a JSON backup before a force-upload or force-download. */
+private suspend fun archiveConfigLocally(
+    exportManager: ExportManager,
+    syncManager: SyncManager,
+    settingsRepository: SettingsRepository,
+    config: WebDavConfig,
+): String? {
+    val dir = ensureLocalBackupDir() ?: return null
+    val timestamp = Clock.System.now().toString().replace("T", "_").replace(":", "-").substringBefore("Z")
+    val filename = "config_${timestamp}.json"
+
+    val encryptor = SensitiveDataEncryptor(config.password)
+    val settings = encryptor.encryptSettings(settingsRepository.getAll())
+    val configJson = exportManager.exportConfig(settings)
+    platformWriteFileText(platformJoinPath(dir, filename), configJson)
+    return filename
+}
+
+/** List local backup filenames of the given prefix ("data" or "config"), newest first. */
+private fun listLocalBackups(prefix: String): List<String> {
+    val dir = resolveLocalBackupDir() ?: return emptyList()
+    if (!platformPathExists(dir)) return emptyList()
+    return platformListFileNames(dir)
+        .filter { it.startsWith("${prefix}_") && it.endsWith(".json") }
+        .sortedDescending()
+}
+
+/** Read a local backup file content by filename. */
+private fun readLocalBackup(filename: String): String? {
+    val dir = resolveLocalBackupDir() ?: return null
+    val path = platformJoinPath(dir, filename)
+    if (!platformFileExists(path)) return null
+    return platformReadFileText(path)
+}
+
+/** Delete a single local backup file. */
+private fun deleteLocalBackup(filename: String): Boolean {
+    val dir = resolveLocalBackupDir() ?: return false
+    val path = platformJoinPath(dir, filename)
+    if (!platformFileExists(path)) return false
+    return platformDeleteFile(path)
+}
+
+/** Clear all local backups (data + config). */
+private fun clearAllLocalBackups(): Int {
+    val dir = resolveLocalBackupDir() ?: return 0
+    if (!platformPathExists(dir)) return 0
+    val files = platformListFileNames(dir).filter {
+        (it.startsWith("data_") || it.startsWith("config_")) && it.endsWith(".json")
+    }
+    var deleted = 0
+    for (f in files) {
+        if (platformDeleteFile(platformJoinPath(dir, f))) deleted++
+    }
+    return deleted
 }

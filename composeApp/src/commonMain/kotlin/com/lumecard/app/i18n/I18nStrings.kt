@@ -342,6 +342,11 @@ interface I18nStrings {
     val syncRestoreData: String
     val syncRestoreConfig: String
     val syncBackupNameFallback: String
+    val syncNoLocalBackups: String
+    val syncClearAllBackups: String
+    val syncClearAllBackupsConfirm: String
+    val syncClearAllBackupsDesc: String
+    val syncClearAllBackupsDone: String
     fun syncIntervalMinutes(minutes: Int): String
     val webdavProviderLabel: String
     val webdavProviderCustom: String
