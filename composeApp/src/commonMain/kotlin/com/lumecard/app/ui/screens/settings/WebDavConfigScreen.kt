@@ -54,6 +54,7 @@ import com.lumecard.shared.crypto.SensitiveDataEncryptor
 import com.lumecard.shared.crypto.SensitiveKeys
 import com.lumecard.shared.data.FontManifestEntry
 import com.lumecard.shared.data.SyncManager
+import com.lumecard.shared.data.BackupNameGenerator
 import com.lumecard.shared.data.downloadFontManifestEntries
 import com.lumecard.shared.data.generateUuid
 import com.lumecard.shared.data.mergeFontEntries
@@ -862,8 +863,9 @@ class WebDavConfigScreen : Screen {
                             allBackupNames.forEach { filename ->
                                 val isData = filename in hasData
                                 val isConfig = filename in hasConfig
-                                val displayTime = filename.removePrefix("data_").removePrefix("config_")
-                                    .removeSuffix(".json").replace("_", " ").replace("-", ":")
+                                val displayName = readBackupDisplayName(filename)
+                                    ?: filename.removePrefix("data_").removePrefix("config_")
+                                        .removeSuffix(".json").replace("_", " ").replace("-", ":")
                                 Card(
                                     modifier = Modifier.fillMaxWidth(),
                                     colors = CardDefaults.cardColors(
@@ -872,7 +874,7 @@ class WebDavConfigScreen : Screen {
                                 ) {
                                     Column(modifier = Modifier.fillMaxWidth().padding(10.dp)) {
                                         Text(
-                                            displayTime,
+                                            displayName,
                                             style = MaterialTheme.typography.bodySmall,
                                             fontWeight = FontWeight.Medium,
                                             maxLines = 2,
@@ -1156,7 +1158,7 @@ private suspend fun forceUpload(
     splashQuoteManager: SplashQuoteManager? = null,
 ): Int {
     // Local backup before uploading (backup stays on local disk, not sent to remote)
-    archiveDataLocally(exportManager, kbRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, splashQuoteManager)
+    archiveDataLocally(exportManager, kbRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, splashQuoteManager, direction = "上行")
 
     val allKbs = kbRepository.getAll().first()
     val allDecks = deckRepository.getAll().first()
@@ -1196,7 +1198,7 @@ private suspend fun forceDownload(
     splashQuoteManager: SplashQuoteManager? = null,
 ): Int {
     // Local backup before downloading (backup stays on local disk)
-    archiveDataLocally(exportManager, kbRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, splashQuoteManager)
+    archiveDataLocally(exportManager, kbRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, splashQuoteManager, direction = "下行")
 
     val remoteResult = syncManager.downloadData(config)
     if (remoteResult.isFailure) throw Exception("No remote data found")
@@ -1471,7 +1473,7 @@ private suspend fun forceUploadConfig(
     settingsRepository: SettingsRepository,
 ) {
     // Local backup before uploading config
-    archiveConfigLocally(exportManager, syncManager, settingsRepository, config)
+    archiveConfigLocally(exportManager, syncManager, settingsRepository, config, direction = "上行")
 
     val encryptor = SensitiveDataEncryptor(config.password)
     val settings = encryptor.encryptSettings(settingsRepository.getAll())
@@ -1490,7 +1492,7 @@ private suspend fun forceDownloadConfig(
 ) {
     // Local backup before downloading config
     if (exportManager != null) {
-        archiveConfigLocally(exportManager, syncManager, settingsRepository, config)
+        archiveConfigLocally(exportManager, syncManager, settingsRepository, config, direction = "下行")
     }
 
     val remoteSettings = downloadRemoteSettings(config, syncManager)
@@ -1591,6 +1593,7 @@ private suspend fun archiveDataLocally(
     reviewLogRepository: ReviewLogRepository,
     planRepository: LearningPlanRepository,
     splashQuoteManager: SplashQuoteManager? = null,
+    direction: String = "本地",
 ): String? {
     val dir = ensureLocalBackupDir() ?: return null
     val timestamp = Clock.System.now().toString().replace("T", "_").replace(":", "-").substringBefore("Z")
@@ -1608,6 +1611,9 @@ private suspend fun archiveDataLocally(
 
     val json = exportManager.exportData(allKbs, allDecks, allCards, allLogs, allPlans, quotesExport)
     platformWriteFileText(platformJoinPath(dir, filename), json)
+    // Save display name as sidecar file
+    val displayName = BackupNameGenerator().generateName(direction, "D")
+    platformWriteFileText(platformJoinPath(dir, "${filename.removeSuffix(".json")}.name"), displayName)
     return filename
 }
 
@@ -1617,6 +1623,7 @@ private suspend fun archiveConfigLocally(
     syncManager: SyncManager,
     settingsRepository: SettingsRepository,
     config: WebDavConfig,
+    direction: String = "本地",
 ): String? {
     val dir = ensureLocalBackupDir() ?: return null
     val timestamp = Clock.System.now().toString().replace("T", "_").replace(":", "-").substringBefore("Z")
@@ -1626,6 +1633,9 @@ private suspend fun archiveConfigLocally(
     val settings = encryptor.encryptSettings(settingsRepository.getAll())
     val configJson = exportManager.exportConfig(settings)
     platformWriteFileText(platformJoinPath(dir, filename), configJson)
+    // Save display name as sidecar file
+    val displayName = BackupNameGenerator().generateName(direction, "C")
+    platformWriteFileText(platformJoinPath(dir, "${filename.removeSuffix(".json")}.name"), displayName)
     return filename
 }
 
@@ -1646,6 +1656,14 @@ private fun readLocalBackup(filename: String): String? {
     return platformReadFileText(path)
 }
 
+/** Read the display name for a backup from its .name sidecar file. */
+private fun readBackupDisplayName(filename: String): String? {
+    val dir = resolveLocalBackupDir() ?: return null
+    val nameFile = platformJoinPath(dir, "${filename.removeSuffix(".json")}.name")
+    if (!platformFileExists(nameFile)) return null
+    return platformReadFileText(nameFile)
+}
+
 /** Delete a single local backup file. */
 private fun deleteLocalBackup(filename: String): Boolean {
     val dir = resolveLocalBackupDir() ?: return false
@@ -1658,8 +1676,9 @@ private fun deleteLocalBackup(filename: String): Boolean {
 private fun clearAllLocalBackups(): Int {
     val dir = resolveLocalBackupDir() ?: return 0
     if (!platformPathExists(dir)) return 0
-    val files = platformListFileNames(dir).filter {
-        (it.startsWith("data_") || it.startsWith("config_")) && it.endsWith(".json")
+    val files = platformListFileNames(dir).filter { name ->
+        (name.startsWith("data_") || name.startsWith("config_")) &&
+            (name.endsWith(".json") || name.endsWith(".name"))
     }
     var deleted = 0
     for (f in files) {
