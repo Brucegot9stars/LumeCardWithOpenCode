@@ -81,6 +81,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlin.time.Clock
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.koin.compose.koinInject
 
 class WebDavConfigScreen : Screen {
@@ -787,19 +790,15 @@ class WebDavConfigScreen : Screen {
                         } else {
                             val config = defaultConfig ?: throw Exception("No sync config")
                             val json = readLocalBackup(filename) ?: throw Exception("Backup not found")
-                            val remoteSettings = try {
-                                val parsed = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
-                                    .decodeFromString<com.lumecard.shared.data.ConfigExport>(json)
-                                parsed.settings
-                            } catch (_: Exception) {
-                                try {
-                                    kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
-                                        .decodeFromString<Map<String, String>>(json)
-                                } catch (_: Exception) { null }
-                            }
-                            if (remoteSettings != null) {
-                                for ((key, value) in remoteSettings) {
-                                    settingsRepository.set(key, value)
+                            val importedConfig = exportManager.importConfig(json)
+                            val encryptedSettings = importedConfig?.settings
+                            if (encryptedSettings != null) {
+                                val encryptor = SensitiveDataEncryptor(config.password)
+                                val decryptedSettings = encryptor.decryptSettings(encryptedSettings)
+                                if (decryptedSettings != null) {
+                                    for ((key, value) in decryptedSettings) {
+                                        settingsRepository.set(key, value)
+                                    }
                                 }
                             }
                             // Restore fonts from backup directory
@@ -972,12 +971,16 @@ class WebDavConfigScreen : Screen {
                             try {
                                 val config = defaultConfig ?: return@launch
                                 val deckCount: Int
+                                val backupName: String?
                                 withContext(Dispatchers.IO) {
-                                    deckCount = forceUpload(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager)
+                                    val result = forceUpload(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager)
+                                    deckCount = result.first
+                                    backupName = result.second
                                     webDavConfigManager.updateLastSync(config.id)
                                 }
-                                syncStatus = strings.settingsSyncSuccess(deckCount)
-                                snackbarHostState.showSnackbar(strings.settingsSyncSuccess(deckCount))
+                                val msg = if (backupName != null) "${strings.settingsSyncSuccess(deckCount)}\n$backupName" else strings.settingsSyncSuccess(deckCount)
+                                syncStatus = msg
+                                snackbarHostState.showSnackbar(msg)
                                 reloadConfigs()
                             } catch (e: Exception) {
                                 syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
@@ -1009,12 +1012,16 @@ class WebDavConfigScreen : Screen {
                             try {
                                 val config = defaultConfig ?: return@launch
                                 val deckCount: Int
+                                val backupName: String?
                                 withContext(Dispatchers.IO) {
-                                    deckCount = forceDownload(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager)
+                                    val result = forceDownload(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager)
+                                    deckCount = result.first
+                                    backupName = result.second
                                     webDavConfigManager.updateLastSync(config.id)
                                 }
-                                syncStatus = strings.settingsSyncSuccess(deckCount)
-                                snackbarHostState.showSnackbar(strings.settingsSyncSuccess(deckCount))
+                                val msg = if (backupName != null) "${strings.settingsSyncSuccess(deckCount)}\n$backupName" else strings.settingsSyncSuccess(deckCount)
+                                syncStatus = msg
+                                snackbarHostState.showSnackbar(msg)
                                 reloadConfigs()
                             } catch (e: Exception) {
                                 syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
@@ -1045,12 +1052,14 @@ class WebDavConfigScreen : Screen {
                             syncStatus = strings.settingsSyncing
                             try {
                                 val config = defaultConfig ?: return@launch
+                                val backupName: String?
                                 withContext(Dispatchers.IO) {
-                                    forceUploadConfig(config, exportManager, syncManager, settingsRepository)
+                                    backupName = forceUploadConfig(config, exportManager, syncManager, settingsRepository)
                                     webDavConfigManager.updateLastSync(config.id)
                                 }
-                                syncStatus = strings.syncConfigSyncSuccess
-                                snackbarHostState.showSnackbar(strings.syncConfigSyncSuccess)
+                                val msg = if (backupName != null) "${strings.syncConfigSyncSuccess}\n$backupName" else strings.syncConfigSyncSuccess
+                                syncStatus = msg
+                                snackbarHostState.showSnackbar(msg)
                             } catch (e: Exception) {
                                 syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
                                 snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
@@ -1080,12 +1089,14 @@ class WebDavConfigScreen : Screen {
                             syncStatus = strings.settingsSyncing
                             try {
                                 val config = defaultConfig ?: return@launch
+                                val backupName: String?
                                 withContext(Dispatchers.IO) {
-                                    forceDownloadConfig(config, syncManager, settingsRepository, exportManager)
+                                    backupName = forceDownloadConfig(config, syncManager, settingsRepository, exportManager)
                                     webDavConfigManager.updateLastSync(config.id)
                                 }
-                                syncStatus = strings.syncConfigSyncSuccess
-                                snackbarHostState.showSnackbar(strings.syncConfigSyncSuccess)
+                                val msg = if (backupName != null) "${strings.syncConfigSyncSuccess}\n$backupName" else strings.syncConfigSyncSuccess
+                                syncStatus = msg
+                                snackbarHostState.showSnackbar(msg)
                             } catch (e: Exception) {
                                 syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
                                 snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
@@ -1156,9 +1167,10 @@ private suspend fun forceUpload(
     syncManager: SyncManager,
     mediaManager: MediaManager,
     splashQuoteManager: SplashQuoteManager? = null,
-): Int {
+): Pair<Int, String?> {
     // Local backup before uploading (backup stays on local disk, not sent to remote)
-    archiveDataLocally(exportManager, kbRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, splashQuoteManager, direction = "上行")
+    val backupFile = archiveDataLocally(exportManager, kbRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, splashQuoteManager, direction = "上行")
+    val backupName = backupFile?.let { readBackupDisplayName(it) }
 
     val allKbs = kbRepository.getAll().first()
     val allDecks = deckRepository.getAll().first()
@@ -1182,7 +1194,7 @@ private suspend fun forceUpload(
     planRepository.markSynced(allPlans.map { it.id }, now)
 
     syncMedia(config, syncManager, mediaManager)
-    return allDecks.size
+    return Pair(allDecks.size, backupName)
 }
 
 private suspend fun forceDownload(
@@ -1196,9 +1208,10 @@ private suspend fun forceDownload(
     syncManager: SyncManager,
     mediaManager: MediaManager,
     splashQuoteManager: SplashQuoteManager? = null,
-): Int {
+): Pair<Int, String?> {
     // Local backup before downloading (backup stays on local disk)
-    archiveDataLocally(exportManager, kbRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, splashQuoteManager, direction = "下行")
+    val backupFile = archiveDataLocally(exportManager, kbRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, splashQuoteManager, direction = "下行")
+    val backupName = backupFile?.let { readBackupDisplayName(it) }
 
     val remoteResult = syncManager.downloadData(config)
     if (remoteResult.isFailure) throw Exception("No remote data found")
@@ -1253,7 +1266,7 @@ private suspend fun forceDownload(
     }
 
     syncMedia(config, syncManager, mediaManager)
-    return remote.decks.size
+    return Pair(remote.decks.size, backupName)
 }
 
 private suspend fun syncMedia(
@@ -1471,9 +1484,10 @@ private suspend fun forceUploadConfig(
     exportManager: ExportManager,
     syncManager: SyncManager,
     settingsRepository: SettingsRepository,
-) {
+): String? {
     // Local backup before uploading config
-    archiveConfigLocally(exportManager, syncManager, settingsRepository, config, direction = "上行")
+    val backupFile = archiveConfigLocally(exportManager, syncManager, settingsRepository, config, direction = "上行")
+    val backupName = backupFile?.let { readBackupDisplayName(it) }
 
     val encryptor = SensitiveDataEncryptor(config.password)
     val settings = encryptor.encryptSettings(settingsRepository.getAll())
@@ -1482,6 +1496,7 @@ private suspend fun forceUploadConfig(
 
     // 字体归配置：上传本地字体（覆盖远端）
     syncFonts(config, syncManager, settingsRepository, forcePush = true)
+    return backupName
 }
 
 private suspend fun forceDownloadConfig(
@@ -1489,11 +1504,12 @@ private suspend fun forceDownloadConfig(
     syncManager: SyncManager,
     settingsRepository: SettingsRepository,
     exportManager: ExportManager? = null,
-) {
+): String? {
     // Local backup before downloading config
-    if (exportManager != null) {
-        archiveConfigLocally(exportManager, syncManager, settingsRepository, config, direction = "下行")
-    }
+    val backupName = if (exportManager != null) {
+        val backupFile = archiveConfigLocally(exportManager, syncManager, settingsRepository, config, direction = "下行")
+        backupFile?.let { readBackupDisplayName(it) }
+    } else null
 
     val remoteSettings = downloadRemoteSettings(config, syncManager)
         ?: throw Exception("No remote config found")
@@ -1506,6 +1522,7 @@ private suspend fun forceDownloadConfig(
 
     // 字体归配置：下载远端字体到本地
     syncFonts(config, syncManager, settingsRepository, forcePush = false)
+    return backupName
 }
 
 private suspend fun restoreSettingsAndFonts(
@@ -1596,8 +1613,13 @@ private suspend fun archiveDataLocally(
     direction: String = "本地",
 ): String? {
     val dir = ensureLocalBackupDir() ?: return null
-    val timestamp = Clock.System.now().toString().replace("T", "_").replace(":", "-").substringBefore("Z")
-    val filename = "data_${timestamp}.json"
+    val now = Clock.System.now()
+    val local = now.toLocalDateTime(TimeZone.currentSystemDefault())
+    val ts = "${local.date.year}${local.date.monthNumber.toString().padStart(2, '0')}${local.date.dayOfMonth.toString().padStart(2, '0')}" +
+        "_" +
+        "${local.time.hour.toString().padStart(2, '0')}${local.time.minute.toString().padStart(2, '0')}${local.time.second.toString().padStart(2, '0')}"
+    val seq = listLocalBackups("data").size + 1
+    val filename = "data_${ts}.json"
 
     val allKbs = kbRepository.getAll().first()
     val allDecks = deckRepository.getAll().first()
@@ -1612,7 +1634,7 @@ private suspend fun archiveDataLocally(
     val json = exportManager.exportData(allKbs, allDecks, allCards, allLogs, allPlans, quotesExport)
     platformWriteFileText(platformJoinPath(dir, filename), json)
     // Save display name as sidecar file
-    val displayName = BackupNameGenerator().generateName(direction, "D")
+    val displayName = BackupNameGenerator().generateName(direction, "D", seq)
     platformWriteFileText(platformJoinPath(dir, "${filename.removeSuffix(".json")}.name"), displayName)
     return filename
 }
@@ -1626,15 +1648,20 @@ private suspend fun archiveConfigLocally(
     direction: String = "本地",
 ): String? {
     val dir = ensureLocalBackupDir() ?: return null
-    val timestamp = Clock.System.now().toString().replace("T", "_").replace(":", "-").substringBefore("Z")
-    val filename = "config_${timestamp}.json"
+    val now = Clock.System.now()
+    val local = now.toLocalDateTime(TimeZone.currentSystemDefault())
+    val ts = "${local.date.year}${local.date.monthNumber.toString().padStart(2, '0')}${local.date.dayOfMonth.toString().padStart(2, '0')}" +
+        "_" +
+        "${local.time.hour.toString().padStart(2, '0')}${local.time.minute.toString().padStart(2, '0')}${local.time.second.toString().padStart(2, '0')}"
+    val seq = listLocalBackups("config").size + 1
+    val filename = "config_${ts}.json"
 
     val encryptor = SensitiveDataEncryptor(config.password)
     val settings = encryptor.encryptSettings(settingsRepository.getAll())
     val configJson = exportManager.exportConfig(settings)
     platformWriteFileText(platformJoinPath(dir, filename), configJson)
     // Save display name as sidecar file
-    val displayName = BackupNameGenerator().generateName(direction, "C")
+    val displayName = BackupNameGenerator().generateName(direction, "C", seq)
     platformWriteFileText(platformJoinPath(dir, "${filename.removeSuffix(".json")}.name"), displayName)
     return filename
 }

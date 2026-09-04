@@ -1,6 +1,9 @@
 package com.lumecard.shared.data
 
 import com.lumecard.shared.util.loadTextResource
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlin.random.Random
 
 /**
@@ -12,7 +15,7 @@ import kotlin.random.Random
  * repeated combinations.
  *
  * Example generated name:
- *   一头从容游荡的沙丁鱼-下行-C-20260903-225313
+ *   001-一头从容游荡的沙丁鱼-下行-C-20260903-225313
  */
 class BackupNameGenerator {
 
@@ -24,15 +27,17 @@ class BackupNameGenerator {
 
     /**
      * Generate a backup name of the form:
-     *   <fun-name>-<direction>-<type>-<yyyymmdd-HHMMSS>
+     *   <seq>-<fun-name>-<direction>-<type>-<yyyymmdd-HHMMSS>
      *
-     * @param direction "上行" or "下行"
+     * @param direction "上行" or "下行" or "本地"
      * @param type "D" (data) or "C" (config)
+     * @param seq sequence number (1-based, zero-padded to 3 digits)
      */
-    fun generateName(direction: String, type: String): String {
+    fun generateName(direction: String, type: String, seq: Int = 1): String {
         val funName = buildFunName()
         val timestamp = timestampNow()
-        return "$funName-$direction-$type-$timestamp"
+        val padded = seq.toString().padStart(3, '0')
+        return "$padded-$funName-$direction-$type-$timestamp"
     }
 
     private fun buildFunName(): String {
@@ -48,11 +53,23 @@ class BackupNameGenerator {
     }
 
     private fun timestampNow(): String {
-        // kotlin.time.Instant.toString() -> "2026-09-03T09:00:54.123Z"
-        val raw = kotlin.time.Clock.System.now().toString()
-        val datePart = raw.substringBefore("T")          // 2026-09-03
-        val timePart = raw.substringAfter("T").substringBefore(".") // 09:00:54
-        return "${datePart.replace("-", "")}-${timePart.replace(":", "")}"
+        return try {
+            val epochMs = kotlin.time.Clock.System.now().toEpochMilliseconds()
+            val instant = Instant.fromEpochMilliseconds(epochMs)
+            val tz = TimeZone.currentSystemDefault()
+            val local = instant.toLocalDateTime(tz)
+            val date = local.date
+            val time = local.time
+            "${date.year}${date.monthNumber.toString().padStart(2, '0')}${date.dayOfMonth.toString().padStart(2, '0')}" +
+                "-" +
+                "${time.hour.toString().padStart(2, '0')}${time.minute.toString().padStart(2, '0')}${time.second.toString().padStart(2, '0')}"
+        } catch (_: Throwable) {
+            // Fallback: use raw UTC from kotlin.time.Clock
+            val raw = kotlin.time.Clock.System.now().toString()
+            val datePart = raw.substringBefore("T").replace("-", "")
+            val timePart = raw.substringAfter("T").substringBefore(".").replace(":", "")
+            "${datePart}-${timePart}"
+        }
     }
 
     private fun nextSubject(): Subject {
