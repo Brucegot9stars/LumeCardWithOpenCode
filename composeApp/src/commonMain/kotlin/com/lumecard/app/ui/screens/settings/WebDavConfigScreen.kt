@@ -132,6 +132,7 @@ class WebDavConfigScreen : Screen {
         var showRestoreHistory by remember { mutableStateOf(false) }
         var localDataBackups by remember { mutableStateOf<List<String>>(emptyList()) }
         var localConfigBackups by remember { mutableStateOf<List<String>>(emptyList()) }
+        var allBackupNames by remember { mutableStateOf<List<String>>(emptyList()) }
         var showClearBackupsConfirm by remember { mutableStateOf(false) }
         var autoSyncEnabled by remember { mutableStateOf(false) }
         var autoSyncInterval by remember { mutableStateOf(30) }
@@ -753,6 +754,7 @@ class WebDavConfigScreen : Screen {
                                         localDataBackups = listLocalBackups("data")
                                         localConfigBackups = listLocalBackups("config")
                                     }
+                                    allBackupNames = listAllBackupsSorted()
                                     showRestoreHistory = true
                                 } catch (_: Exception) {
                                     snackbarHostState.showSnackbar(strings.syncFailedToLoadHistory)
@@ -847,7 +849,6 @@ class WebDavConfigScreen : Screen {
 
         // Restore history dialog (local backups)
         if (showRestoreHistory) {
-            val allBackupNames = (localDataBackups + localConfigBackups).distinct().sortedDescending()
             val hasData = localDataBackups.toSet()
             val hasConfig = localConfigBackups.toSet()
 
@@ -858,7 +859,7 @@ class WebDavConfigScreen : Screen {
                     if (allBackupNames.isEmpty()) {
                         Text(strings.syncNoLocalBackups)
                     } else {
-                        Column {
+                        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                             allBackupNames.forEach { filename ->
                                 val isData = filename in hasData
                                 val isConfig = filename in hasConfig
@@ -945,6 +946,7 @@ class WebDavConfigScreen : Screen {
                             withContext(Dispatchers.IO) { clearAllLocalBackups() }
                             localDataBackups = emptyList()
                             localConfigBackups = emptyList()
+                            allBackupNames = emptyList()
                             showRestoreHistory = false
                             snackbarHostState.showSnackbar(strings.syncClearAllBackupsDone)
                         }
@@ -1618,7 +1620,7 @@ private suspend fun archiveDataLocally(
     val ts = "${local.date.year}${local.date.monthNumber.toString().padStart(2, '0')}${local.date.dayOfMonth.toString().padStart(2, '0')}" +
         "_" +
         "${local.time.hour.toString().padStart(2, '0')}${local.time.minute.toString().padStart(2, '0')}${local.time.second.toString().padStart(2, '0')}"
-    val seq = listLocalBackups("data").size + 1
+    val seq = nextBackupSeq()
     val filename = "data_${ts}.json"
 
     val allKbs = kbRepository.getAll().first()
@@ -1653,7 +1655,7 @@ private suspend fun archiveConfigLocally(
     val ts = "${local.date.year}${local.date.monthNumber.toString().padStart(2, '0')}${local.date.dayOfMonth.toString().padStart(2, '0')}" +
         "_" +
         "${local.time.hour.toString().padStart(2, '0')}${local.time.minute.toString().padStart(2, '0')}${local.time.second.toString().padStart(2, '0')}"
-    val seq = listLocalBackups("config").size + 1
+    val seq = nextBackupSeq()
     val filename = "config_${ts}.json"
 
     val encryptor = SensitiveDataEncryptor(config.password)
@@ -1673,6 +1675,29 @@ private fun listLocalBackups(prefix: String): List<String> {
     return platformListFileNames(dir)
         .filter { it.startsWith("${prefix}_") && it.endsWith(".json") }
         .sortedDescending()
+}
+
+/** Count ALL backups (data + config) and return the next sequence number. */
+private fun nextBackupSeq(): Int {
+    val dir = resolveLocalBackupDir() ?: return 1
+    if (!platformPathExists(dir)) return 1
+    val allBackups = platformListFileNames(dir)
+        .filter { (it.startsWith("data_") || it.startsWith("config_")) && it.endsWith(".json") }
+    return allBackups.size + 1
+}
+
+/** List all backups (data + config) sorted by seq number in their .name sidecar. */
+private fun listAllBackupsSorted(): List<String> {
+    val dir = resolveLocalBackupDir() ?: return emptyList()
+    if (!platformPathExists(dir)) return emptyList()
+    val all = platformListFileNames(dir)
+        .filter { (it.startsWith("data_") || it.startsWith("config_")) && it.endsWith(".json") }
+    return all.sortedBy { filename ->
+        val name = readBackupDisplayName(filename) ?: ""
+        // Extract seq prefix "001-" → 1
+        val seqStr = name.substringBefore("-", "")
+        seqStr.toIntOrNull() ?: 0
+    }
 }
 
 /** Read a local backup file content by filename. */
