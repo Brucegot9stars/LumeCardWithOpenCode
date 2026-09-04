@@ -23,9 +23,16 @@ fun main() = application {
             e.printStackTrace(PrintWriter(sw))
             val fullTrace = sw.toString()
             System.err.println("[LumeCard] FATAL: Koin initialization failed:\n$fullTrace")
+            // Show the root cause (innermost exception) to avoid misleading
+            // diagnosis from the outermost Koin wrapper message.
+            var rootCause: Throwable? = e
+            while (rootCause?.cause != null && rootCause.cause !== rootCause) {
+                rootCause = rootCause.cause
+            }
+            val rootMsg = rootCause?.message ?: e.message
             JOptionPane.showMessageDialog(
                 null,
-                "LumeCard failed to start:\n\n${e.message}\n\nFull error written to stderr.\nPlease check ~/.lumecard/ directory permissions.",
+                "LumeCard failed to start:\n\n$rootMsg\n\nFull error written to stderr.\nPlease check ~/.lumecard/ directory permissions.",
                 "LumeCard - Startup Error",
                 JOptionPane.ERROR_MESSAGE,
             )

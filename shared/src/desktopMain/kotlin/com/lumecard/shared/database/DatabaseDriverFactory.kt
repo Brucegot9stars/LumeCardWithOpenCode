@@ -41,11 +41,25 @@ actual class DatabaseDriverFactory {
         val dbFile = File(appDir, "lumecard.db")
         log("Database path: ${dbFile.absolutePath}")
 
+        // IMPORTANT: decide whether this is a brand-new database BEFORE opening
+        // the connection. JdbcSqliteDriver creates the file automatically on
+        // connect (SQLITE_OPEN_CREATE), so checking dbFile.exists() after
+        // connecting always returns true and a fresh DB would incorrectly take
+        // the migration path instead of Schema.create().
+        val isNewDb = !dbFile.exists()
+
         val driver = JdbcSqliteDriver("jdbc:sqlite:${dbFile.absolutePath}")
         DatabaseDriverHolder.driver = driver
         driver.execute(null, "PRAGMA foreign_keys = ON", 0, null)
         val targetVersion = LumeCardDatabase.Schema.version
-        if (dbFile.exists()) {
+
+        if (isNewDb || !hasAppSchema(driver)) {
+            // Brand-new or damaged/incomplete database: rebuild from scratch.
+            dropSchema(driver)
+            LumeCardDatabase.Schema.create(driver)
+            driver.execute(null, "PRAGMA user_version = $targetVersion", 0, null)
+            log("Database created from scratch (version $targetVersion)")
+        } else {
             val rawVersion = readUserVersion(driver)
             val currentVersion = if (rawVersion == 0L) 1L else rawVersion
             if (currentVersion < targetVersion) {
@@ -65,13 +79,48 @@ actual class DatabaseDriverFactory {
                     log("ERROR: Migration incomplete, user_version NOT updated — will retry next launch")
                 }
             }
-        } else {
-            LumeCardDatabase.Schema.create(driver)
-            driver.execute(null, "PRAGMA user_version = $targetVersion", 0, null)
         }
         upgradeToFts5(driver)
         driver.execute(null, "CREATE TABLE IF NOT EXISTS MediaCache(path TEXT PRIMARY KEY NOT NULL, mtime INTEGER NOT NULL, sha1 TEXT NOT NULL, synced_at TEXT)", 0, null)
         return driver
+    }
+}
+
+/**
+ * True if the core business tables exist (a healthy schema). A database that
+ * exists on disk but has no business tables (e.g. auto-created empty file, or a
+ * crashed install that only left FTS shadow tables) is treated as "new" and is
+ * rebuilt via Schema.create().
+ */
+private fun hasAppSchema(driver: JdbcSqliteDriver): Boolean {
+    return try {
+        val result = driver.executeQuery(
+            null,
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN ('Card','Deck','KnowledgeBase','AppSettings')",
+            { cursor -> if (cursor.next().value) QueryResult.Value(cursor.getLong(0)) else QueryResult.Value(0L) },
+            0,
+            null
+        )
+        (result.value ?: 0L) >= 4L
+    } catch (_: Exception) {
+        false
+    }
+}
+
+/** Drop all tables (and FTS shadow tables) so the schema can be rebuilt cleanly. */
+private fun dropSchema(driver: JdbcSqliteDriver) {
+    try {
+        driver.execute(null, "DROP TABLE IF EXISTS CardFTS", 0, null)
+        driver.execute(null, "DROP TABLE IF EXISTS AlgorithmState", 0, null)
+        driver.execute(null, "DROP TABLE IF EXISTS ReviewLog", 0, null)
+        driver.execute(null, "DROP TABLE IF EXISTS Card", 0, null)
+        driver.execute(null, "DROP TABLE IF EXISTS Deck", 0, null)
+        driver.execute(null, "DROP TABLE IF EXISTS KnowledgeBase", 0, null)
+        driver.execute(null, "DROP TABLE IF EXISTS LearningPlan", 0, null)
+        driver.execute(null, "DROP TABLE IF EXISTS AppSettings", 0, null)
+        driver.execute(null, "DROP TABLE IF EXISTS MediaCache", 0, null)
+    } catch (e: Exception) {
+        log("WARNING: dropSchema incomplete: ${e.message}")
     }
 }
 
@@ -104,12 +153,20 @@ actual fun upgradeToFts5(driver: app.cash.sqldelight.db.SqlDriver) {
         val tableExists = driver.execute(null, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='CardFTS'", 0, null)
         if (tableExists.value == 0L) {
             driver.execute(null, "CREATE VIRTUAL TABLE IF NOT EXISTS CardFTS USING fts5(card_id UNINDEXED, front, back, tags, tokenize='unicode61')", 0, null)
-            driver.execute(null, "INSERT INTO CardFTS(card_id, front, back, tags) SELECT id, front, back, tags FROM Card WHERE deleted_at IS NULL", 0, null)
+            try {
+                driver.execute(null, "INSERT INTO CardFTS(card_id, front, back, tags) SELECT id, front, back, tags FROM Card WHERE deleted_at IS NULL", 0, null)
+            } catch (e2: Exception) {
+                log("WARNING: FTS5 backfill skipped: ${e2.message}")
+            }
         }
     } catch (e: Exception) {
         System.err.println("[LumeCard] WARNING: FTS5 not available, falling back to LIKE search: ${e.message}")
-        driver.execute(null, "CREATE TABLE IF NOT EXISTS CardFTS(card_id TEXT NOT NULL, front TEXT NOT NULL, back TEXT NOT NULL, tags TEXT NOT NULL)", 0, null)
-        driver.execute(null, "INSERT OR IGNORE INTO CardFTS(card_id, front, back, tags) SELECT id, front, back, tags FROM Card WHERE deleted_at IS NULL", 0, null)
+        try {
+            driver.execute(null, "CREATE TABLE IF NOT EXISTS CardFTS(card_id TEXT NOT NULL, front TEXT NOT NULL, back TEXT NOT NULL, tags TEXT NOT NULL)", 0, null)
+            driver.execute(null, "INSERT OR IGNORE INTO CardFTS(card_id, front, back, tags) SELECT id, front, back, tags FROM Card WHERE deleted_at IS NULL", 0, null)
+        } catch (e2: Exception) {
+            log("WARNING: FTS5 LIKE-search fallback failed, search may be unavailable: ${e2.message}")
+        }
     }
 }
 
