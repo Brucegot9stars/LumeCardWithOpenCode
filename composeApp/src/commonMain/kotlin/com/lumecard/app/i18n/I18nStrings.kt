@@ -353,6 +353,11 @@ interface I18nStrings {
     val syncRestoreCloudConfirm3: String
     val syncRestoreCloudInputHint: String
     val syncRestoreCloudDone: String
+    val syncRestoreLocalHistory: String
+    val syncRestoreRemoteHistory: String
+    val settingsBackupLimits: String
+    val settingsMaxCloudBackups: String
+    val settingsMaxLocalBackups: String
     fun syncIntervalMinutes(minutes: Int): String
     val webdavProviderLabel: String
     val webdavProviderCustom: String

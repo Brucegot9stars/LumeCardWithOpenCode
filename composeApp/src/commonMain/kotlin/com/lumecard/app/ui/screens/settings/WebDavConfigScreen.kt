@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
@@ -131,6 +132,7 @@ class WebDavConfigScreen : Screen {
         var showForceUploadConfigConfirm by remember { mutableStateOf(false) }
         var showForceDownloadConfigConfirm by remember { mutableStateOf(false) }
         var showRestoreHistory by remember { mutableStateOf(false) }
+        var restoreHistoryDirection by remember { mutableStateOf<String?>(null) }
         var localDataBackups by remember { mutableStateOf<List<String>>(emptyList()) }
         var localConfigBackups by remember { mutableStateOf<List<String>>(emptyList()) }
         var allBackupNames by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -138,8 +140,10 @@ class WebDavConfigScreen : Screen {
         var showRestoreCloudStep by remember { mutableIntStateOf(0) }
         var restoreCloudInput by remember { mutableStateOf("") }
         var autoSyncEnabled by remember { mutableStateOf(false) }
-        var autoSyncInterval by remember { mutableStateOf(30) }
+        var autoSyncInterval by remember { mutableIntStateOf(30) }
         var showIntervalDropdown by remember { mutableStateOf(false) }
+        var maxCloudBackups by remember { mutableIntStateOf(7) }
+        var maxLocalBackups by remember { mutableIntStateOf(7) }
         var defaultConfig by remember { mutableStateOf<WebDavConfig?>(null) }
 
         val providerPresets = WebDavProviders.all.map { provider ->
@@ -160,6 +164,8 @@ class WebDavConfigScreen : Screen {
             scope.launch {
                 autoSyncEnabled = settingsRepository.getBoolean("autoSyncEnabled", false)
                 autoSyncInterval = settingsRepository.getInt("autoSyncInterval", 30)
+                maxCloudBackups = settingsRepository.getInt("maxCloudBackups", 7).coerceIn(1, 365)
+                maxLocalBackups = settingsRepository.getInt("maxLocalBackups", 7).coerceIn(1, 365)
             }
         }
 
@@ -167,6 +173,13 @@ class WebDavConfigScreen : Screen {
             scope.launch {
                 settingsRepository.set("autoSyncEnabled", autoSyncEnabled.toString())
                 settingsRepository.set("autoSyncInterval", autoSyncInterval.toString())
+            }
+        }
+
+        fun saveBackupLimits() {
+            scope.launch {
+                settingsRepository.set("maxCloudBackups", maxCloudBackups.toString())
+                settingsRepository.set("maxLocalBackups", maxLocalBackups.toString())
             }
         }
 
@@ -658,6 +671,82 @@ class WebDavConfigScreen : Screen {
                     }
                 }
 
+                // Backup limits
+                if (!isEditing) {
+                    Text(
+                        strings.settingsBackupLimits,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
+                    )
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = radius.card,
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        ),
+                    ) {
+                        Column {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = spacing.md, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    strings.settingsMaxCloudBackups,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Text(
+                                    "$maxCloudBackups",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.width(32.dp),
+                                    textAlign = TextAlign.End,
+                                )
+                            }
+                            Slider(
+                                value = maxCloudBackups.toFloat(),
+                                onValueChange = { maxCloudBackups = it.toInt() },
+                                onValueChangeFinished = { saveBackupLimits() },
+                                valueRange = 1f..365f,
+                                steps = 363,
+                                modifier = Modifier.padding(horizontal = spacing.md),
+                            )
+                            HorizontalDivider(modifier = Modifier.padding(horizontal = spacing.md))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = spacing.md, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    strings.settingsMaxLocalBackups,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Text(
+                                    "$maxLocalBackups",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.width(32.dp),
+                                    textAlign = TextAlign.End,
+                                )
+                            }
+                            Slider(
+                                value = maxLocalBackups.toFloat(),
+                                onValueChange = { maxLocalBackups = it.toInt() },
+                                onValueChangeFinished = { saveBackupLimits() },
+                                valueRange = 1f..365f,
+                                steps = 363,
+                                modifier = Modifier.padding(horizontal = spacing.md, vertical = 4.dp),
+                            )
+                        }
+                    }
+                }
+
                 // Action buttons
                 if (!isEditing && defaultConfig != null) {
                     Text(
@@ -748,29 +837,59 @@ class WebDavConfigScreen : Screen {
                         }
                     }
 
-                    // Restore history
-                    OutlinedButton(
-                        onClick = {
-                            scope.launch {
-                                try {
-                                    withContext(Dispatchers.IO) {
-                                        localDataBackups = listLocalBackups("data")
-                                        localConfigBackups = listLocalBackups("config")
-                                    }
-                                    allBackupNames = listAllBackupsSorted()
-                                    showRestoreHistory = true
-                                } catch (_: Exception) {
-                                    snackbarHostState.showSnackbar(strings.syncFailedToLoadHistory)
-                                }
-                            }
-                        },
-                        interactionSource = null,
+                    // Restore history — two buttons
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !isSyncing,
+                        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
                     ) {
-                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(spacing.sm))
-                        Text(strings.syncRestoreHistory)
+                        OutlinedButton(
+                            onClick = {
+                                scope.launch {
+                                    try {
+                                        withContext(Dispatchers.IO) {
+                                            localDataBackups = listLocalBackups("data")
+                                            localConfigBackups = listLocalBackups("config")
+                                        }
+                                        allBackupNames = listAllBackupsSorted(filterDirection = "下行")
+                                        restoreHistoryDirection = "下行"
+                                        showRestoreHistory = true
+                                    } catch (_: Exception) {
+                                        snackbarHostState.showSnackbar(strings.syncFailedToLoadHistory)
+                                    }
+                                }
+                            },
+                            interactionSource = null,
+                            modifier = Modifier.weight(1f),
+                            enabled = !isSyncing,
+                        ) {
+                            Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(spacing.sm))
+                            Text(strings.syncRestoreLocalHistory, style = MaterialTheme.typography.labelSmall)
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                scope.launch {
+                                    try {
+                                        withContext(Dispatchers.IO) {
+                                            localDataBackups = listLocalBackups("data")
+                                            localConfigBackups = listLocalBackups("config")
+                                        }
+                                        allBackupNames = listAllBackupsSorted(filterDirection = "上行")
+                                        restoreHistoryDirection = "上行"
+                                        showRestoreHistory = true
+                                    } catch (_: Exception) {
+                                        snackbarHostState.showSnackbar(strings.syncFailedToLoadHistory)
+                                    }
+                                }
+                            },
+                            interactionSource = null,
+                            modifier = Modifier.weight(1f),
+                            enabled = !isSyncing,
+                        ) {
+                            Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(spacing.sm))
+                            Text(strings.syncRestoreRemoteHistory, style = MaterialTheme.typography.labelSmall)
+                        }
                     }
                 }
 
@@ -857,7 +976,12 @@ class WebDavConfigScreen : Screen {
 
             AlertDialog(
                 onDismissRequest = { showRestoreHistory = false },
-                title = { Text(strings.syncRestoreHistory) },
+                title = {
+                    Text(
+                        if (restoreHistoryDirection == "上行") strings.syncRestoreRemoteHistory
+                        else strings.syncRestoreLocalHistory
+                    )
+                },
                 text = {
                     if (allBackupNames.isEmpty()) {
                         Text(strings.syncNoLocalBackups)
@@ -1083,7 +1207,7 @@ class WebDavConfigScreen : Screen {
                                 val deckCount: Int
                                 val backupName: String?
                                 withContext(Dispatchers.IO) {
-                                    val result = forceUpload(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager)
+                                    val result = forceUpload(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager, maxBackupCount = maxCloudBackups)
                                     deckCount = result.first
                                     backupName = result.second
                                     webDavConfigManager.updateLastSync(config.id)
@@ -1124,7 +1248,7 @@ class WebDavConfigScreen : Screen {
                                 val deckCount: Int
                                 val backupName: String?
                                 withContext(Dispatchers.IO) {
-                                    val result = forceDownload(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager)
+                                    val result = forceDownload(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager, maxBackupCount = maxLocalBackups)
                                     deckCount = result.first
                                     backupName = result.second
                                     webDavConfigManager.updateLastSync(config.id)
@@ -1164,7 +1288,7 @@ class WebDavConfigScreen : Screen {
                                 val config = defaultConfig ?: return@launch
                                 val backupName: String?
                                 withContext(Dispatchers.IO) {
-                                    backupName = forceUploadConfig(config, exportManager, syncManager, settingsRepository)
+                                    backupName = forceUploadConfig(config, exportManager, syncManager, settingsRepository, maxBackupCount = maxCloudBackups)
                                     webDavConfigManager.updateLastSync(config.id)
                                 }
                                 val msg = if (backupName != null) "${strings.syncConfigSyncSuccess}\n$backupName" else strings.syncConfigSyncSuccess
@@ -1201,7 +1325,7 @@ class WebDavConfigScreen : Screen {
                                 val config = defaultConfig ?: return@launch
                                 val backupName: String?
                                 withContext(Dispatchers.IO) {
-                                    backupName = forceDownloadConfig(config, syncManager, settingsRepository, exportManager)
+                                    backupName = forceDownloadConfig(config, syncManager, settingsRepository, exportManager, maxBackupCount = maxLocalBackups)
                                     webDavConfigManager.updateLastSync(config.id)
                                 }
                                 val msg = if (backupName != null) "${strings.syncConfigSyncSuccess}\n$backupName" else strings.syncConfigSyncSuccess
@@ -1277,10 +1401,12 @@ private suspend fun forceUpload(
     syncManager: SyncManager,
     mediaManager: MediaManager,
     splashQuoteManager: SplashQuoteManager? = null,
+    maxBackupCount: Int = 7,
 ): Pair<Int, String?> {
     // Backup remote data before uploading (preserve cloud state)
     val backupFile = archiveRemoteDataLocally(syncManager, config, direction = "上行")
     val backupName = backupFile?.let { readBackupDisplayName(it) }
+    pruneOldBackups("上行", maxBackupCount)
 
     val allKbs = kbRepository.getAll().first()
     val allDecks = deckRepository.getAll().first()
@@ -1318,10 +1444,12 @@ private suspend fun forceDownload(
     syncManager: SyncManager,
     mediaManager: MediaManager,
     splashQuoteManager: SplashQuoteManager? = null,
+    maxBackupCount: Int = 7,
 ): Pair<Int, String?> {
     // Local backup before downloading (backup stays on local disk)
     val backupFile = archiveDataLocally(exportManager, kbRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, splashQuoteManager, direction = "下行")
     val backupName = backupFile?.let { readBackupDisplayName(it) }
+    pruneOldBackups("下行", maxBackupCount)
 
     val remoteResult = syncManager.downloadData(config)
     if (remoteResult.isFailure) throw Exception("No remote data found")
@@ -1594,10 +1722,12 @@ private suspend fun forceUploadConfig(
     exportManager: ExportManager,
     syncManager: SyncManager,
     settingsRepository: SettingsRepository,
+    maxBackupCount: Int = 7,
 ): String? {
     // Local backup before uploading config
     val backupFile = archiveConfigLocally(exportManager, syncManager, settingsRepository, config, direction = "上行")
     val backupName = backupFile?.let { readBackupDisplayName(it) }
+    pruneOldBackups("上行", maxBackupCount)
 
     val encryptor = SensitiveDataEncryptor(config.password)
     val settings = encryptor.encryptSettings(settingsRepository.getAll())
@@ -1614,12 +1744,14 @@ private suspend fun forceDownloadConfig(
     syncManager: SyncManager,
     settingsRepository: SettingsRepository,
     exportManager: ExportManager? = null,
+    maxBackupCount: Int = 7,
 ): String? {
     // Local backup before downloading config
     val backupName = if (exportManager != null) {
         val backupFile = archiveConfigLocally(exportManager, syncManager, settingsRepository, config, direction = "下行")
         backupFile?.let { readBackupDisplayName(it) }
     } else null
+    pruneOldBackups("下行", maxBackupCount)
 
     val remoteSettings = downloadRemoteSettings(config, syncManager)
         ?: throw Exception("No remote config found")
@@ -1819,17 +1951,38 @@ private fun nextBackupSeq(): Int {
     return allBackups.size + 1
 }
 
-/** List all backups (data + config) sorted by seq number in their .name sidecar. */
-private fun listAllBackupsSorted(): List<String> {
+/** List all backups (data + config) sorted by seq number, optionally filtered by direction. */
+private fun listAllBackupsSorted(filterDirection: String? = null): List<String> {
     val dir = resolveLocalBackupDir() ?: return emptyList()
     if (!platformPathExists(dir)) return emptyList()
     val all = platformListFileNames(dir)
         .filter { (it.startsWith("data_") || it.startsWith("config_")) && it.endsWith(".json") }
-    return all.sortedBy { filename ->
+    val filtered = if (filterDirection != null) {
+        all.filter { filename ->
+            val name = readBackupDisplayName(filename) ?: ""
+            name.contains(filterDirection)
+        }
+    } else {
+        all
+    }
+    return filtered.sortedBy { filename ->
         val name = readBackupDisplayName(filename) ?: ""
         // Extract seq prefix "001-" → 1
         val seqStr = name.substringBefore("-", "")
         seqStr.toIntOrNull() ?: 0
+    }
+}
+
+/** Delete oldest backups of the given direction, keeping at most [maxCount]. */
+private fun pruneOldBackups(direction: String, maxCount: Int) {
+    val dir = resolveLocalBackupDir() ?: return
+    if (!platformPathExists(dir)) return
+    val backups = listAllBackupsSorted(filterDirection = direction)
+    if (backups.size <= maxCount) return
+    val toDelete = backups.take(backups.size - maxCount)
+    toDelete.forEach { filename ->
+        platformDeleteFile(platformJoinPath(dir, filename))
+        platformDeleteFile(platformJoinPath(dir, filename.removeSuffix(".json") + ".name"))
     }
 }
 
