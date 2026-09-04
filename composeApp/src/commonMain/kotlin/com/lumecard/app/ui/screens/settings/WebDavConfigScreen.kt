@@ -21,6 +21,7 @@ import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.i18n.I18nManager
+import com.lumecard.app.i18n.AppLocale
 import com.lumecard.app.platform.MediaFileEntry
 import com.lumecard.app.platform.hashFileSha1
 import com.lumecard.app.platform.platformGetUserHome
@@ -134,6 +135,8 @@ class WebDavConfigScreen : Screen {
         var localConfigBackups by remember { mutableStateOf<List<String>>(emptyList()) }
         var allBackupNames by remember { mutableStateOf<List<String>>(emptyList()) }
         var showClearBackupsConfirm by remember { mutableStateOf(false) }
+        var showRestoreCloudStep by remember { mutableIntStateOf(0) }
+        var restoreCloudInput by remember { mutableStateOf("") }
         var autoSyncEnabled by remember { mutableStateOf(false) }
         var autoSyncInterval by remember { mutableStateOf(30) }
         var showIntervalDropdown by remember { mutableStateOf(false) }
@@ -914,7 +917,18 @@ class WebDavConfigScreen : Screen {
                     }
                 },
                 confirmButton = {
-                    Row {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        TextButton(
+                            onClick = { showRestoreCloudStep = 1 },
+                            interactionSource = null,
+                        ) {
+                            Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(strings.syncRestoreCloud, style = MaterialTheme.typography.labelSmall)
+                        }
                         TextButton(
                             onClick = { showClearBackupsConfirm = true },
                             interactionSource = null,
@@ -954,6 +968,100 @@ class WebDavConfigScreen : Screen {
                 },
                 dismissButton = {
                     TextButton(onClick = { showClearBackupsConfirm = false }, interactionSource = null) { Text(strings.actionCancel) }
+                },
+            )
+        }
+
+        // Restore from cloud — step 1
+        if (showRestoreCloudStep == 1) {
+            AlertDialog(
+                onDismissRequest = { showRestoreCloudStep = 0 },
+                title = { Text(strings.syncRestoreCloud) },
+                text = { Text(strings.syncRestoreCloudConfirm1) },
+                confirmButton = {
+                    TextButton(onClick = { showRestoreCloudStep = 2 }, interactionSource = null) { Text(strings.actionConfirm) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showRestoreCloudStep = 0 }, interactionSource = null) { Text(strings.actionCancel) }
+                },
+            )
+        }
+
+        // Restore from cloud — step 2
+        if (showRestoreCloudStep == 2) {
+            AlertDialog(
+                onDismissRequest = { showRestoreCloudStep = 0 },
+                title = { Text(strings.syncRestoreCloud) },
+                text = { Text(strings.syncRestoreCloudConfirm2) },
+                confirmButton = {
+                    TextButton(onClick = { showRestoreCloudStep = 3; restoreCloudInput = "" }, interactionSource = null) { Text(strings.actionConfirm) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showRestoreCloudStep = 0 }, interactionSource = null) { Text(strings.actionCancel) }
+                },
+            )
+        }
+
+        // Restore from cloud — step 3 (manual input)
+        if (showRestoreCloudStep == 3) {
+            val confirmKeyword = when (i18nManager.currentLocale) {
+                AppLocale.ZH_CN -> "确认"
+                AppLocale.ZH_TW -> "確認"
+                AppLocale.JA -> "確認"
+                AppLocale.ES -> "confirmar"
+                else -> "confirm"
+            }
+            AlertDialog(
+                onDismissRequest = { showRestoreCloudStep = 0 },
+                title = { Text(strings.syncRestoreCloud) },
+                text = {
+                    Column {
+                        Text(strings.syncRestoreCloudConfirm3)
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = restoreCloudInput,
+                            onValueChange = { restoreCloudInput = it },
+                            placeholder = { Text(strings.syncRestoreCloudInputHint) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showRestoreCloudStep = 0
+                            scope.launch {
+                                isSyncing = true
+                                syncStatus = strings.settingsSyncing
+                                try {
+                                    val config = defaultConfig ?: return@launch
+                                    val result = withContext(Dispatchers.IO) {
+                                        val remoteResult = syncManager.downloadData(config)
+                                        if (remoteResult.isFailure) throw Exception("No remote data found")
+                                        val remoteJson = remoteResult.getOrThrow()
+                                        val remote = exportManager.importData(remoteJson) ?: throw Exception("Failed to parse remote data")
+                                        val decks = remote.decks.size
+                                        writeMergedToLocal(remote, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository)
+                                        decks
+                                    }
+                                    syncStatus = strings.syncRestoreCloudDone
+                                    snackbarHostState.showSnackbar(strings.syncRestoreCloudDone)
+                                    reloadConfigs()
+                                } catch (e: Exception) {
+                                    syncStatus = strings.settingsSyncError(e.message ?: strings.errorUnknown)
+                                    snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: strings.errorUnknown))
+                                } finally {
+                                    isSyncing = false
+                                }
+                            }
+                        },
+                        enabled = restoreCloudInput == confirmKeyword,
+                        interactionSource = null,
+                    ) { Text(strings.actionConfirm) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showRestoreCloudStep = 0 }, interactionSource = null) { Text(strings.actionCancel) }
                 },
             )
         }
@@ -1170,8 +1278,8 @@ private suspend fun forceUpload(
     mediaManager: MediaManager,
     splashQuoteManager: SplashQuoteManager? = null,
 ): Pair<Int, String?> {
-    // Local backup before uploading (backup stays on local disk, not sent to remote)
-    val backupFile = archiveDataLocally(exportManager, kbRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, splashQuoteManager, direction = "上行")
+    // Backup remote data before uploading (preserve cloud state)
+    val backupFile = archiveRemoteDataLocally(syncManager, config, direction = "上行")
     val backupName = backupFile?.let { readBackupDisplayName(it) }
 
     val allKbs = kbRepository.getAll().first()
@@ -1636,6 +1744,31 @@ private suspend fun archiveDataLocally(
     val json = exportManager.exportData(allKbs, allDecks, allCards, allLogs, allPlans, quotesExport)
     platformWriteFileText(platformJoinPath(dir, filename), json)
     // Save display name as sidecar file
+    val displayName = BackupNameGenerator().generateName(direction, "D", seq)
+    platformWriteFileText(platformJoinPath(dir, "${filename.removeSuffix(".json")}.name"), displayName)
+    return filename
+}
+
+/** Download remote data and save as a local backup (used before force-upload to preserve cloud state). */
+private suspend fun archiveRemoteDataLocally(
+    syncManager: SyncManager,
+    config: WebDavConfig,
+    direction: String = "上行",
+): String? {
+    val remoteResult = syncManager.downloadData(config)
+    if (remoteResult.isFailure) return null
+    val remoteJson = remoteResult.getOrThrow()
+
+    val dir = ensureLocalBackupDir() ?: return null
+    val now = Clock.System.now()
+    val local = now.toLocalDateTime(TimeZone.currentSystemDefault())
+    val ts = "${local.date.year}${local.date.monthNumber.toString().padStart(2, '0')}${local.date.dayOfMonth.toString().padStart(2, '0')}" +
+        "_" +
+        "${local.time.hour.toString().padStart(2, '0')}${local.time.minute.toString().padStart(2, '0')}${local.time.second.toString().padStart(2, '0')}"
+    val seq = nextBackupSeq()
+    val filename = "data_${ts}.json"
+
+    platformWriteFileText(platformJoinPath(dir, filename), remoteJson)
     val displayName = BackupNameGenerator().generateName(direction, "D", seq)
     platformWriteFileText(platformJoinPath(dir, "${filename.removeSuffix(".json")}.name"), displayName)
     return filename
