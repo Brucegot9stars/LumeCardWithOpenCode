@@ -9,6 +9,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   release:
     name: Build & Release
@@ -44,13 +48,15 @@ jobs:
       - name: Run unit tests
         run: ./gradlew :shared:desktopTest
 
-      - name: Sync version into assets
+      - name: Sync version into all platform assets
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           CODE=$(grep APP_VERSION_CODE version.properties | cut -d= -f2)
-          sed -i "s/^APP_VERSION_NAME=.*/APP_VERSION_NAME=${VERSION}/" composeApp/src/androidMain/assets/version.properties
-          sed -i "s/^APP_VERSION_CODE=.*/APP_VERSION_CODE=${CODE}/" composeApp/src/androidMain/assets/version.properties
-          echo "Synced assets/version.properties to v${VERSION} (code=${CODE})"
+          for f in composeApp/src/androidMain/assets/version.properties composeApp/src/desktopMain/resources/version.properties version.properties; do
+            sed -i "s/^APP_VERSION_NAME=.*/APP_VERSION_NAME=${VERSION}/" "$f"
+            sed -i "s/^APP_VERSION_CODE=.*/APP_VERSION_CODE=${CODE}/" "$f"
+          done
+          echo "Synced all version.properties to v${VERSION} (code=${CODE})"
 
       - name: Decode keystore
         if: env.KEYSTORE_BASE64 != ''
@@ -171,7 +177,7 @@ jobs:
             echo "---"
             echo ""
             FIRST_COMMIT=$(git rev-list --max-parents=0 HEAD 2>/dev/null | head -1)
-            echo "**Full Changelog**: https://github.com/Brucegot9stars/LumeCardWithOpenCode/compare/${PREV_TAG:-$FIRST_COMMIT}...${TAG}"
+            echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG:-$FIRST_COMMIT}...${TAG}"
           } > release_notes.md
 
           echo "=== Release Notes ==="

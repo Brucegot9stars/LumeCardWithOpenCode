@@ -10,7 +10,7 @@ import kotlin.time.Clock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-/** Full backup: includes private data (review logs, learning plans). For sync/restore only. */
+/** Full backup: includes private data (review logs, learning plans, splash quotes). For sync/restore only. */
 @Serializable
 data class DataExport(
     val exportType: String = "backup",
@@ -22,7 +22,8 @@ data class DataExport(
     val decks: List<ExportDeck>,
     val cards: List<ExportCard>,
     val reviewLogs: List<ExportReviewLog> = emptyList(),
-    val learningPlans: List<ExportLearningPlan> = emptyList()
+    val learningPlans: List<ExportLearningPlan> = emptyList(),
+    val splashQuotes: ExportSplashQuotes? = null,
 )
 
 /** Share-friendly: only knowledge-base content. No private learning plans or progress. */
@@ -68,6 +69,7 @@ data class ExportKnowledgeBase(
     val id: String,
     val name: String,
     val description: String? = null,
+    val icon: String = "\uD83D\uDCC1",
     val createdAt: String,
     val updatedAt: String,
     val version: Long = 1,
@@ -98,6 +100,7 @@ data class ExportCard(
     val type: String,
     val front: String,
     val back: String,
+    val title: String = "",
     val tags: List<String>,
     val media: List<com.lumecard.shared.model.Media> = emptyList(),
     val metadata: Map<String, String> = emptyMap(),
@@ -131,7 +134,8 @@ data class ExportReviewLog(
 data class SyncHistoryEntry(
     val timestamp: String,
     val deviceId: String,
-    val filename: String
+    val filename: String,
+    val name: String? = null
 )
 
 /** Index of all sync snapshots on the remote. */
@@ -159,6 +163,14 @@ data class ExportLearningPlan(
     val syncedAt: String? = null
 )
 
+/** Splash quotes bundled in data.json sync (whole-collection version for conflict resolution). */
+@Serializable
+data class ExportSplashQuotes(
+    val version: Long = 0,
+    val userQuotes: List<SplashQuoteData> = emptyList(),
+    val hiddenDefaultIndices: String = "",
+)
+
 class ExportManager {
     private val json = Json {
         prettyPrint = true
@@ -167,7 +179,7 @@ class ExportManager {
 
     private fun exportKbs(kbs: List<KnowledgeBase>) = kbs.map { kb ->
         ExportKnowledgeBase(
-            id = kb.id, name = kb.name, description = kb.description,
+            id = kb.id, name = kb.name, description = kb.description, icon = kb.icon,
             createdAt = kb.createdAt.toString(), updatedAt = kb.updatedAt.toString(),
             version = kb.version, deletedAt = kb.deletedAt?.toString(),
             syncedAt = kb.syncedAt?.toString()
@@ -187,7 +199,7 @@ class ExportManager {
     private fun exportCards(cards: List<Card>) = cards.map { c ->
         ExportCard(
             id = c.id, deckId = c.deckId, type = c.type.name,
-            front = c.front, back = c.back, tags = c.tags,
+            front = c.front, back = c.back, title = c.title, tags = c.tags,
             media = c.media, metadata = c.metadata,
             createdAt = c.createdAt.toString(), updatedAt = c.updatedAt.toString(),
             lastReviewedAt = c.lastReviewedAt?.toString(),
@@ -227,6 +239,7 @@ class ExportManager {
         cards: List<Card>,
         reviewLogs: List<ReviewLog> = emptyList(),
         learningPlans: List<LearningPlan> = emptyList(),
+        splashQuotes: ExportSplashQuotes? = null,
         deviceId: String? = null
     ): String {
         val export = DataExport(
@@ -236,7 +249,8 @@ class ExportManager {
             decks = exportDecks(decks),
             cards = exportCards(cards),
             reviewLogs = exportReviewLogs(reviewLogs),
-            learningPlans = exportPlans(learningPlans)
+            learningPlans = exportPlans(learningPlans),
+            splashQuotes = splashQuotes,
         )
         return json.encodeToString(DataExport.serializer(), export)
     }
@@ -265,29 +279,6 @@ class ExportManager {
         } catch (_: Exception) {
             null
         }
-    }
-
-    /** Export only records changed since [since]. Returns full snapshot if [since] is null. */
-    fun exportIncrementalData(
-        knowledgeBases: List<KnowledgeBase>,
-        decks: List<Deck>,
-        cards: List<Card>,
-        reviewLogs: List<ReviewLog> = emptyList(),
-        learningPlans: List<LearningPlan> = emptyList(),
-        since: String? = null,
-        deviceId: String? = null
-    ): String {
-        val export = IncrementalExport(
-            exportDate = Clock.System.now().toString(),
-            since = since,
-            deviceId = deviceId,
-            knowledgeBases = exportKbs(knowledgeBases),
-            decks = exportDecks(decks),
-            cards = exportCards(cards),
-            reviewLogs = exportReviewLogs(reviewLogs),
-            learningPlans = exportPlans(learningPlans)
-        )
-        return json.encodeToString(IncrementalExport.serializer(), export)
     }
 
     fun exportConfig(

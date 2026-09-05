@@ -28,6 +28,7 @@ import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.ui.components.ConfirmOperationDialog
+import com.lumecard.app.ui.components.EmojiPickerField
 import com.lumecard.app.ui.components.OperationConfirmationManager
 import com.lumecard.app.ui.screens.study.StudyScreen
 import com.lumecard.shared.data.EntityMergeManager
@@ -384,10 +385,11 @@ class DeckListScreen(
                 }
             }
         }
-        // Create dialog
+// Create dialog
         if (showCreateDialog) {
             var name by remember { mutableStateOf("") }
             var description by remember { mutableStateOf("") }
+            var icon by remember { mutableStateOf(Deck.icons[0]) }
 
             AlertDialog(
                 onDismissRequest = { showCreateDialog = false },
@@ -400,6 +402,11 @@ class DeckListScreen(
                             label = { Text(strings.deckName) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
+                        )
+                        EmojiPickerField(
+                            icon = icon,
+                            onIconChange = { icon = it },
+                            label = strings.emojiChoose,
                         )
                         OutlinedTextField(
                             value = description,
@@ -414,7 +421,7 @@ class DeckListScreen(
                         onClick = {
                             if (name.isNotBlank()) {
                                 scope.launch {
-                                    viewModel.createDeck(name, description.ifBlank { null })
+                                    viewModel.createDeck(name, description.ifBlank { null }, icon)
                                     showCreateDialog = false
                                 }
                             }
@@ -432,6 +439,7 @@ class DeckListScreen(
         if (editingDeck != null) {
             var name by remember(editingDeck) { mutableStateOf(editingDeck!!.name) }
             var description by remember(editingDeck) { mutableStateOf(editingDeck!!.description ?: "") }
+            var icon by remember(editingDeck) { mutableStateOf(editingDeck!!.icon) }
 
             AlertDialog(
                 onDismissRequest = { editingDeck = null },
@@ -444,6 +452,11 @@ class DeckListScreen(
                             label = { Text(strings.deckName) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
+                        )
+                        EmojiPickerField(
+                            icon = icon,
+                            onIconChange = { icon = it },
+                            label = strings.emojiChoose,
                         )
                         OutlinedTextField(
                             value = description,
@@ -458,7 +471,7 @@ class DeckListScreen(
                         onClick = {
                             if (name.isNotBlank()) {
                                 scope.launch {
-                                    viewModel.updateDeck(editingDeck!!.id, name, description.ifBlank { null })
+                                    viewModel.updateDeck(editingDeck!!.id, name, description.ifBlank { null }, icon)
                                     editingDeck = null
                                 }
                             }

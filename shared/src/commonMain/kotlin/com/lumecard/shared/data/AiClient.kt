@@ -7,6 +7,7 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.utils.io.*
+import kotlinx.coroutines.CancellationException
 
 class AiClient(private val client: HttpClient) {
 
@@ -43,6 +44,8 @@ class AiClient(private val client: HttpClient) {
             }
         } catch (e: AiException) {
             Result.failure(e)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             val msg = e.message ?: e.toString()
             val kind = when {
@@ -80,19 +83,18 @@ class AiClient(private val client: HttpClient) {
             val contentLength = response.contentLength()
 
             val responseBody = if (onProgress != null) {
-                buildString {
-                    val channel = response.bodyAsChannel()
-                    var received = 0L
-                    val buffer = ByteArray(4096)
-                    while (!channel.isClosedForRead) {
-                        val read = channel.readAvailable(buffer)
-                        if (read > 0) {
-                            append(buffer.decodeToString(0, read))
-                            received += read
-                            onProgress(received, contentLength)
-                        }
-                    }
+                val channel = response.bodyAsChannel()
+                val bytes = mutableListOf<Byte>()
+                var received = 0L
+                val buffer = ByteArray(4096)
+                while (true) {
+                    val read = channel.readAvailable(buffer)
+                    if (read <= 0) break
+                    for (i in 0 until read) bytes.add(buffer[i])
+                    received += read
+                    onProgress(received, contentLength)
                 }
+                bytes.toByteArray().decodeToString()
             } else {
                 response.bodyAsText()
             }
@@ -112,6 +114,8 @@ class AiClient(private val client: HttpClient) {
             }
         } catch (e: AiException) {
             Result.failure(e)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: UnsupportedOperationException) {
             Result.failure(AiException("Protocol does not support card generation: ${e.message}"))
         } catch (e: Exception) {
@@ -151,23 +155,26 @@ class AiClient(private val client: HttpClient) {
             }
 
             val contentLength = response.contentLength()
+            val decoder = IncrementalUtf8Decoder()
             val responseBody = buildString {
                 val channel = response.bodyAsChannel()
                 var received = 0L
                 val buffer = ByteArray(8192)
-                while (!channel.isClosedForRead) {
+                while (true) {
                     val read = channel.readAvailable(buffer)
-                    if (read > 0) {
-                        val text = buffer.decodeToString(0, read)
+                    if (read <= 0) break
+                    received += read
+                    onProgress?.invoke(received, contentLength)
+                    val text = decoder.consume(buffer, read)
+                    if (text.isNotEmpty()) {
                         append(text)
-                        received += read
-                        onProgress?.invoke(received, contentLength)
                         val results = parser.feed(text)
                         if (results.isNotEmpty()) {
                             onEvent(results)
                         }
                     }
                 }
+                append(decoder.finalize())
             }
 
             return if (response.status.isSuccess()) {
@@ -185,6 +192,8 @@ class AiClient(private val client: HttpClient) {
             }
         } catch (e: AiException) {
             Result.failure(e)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: UnsupportedOperationException) {
             Result.failure(AiException("Protocol does not support card generation: ${e.message}"))
         } catch (e: Exception) {
@@ -198,5 +207,34 @@ class AiClient(private val client: HttpClient) {
             }
             Result.failure(AiException("$kind: ${e.message ?: "unknown error"}"))
         }
+    }
+
+    private class IncrementalUtf8Decoder {
+        private val buffer = mutableListOf<Byte>()
+
+        fun consume(chunk: ByteArray, length: Int): String {
+            for (i in 0 until length) buffer.add(chunk[i])
+            val trailing = buffer.asReversed().takeWhile { it in 0x80..0xBF }.size
+            val startIdx = buffer.size - 1 - trailing
+            if (trailing > 0 && startIdx >= 0) {
+                val start = buffer[startIdx]
+                val expected = when {
+                    start in 0xC0..0xDF -> 2
+                    start in 0xE0..0xEF -> 3
+                    start in 0xF0..0xF7 -> 4
+                    else -> trailing + 1
+                }
+                if (trailing + 1 < expected) return ""
+            }
+            if (trailing == buffer.size) return ""
+            val complete = buffer.subList(0, buffer.size - trailing)
+            val result = complete.toByteArray().decodeToString()
+            val keep = buffer.takeLast(trailing)
+            buffer.clear()
+            buffer.addAll(keep)
+            return result
+        }
+
+        fun finalize(): String = if (buffer.isEmpty()) "" else buffer.toByteArray().decodeToString().also { buffer.clear() }
     }
 }

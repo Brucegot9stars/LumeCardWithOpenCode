@@ -57,6 +57,8 @@ kotlin {
                 implementation(Dependencies.mikepenzMarkdown)
                 implementation(Dependencies.mikepenzMarkdownM3)
 
+                implementation(Dependencies.composeRichEditor)
+
                 implementation(Dependencies.kotlinxCoroutines)
                 implementation(Dependencies.kotlinxDateTime)
                 implementation(Dependencies.kotlinxSerialization)
@@ -74,6 +76,7 @@ kotlin {
             dependencies {
                 implementation("org.jetbrains.skiko:skiko-awt-runtime-windows-x64:0.8.15")
                 implementation(Dependencies.kotlinxCoroutinesSwing)
+                implementation(Dependencies.slf4jNop)
             }
         }
     }
@@ -95,6 +98,7 @@ compose.desktop {
                 iconFile.set(project.file("src/desktopMain/resources/icon.ico"))
                 menuGroup = "LumeCard"
                 upgradeUuid = "229b7cca-e9d0-4ee7-9e2e-c9c8dd3d71ce"
+                shortcut = true
             }
         }
     }

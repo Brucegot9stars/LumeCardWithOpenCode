@@ -188,7 +188,7 @@ actual fun readFontFamilyName(filePath: String): String? {
         var bestScore = -1
 
         for (i in 0 until count) {
-            if (nameBuf.position() + 12 > bytes.size - nameOffset) break
+            if (nameBuf.position() + 12 > nameBuf.limit()) break
             val platformID = nameBuf.getShort().toInt() and 0xFFFF
             val encodingID = nameBuf.getShort().toInt() and 0xFFFF
             val languageID = nameBuf.getShort().toInt() and 0xFFFF
@@ -211,13 +211,15 @@ actual fun readFontFamilyName(filePath: String): String? {
                 else -> continue
             }
             val score = when {
-                platformID == 3 && encodingID == 1 && languageID == 0x0409 -> 4
-                platformID == 3 && encodingID == 10 -> 3
+                platformID == 3 && encodingID == 10 -> 5
+                platformID == 0 -> 4
+                platformID == 3 && encodingID == 1 && languageID == 0x0409 -> 3
                 platformID == 3 -> 2
                 platformID == 1 -> 1
                 else -> 0
             }
-            if (score > bestScore) {
+            val hasNonAscii = decoded.any { it.code > 127 }
+            if (score > bestScore || (score == bestScore && hasNonAscii && (best?.any { it.code > 127 } != true))) {
                 best = decoded
                 bestScore = score
             }
@@ -276,3 +278,32 @@ actual fun copyFontToStorage(sourcePath: String, fileName: String): Boolean {
 }
 
 actual fun fontFileExists(filePath: String): Boolean = File(filePath).exists()
+
+actual fun deleteFontFile(filePath: String): Boolean {
+    return try {
+        File(filePath).delete()
+    } catch (_: Exception) { false }
+}
+
+actual fun getBackgroundStorageDir(): String {
+    return "${AndroidContextHolder.context.filesDir.absolutePath}/backgrounds"
+}
+
+actual fun copyBackgroundToStorage(sourcePath: String, fileName: String): String? {
+    return try {
+        val dir = File(getBackgroundStorageDir())
+        if (!dir.exists()) dir.mkdirs()
+        val target = File(dir, fileName)
+        val uri = android.net.Uri.parse(sourcePath)
+        if (uri.scheme == "content" || uri.scheme == "file") {
+            AndroidContextHolder.context.contentResolver.openInputStream(uri)?.use { input ->
+                target.outputStream().use { output -> input.copyTo(output) }
+            }
+        } else {
+            File(sourcePath).inputStream().use { input ->
+                target.outputStream().use { output -> input.copyTo(output) }
+            }
+        }
+        target.absolutePath
+    } catch (e: Exception) { null }
+}

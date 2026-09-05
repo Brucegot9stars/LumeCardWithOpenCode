@@ -41,7 +41,7 @@ fun CardTypeSelector(
         verticalArrangement = Arrangement.spacedBy(spacing.sm),
         contentPadding = PaddingValues(spacing.sm),
     ) {
-        items(CardType.entries, key = { it.name }) { type ->
+        items(CardType.entries.filter { it != CardType.AI_GENERATED }, key = { it.name }) { type ->
             val isSelected = type == selectedType
             val cardColors = if (isSelected) {
                 CardDefaults.cardColors(

@@ -22,6 +22,7 @@ import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.i18n.I18nManager
+import com.lumecard.app.ui.components.ContextHelpButton
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.shared.data.AiConfig
@@ -150,6 +151,9 @@ class AiConfigScreen : Screen {
                 LumeCardTopBar(
                     title = strings.aiTitle,
                     onBack = { navigator.pop() },
+                    action = {
+                        ContextHelpButton(articleId = "ai-features")
+                    },
                 )
             },
             snackbarHost = { SnackbarHost(snackbarHostState) }

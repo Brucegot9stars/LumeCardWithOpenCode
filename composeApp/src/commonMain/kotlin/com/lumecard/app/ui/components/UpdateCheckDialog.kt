@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.platform.getAppVersion
 import com.lumecard.app.ui.theme.LumeCardTheme
+import com.lumecard.app.util.formatDouble
 import com.lumecard.shared.data.UpdateInfo
 import com.lumecard.shared.data.UpdateState
 import org.koin.compose.koinInject
@@ -189,7 +190,7 @@ fun UpdateCheckDialog(
 private fun formatBytes(bytes: Long): String {
     return when {
         bytes < 1024 -> "${bytes}B"
-        bytes < 1024 * 1024 -> "${"%.1f".format(bytes / 1024.0)}KB"
-        else -> "${"%.1f".format(bytes / (1024.0 * 1024))}MB"
+        bytes < 1024 * 1024 -> "${formatDouble(bytes / 1024.0)}KB"
+        else -> "${formatDouble(bytes / (1024.0 * 1024))}MB"
     }
 }

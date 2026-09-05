@@ -33,6 +33,8 @@ expect fun pasteClipboardMedia(mediaDir: String): List<String>
 /** Save a media file to [mediaDir] with SHA-1 dedup, return markdown reference or null. */
 expect fun saveMediaFile(mediaDir: String, sourcePath: String): String?
 
+expect fun openDirectory(path: String)
+
 data class ZipEntry(
     val path: String,
     val sourceFile: String

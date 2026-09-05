@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
@@ -21,18 +22,45 @@ import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.i18n.I18nManager
+import com.lumecard.app.i18n.AppLocale
 import com.lumecard.app.platform.MediaFileEntry
 import com.lumecard.app.platform.hashFileSha1
+import com.lumecard.app.platform.platformGetUserHome
+import com.lumecard.app.platform.platformGetSystemProperty
+import com.lumecard.app.platform.platformJoinPath
+import com.lumecard.app.platform.platformPathExists
+import com.lumecard.app.platform.platformMkdirs
+import com.lumecard.app.platform.platformListFileNames
+import com.lumecard.app.platform.platformFileExists
+import com.lumecard.app.platform.platformGetParentDir
+import com.lumecard.app.platform.platformReadFileBytes
+import com.lumecard.app.platform.platformReadFileText
+import com.lumecard.app.platform.platformWriteFileBytes
+import com.lumecard.app.platform.platformWriteFileText
+import com.lumecard.app.platform.platformDeleteFile
 import com.lumecard.app.platform.scanMediaDirectory
 import com.lumecard.app.platform.scanMediaDirectoryRaw
+import com.lumecard.app.ui.components.ContextHelpButton
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.theme.LumeCardTheme
+import com.lumecard.shared.data.DataExport
 import com.lumecard.shared.data.ExportManager
+import com.lumecard.shared.data.ExportSplashQuotes
 import com.lumecard.shared.data.MediaManager
 import com.lumecard.shared.data.SyncHistoryEntry
 import com.lumecard.shared.data.MediaManifest
 import com.lumecard.shared.data.MediaManifestEntry
+import com.lumecard.shared.data.SplashQuoteData
+import com.lumecard.shared.data.SplashQuoteManager
+import com.lumecard.shared.crypto.SensitiveDataEncryptor
+import com.lumecard.shared.crypto.SensitiveKeys
+import com.lumecard.shared.data.FontManifestEntry
 import com.lumecard.shared.data.SyncManager
+import com.lumecard.shared.data.BackupNameGenerator
+import com.lumecard.shared.data.downloadFontManifestEntries
+import com.lumecard.shared.data.generateUuid
+import com.lumecard.shared.data.mergeFontEntries
+import com.lumecard.shared.data.uploadFontManifestEntries
 import com.lumecard.shared.data.WebDavConfig
 import com.lumecard.shared.data.WebDavConfigManager
 import com.lumecard.shared.data.WebDavProviders
@@ -41,6 +69,7 @@ import com.lumecard.shared.data.toDeck
 import com.lumecard.shared.data.toKnowledgeBase
 import com.lumecard.shared.data.toLearningPlan
 import com.lumecard.shared.data.toReviewLog
+import com.lumecard.shared.database.DatabaseDriverHolder
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
 import com.lumecard.shared.repository.KnowledgeBaseRepository
@@ -54,6 +83,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlin.time.Clock
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.koin.compose.koinInject
 
 class WebDavConfigScreen : Screen {
@@ -78,6 +110,7 @@ class WebDavConfigScreen : Screen {
         val reviewLogRepository: ReviewLogRepository = koinInject()
         val planRepository: LearningPlanRepository = koinInject()
         val settingsRepository: SettingsRepository = koinInject()
+        val splashQuoteManager: SplashQuoteManager = koinInject()
         val scope = rememberCoroutineScope()
         val snackbarHostState = remember { SnackbarHostState() }
 
@@ -94,13 +127,23 @@ class WebDavConfigScreen : Screen {
         var isSyncing by remember { mutableStateOf(false) }
         var syncStatus by remember { mutableStateOf("") }
         var deleteConfirmId by remember { mutableStateOf<String?>(null) }
-        var showRestoreConfirm by remember { mutableStateOf(false) }
+        var showForceUploadConfirm by remember { mutableStateOf(false) }
+        var showForceDownloadConfirm by remember { mutableStateOf(false) }
+        var showForceUploadConfigConfirm by remember { mutableStateOf(false) }
+        var showForceDownloadConfigConfirm by remember { mutableStateOf(false) }
         var showRestoreHistory by remember { mutableStateOf(false) }
-        var historyEntries by remember { mutableStateOf<List<SyncHistoryEntry>>(emptyList()) }
-        var restoreHistoryTarget by remember { mutableStateOf<SyncHistoryEntry?>(null) }
+        var restoreHistoryDirection by remember { mutableStateOf<String?>(null) }
+        var localDataBackups by remember { mutableStateOf<List<String>>(emptyList()) }
+        var localConfigBackups by remember { mutableStateOf<List<String>>(emptyList()) }
+        var allBackupNames by remember { mutableStateOf<List<String>>(emptyList()) }
+        var showClearBackupsConfirm by remember { mutableStateOf(false) }
+        var showRestoreCloudStep by remember { mutableIntStateOf(0) }
+        var restoreCloudInput by remember { mutableStateOf("") }
         var autoSyncEnabled by remember { mutableStateOf(false) }
-        var autoSyncInterval by remember { mutableStateOf(30) }
+        var autoSyncInterval by remember { mutableIntStateOf(30) }
         var showIntervalDropdown by remember { mutableStateOf(false) }
+        var maxCloudBackups by remember { mutableIntStateOf(7) }
+        var maxLocalBackups by remember { mutableIntStateOf(7) }
         var defaultConfig by remember { mutableStateOf<WebDavConfig?>(null) }
 
         val providerPresets = WebDavProviders.all.map { provider ->
@@ -121,6 +164,8 @@ class WebDavConfigScreen : Screen {
             scope.launch {
                 autoSyncEnabled = settingsRepository.getBoolean("autoSyncEnabled", false)
                 autoSyncInterval = settingsRepository.getInt("autoSyncInterval", 30)
+                maxCloudBackups = settingsRepository.getInt("maxCloudBackups", 7).coerceIn(1, 365)
+                maxLocalBackups = settingsRepository.getInt("maxLocalBackups", 7).coerceIn(1, 365)
             }
         }
 
@@ -128,6 +173,13 @@ class WebDavConfigScreen : Screen {
             scope.launch {
                 settingsRepository.set("autoSyncEnabled", autoSyncEnabled.toString())
                 settingsRepository.set("autoSyncInterval", autoSyncInterval.toString())
+            }
+        }
+
+        fun saveBackupLimits() {
+            scope.launch {
+                settingsRepository.set("maxCloudBackups", maxCloudBackups.toString())
+                settingsRepository.set("maxLocalBackups", maxLocalBackups.toString())
             }
         }
 
@@ -141,6 +193,9 @@ class WebDavConfigScreen : Screen {
                 LumeCardTopBar(
                     title = strings.settingsCloudSync,
                     onBack = { navigator.pop() },
+                    action = {
+                        ContextHelpButton(articleId = "webdav-sync")
+                    },
                 )
             },
             snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -567,10 +622,6 @@ class WebDavConfigScreen : Screen {
                                     },
                                 )
                             }
-                            // TODO: 实现定时自动同步调度逻辑
-                            //   - 用 LaunchedEffect + delay(autoSyncInterval * 60_000) 循环调用 syncIncrementalData
-                            //   - 在 autoSyncEnabled / autoSyncInterval 变化时重启协程
-                            //   - 需要持有 config / repositories 等依赖
                             if (autoSyncEnabled) {
                                 HorizontalDivider(modifier = Modifier.padding(horizontal = spacing.md))
                                 Row(
@@ -620,6 +671,82 @@ class WebDavConfigScreen : Screen {
                     }
                 }
 
+                // Backup limits
+                if (!isEditing) {
+                    Text(
+                        strings.settingsBackupLimits,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
+                    )
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = radius.card,
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        ),
+                    ) {
+                        Column {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = spacing.md, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    strings.settingsMaxCloudBackups,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Text(
+                                    "$maxCloudBackups",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.width(32.dp),
+                                    textAlign = TextAlign.End,
+                                )
+                            }
+                            Slider(
+                                value = maxCloudBackups.toFloat(),
+                                onValueChange = { maxCloudBackups = it.toInt() },
+                                onValueChangeFinished = { saveBackupLimits() },
+                                valueRange = 1f..365f,
+                                steps = 363,
+                                modifier = Modifier.padding(horizontal = spacing.md),
+                            )
+                            HorizontalDivider(modifier = Modifier.padding(horizontal = spacing.md))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = spacing.md, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    strings.settingsMaxLocalBackups,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Text(
+                                    "$maxLocalBackups",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.width(32.dp),
+                                    textAlign = TextAlign.End,
+                                )
+                            }
+                            Slider(
+                                value = maxLocalBackups.toFloat(),
+                                onValueChange = { maxLocalBackups = it.toInt() },
+                                onValueChangeFinished = { saveBackupLimits() },
+                                valueRange = 1f..365f,
+                                steps = 363,
+                                modifier = Modifier.padding(horizontal = spacing.md, vertical = 4.dp),
+                            )
+                        }
+                    }
+                }
+
                 // Action buttons
                 if (!isEditing && defaultConfig != null) {
                     Text(
@@ -642,43 +769,75 @@ class WebDavConfigScreen : Screen {
                         )
                     }
 
-                    // Sync Now (data + config)
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                isSyncing = true
-                                syncStatus = strings.settingsSyncing
-                                try {
-                                    val config = defaultConfig ?: return@launch
-                                    val deckCount: Int
-                                    withContext(Dispatchers.IO) {
-                                        deckCount = syncIncrementalData(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager)
-                                        val settings = settingsRepository.getAll()
-                                        val configJson = exportManager.exportConfig(settings)
-                                        syncManager.uploadConfig(config, configJson).getOrThrow()
-                                        webDavConfigManager.updateLastSync(config.id)
-                                    }
-                                    syncStatus = strings.settingsSyncSuccess(deckCount)
-                                    snackbarHostState.showSnackbar(strings.settingsSyncSuccess(deckCount))
-                                    reloadConfigs()
-                                } catch (e: Exception) {
-                                    syncStatus = strings.settingsSyncError(e.message ?: strings.errorUnknown)
-                                    snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: strings.errorUnknown))
-                                } finally {
-                                    isSyncing = false
-                                }
-                            }
-                        },
-                        interactionSource = null,
+                    // 数据（学习数据）
+                    Text(
+                        strings.syncScopeData,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
+                    )
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !isSyncing,
+                        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
                     ) {
-                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(spacing.sm))
-                        Text(strings.settingsSyncNow)
+                        Button(
+                            onClick = { showForceUploadConfirm = true },
+                            interactionSource = null,
+                            modifier = Modifier.weight(1f),
+                            enabled = !isSyncing,
+                        ) {
+                            Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(spacing.sm))
+                            Text(strings.syncForceUpload, style = MaterialTheme.typography.labelMedium)
+                        }
+                        Button(
+                            onClick = { showForceDownloadConfirm = true },
+                            interactionSource = null,
+                            modifier = Modifier.weight(1f),
+                            enabled = !isSyncing,
+                        ) {
+                            Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(spacing.sm))
+                            Text(strings.syncForceDownload, style = MaterialTheme.typography.labelMedium)
+                        }
                     }
 
-                    // Sync Data / Sync Config / Sync Media
+                    // 配置（设置）
+                    Text(
+                        strings.syncScopeConfig,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                    ) {
+                        OutlinedButton(
+                            onClick = { showForceUploadConfigConfirm = true },
+                            interactionSource = null,
+                            modifier = Modifier.weight(1f),
+                            enabled = !isSyncing,
+                        ) {
+                            Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(spacing.sm))
+                            Text(strings.syncForceUploadConfig, style = MaterialTheme.typography.labelMedium)
+                        }
+                        OutlinedButton(
+                            onClick = { showForceDownloadConfigConfirm = true },
+                            interactionSource = null,
+                            modifier = Modifier.weight(1f),
+                            enabled = !isSyncing,
+                        ) {
+                            Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(spacing.sm))
+                            Text(strings.syncForceDownloadConfig, style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+
+                    // Restore history — two buttons
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(spacing.sm),
@@ -686,22 +845,16 @@ class WebDavConfigScreen : Screen {
                         OutlinedButton(
                             onClick = {
                                 scope.launch {
-                                    isSyncing = true
-                                    syncStatus = strings.settingsSyncing
                                     try {
-                                        val config = defaultConfig ?: return@launch
-                                        val deckCount: Int
                                         withContext(Dispatchers.IO) {
-                                            deckCount = syncIncrementalData(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager)
-                                            webDavConfigManager.updateLastSync(config.id)
+                                            localDataBackups = listLocalBackups("data")
+                                            localConfigBackups = listLocalBackups("config")
                                         }
-                                        syncStatus = strings.settingsSyncSuccess(deckCount)
-                                        snackbarHostState.showSnackbar(strings.settingsSyncSuccess(deckCount))
-                                    } catch (e: Exception) {
-                                        syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
-                                        snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
-                                    } finally {
-                                        isSyncing = false
+                                        allBackupNames = listAllBackupsSorted(filterDirection = "下行")
+                                        restoreHistoryDirection = "下行"
+                                        showRestoreHistory = true
+                                    } catch (_: Exception) {
+                                        snackbarHostState.showSnackbar(strings.syncFailedToLoadHistory)
                                     }
                                 }
                             },
@@ -709,28 +862,23 @@ class WebDavConfigScreen : Screen {
                             modifier = Modifier.weight(1f),
                             enabled = !isSyncing,
                         ) {
-                            Text(strings.settingsSyncData)
+                            Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(spacing.sm))
+                            Text(strings.syncRestoreLocalHistory, style = MaterialTheme.typography.labelSmall)
                         }
                         OutlinedButton(
                             onClick = {
                                 scope.launch {
-                                    isSyncing = true
-                                    syncStatus = strings.settingsSyncing
                                     try {
-                                        val config = defaultConfig ?: return@launch
                                         withContext(Dispatchers.IO) {
-                                            val settings = settingsRepository.getAll()
-                                            val configJson = exportManager.exportConfig(settings)
-                                            syncManager.uploadConfig(config, configJson).getOrThrow()
-                                            webDavConfigManager.updateLastSync(config.id)
+                                            localDataBackups = listLocalBackups("data")
+                                            localConfigBackups = listLocalBackups("config")
                                         }
-                                        syncStatus = strings.settingsSyncConfigSuccess
-                                        snackbarHostState.showSnackbar(strings.settingsSyncConfigSuccess)
-                                    } catch (e: Exception) {
-                                        syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
-                                        snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
-                                    } finally {
-                                        isSyncing = false
+                                        allBackupNames = listAllBackupsSorted(filterDirection = "上行")
+                                        restoreHistoryDirection = "上行"
+                                        showRestoreHistory = true
+                                    } catch (_: Exception) {
+                                        snackbarHostState.showSnackbar(strings.syncFailedToLoadHistory)
                                     }
                                 }
                             },
@@ -738,53 +886,60 @@ class WebDavConfigScreen : Screen {
                             modifier = Modifier.weight(1f),
                             enabled = !isSyncing,
                         ) {
-                            Text(strings.settingsSyncConfig)
+                            Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(spacing.sm))
+                            Text(strings.syncRestoreRemoteHistory, style = MaterialTheme.typography.labelSmall)
                         }
-                    }
-
-                    // Restore from cloud
-                    OutlinedButton(
-                        onClick = { showRestoreConfirm = true },
-                        interactionSource = null,
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isSyncing,
-                    ) {
-                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(spacing.sm))
-                        Text(strings.settingsRestoreFromCloud)
-                    }
-
-                    // Restore history
-                    OutlinedButton(
-                        onClick = {
-                            scope.launch {
-                                try {
-                                    val config = defaultConfig ?: return@launch
-                                    val index = withContext(Dispatchers.IO) {
-                                        syncManager.downloadHistoryIndex(config)
-                                    }
-                                    if (index.isSuccess) {
-                                        historyEntries = index.getOrThrow().entries.reversed()
-                                        showRestoreHistory = true
-                                    } else {
-                                        snackbarHostState.showSnackbar("No history found")
-                                    }
-                                } catch (_: Exception) {
-                                    snackbarHostState.showSnackbar("Failed to load history")
-                                }
-                            }
-                        },
-                        interactionSource = null,
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isSyncing,
-                    ) {
-                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(spacing.sm))
-                        Text(strings.syncRestoreHistory)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(spacing.xxl))
+            }
+        }
+
+        // Restore a local backup: restore only data or only config.
+        val restoreLocalBackup: (String, Boolean) -> Unit = { filename, restoreData ->
+            showRestoreHistory = false
+            scope.launch {
+                isSyncing = true
+                syncStatus = strings.settingsSyncing
+                try {
+                    val result = withContext(Dispatchers.IO) {
+                        if (restoreData) {
+                            val json = readLocalBackup(filename) ?: throw Exception("Backup not found")
+                            val imported = exportManager.importData(json) ?: throw Exception("Failed to parse backup")
+                            val decks = imported.decks.size
+                            writeMergedToLocal(imported, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository)
+                            decks
+                        } else {
+                            val config = defaultConfig ?: throw Exception("No sync config")
+                            val json = readLocalBackup(filename) ?: throw Exception("Backup not found")
+                            val importedConfig = exportManager.importConfig(json)
+                            val encryptedSettings = importedConfig?.settings
+                            if (encryptedSettings != null) {
+                                val encryptor = SensitiveDataEncryptor(config.password)
+                                val decryptedSettings = encryptor.decryptSettings(encryptedSettings)
+                                if (decryptedSettings != null) {
+                                    for ((key, value) in decryptedSettings) {
+                                        settingsRepository.set(key, value)
+                                    }
+                                }
+                            }
+                            // Restore fonts from backup directory
+                            val fontDir = com.lumecard.app.font.getFontStorageDir()
+                            if (!platformPathExists(fontDir)) platformMkdirs(fontDir)
+                            0
+                        }
+                    }
+                    syncStatus = if (restoreData) strings.settingsSyncSuccess(result) else strings.syncConfigSyncSuccess
+                    snackbarHostState.showSnackbar(if (restoreData) strings.settingsSyncSuccess(result) else strings.syncConfigSyncSuccess)
+                    reloadConfigs()
+                } catch (e: Exception) {
+                    syncStatus = strings.settingsSyncError(e.message ?: strings.errorUnknown)
+                    snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: strings.errorUnknown))
+                } finally {
+                    isSyncing = false
+                }
             }
         }
 
@@ -814,89 +969,101 @@ class WebDavConfigScreen : Screen {
             )
         }
 
-        // Restore history dialog
+        // Restore history dialog (local backups)
         if (showRestoreHistory) {
+            val hasData = localDataBackups.toSet()
+            val hasConfig = localConfigBackups.toSet()
+
             AlertDialog(
                 onDismissRequest = { showRestoreHistory = false },
-                title = { Text(strings.syncRestoreHistory) },
+                title = {
+                    Text(
+                        if (restoreHistoryDirection == "上行") strings.syncRestoreRemoteHistory
+                        else strings.syncRestoreLocalHistory
+                    )
+                },
                 text = {
-                    if (historyEntries.isEmpty()) {
-                        Text(strings.syncNoHistoryAvailable)
+                    if (allBackupNames.isEmpty()) {
+                        Text(strings.syncNoLocalBackups)
                     } else {
-                        Column {
-                            historyEntries.forEach { entry ->
-                                TextButton(
-                                    onClick = {
-                                        restoreHistoryTarget = entry
-                                        showRestoreHistory = false
-                                        scope.launch {
-                                            isSyncing = true
-                                            syncStatus = strings.settingsSyncing
-                                            try {
-                                                val config = defaultConfig ?: return@launch
-                                                val result = withContext(Dispatchers.IO) {
-                                                    val remoteResult = syncManager.downloadSnapshot(config, entry.filename)
-                                                    var restoredDecks = 0
-                                                    if (remoteResult.isSuccess) {
-                                                        val remote = exportManager.importData(remoteResult.getOrThrow())
-                                                        if (remote != null) {
-                                                            for (kb in knowledgeBaseRepository.getAll().first()) {
-                                                                knowledgeBaseRepository.delete(kb.id)
-                                                            }
-                                                            for (deck in deckRepository.getAll().first()) {
-                                                                deckRepository.delete(deck.id)
-                                                            }
-                                                            for (card in cardRepository.getAll().first()) {
-                                                                cardRepository.delete(card.id)
-                                                            }
-                                                            for (kb in remote.knowledgeBases) {
-                                                                knowledgeBaseRepository.insert(kb.toKnowledgeBase())
-                                                            }
-                                                            for (deck in remote.decks) {
-                                                                deckRepository.insert(deck.toDeck())
-                                                                restoredDecks++
-                                                            }
-                                                            for (card in remote.cards) {
-                                                                cardRepository.insert(card.toCard())
-                                                            }
-                                                            for (log in remote.reviewLogs) {
-                                                                reviewLogRepository.insert(log.toReviewLog())
-                                                            }
-                                                            for (plan in remote.learningPlans) {
-                                                                planRepository.insert(plan.toLearningPlan())
-                                                    }
-                                                }
-                                            }
-                                            restoreSettingsAndFonts(config, syncManager, settingsRepository)
-                                            webDavConfigManager.updateLastSync(config.id)
-                                            restoredDecks
-                                        }
-                                        syncStatus = strings.settingsSyncSuccess(result)
-                                        snackbarHostState.showSnackbar(strings.settingsSyncSuccess(result))
-                                                reloadConfigs()
-                                            } catch (e: Exception) {
-                                                syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
-                                                snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: strings.errorUnknown))
-                                            } finally {
-                                                isSyncing = false
-                                            }
-                                        }
-                                    },
-                                    interactionSource = null,
-                                    modifier = Modifier.fillMaxWidth()
+                        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                            allBackupNames.forEach { filename ->
+                                val isData = filename in hasData
+                                val isConfig = filename in hasConfig
+                                val displayName = readBackupDisplayName(filename)
+                                    ?: filename.removePrefix("data_").removePrefix("config_")
+                                        .removeSuffix(".json").replace("_", " ").replace("-", ":")
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                    ),
                                 ) {
-                                    Text(
-                                        strings.syncHistoryEntryFormat(entry.timestamp, entry.deviceId),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                                    Column(modifier = Modifier.fillMaxWidth().padding(10.dp)) {
+                                        Text(
+                                            displayName,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Medium,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                        Spacer(Modifier.height(6.dp))
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        ) {
+                                            OutlinedButton(
+                                                onClick = { restoreLocalBackup(filename, true) },
+                                                interactionSource = null,
+                                                enabled = isData,
+                                                modifier = Modifier.weight(1f),
+                                            ) {
+                                                Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(16.dp))
+                                                Spacer(Modifier.width(4.dp))
+                                                Text(strings.syncRestoreData, style = MaterialTheme.typography.labelSmall)
+                                            }
+                                            OutlinedButton(
+                                                onClick = { restoreLocalBackup(filename, false) },
+                                                interactionSource = null,
+                                                enabled = isConfig,
+                                                modifier = Modifier.weight(1f),
+                                            ) {
+                                                Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
+                                                Spacer(Modifier.width(4.dp))
+                                                Text(strings.syncRestoreConfig, style = MaterialTheme.typography.labelSmall)
+                                            }
+                                        }
+                                    }
                                 }
+                                Spacer(Modifier.height(6.dp))
                             }
                         }
                     }
                 },
                 confirmButton = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        TextButton(
+                            onClick = { showRestoreCloudStep = 1 },
+                            interactionSource = null,
+                        ) {
+                            Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(strings.syncRestoreCloud, style = MaterialTheme.typography.labelSmall)
+                        }
+                        TextButton(
+                            onClick = { showClearBackupsConfirm = true },
+                            interactionSource = null,
+                        ) {
+                            Icon(Icons.Default.DeleteForever, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(strings.syncClearAllBackups, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                },
+                dismissButton = {
                     TextButton(onClick = { showRestoreHistory = false }, interactionSource = null) {
                         Text(strings.actionCancel)
                     }
@@ -904,59 +1071,150 @@ class WebDavConfigScreen : Screen {
             )
         }
 
-        // Restore confirm dialog
-        if (showRestoreConfirm) {
+        // Clear all backups confirm dialog (2-step)
+        if (showClearBackupsConfirm) {
             AlertDialog(
-                onDismissRequest = { showRestoreConfirm = false },
-                title = { Text(strings.settingsRestoreConfirm) },
-                text = { Text(strings.settingsRestoreConfirmDesc) },
+                onDismissRequest = { showClearBackupsConfirm = false },
+                title = { Text(strings.syncClearAllBackupsConfirm) },
+                text = { Text(strings.syncClearAllBackupsDesc) },
                 confirmButton = {
                     TextButton(onClick = {
-                        showRestoreConfirm = false
+                        showClearBackupsConfirm = false
+                        scope.launch {
+                            withContext(Dispatchers.IO) { clearAllLocalBackups() }
+                            localDataBackups = emptyList()
+                            localConfigBackups = emptyList()
+                            allBackupNames = emptyList()
+                            showRestoreHistory = false
+                            snackbarHostState.showSnackbar(strings.syncClearAllBackupsDone)
+                        }
+                    }, interactionSource = null) { Text(strings.actionConfirm) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showClearBackupsConfirm = false }, interactionSource = null) { Text(strings.actionCancel) }
+                },
+            )
+        }
+
+        // Restore from cloud — step 1
+        if (showRestoreCloudStep == 1) {
+            AlertDialog(
+                onDismissRequest = { showRestoreCloudStep = 0 },
+                title = { Text(strings.syncRestoreCloud) },
+                text = { Text(strings.syncRestoreCloudConfirm1) },
+                confirmButton = {
+                    TextButton(onClick = { showRestoreCloudStep = 2 }, interactionSource = null) { Text(strings.actionConfirm) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showRestoreCloudStep = 0 }, interactionSource = null) { Text(strings.actionCancel) }
+                },
+            )
+        }
+
+        // Restore from cloud — step 2
+        if (showRestoreCloudStep == 2) {
+            AlertDialog(
+                onDismissRequest = { showRestoreCloudStep = 0 },
+                title = { Text(strings.syncRestoreCloud) },
+                text = { Text(strings.syncRestoreCloudConfirm2) },
+                confirmButton = {
+                    TextButton(onClick = { showRestoreCloudStep = 3; restoreCloudInput = "" }, interactionSource = null) { Text(strings.actionConfirm) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showRestoreCloudStep = 0 }, interactionSource = null) { Text(strings.actionCancel) }
+                },
+            )
+        }
+
+        // Restore from cloud — step 3 (manual input)
+        if (showRestoreCloudStep == 3) {
+            val confirmKeyword = when (i18nManager.currentLocale) {
+                AppLocale.ZH_CN -> "确认"
+                AppLocale.ZH_TW -> "確認"
+                AppLocale.JA -> "確認"
+                AppLocale.ES -> "confirmar"
+                else -> "confirm"
+            }
+            AlertDialog(
+                onDismissRequest = { showRestoreCloudStep = 0 },
+                title = { Text(strings.syncRestoreCloud) },
+                text = {
+                    Column {
+                        Text(strings.syncRestoreCloudConfirm3)
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = restoreCloudInput,
+                            onValueChange = { restoreCloudInput = it },
+                            placeholder = { Text(strings.syncRestoreCloudInputHint) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showRestoreCloudStep = 0
+                            scope.launch {
+                                isSyncing = true
+                                syncStatus = strings.settingsSyncing
+                                try {
+                                    val config = defaultConfig ?: return@launch
+                                    val result = withContext(Dispatchers.IO) {
+                                        val remoteResult = syncManager.downloadData(config)
+                                        if (remoteResult.isFailure) throw Exception("No remote data found")
+                                        val remoteJson = remoteResult.getOrThrow()
+                                        val remote = exportManager.importData(remoteJson) ?: throw Exception("Failed to parse remote data")
+                                        val decks = remote.decks.size
+                                        writeMergedToLocal(remote, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository)
+                                        decks
+                                    }
+                                    syncStatus = strings.syncRestoreCloudDone
+                                    snackbarHostState.showSnackbar(strings.syncRestoreCloudDone)
+                                    reloadConfigs()
+                                } catch (e: Exception) {
+                                    syncStatus = strings.settingsSyncError(e.message ?: strings.errorUnknown)
+                                    snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: strings.errorUnknown))
+                                } finally {
+                                    isSyncing = false
+                                }
+                            }
+                        },
+                        enabled = restoreCloudInput == confirmKeyword,
+                        interactionSource = null,
+                    ) { Text(strings.actionConfirm) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showRestoreCloudStep = 0 }, interactionSource = null) { Text(strings.actionCancel) }
+                },
+            )
+        }
+
+        // Force upload confirm dialog
+        if (showForceUploadConfirm) {
+            AlertDialog(
+                onDismissRequest = { showForceUploadConfirm = false },
+                title = { Text(strings.syncForceUploadConfirm) },
+                text = { Text(strings.syncForceUploadConfirmDesc) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showForceUploadConfirm = false
                         scope.launch {
                             isSyncing = true
                             syncStatus = strings.settingsSyncing
                             try {
                                 val config = defaultConfig ?: return@launch
-                                val result = withContext(Dispatchers.IO) {
-                                    val remoteResult = syncManager.download(config)
-                                    var restoredDecks = 0
-                                    if (remoteResult.isSuccess) {
-                                        val remote = exportManager.importData(remoteResult.getOrThrow())
-                                        if (remote != null) {
-                                            for (kb in knowledgeBaseRepository.getAll().first()) {
-                                                knowledgeBaseRepository.delete(kb.id)
-                                            }
-                                            for (deck in deckRepository.getAll().first()) {
-                                                deckRepository.delete(deck.id)
-                                            }
-                                            for (card in cardRepository.getAll().first()) {
-                                                cardRepository.delete(card.id)
-                                            }
-                                            for (kb in remote.knowledgeBases) {
-                                                knowledgeBaseRepository.insert(kb.toKnowledgeBase())
-                                            }
-                                            for (deck in remote.decks) {
-                                                deckRepository.insert(deck.toDeck())
-                                                restoredDecks++
-                                            }
-                                            for (card in remote.cards) {
-                                                cardRepository.insert(card.toCard())
-                                            }
-                                            for (log in remote.reviewLogs) {
-                                                reviewLogRepository.insert(log.toReviewLog())
-                                            }
-                                            for (plan in remote.learningPlans) {
-                                                planRepository.insert(plan.toLearningPlan())
-                                            }
-                                        }
-                                    }
-                                    restoreSettingsAndFonts(config, syncManager, settingsRepository)
+                                val deckCount: Int
+                                val backupName: String?
+                                withContext(Dispatchers.IO) {
+                                    val result = forceUpload(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager, maxBackupCount = maxCloudBackups)
+                                    deckCount = result.first
+                                    backupName = result.second
                                     webDavConfigManager.updateLastSync(config.id)
-                                    restoredDecks
                                 }
-                                syncStatus = strings.settingsSyncSuccess(result)
-                                snackbarHostState.showSnackbar(strings.settingsSyncSuccess(result))
+                                val msg = if (backupName != null) "${strings.settingsSyncSuccess(deckCount)}\n$backupName" else strings.settingsSyncSuccess(deckCount)
+                                syncStatus = msg
+                                snackbarHostState.showSnackbar(msg)
                                 reloadConfigs()
                             } catch (e: Exception) {
                                 syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
@@ -968,16 +1226,171 @@ class WebDavConfigScreen : Screen {
                     }, interactionSource = null) { Text(strings.actionConfirm) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showRestoreConfirm = false }, interactionSource = null) { Text(strings.actionCancel) }
+                    TextButton(onClick = { showForceUploadConfirm = false }, interactionSource = null) { Text(strings.actionCancel) }
                 },
             )
         }
+
+        // Force download confirm dialog
+        if (showForceDownloadConfirm) {
+            AlertDialog(
+                onDismissRequest = { showForceDownloadConfirm = false },
+                title = { Text(strings.syncForceDownloadConfirm) },
+                text = { Text(strings.syncForceDownloadConfirmDesc) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showForceDownloadConfirm = false
+                        scope.launch {
+                            isSyncing = true
+                            syncStatus = strings.settingsSyncing
+                            try {
+                                val config = defaultConfig ?: return@launch
+                                val deckCount: Int
+                                val backupName: String?
+                                withContext(Dispatchers.IO) {
+                                    val result = forceDownload(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager, maxBackupCount = maxLocalBackups)
+                                    deckCount = result.first
+                                    backupName = result.second
+                                    webDavConfigManager.updateLastSync(config.id)
+                                }
+                                val msg = if (backupName != null) "${strings.settingsSyncSuccess(deckCount)}\n$backupName" else strings.settingsSyncSuccess(deckCount)
+                                syncStatus = msg
+                                snackbarHostState.showSnackbar(msg)
+                                reloadConfigs()
+                            } catch (e: Exception) {
+                                syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
+                                snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
+                            } finally {
+                                isSyncing = false
+                            }
+                        }
+                    }, interactionSource = null) { Text(strings.actionConfirm) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showForceDownloadConfirm = false }, interactionSource = null) { Text(strings.actionCancel) }
+                },
+            )
+        }
+
+        // Force upload config confirm dialog
+        if (showForceUploadConfigConfirm) {
+            AlertDialog(
+                onDismissRequest = { showForceUploadConfigConfirm = false },
+                title = { Text(strings.syncForceUploadConfigConfirm) },
+                text = { Text(strings.syncForceUploadConfigConfirmDesc) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showForceUploadConfigConfirm = false
+                        scope.launch {
+                            isSyncing = true
+                            syncStatus = strings.settingsSyncing
+                            try {
+                                val config = defaultConfig ?: return@launch
+                                val backupName: String?
+                                withContext(Dispatchers.IO) {
+                                    backupName = forceUploadConfig(config, exportManager, syncManager, settingsRepository, maxBackupCount = maxCloudBackups)
+                                    webDavConfigManager.updateLastSync(config.id)
+                                }
+                                val msg = if (backupName != null) "${strings.syncConfigSyncSuccess}\n$backupName" else strings.syncConfigSyncSuccess
+                                syncStatus = msg
+                                snackbarHostState.showSnackbar(msg)
+                            } catch (e: Exception) {
+                                syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
+                                snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
+                            } finally {
+                                isSyncing = false
+                            }
+                        }
+                    }, interactionSource = null) { Text(strings.actionConfirm) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showForceUploadConfigConfirm = false }, interactionSource = null) { Text(strings.actionCancel) }
+                },
+            )
+        }
+
+        // Force download config confirm dialog
+        if (showForceDownloadConfigConfirm) {
+            AlertDialog(
+                onDismissRequest = { showForceDownloadConfigConfirm = false },
+                title = { Text(strings.syncForceDownloadConfigConfirm) },
+                text = { Text(strings.syncForceDownloadConfigConfirmDesc) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showForceDownloadConfigConfirm = false
+                        scope.launch {
+                            isSyncing = true
+                            syncStatus = strings.settingsSyncing
+                            try {
+                                val config = defaultConfig ?: return@launch
+                                val backupName: String?
+                                withContext(Dispatchers.IO) {
+                                    backupName = forceDownloadConfig(config, syncManager, settingsRepository, exportManager, maxBackupCount = maxLocalBackups)
+                                    webDavConfigManager.updateLastSync(config.id)
+                                }
+                                val msg = if (backupName != null) "${strings.syncConfigSyncSuccess}\n$backupName" else strings.syncConfigSyncSuccess
+                                syncStatus = msg
+                                snackbarHostState.showSnackbar(msg)
+                            } catch (e: Exception) {
+                                syncStatus = strings.settingsSyncError(e.message ?: "Unknown")
+                                snackbarHostState.showSnackbar(strings.settingsSyncError(e.message ?: "Unknown"))
+                            } finally {
+                                isSyncing = false
+                            }
+                        }
+                    }, interactionSource = null) { Text(strings.actionConfirm) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showForceDownloadConfigConfirm = false }, interactionSource = null) { Text(strings.actionCancel) }
+                },
+            )
+        }
+
     }
 }
 
 private val fontManifestJson = Json { ignoreUnknownKeys = true }
 
-private suspend fun syncIncrementalData(
+private suspend fun writeMergedToLocal(
+    data: DataExport,
+    kbRepository: KnowledgeBaseRepository,
+    deckRepository: DeckRepository,
+    cardRepository: CardRepository,
+    reviewLogRepository: ReviewLogRepository,
+    planRepository: LearningPlanRepository,
+) {
+    val localKbIds = kbRepository.getAll().first().map { it.id }.toSet()
+    for (ekb in data.knowledgeBases) {
+        val kb = ekb.toKnowledgeBase()
+        if (kb.id in localKbIds) kbRepository.update(kb) else kbRepository.insert(kb)
+    }
+
+    val localDeckIds = deckRepository.getAll().first().map { it.id }.toSet()
+    for (edeck in data.decks) {
+        val deck = edeck.toDeck()
+        if (deck.id in localDeckIds) deckRepository.update(deck) else deckRepository.insert(deck)
+    }
+
+    val localCardIds = cardRepository.getAll().first().map { it.id }.toSet()
+    for (ecard in data.cards) {
+        val card = ecard.toCard()
+        if (card.id in localCardIds) cardRepository.update(card) else cardRepository.insert(card)
+    }
+
+    val localLogIds = reviewLogRepository.getAll().first().map { it.id }.toSet()
+    for (elog in data.reviewLogs) {
+        val log = elog.toReviewLog()
+        if (log.id !in localLogIds) reviewLogRepository.insert(log)
+    }
+
+    val localPlanIds = planRepository.getAll().first().map { it.id }.toSet()
+    for (eplan in data.learningPlans) {
+        val plan = eplan.toLearningPlan()
+        if (plan.id in localPlanIds) planRepository.update(plan) else planRepository.insert(plan)
+    }
+}
+
+private suspend fun forceUpload(
     config: WebDavConfig,
     kbRepository: KnowledgeBaseRepository,
     deckRepository: DeckRepository,
@@ -987,10 +1400,13 @@ private suspend fun syncIncrementalData(
     exportManager: ExportManager,
     syncManager: SyncManager,
     mediaManager: MediaManager,
-): Int {
-    val now = Clock.System.now()
-
-    syncManager.archiveCurrentSnapshot(config)
+    splashQuoteManager: SplashQuoteManager? = null,
+    maxBackupCount: Int = 7,
+): Pair<Int, String?> {
+    // Backup remote data before uploading (preserve cloud state)
+    val backupFile = archiveRemoteDataLocally(syncManager, config, direction = "上行")
+    val backupName = backupFile?.let { readBackupDisplayName(it) }
+    pruneOldBackups("上行", maxBackupCount)
 
     val allKbs = kbRepository.getAll().first()
     val allDecks = deckRepository.getAll().first()
@@ -998,85 +1414,357 @@ private suspend fun syncIncrementalData(
     val allLogs = reviewLogRepository.getAll().first()
     val allPlans = planRepository.getAll().first()
 
-    val json = exportManager.exportData(allKbs, allDecks, allCards, allLogs, allPlans)
+    val quotesExport = if (splashQuoteManager != null) {
+        val (qv, qu, hi) = splashQuoteManager.getQuotesExportData()
+        ExportSplashQuotes(qv, qu, hi)
+    } else null
+
+    val json = exportManager.exportData(allKbs, allDecks, allCards, allLogs, allPlans, quotesExport)
     syncManager.uploadData(config, json).getOrThrow()
 
+    val now = Clock.System.now()
     kbRepository.markSynced(allKbs.map { it.id }, now)
     deckRepository.markSynced(allDecks.map { it.id }, now)
     cardRepository.markSynced(allCards.map { it.id }, now)
     reviewLogRepository.markSynced(allLogs.map { it.id }, now)
     planRepository.markSynced(allPlans.map { it.id }, now)
 
-    // Anki-style media sync: cache mtime + SHA-1 to avoid re-hashing unchanged files
-    val mediaBase = System.getProperty("lumecard.media.dir") ?: "${System.getProperty("user.home")}/.lumecard/media"
-    val rawFiles = scanMediaDirectoryRaw(mediaBase)
-    if (rawFiles.isNotEmpty()) {
-        val resolved = rawFiles.map { raw ->
-            val cachedHash = mediaManager.getCachedHash(raw.relativePath, raw.mtime)
-            if (cachedHash != null) {
-                MediaManifestEntry(raw.relativePath, raw.size, cachedHash)
-            } else {
-                val sha1 = hashFileSha1("$mediaBase/${raw.relativePath}")
-                mediaManager.updateCache(raw.relativePath, raw.mtime, sha1)
-                MediaManifestEntry(raw.relativePath, raw.size, sha1)
-            }
+    syncMedia(config, syncManager, mediaManager)
+    return Pair(allDecks.size, backupName)
+}
+
+private suspend fun forceDownload(
+    config: WebDavConfig,
+    kbRepository: KnowledgeBaseRepository,
+    deckRepository: DeckRepository,
+    cardRepository: CardRepository,
+    reviewLogRepository: ReviewLogRepository,
+    planRepository: LearningPlanRepository,
+    exportManager: ExportManager,
+    syncManager: SyncManager,
+    mediaManager: MediaManager,
+    splashQuoteManager: SplashQuoteManager? = null,
+    maxBackupCount: Int = 7,
+): Pair<Int, String?> {
+    // Local backup before downloading (backup stays on local disk)
+    val backupFile = archiveDataLocally(exportManager, kbRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, splashQuoteManager, direction = "下行")
+    val backupName = backupFile?.let { readBackupDisplayName(it) }
+    pruneOldBackups("下行", maxBackupCount)
+
+    val remoteResult = syncManager.downloadData(config)
+    if (remoteResult.isFailure) throw Exception("No remote data found")
+
+    val remoteJson = remoteResult.getOrThrow()
+    val remote = exportManager.importData(remoteJson) ?: throw Exception("Failed to parse remote data")
+
+    val driver = DatabaseDriverHolder.driver
+        ?: throw IllegalStateException("Database driver not initialized")
+
+    // Disable FK constraints for the entire delete+insert operation.
+    // This is necessary because:
+    // 1. INSERT OR REPLACE internally does DELETE+INSERT; soft-deleted children
+    //    still reference parent rows, blocking the DELETE.
+    // 2. Deck has self-referencing FK (parent_id -> Deck.id); if export order
+    //    puts a child deck before its parent, the INSERT would fail.
+    driver.execute(null, "PRAGMA foreign_keys = OFF", 0, null)
+
+    try {
+        // Hard-delete ALL local data
+        driver.execute(null, "DELETE FROM CardFTS", 0, null)
+        driver.execute(null, "DELETE FROM AlgorithmState", 0, null)
+        driver.execute(null, "DELETE FROM ReviewLog", 0, null)
+        driver.execute(null, "DELETE FROM Card", 0, null)
+        driver.execute(null, "DELETE FROM Deck", 0, null)
+        driver.execute(null, "DELETE FROM KnowledgeBase", 0, null)
+        driver.execute(null, "DELETE FROM LearningPlan", 0, null)
+
+        // Insert remote data
+        for (kb in remote.knowledgeBases) { kbRepository.insert(kb.toKnowledgeBase()) }
+        for (deck in remote.decks) { deckRepository.insert(deck.toDeck()) }
+        for (card in remote.cards) { cardRepository.insert(card.toCard()) }
+        for (log in remote.reviewLogs) { reviewLogRepository.insert(log.toReviewLog()) }
+        for (plan in remote.learningPlans) { planRepository.insert(plan.toLearningPlan()) }
+
+        val remoteSplash = remote.splashQuotes
+        if (remoteSplash != null && splashQuoteManager != null) {
+            splashQuoteManager.importQuotesFromSync(
+                remoteSplash.version, remoteSplash.userQuotes, remoteSplash.hiddenDefaultIndices,
+            )
         }
 
-        val localManifest = MediaManifest(version = 1, entries = resolved)
-        syncManager.uploadManifest(config, mediaManager.manifestToJson(localManifest))
-
-        val remoteResult = syncManager.downloadManifest(config)
-        val remoteManifest = if (remoteResult.isSuccess) mediaManager.manifestFromJson(remoteResult.getOrThrow()) else null
-
-        val needUpload = mediaManager.filesToUpload(resolved, remoteManifest)
-        for (path in needUpload) {
-            val absPath = "$mediaBase/$path"
-            try {
-                val data = java.io.File(absPath).readBytes()
-                syncManager.uploadMedia(config, path, data).getOrThrow()
-            } catch (_: Exception) { }
-        }
+        val now = Clock.System.now()
+        kbRepository.markSynced(remote.knowledgeBases.map { it.id }, now)
+        deckRepository.markSynced(remote.decks.map { it.id }, now)
+        cardRepository.markSynced(remote.cards.map { it.id }, now)
+        reviewLogRepository.markSynced(remote.reviewLogs.map { it.id }, now)
+        planRepository.markSynced(remote.learningPlans.map { it.id }, now)
+    } finally {
+        // Always re-enable FK constraints
+        driver.execute(null, "PRAGMA foreign_keys = ON", 0, null)
     }
 
-    // Font sync: sync user-imported font files across devices
+    syncMedia(config, syncManager, mediaManager)
+    return Pair(remote.decks.size, backupName)
+}
+
+private suspend fun syncMedia(
+    config: WebDavConfig,
+    syncManager: SyncManager,
+    mediaManager: MediaManager,
+) {
     try {
-        val fontDir = com.lumecard.app.font.getFontStorageDir()
-        val fontDirFile = java.io.File(fontDir)
-        val localFontFiles = fontDirFile.listFiles()?.filter { it.isFile }.orEmpty()
+        val userHome = platformGetUserHome() ?: ""
+        val mediaBase = platformGetSystemProperty("lumecard.media.dir") ?: platformJoinPath(userHome, ".lumecard/media")
+    val rawFiles = scanMediaDirectoryRaw(mediaBase)
+        if (rawFiles.isNotEmpty()) {
+            val resolved = rawFiles.map { raw ->
+                val cachedHash = mediaManager.getCachedHash(raw.relativePath, raw.mtime)
+                if (cachedHash != null) {
+                    MediaManifestEntry(raw.relativePath, raw.size, cachedHash)
+                } else {
+                    val sha1 = hashFileSha1("$mediaBase/${raw.relativePath}")
+                    mediaManager.updateCache(raw.relativePath, raw.mtime, sha1)
+                    MediaManifestEntry(raw.relativePath, raw.size, sha1)
+                }
+            }
 
-        val remoteListResult = syncManager.downloadFontManifest(config)
-        val remoteFontNames = if (remoteListResult.isSuccess) {
-            try {
-                fontManifestJson.decodeFromString<List<String>>(remoteListResult.getOrThrow())
-            } catch (_: Exception) { emptyList() }
-        } else emptyList()
+            val localManifest = MediaManifest(version = 1, entries = resolved)
+            syncManager.uploadManifest(config, mediaManager.manifestToJson(localManifest))
 
-        val localFontNames = localFontFiles.map { it.name }.toSet()
+            val remoteResult = syncManager.downloadManifest(config)
+            val remoteManifest = if (remoteResult.isSuccess) mediaManager.manifestFromJson(remoteResult.getOrThrow()) else null
 
-        for (file in localFontFiles) {
-            if (file.name !in remoteFontNames) {
+            val needUpload = mediaManager.filesToUpload(resolved, remoteManifest)
+            for (path in needUpload) {
+                val absPath = "$mediaBase/$path"
                 try {
-                    syncManager.uploadFont(config, file.name, file.readBytes())
+                    val data = platformReadFileBytes(absPath) ?: byteArrayOf()
+                    syncManager.uploadMedia(config, path, data).getOrThrow()
                 } catch (_: Exception) { }
             }
         }
+    } catch (_: Exception) { }
+}
 
-        for (name in remoteFontNames) {
-            if (name !in localFontNames) {
+private suspend fun syncFonts(
+    config: WebDavConfig,
+    syncManager: SyncManager,
+    settingsRepository: SettingsRepository,
+    forcePush: Boolean = false,
+) {
+    try {
+        val fontDir = com.lumecard.app.font.getFontStorageDir()
+        if (!platformPathExists(fontDir)) platformMkdirs(fontDir)
+
+        val localFileNames = platformListFileNames(fontDir).toSet()
+
+        // 1. Read local manifest + reconcile with filesystem
+        val localManifest = readLocalFontManifest(fontDir)
+        val reconciledLocal = reconcileLocalManifest(localManifest, localFileNames)
+
+        // 2. Download remote manifest
+        val remoteEntries = syncManager.downloadFontManifestEntries(config).getOrDefault(emptyList())
+
+        // 3. Merge or override
+        val merged = if (forcePush) {
+            reconciledLocal
+        } else {
+            mergeFontEntries(reconciledLocal, remoteEntries)
+        }
+
+        // 4. List actual remote files
+        val remoteFileNames = syncManager.listRemoteFonts(config).getOrDefault(emptyList()).toSet()
+
+        // 5. Execute file operations for merged entries
+        val mergedMutable = merged.toMutableList()
+        val activeFileNames = merged.filter { it.deletedAt == null }.map { it.fileName }.toSet()
+        for (entry in merged) {
+            if (entry.deletedAt != null) {
+                // Skip tombstone if a newer active entry has the same filename (font was re-imported)
+                if (entry.fileName in activeFileNames) continue
+                if (entry.fileName in localFileNames) {
+                    platformDeleteFile(platformJoinPath(fontDir, entry.fileName))
+                }
+                try { syncManager.deleteFont(config, entry.fileName) } catch (_: Exception) { }
+            } else {
+                val localHas = entry.fileName in localFileNames
+                val remoteHas = entry.fileName in remoteFileNames
+                if (!localHas && remoteHas) {
+                    try {
+                        val data = syncManager.downloadFont(config, entry.fileName).getOrNull()
+                        if (data != null) platformWriteFileBytes(platformJoinPath(fontDir, entry.fileName), data)
+                    } catch (e: Exception) {
+                        println("[LumeCard] font download failed: ${entry.fileName} - ${e.message}")
+                    }
+                } else if (localHas && !remoteHas) {
+                    try {
+                        val data = platformReadFileBytes(platformJoinPath(fontDir, entry.fileName)) ?: byteArrayOf()
+                        syncManager.uploadFont(config, entry.fileName, data)
+                    } catch (e: Exception) {
+                        println("[LumeCard] font upload failed: ${entry.fileName} - ${e.message}")
+                    }
+                }
+            }
+        }
+
+        // 6. Handle remote orphan files: exist on remote but not tracked in merged manifest
+        for (name in remoteFileNames) {
+            if (name !in activeFileNames && name !in localFileNames) {
                 try {
                     val data = syncManager.downloadFont(config, name).getOrNull()
                     if (data != null) {
-                        java.io.File(fontDirFile, name).writeBytes(data)
+                        platformWriteFileBytes(platformJoinPath(fontDir, name), data)
+                        val now = Clock.System.now().toString()
+                        mergedMutable.add(FontManifestEntry(
+                            id = generateUuid(),
+                            fileName = name,
+                            version = 1,
+                            createdAt = now,
+                            updatedAt = now,
+                        ))
                     }
-                } catch (_: Exception) { }
+                } catch (e: Exception) {
+                    println("[LumeCard] font download (orphan) failed: $name - ${e.message}")
+                }
             }
         }
 
-        val currentNames = fontDirFile.listFiles()?.map { it.name }.orEmpty()
-        syncManager.uploadFontManifest(config, fontManifestJson.encodeToString(currentNames))
-    } catch (_: Exception) { }
+        // 7. Write merged manifest to both sides
+        writeLocalFontManifest(fontDir, mergedMutable)
+        syncManager.uploadFontManifestEntries(config, mergedMutable)
 
-    return allDecks.size
+        // 7. Reload font registry
+        com.lumecard.app.font.FontRegistry.rebuildFromStorageDir(settingsRepository)
+    } catch (e: Exception) {
+        println("[LumeCard] font sync error: ${e.message}")
+    }
+}
+
+private fun localFontManifestFile(fontDir: String): String {
+    return platformJoinPath(platformGetParentDir(fontDir), "font_registry.json")
+}
+
+private fun readLocalFontManifest(fontDir: String): List<FontManifestEntry> {
+    val filePath = localFontManifestFile(fontDir)
+    if (!platformFileExists(filePath)) return emptyList()
+    return try {
+        val text = platformReadFileText(filePath) ?: return emptyList()
+        fontManifestJson.decodeFromString<List<FontManifestEntry>>(text)
+    } catch (_: Exception) { emptyList() }
+}
+
+private fun writeLocalFontManifest(fontDir: String, entries: List<FontManifestEntry>) {
+    val filePath = localFontManifestFile(fontDir)
+    platformMkdirs(platformGetParentDir(filePath))
+    platformWriteFileText(filePath, fontManifestJson.encodeToString(entries))
+}
+
+private fun reconcileLocalManifest(
+    manifest: List<FontManifestEntry>,
+    currentFileNames: Set<String>,
+): MutableList<FontManifestEntry> {
+    val result = manifest.toMutableList()
+    val now = Clock.System.now().toString()
+
+    // Detect new fonts not tracked by manifest
+    for (fileName in currentFileNames) {
+        val tracked = result.any { it.fileName == fileName && it.deletedAt == null }
+        if (!tracked) {
+            result.add(FontManifestEntry(
+                id = generateUuid(),
+                fileName = fileName,
+                version = 1,
+                createdAt = now,
+                updatedAt = now,
+            ))
+        }
+    }
+
+    // Detect deleted fonts (in manifest but file missing) → create tombstones
+    val indicesToRemove = mutableListOf<Int>()
+    val entriesToAdd = mutableListOf<FontManifestEntry>()
+    for ((i, entry) in result.withIndex()) {
+        if (entry.deletedAt == null && entry.fileName !in currentFileNames) {
+            indicesToRemove.add(i)
+            entriesToAdd.add(entry.copy(
+                version = entry.version + 1,
+                updatedAt = now,
+                deletedAt = now,
+            ))
+        }
+    }
+    for (i in indicesToRemove.reversed()) result.removeAt(i)
+    result.addAll(entriesToAdd)
+
+    return result
+}
+
+private suspend fun downloadRemoteSettings(
+    config: WebDavConfig,
+    syncManager: SyncManager,
+): Map<String, String>? {
+    val configResult = syncManager.downloadConfig(config)
+    if (configResult.isFailure) return null
+    val remoteSettings = try {
+        fontManifestJson.decodeFromString<com.lumecard.shared.data.ConfigExport>(configResult.getOrThrow()).settings
+    } catch (_: Exception) {
+        try {
+            fontManifestJson.decodeFromString<Map<String, String>>(configResult.getOrThrow())
+        } catch (_: Exception) { null }
+    }
+    if (remoteSettings == null) return null
+    val encryptor = SensitiveDataEncryptor(config.password)
+    return encryptor.decryptSettings(remoteSettings)
+}
+
+private suspend fun forceUploadConfig(
+    config: WebDavConfig,
+    exportManager: ExportManager,
+    syncManager: SyncManager,
+    settingsRepository: SettingsRepository,
+    maxBackupCount: Int = 7,
+): String? {
+    // Local backup before uploading config
+    val backupFile = archiveConfigLocally(exportManager, syncManager, settingsRepository, config, direction = "上行")
+    val backupName = backupFile?.let { readBackupDisplayName(it) }
+    pruneOldBackups("上行", maxBackupCount)
+
+    val encryptor = SensitiveDataEncryptor(config.password)
+    val settings = encryptor.encryptSettings(settingsRepository.getAll())
+    val configJson = exportManager.exportConfig(settings)
+    syncManager.uploadConfig(config, configJson).getOrThrow()
+
+    // 字体归配置：上传本地字体（覆盖远端）
+    syncFonts(config, syncManager, settingsRepository, forcePush = true)
+    return backupName
+}
+
+private suspend fun forceDownloadConfig(
+    config: WebDavConfig,
+    syncManager: SyncManager,
+    settingsRepository: SettingsRepository,
+    exportManager: ExportManager? = null,
+    maxBackupCount: Int = 7,
+): String? {
+    // Local backup before downloading config
+    val backupName = if (exportManager != null) {
+        val backupFile = archiveConfigLocally(exportManager, syncManager, settingsRepository, config, direction = "下行")
+        backupFile?.let { readBackupDisplayName(it) }
+    } else null
+    pruneOldBackups("下行", maxBackupCount)
+
+    val remoteSettings = downloadRemoteSettings(config, syncManager)
+        ?: throw Exception("No remote config found")
+    for (key in settingsRepository.getAll().keys) {
+        settingsRepository.delete(key)
+    }
+    for ((key, value) in remoteSettings) {
+        settingsRepository.set(key, value)
+    }
+
+    // 字体归配置：下载远端字体到本地
+    syncFonts(config, syncManager, settingsRepository, forcePush = false)
+    return backupName
 }
 
 private suspend fun restoreSettingsAndFonts(
@@ -1085,47 +1773,254 @@ private suspend fun restoreSettingsAndFonts(
     settingsRepository: SettingsRepository,
 ) {
     try {
-        val configResult = syncManager.downloadConfig(config)
-        if (configResult.isSuccess) {
-            val remoteSettings = try {
-                val export = fontManifestJson.decodeFromString<com.lumecard.shared.data.ConfigExport>(configResult.getOrThrow())
-                export.settings
-            } catch (_: Exception) {
-                try {
-                    fontManifestJson.decodeFromString<Map<String, String>>(configResult.getOrThrow())
-                } catch (_: Exception) { null }
-            }
-            if (remoteSettings != null) {
-                for ((key, value) in remoteSettings) {
-                    settingsRepository.set(key, value)
-                }
+        val remoteSettings = downloadRemoteSettings(config, syncManager)
+        if (remoteSettings != null) {
+            for ((key, value) in remoteSettings) {
+                settingsRepository.set(key, value)
             }
         }
 
         val fontDir = com.lumecard.app.font.getFontStorageDir()
-        val fontDirFile = java.io.File(fontDir)
-        if (!fontDirFile.exists()) fontDirFile.mkdirs()
+        if (!platformPathExists(fontDir)) platformMkdirs(fontDir)
 
-        val remoteListResult = syncManager.downloadFontManifest(config)
-        val remoteFontNames = if (remoteListResult.isSuccess) {
-            try {
-                fontManifestJson.decodeFromString<List<String>>(remoteListResult.getOrThrow())
-            } catch (_: Exception) { emptyList() }
-        } else emptyList()
+        val localFileNames = platformListFileNames(fontDir).toSet()
 
-        val localFontNames = fontDirFile.listFiles()?.map { it.name }.orEmpty().toSet()
+        // Sync font files: merge remote state into local
+        val localEntries = readLocalFontManifest(fontDir)
+        val reconciledLocal = reconcileLocalManifest(localEntries, localFileNames)
+        val remoteEntries = syncManager.downloadFontManifestEntries(config).getOrDefault(emptyList())
+        val merged = mergeFontEntries(reconciledLocal, remoteEntries).toMutableList()
+        val remoteFileNames = syncManager.listRemoteFonts(config).getOrDefault(emptyList()).toSet()
 
-        for (name in remoteFontNames) {
-            if (name !in localFontNames) {
+        // Download fonts tracked in merged manifest
+        for (entry in merged) {
+            if (entry.deletedAt == null && entry.fileName !in localFileNames && entry.fileName in remoteFileNames) {
                 try {
-                    val data = syncManager.downloadFont(config, name).getOrNull()
+                    val data = syncManager.downloadFont(config, entry.fileName).getOrNull()
                     if (data != null) {
-                        java.io.File(fontDirFile, name).writeBytes(data)
+                        platformWriteFileBytes(platformJoinPath(fontDir, entry.fileName), data)
                     }
                 } catch (_: Exception) { }
             }
         }
 
-        com.lumecard.app.font.FontRegistry.loadUserFonts(settingsRepository)
+        // Download orphan remote fonts not tracked in manifest
+        val activeNames = merged.filter { it.deletedAt == null }.map { it.fileName }.toSet()
+        for (name in remoteFileNames) {
+            if (name !in activeNames && name !in localFileNames) {
+                try {
+                    val data = syncManager.downloadFont(config, name).getOrNull()
+                    if (data != null) {
+                        platformWriteFileBytes(platformJoinPath(fontDir, name), data)
+                        val now = Clock.System.now().toString()
+                        merged.add(FontManifestEntry(
+                            id = generateUuid(),
+                            fileName = name,
+                            version = 1,
+                            createdAt = now,
+                            updatedAt = now,
+                        ))
+                    }
+                } catch (_: Exception) { }
+            }
+        }
+
+        writeLocalFontManifest(fontDir, merged)
+        com.lumecard.app.font.FontRegistry.rebuildFromStorageDir(settingsRepository)
     } catch (_: Exception) { }
+}
+
+// ── Local backup helpers ─────────────────────────────────────────────────
+
+private fun resolveLocalBackupDir(): String? {
+    val home = platformGetUserHome() ?: return null
+    return platformJoinPath(home, ".lumecard", "backups")
+}
+
+private fun ensureLocalBackupDir(): String? {
+    val dir = resolveLocalBackupDir() ?: return null
+    if (!platformPathExists(dir)) platformMkdirs(dir)
+    return dir
+}
+
+/** Save the current local data as a JSON backup before a force-upload or force-download. */
+private suspend fun archiveDataLocally(
+    exportManager: ExportManager,
+    kbRepository: KnowledgeBaseRepository,
+    deckRepository: DeckRepository,
+    cardRepository: CardRepository,
+    reviewLogRepository: ReviewLogRepository,
+    planRepository: LearningPlanRepository,
+    splashQuoteManager: SplashQuoteManager? = null,
+    direction: String = "本地",
+): String? {
+    val dir = ensureLocalBackupDir() ?: return null
+    val now = Clock.System.now()
+    val local = now.toLocalDateTime(TimeZone.currentSystemDefault())
+    val ts = "${local.date.year}${local.date.monthNumber.toString().padStart(2, '0')}${local.date.dayOfMonth.toString().padStart(2, '0')}" +
+        "_" +
+        "${local.time.hour.toString().padStart(2, '0')}${local.time.minute.toString().padStart(2, '0')}${local.time.second.toString().padStart(2, '0')}"
+    val seq = nextBackupSeq()
+    val filename = "data_${ts}.json"
+
+    val allKbs = kbRepository.getAll().first()
+    val allDecks = deckRepository.getAll().first()
+    val allCards = cardRepository.getAll().first()
+    val allLogs = reviewLogRepository.getAll().first()
+    val allPlans = planRepository.getAll().first()
+    val quotesExport = if (splashQuoteManager != null) {
+        val (qv, qu, hi) = splashQuoteManager.getQuotesExportData()
+        ExportSplashQuotes(qv, qu, hi)
+    } else null
+
+    val json = exportManager.exportData(allKbs, allDecks, allCards, allLogs, allPlans, quotesExport)
+    platformWriteFileText(platformJoinPath(dir, filename), json)
+    // Save display name as sidecar file
+    val displayName = BackupNameGenerator().generateName(direction, "D", seq)
+    platformWriteFileText(platformJoinPath(dir, "${filename.removeSuffix(".json")}.name"), displayName)
+    return filename
+}
+
+/** Download remote data and save as a local backup (used before force-upload to preserve cloud state). */
+private suspend fun archiveRemoteDataLocally(
+    syncManager: SyncManager,
+    config: WebDavConfig,
+    direction: String = "上行",
+): String? {
+    val remoteResult = syncManager.downloadData(config)
+    if (remoteResult.isFailure) return null
+    val remoteJson = remoteResult.getOrThrow()
+
+    val dir = ensureLocalBackupDir() ?: return null
+    val now = Clock.System.now()
+    val local = now.toLocalDateTime(TimeZone.currentSystemDefault())
+    val ts = "${local.date.year}${local.date.monthNumber.toString().padStart(2, '0')}${local.date.dayOfMonth.toString().padStart(2, '0')}" +
+        "_" +
+        "${local.time.hour.toString().padStart(2, '0')}${local.time.minute.toString().padStart(2, '0')}${local.time.second.toString().padStart(2, '0')}"
+    val seq = nextBackupSeq()
+    val filename = "data_${ts}.json"
+
+    platformWriteFileText(platformJoinPath(dir, filename), remoteJson)
+    val displayName = BackupNameGenerator().generateName(direction, "D", seq)
+    platformWriteFileText(platformJoinPath(dir, "${filename.removeSuffix(".json")}.name"), displayName)
+    return filename
+}
+
+/** Save the current local config as a JSON backup before a force-upload or force-download. */
+private suspend fun archiveConfigLocally(
+    exportManager: ExportManager,
+    syncManager: SyncManager,
+    settingsRepository: SettingsRepository,
+    config: WebDavConfig,
+    direction: String = "本地",
+): String? {
+    val dir = ensureLocalBackupDir() ?: return null
+    val now = Clock.System.now()
+    val local = now.toLocalDateTime(TimeZone.currentSystemDefault())
+    val ts = "${local.date.year}${local.date.monthNumber.toString().padStart(2, '0')}${local.date.dayOfMonth.toString().padStart(2, '0')}" +
+        "_" +
+        "${local.time.hour.toString().padStart(2, '0')}${local.time.minute.toString().padStart(2, '0')}${local.time.second.toString().padStart(2, '0')}"
+    val seq = nextBackupSeq()
+    val filename = "config_${ts}.json"
+
+    val encryptor = SensitiveDataEncryptor(config.password)
+    val settings = encryptor.encryptSettings(settingsRepository.getAll())
+    val configJson = exportManager.exportConfig(settings)
+    platformWriteFileText(platformJoinPath(dir, filename), configJson)
+    // Save display name as sidecar file
+    val displayName = BackupNameGenerator().generateName(direction, "C", seq)
+    platformWriteFileText(platformJoinPath(dir, "${filename.removeSuffix(".json")}.name"), displayName)
+    return filename
+}
+
+/** List local backup filenames of the given prefix ("data" or "config"), newest first. */
+private fun listLocalBackups(prefix: String): List<String> {
+    val dir = resolveLocalBackupDir() ?: return emptyList()
+    if (!platformPathExists(dir)) return emptyList()
+    return platformListFileNames(dir)
+        .filter { it.startsWith("${prefix}_") && it.endsWith(".json") }
+        .sortedDescending()
+}
+
+/** Count ALL backups (data + config) and return the next sequence number. */
+private fun nextBackupSeq(): Int {
+    val dir = resolveLocalBackupDir() ?: return 1
+    if (!platformPathExists(dir)) return 1
+    val allBackups = platformListFileNames(dir)
+        .filter { (it.startsWith("data_") || it.startsWith("config_")) && it.endsWith(".json") }
+    return allBackups.size + 1
+}
+
+/** List all backups (data + config) sorted by seq number, optionally filtered by direction. */
+private fun listAllBackupsSorted(filterDirection: String? = null): List<String> {
+    val dir = resolveLocalBackupDir() ?: return emptyList()
+    if (!platformPathExists(dir)) return emptyList()
+    val all = platformListFileNames(dir)
+        .filter { (it.startsWith("data_") || it.startsWith("config_")) && it.endsWith(".json") }
+    val filtered = if (filterDirection != null) {
+        all.filter { filename ->
+            val name = readBackupDisplayName(filename) ?: ""
+            name.contains(filterDirection)
+        }
+    } else {
+        all
+    }
+    return filtered.sortedBy { filename ->
+        val name = readBackupDisplayName(filename) ?: ""
+        // Extract seq prefix "001-" → 1
+        val seqStr = name.substringBefore("-", "")
+        seqStr.toIntOrNull() ?: 0
+    }
+}
+
+/** Delete oldest backups of the given direction, keeping at most [maxCount]. */
+private fun pruneOldBackups(direction: String, maxCount: Int) {
+    val dir = resolveLocalBackupDir() ?: return
+    if (!platformPathExists(dir)) return
+    val backups = listAllBackupsSorted(filterDirection = direction)
+    if (backups.size <= maxCount) return
+    val toDelete = backups.take(backups.size - maxCount)
+    toDelete.forEach { filename ->
+        platformDeleteFile(platformJoinPath(dir, filename))
+        platformDeleteFile(platformJoinPath(dir, filename.removeSuffix(".json") + ".name"))
+    }
+}
+
+/** Read a local backup file content by filename. */
+private fun readLocalBackup(filename: String): String? {
+    val dir = resolveLocalBackupDir() ?: return null
+    val path = platformJoinPath(dir, filename)
+    if (!platformFileExists(path)) return null
+    return platformReadFileText(path)
+}
+
+/** Read the display name for a backup from its .name sidecar file. */
+private fun readBackupDisplayName(filename: String): String? {
+    val dir = resolveLocalBackupDir() ?: return null
+    val nameFile = platformJoinPath(dir, "${filename.removeSuffix(".json")}.name")
+    if (!platformFileExists(nameFile)) return null
+    return platformReadFileText(nameFile)
+}
+
+/** Delete a single local backup file. */
+private fun deleteLocalBackup(filename: String): Boolean {
+    val dir = resolveLocalBackupDir() ?: return false
+    val path = platformJoinPath(dir, filename)
+    if (!platformFileExists(path)) return false
+    return platformDeleteFile(path)
+}
+
+/** Clear all local backups (data + config). */
+private fun clearAllLocalBackups(): Int {
+    val dir = resolveLocalBackupDir() ?: return 0
+    if (!platformPathExists(dir)) return 0
+    val files = platformListFileNames(dir).filter { name ->
+        (name.startsWith("data_") || name.startsWith("config_")) &&
+            (name.endsWith(".json") || name.endsWith(".name"))
+    }
+    var deleted = 0
+    for (f in files) {
+        if (platformDeleteFile(platformJoinPath(dir, f))) deleted++
+    }
+    return deleted
 }

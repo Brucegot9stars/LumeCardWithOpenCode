@@ -8,6 +8,17 @@ import androidx.compose.ui.text.platform.FileFont
 import java.awt.GraphicsEnvironment
 import java.io.File
 
+private fun userHome(): String {
+    // 注意：不要用 cmd.exe echo %USERPROFILE% 再 readText() —— JDK 18+ 默认 UTF-8，
+    // 会把 cmd 输出的 GBK 字节解码成乱码（U+FFFD），导致非 ASCII 用户名下的路径失效
+    // （表现为 NoSuchFileException / 无法写入存储目录）。
+    // System.getProperty("user.home") 在 JDK 21 下能正确返回非 ASCII 路径。
+    return System.getProperty("user.home")
+        ?: System.getenv("USERPROFILE")
+        ?: System.getenv("HOME")
+        ?: "."
+}
+
 actual fun detectSystemFonts(): List<FontSpec> {
     val blocked = setOf(
         "Segoe MDL2 Assets", "Segoe UI Emoji", "Segoe UI Historic", "Segoe UI Symbol",
@@ -46,28 +57,32 @@ actual fun resolveFontFamily(familyName: String): FontFamily = FontFamily(family
 
 actual fun registerFontFile(filePath: String): Boolean {
     return try {
-        val file = File(filePath)
-        if (!file.exists()) return false
-        val font = java.awt.Font.createFont(java.awt.Font.TRUETYPE_FONT, file)
+        val bytes = java.io.File(filePath).readBytes()
+        val font = java.awt.Font.createFont(java.awt.Font.TRUETYPE_FONT, java.io.ByteArrayInputStream(bytes))
         GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(font)
         true
-    } catch (_: Exception) {
+    } catch (e: Exception) {
         try {
-            val file = File(filePath)
-            val font = java.awt.Font.createFont(java.awt.Font.TYPE1_FONT, file)
+            val bytes = java.io.File(filePath).readBytes()
+            val font = java.awt.Font.createFont(java.awt.Font.TYPE1_FONT, java.io.ByteArrayInputStream(bytes))
             GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(font)
             true
-        } catch (_: Exception) { false }
+        } catch (e2: Exception) {
+            println("[FontImport] registerFontFile FAILED: $filePath -> ${e2.javaClass.simpleName}: ${e2.message} | firstTry: ${e.javaClass.simpleName}: ${e.message}")
+            false
+        }
     }
 }
 
 actual fun readFontFamilyName(filePath: String): String? {
     return try {
-        val font = java.awt.Font.createFont(java.awt.Font.TRUETYPE_FONT, File(filePath))
+        val bytes = java.io.File(filePath).readBytes()
+        val font = java.awt.Font.createFont(java.awt.Font.TRUETYPE_FONT, java.io.ByteArrayInputStream(bytes))
         font.getFamily()
     } catch (_: Exception) {
         try {
-            val font = java.awt.Font.createFont(java.awt.Font.TYPE1_FONT, File(filePath))
+            val bytes = java.io.File(filePath).readBytes()
+            val font = java.awt.Font.createFont(java.awt.Font.TYPE1_FONT, java.io.ByteArrayInputStream(bytes))
             font.getFamily()
         } catch (_: Exception) { null }
     }
@@ -82,9 +97,9 @@ actual fun createFileFontFamily(filePath: String): FontFamily? {
 }
 
 actual fun getFontStorageDir(): String {
-    val dir = "${System.getProperty("user.home")}/.lumecard/fonts"
-    File(dir).mkdirs()
-    return dir
+    val dir = File(userHome(), ".lumecard/fonts")
+    dir.mkdirs()
+    return dir.absolutePath
 }
 
 actual fun copyFontToStorage(sourcePath: String, fileName: String): Boolean {
@@ -98,7 +113,47 @@ actual fun copyFontToStorage(sourcePath: String, fileName: String): Boolean {
             java.nio.file.StandardCopyOption.REPLACE_EXISTING
         )
         true
-    } catch (_: Exception) { false }
+    } catch (e: Exception) {
+        println("[FontImport] copyFontToStorage FAILED: $sourcePath -> $fileName -> ${e.javaClass.simpleName}: ${e.message}")
+        false
+    }
 }
 
 actual fun fontFileExists(filePath: String): Boolean = File(filePath).exists()
+
+actual fun deleteFontFile(filePath: String): Boolean {
+    return try {
+        val path = java.nio.file.Paths.get(filePath)
+        val file = path.toFile()
+        if (!file.exists()) return true
+        file.setWritable(true)
+        java.nio.file.Files.deleteIfExists(path)
+    } catch (e: java.nio.file.FileSystemException) {
+        // File may be temporarily locked (AWT, anti-virus, etc).
+        // Retry once after a short delay.
+        try {
+            Thread.sleep(200)
+            java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(filePath))
+        } catch (_: Exception) { false }
+    } catch (_: Exception) { false }
+}
+
+actual fun getBackgroundStorageDir(): String {
+    val dir = File(userHome(), ".lumecard/backgrounds")
+    dir.mkdirs()
+    return dir.absolutePath
+}
+
+actual fun copyBackgroundToStorage(sourcePath: String, fileName: String): String? {
+    return try {
+        val dir = File(getBackgroundStorageDir())
+        if (!dir.exists()) dir.mkdirs()
+        val target = File(dir, fileName)
+        java.nio.file.Files.copy(
+            File(sourcePath).toPath(),
+            target.toPath(),
+            java.nio.file.StandardCopyOption.REPLACE_EXISTING
+        )
+        target.absolutePath
+    } catch (_: Exception) { null }
+}

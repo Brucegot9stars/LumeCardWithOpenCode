@@ -17,3 +17,10 @@ expect fun getFontStorageDir(): String
 expect fun copyFontToStorage(sourcePath: String, fileName: String): Boolean
 
 expect fun fontFileExists(filePath: String): Boolean
+
+expect fun deleteFontFile(filePath: String): Boolean
+
+expect fun getBackgroundStorageDir(): String
+
+/** Copy image file to persistent background storage. Returns the persistent path, or null on failure. */
+expect fun copyBackgroundToStorage(sourcePath: String, fileName: String): String?

@@ -140,6 +140,7 @@ interface I18nStrings {
     val cardAnswerLabel: String
     val cardFrontLabel: String
     val cardBackLabel: String
+    val cardTitle: String
     val cardFrontLabelRev: String
     val cardBackLabelRev: String
     val cardFrontPlaceholder: String
@@ -230,6 +231,7 @@ interface I18nStrings {
     val settingsFontImportSuccess: String
     val settingsFontImportFailed: String
     val settingsFontDeleteConfirm: String
+    val settingsFontOpenDir: String
     val settingsExport: String
     val settingsExportDesc: String
     fun settingsExportSuccess(length: Int): String
@@ -262,6 +264,8 @@ interface I18nStrings {
     val updateDownload: String
     val updateError: String
     val actionClose: String
+    val emojiChoose: String
+    val emojiSearchHint: String
     val settingsCheckUpdate: String
     val updateDownloading: String
     val updateInstalling: String
@@ -289,7 +293,6 @@ interface I18nStrings {
     val settingsSyncing: String
     fun settingsSyncSuccess(decksCount: Int): String
     fun settingsSyncError(msg: String): String
-    val settingsSyncConfigSuccess: String
     val settingsSyncAddConfig: String
     val settingsSyncConfigName: String
     val settingsSyncConfigNamePlaceholder: String
@@ -302,9 +305,6 @@ interface I18nStrings {
     val settingsSyncDeleteConfirm: String
     val settingsSyncSetDefault: String
     val settingsSyncDefault: String
-    val settingsSyncUpload: String
-    val settingsSyncDownload: String
-    val settingsSyncBiDirectional: String
     val settingsSyncNotConfigured: String
     val settingsAutoSync: String
     val settingsAutoSyncDesc: String
@@ -315,25 +315,49 @@ interface I18nStrings {
     val settingsAutoSyncMin120: String
     val settingsAutoSyncRunning: String
     val settingsAutoSyncStopped: String
-    val settingsSyncScope: String
-    val settingsSyncScopeAll: String
-    val settingsSyncScopeSettings: String
-    val settingsSyncScopeData: String
-    val settingsSyncNow: String
-    val settingsSyncData: String
-    val settingsSyncConfig: String
-    val settingsRestoreFromCloud: String
-    val settingsRestoreConfirm: String
-    val settingsRestoreConfirmDesc: String
     val settingsLastSyncTime: String
     val settingsConnectionStatus: String
     val settingsConnected: String
     val settingsDisconnected: String
+    val syncForceUpload: String
+    val syncForceDownload: String
+    val syncForceUploadConfirm: String
+    val syncForceUploadConfirmDesc: String
+    val syncForceDownloadConfirm: String
+    val syncForceDownloadConfirmDesc: String
+    val syncScopeData: String
+    val syncScopeConfig: String
+    val syncForceUploadConfig: String
+    val syncForceDownloadConfig: String
+    val syncForceUploadConfigConfirm: String
+    val syncForceUploadConfigConfirmDesc: String
+    val syncForceDownloadConfigConfirm: String
+    val syncForceDownloadConfigConfirmDesc: String
+    val syncConfigSyncSuccess: String
     val syncNoHistoryFound: String
     val syncFailedToLoadHistory: String
     val syncRestoreHistory: String
     val syncNoHistoryAvailable: String
     fun syncHistoryEntryFormat(timestamp: String, deviceId: String): String
+    val syncRestoreData: String
+    val syncRestoreConfig: String
+    val syncBackupNameFallback: String
+    val syncNoLocalBackups: String
+    val syncClearAllBackups: String
+    val syncClearAllBackupsConfirm: String
+    val syncClearAllBackupsDesc: String
+    val syncClearAllBackupsDone: String
+    val syncRestoreCloud: String
+    val syncRestoreCloudConfirm1: String
+    val syncRestoreCloudConfirm2: String
+    val syncRestoreCloudConfirm3: String
+    val syncRestoreCloudInputHint: String
+    val syncRestoreCloudDone: String
+    val syncRestoreLocalHistory: String
+    val syncRestoreRemoteHistory: String
+    val settingsBackupLimits: String
+    val settingsMaxCloudBackups: String
+    val settingsMaxLocalBackups: String
     fun syncIntervalMinutes(minutes: Int): String
     val webdavProviderLabel: String
     val webdavProviderCustom: String
@@ -430,6 +454,22 @@ interface I18nStrings {
     val aiCardErrorNoContent: String
     val aiCardAutoClassify: String
     val aiCardAutoClassifyDesc: String
+    val aiCardTopicRequired: String
+    val aiCardCancelled: String
+    fun aiCardErrorLoadData(message: String): String
+    fun aiCardErrorBatch(batch: Int, message: String): String
+    fun aiCardErrorGeneration(message: String): String
+    val aiCardStopGeneration: String
+    val aiCardErrorHeader: String
+    val aiCardErrorClipboardLabel: String
+    val aiCardErrorCopied: String
+    val aiCardErrorCopyButton: String
+    fun aiCardLogTitle(count: Int): String
+    val aiCardLogEmpty: String
+    val aiCardStopDialogTitle: String
+    val aiCardStopDialogText: String
+    val aiCardDeletePartial: String
+    val aiCardStopConfirm: String
 
     // Move / Merge
     val actionMove: String
@@ -487,6 +527,9 @@ interface I18nStrings {
     val planAllDoneDesc: String
     val planReviewAgain: String
     fun planCardsCount(count: Int): String
+    val planSelectCardsTitle: String
+    val planNoDecksInKb: String
+    val planNoCardsInDeck: String
 
     val fieldName: String
     val fieldDescription: String
@@ -561,6 +604,17 @@ interface I18nStrings {
     val statsCardCountsYoung: String
     val statsCardCountsMature: String
 
+    val statsResetData: String
+    val statsResetDataDesc: String
+    val statsResetStep1Title: String
+    val statsResetStep1Desc: String
+    val statsResetStep2Title: String
+    val statsResetStep2Desc: String
+    val statsResetInputPrompt: String
+    val statsResetStep3Title: String
+    val statsResetStep3Desc: String
+    val statsResetSuccess: String
+
     val algoFsrs: String
     val algoFsrsDesc: String
     val algoSm2: String
@@ -609,4 +663,120 @@ interface I18nStrings {
 
     val pasteMedia: String
     val browseMedia: String
+
+    val splashQuoteTitle: String
+    val splashQuoteSettingsDesc: String
+    val splashQuoteEnabled: String
+    val splashQuoteEnabledDesc: String
+    val splashQuoteDuration: String
+    val splashQuoteDurationDesc: String
+    val splashQuoteDirection: String
+    val splashQuoteDirectionHorizontal: String
+    val splashQuoteDirectionVertical: String
+    val splashQuoteFont: String
+    val splashQuoteFontSize: String
+    val splashQuoteBackground: String
+    val splashQuoteBackgroundDesc: String
+    val splashQuoteBackgroundDefault: String
+    val splashQuoteBackgroundClear: String
+    val splashQuoteStrategy: String
+    val splashQuoteStrategyRandom: String
+    val splashQuoteStrategySequential: String
+    val splashQuoteShowAuthor: String
+    val splashQuoteShowAuthorDesc: String
+    val splashQuotePreview: String
+    val splashQuotePreviewDesc: String
+    val splashQuoteManage: String
+    val splashQuoteManageDesc: String
+    val splashQuoteAdd: String
+    val splashQuoteEdit: String
+    val splashQuoteDelete: String
+    val splashQuoteImport: String
+    val splashQuoteExport: String
+    val splashQuoteImportAppend: String
+    val splashQuoteImportOverwrite: String
+    val splashQuoteImportSuccess: String
+    val splashQuoteExportSuccess: String
+    val splashQuoteTextLabel: String
+    val splashQuoteAuthorLabel: String
+    val splashQuoteEmpty: String
+    val splashQuoteDurationSeconds: String
+    val splashQuoteDeleteConfirm: String
+    val splashQuoteDeleteConfirmDesc: String
+    val splashQuoteClearBgConfirm: String
+    val splashQuoteFontDefault: String
+    val splashQuoteBrowse: String
+    val splashQuoteOverrideEnabled: String
+    val splashQuoteOverrideGlobal: String
+    val splashQuoteBgSolidColor: String
+    val splashQuoteBgImage: String
+    val splashQuoteBgColorLabel: String
+    val splashQuoteBgImageLabel: String
+    val splashQuoteLayout: String
+    val splashQuoteTextAlign: String
+    val splashQuoteAuthorAlign: String
+    val splashQuoteVerticalPosition: String
+    fun splashQuoteContentSpacing(value: Int): String
+    fun splashQuotePagePadding(value: Int): String
+    fun splashQuoteMaxWidth(value: Int): String
+    val splashQuoteUnsavedTitle: String
+    val splashQuoteUnsavedDesc: String
+    val splashQuoteDiscard: String
+    val splashQuoteImportError: String
+    fun splashQuoteAuthorPrefix(author: String): String
+    fun splashQuoteFontSizeValue(size: Int): String
+    val splashQuoteBuiltinSection: String
+    val splashQuoteBuiltinHint: String
+    val splashQuoteBuiltinDeleteDesc: String
+    val splashQuoteBuiltinRestoreAll: String
+    val settingsSearchNoResults: String
+
+    // Unified Quote Settings sections
+    val splashQuoteAnimation: String
+    val splashQuoteAnimationDesc: String
+    val splashQuoteAnimationEnable: String
+    val splashQuoteAnimationStyle: String
+    val splashQuoteAnimationNone: String
+    val splashQuoteAnimationTypewriter: String
+    val splashQuoteAnimationFadeIn: String
+    val splashQuoteAnimationSlideUp: String
+    val splashQuoteAnimationSentence: String
+    val splashQuoteAdvanced: String
+
+    // Screen Saver
+    val settingsScreenSaver: String
+    val settingsScreenSaverDesc: String
+    val settingsScreenSaverEnabled: String
+    val settingsScreenSaverIdleMinutes: String
+    val settingsScreenSaverRotation: String
+
+    // Study Timer
+    val settingsStudyTimer: String
+    val settingsStudyTimerIdlePause: String
+    val settingsStudyTimerIdlePauseDesc: String
+    val settingsStudyTimerIdlePauseThreshold: String
+
+    // Help Center
+    val helpCenter: String
+    val helpCenterSearchPlaceholder: String
+    val helpCenterNoResults: String
+    val helpCenterTableOfContents: String
+    val helpCenterRelatedArticles: String
+    val helpCenterDangerContent: String
+    val helpCenterBackToToc: String
+    val helpCenterTip: String
+    val helpCenterWarning: String
+    val helpCenterDanger: String
+
+    // Welcome Tour
+    val welcomeTourTitle: String
+    val welcomeTourPage1Title: String
+    val welcomeTourPage1Desc: String
+    val welcomeTourPage2Title: String
+    val welcomeTourPage2Desc: String
+    val welcomeTourPage3Title: String
+    val welcomeTourPage3Desc: String
+    val welcomeTourGetStarted: String
+    val welcomeTourNext: String
+    val welcomeTourSkip: String
 }

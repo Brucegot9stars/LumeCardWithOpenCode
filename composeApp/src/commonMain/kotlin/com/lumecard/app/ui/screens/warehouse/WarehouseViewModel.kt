@@ -13,8 +13,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import com.lumecard.shared.data.generateId
 import kotlin.time.Clock
-import java.util.UUID
 
 data class TreeNode(
     val id: String,
@@ -85,20 +85,20 @@ class WarehouseViewModel(
                 val deckNameMatch = !hasQuery || deck.name.lowercase().contains(query)
                 val deckCards = cards.filter { it.deckId == deck.id }
                 val matchedCards = if (hasQuery) {
-                    deckCards.filter { it.front.lowercase().contains(query) || it.back.lowercase().contains(query) }
+                    deckCards.filter { it.front.lowercase().contains(query) || it.back.lowercase().contains(query) || it.title.lowercase().contains(query) }
                 } else deckCards
 
                 val showDeck = !hasQuery || deckNameMatch || matchedCards.isNotEmpty()
                 if (!showDeck) return@mapNotNull null
 
                 val cardNodes = (if (hasQuery && !deckNameMatch && !kbNameMatch) matchedCards else deckCards).map { card ->
-                    TreeNode(id = card.id, name = card.front.take(50), type = NodeType.CARD, data = card)
+                    TreeNode(id = card.id, name = card.title.ifBlank { card.front.take(50) }, type = NodeType.CARD, data = card)
                 }
-                TreeNode(id = deck.id, name = deck.name, type = NodeType.DECK, isExpanded = if (hasQuery) cardNodes.isNotEmpty() else deck.id in _expandedIds.value, children = cardNodes)
+                TreeNode(id = deck.id, name = deck.name, type = NodeType.DECK, isExpanded = if (hasQuery) cardNodes.isNotEmpty() else deck.id in _expandedIds.value, children = cardNodes, data = deck)
             }
 
             if (!hasQuery || kbNameMatch || deckNodes.isNotEmpty()) {
-                TreeNode(id = kb.id, name = kb.name, type = NodeType.KNOWLEDGE_BASE, isExpanded = if (hasQuery) deckNodes.isNotEmpty() else kb.id in _expandedIds.value, children = deckNodes)
+                TreeNode(id = kb.id, name = kb.name, type = NodeType.KNOWLEDGE_BASE, isExpanded = if (hasQuery) deckNodes.isNotEmpty() else kb.id in _expandedIds.value, children = deckNodes, data = kb)
             } else null
         }
         _treeNodes.value = tree
@@ -145,18 +145,21 @@ class WarehouseViewModel(
         }
     }
 
-    suspend fun createKnowledgeBase(name: String, description: String?) {
+    suspend fun createKnowledgeBase(name: String, description: String?, icon: String? = null) {
         kbRepository.insert(KnowledgeBase(
-            id = "kb_${UUID.randomUUID().toString().take(8)}",
+            id = generateId("kb"),
             name = name, description = description,
+            icon = icon ?: KnowledgeBase.emojis.first(),
             createdAt = Clock.System.now(), updatedAt = Clock.System.now()
         ))
         loadData()
     }
 
-    suspend fun updateKnowledgeBase(id: String, name: String, description: String?) {
+    suspend fun updateKnowledgeBase(id: String, name: String, description: String?, icon: String? = null) {
         val kb = kbRepository.getById(id) ?: return
-        kbRepository.update(kb.copy(name = name, description = description, updatedAt = Clock.System.now()))
+        val updated = kb.copy(name = name, description = description, updatedAt = Clock.System.now())
+            .let { if (icon != null) it.copy(icon = icon) else it }
+        kbRepository.update(updated)
         loadData()
     }
 
@@ -174,22 +177,25 @@ class WarehouseViewModel(
         loadData()
     }
 
-    suspend fun createDeck(kbId: String, name: String, description: String?) {
+    suspend fun createDeck(kbId: String, name: String, description: String?, icon: String? = null) {
         val decks = deckRepository.getAll().first()
         val existingCount = decks.size
         deckRepository.insert(Deck(
-            id = "deck_${UUID.randomUUID().toString().take(8)}",
+            id = generateId("deck"),
             knowledgeBaseId = kbId, name = name, description = description,
-            color = Deck.colors[existingCount % Deck.colors.size], icon = Deck.icons[existingCount % Deck.icons.size],
+            color = Deck.colors[existingCount % Deck.colors.size],
+            icon = icon ?: Deck.icons[existingCount % Deck.icons.size],
             createdAt = Clock.System.now(), updatedAt = Clock.System.now()
         ))
         _expandedIds.value = _expandedIds.value + kbId
         loadData()
     }
 
-    suspend fun updateDeck(id: String, name: String, description: String?) {
+    suspend fun updateDeck(id: String, name: String, description: String?, icon: String? = null) {
         val deck = deckRepository.getById(id) ?: return
-        deckRepository.update(deck.copy(name = name, description = description, updatedAt = Clock.System.now()))
+        val updated = deck.copy(name = name, description = description, updatedAt = Clock.System.now())
+            .let { if (icon != null) it.copy(icon = icon) else it }
+        deckRepository.update(updated)
         loadData()
     }
 
@@ -207,18 +213,18 @@ class WarehouseViewModel(
         loadData()
     }
 
-    suspend fun createCard(deckId: String, front: String, back: String, type: CardType = CardType.BASIC) {
+    suspend fun createCard(deckId: String, front: String, back: String, type: CardType = CardType.BASIC, title: String = "") {
         cardRepository.insert(Card(
-            id = "card_${UUID.randomUUID().toString().take(8)}",
-            deckId = deckId, type = type, front = front, back = back,
+            id = generateId("card"),
+            deckId = deckId, type = type, front = front, back = back, title = title,
             createdAt = Clock.System.now(), updatedAt = Clock.System.now()
         ))
         loadData()
     }
 
-    suspend fun updateCard(id: String, front: String, back: String) {
+    suspend fun updateCard(id: String, front: String, back: String, title: String = "") {
         val card = cardRepository.getById(id) ?: return
-        cardRepository.update(card.copy(front = front, back = back, updatedAt = Clock.System.now()))
+        cardRepository.update(card.copy(front = front, back = back, title = title, updatedAt = Clock.System.now()))
         loadData()
     }
 

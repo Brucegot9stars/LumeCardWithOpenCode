@@ -5,13 +5,15 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import com.lumecard.app.i18n.AppLocale
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.shared.domain.scheduler.ReviewMode
+import com.lumecard.shared.feature.quote.facade.QuoteFeature
 import com.lumecard.shared.repository.SettingsRepository
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     val state: SettingsStateHolder,
-    private val i18nManager: I18nManager
+    private val i18nManager: I18nManager,
+    private val quoteFeature: QuoteFeature,
 ) : ScreenModel {
 
     fun loadSettings() {
@@ -32,6 +34,15 @@ class SettingsViewModel(
             state.language = try { AppLocale.valueOf(langStr) } catch (_: Exception) { AppLocale.SYSTEM }
             state.defaultFontFamily = settingsRepository.get("defaultFontFamily") ?: ""
             state.fontScale = settingsRepository.get("fontScale")?.toFloatOrNull() ?: 1.0f
+
+            val ss = quoteFeature.loadScreenSaverSettings()
+            state.screenSaverEnabled = ss.enabled
+            state.screenSaverIdleMinutes = ss.idleMinutes
+            state.screenSaverRotationSeconds = ss.rotationSeconds
+
+            val ips = quoteFeature.loadIdlePauseSettings()
+            state.idlePauseEnabled = ips.enabled
+            state.idlePauseThresholdSeconds = ips.thresholdSeconds
         }
     }
 
@@ -49,6 +60,21 @@ class SettingsViewModel(
             settingsRepository.set("language", state.language.name)
             settingsRepository.set("defaultFontFamily", state.defaultFontFamily)
             settingsRepository.set("fontScale", state.fontScale.toString())
+
+            quoteFeature.saveScreenSaverSettings(
+                com.lumecard.shared.feature.quote.facade.ScreenSaverSettings(
+                    enabled = state.screenSaverEnabled,
+                    idleMinutes = state.screenSaverIdleMinutes,
+                    rotationSeconds = state.screenSaverRotationSeconds,
+                )
+            )
+            quoteFeature.saveIdlePauseSettings(
+                com.lumecard.shared.feature.quote.facade.IdlePauseSettings(
+                    enabled = state.idlePauseEnabled,
+                    thresholdSeconds = state.idlePauseThresholdSeconds,
+                )
+            )
+
             state.markClean()
             state.isSaving = false
         }
@@ -97,6 +123,31 @@ class SettingsViewModel(
 
     fun setAutoSyncInterval(minutes: Int) {
         state.autoSyncIntervalMinutes = minutes.coerceIn(5, 1440)
+        state.markDirty()
+    }
+
+    fun setScreenSaverEnabled(enabled: Boolean) {
+        state.screenSaverEnabled = enabled
+        state.markDirty()
+    }
+
+    fun setScreenSaverIdleMinutes(minutes: Int) {
+        state.screenSaverIdleMinutes = minutes.coerceIn(1, 60)
+        state.markDirty()
+    }
+
+    fun setScreenSaverRotationSeconds(seconds: Int) {
+        state.screenSaverRotationSeconds = seconds.coerceIn(1, 30)
+        state.markDirty()
+    }
+
+    fun setIdlePauseEnabled(enabled: Boolean) {
+        state.idlePauseEnabled = enabled
+        state.markDirty()
+    }
+
+    fun setIdlePauseThresholdSeconds(seconds: Int) {
+        state.idlePauseThresholdSeconds = seconds.coerceIn(10, 600)
         state.markDirty()
     }
 }

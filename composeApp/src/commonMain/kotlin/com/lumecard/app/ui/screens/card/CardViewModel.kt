@@ -7,6 +7,7 @@ import com.lumecard.app.ui.screens.deck.SortField
 import com.lumecard.app.ui.screens.deck.SortOrder
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
+import com.lumecard.shared.data.generateId
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -77,6 +78,10 @@ class CardViewModel(
         return if (config.order == SortOrder.DESC) sorted.reversed() else sorted
     }
 
+    suspend fun getCardById(cardId: String): Card? {
+        return cardRepository.getById(cardId)
+    }
+
     fun getCardCount(deckId: String, onResult: (Int) -> Unit) {
         screenModelScope.launch {
             val count = cardRepository.getByDeck(deckId).first().size
@@ -90,6 +95,7 @@ class CardViewModel(
         back: String,
         type: CardType = CardType.BASIC,
         tags: List<String> = emptyList(),
+        title: String = "",
         horizontalCenter: Boolean = false,
         verticalCenter: Boolean = false,
         fontSize: Int = 16,
@@ -100,11 +106,12 @@ class CardViewModel(
 
         screenModelScope.launch {
             val card = Card(
-                id = kotlin.uuid.Uuid.random().toString(),
+                id = generateId("card"),
                 deckId = deckId,
                 type = type,
                 front = front,
                 back = back,
+                title = title,
                 tags = tags,
                 metadata = mutableMapOf<String, String>().apply {
                     if (horizontalCenter) put("hcenter", "true")
@@ -124,6 +131,7 @@ class CardViewModel(
         back: String,
         type: CardType,
         tags: List<String>,
+        title: String = "",
         horizontalCenter: Boolean = false,
         verticalCenter: Boolean = false,
         fontSize: Int = 16,
@@ -140,6 +148,7 @@ class CardViewModel(
             val updated = card.copy(
                 front = front,
                 back = back,
+                title = title,
                 type = type,
                 tags = tags,
                 metadata = metadata,

@@ -10,10 +10,34 @@ import com.lumecard.app.di.appModule
 import org.jetbrains.skia.Image
 import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
+import java.io.PrintWriter
+import java.io.StringWriter
+import javax.swing.JOptionPane
 
 fun main() = application {
     if (GlobalContext.getOrNull() == null) {
-        startKoin { modules(appModule) }
+        try {
+            startKoin { modules(appModule) }
+        } catch (e: Exception) {
+            val sw = StringWriter()
+            e.printStackTrace(PrintWriter(sw))
+            val fullTrace = sw.toString()
+            System.err.println("[LumeCard] FATAL: Koin initialization failed:\n$fullTrace")
+            // Show the root cause (innermost exception) to avoid misleading
+            // diagnosis from the outermost Koin wrapper message.
+            var rootCause: Throwable? = e
+            while (rootCause?.cause != null && rootCause.cause !== rootCause) {
+                rootCause = rootCause.cause
+            }
+            val rootMsg = rootCause?.message ?: e.message
+            JOptionPane.showMessageDialog(
+                null,
+                "LumeCard failed to start:\n\n$rootMsg\n\nFull error written to stderr.\nPlease check ~/.lumecard/ directory permissions.",
+                "LumeCard - Startup Error",
+                JOptionPane.ERROR_MESSAGE,
+            )
+            exitApplication()
+        }
     }
 
     val iconBytes = object {}.javaClass.getResourceAsStream("/icon_512.png")?.readBytes()

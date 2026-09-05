@@ -6,7 +6,7 @@ object FontInitializer {
     private var initialized = false
     private var repository: SettingsRepository? = null
 
-    fun ensureInitialized(repo: SettingsRepository? = null) {
+    suspend fun ensureInitialized(repo: SettingsRepository? = null) {
         if (initialized) return
         initialized = true
         repository = repo
@@ -14,11 +14,11 @@ object FontInitializer {
         FontRegistry.registerAll(detectSystemFonts())
         if (repo != null) {
             FontRegistry.loadUserFonts(repo)
-            val defaultId = kotlinx.coroutines.runBlocking { repo.get("defaultFontFamily") } ?: ""
+            val defaultId = repo.get("defaultFontFamily") ?: ""
             FontRegistry.defaultFontId = defaultId
         }
     }
-    fun saveUserFonts() { repository?.let { FontRegistry.saveUserFonts(it) } }
+    suspend fun saveUserFonts() { repository?.let { FontRegistry.saveUserFonts(it) } }
 
     private val builtinFonts = listOf(
         FontSpec("default", "Default", "", FontSource.SYSTEM),

@@ -78,6 +78,7 @@ data class AiCardResponseJson(
 
 @Serializable
 data class AiCardItemJson(
+    val title: String = "",
     val front: String = "",
     val back: String = "",
     val type: String = "BASIC",

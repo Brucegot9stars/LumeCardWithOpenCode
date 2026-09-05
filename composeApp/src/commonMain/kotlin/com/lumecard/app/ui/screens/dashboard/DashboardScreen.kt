@@ -35,6 +35,7 @@ import com.lumecard.app.ui.screens.study.StudyScreen
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.shared.model.Deck
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 class DashboardScreen : Screen {
@@ -59,6 +60,9 @@ class DashboardScreen : Screen {
         val kbCount by viewModel.kbCount.collectAsState()
         val activePlanCount by viewModel.activePlanCount.collectAsState()
         val duePlanCount by viewModel.duePlanCount.collectAsState()
+
+        var deletingDeck by remember { mutableStateOf<com.lumecard.shared.model.Deck?>(null) }
+        val scope = rememberCoroutineScope()
 
         LaunchedEffect(Unit) { viewModel.loadStats() }
 
@@ -251,6 +255,7 @@ class DashboardScreen : Screen {
                                             }
                                         }
                                     },
+                                    onDelete = { deletingDeck = item.deck },
                                 )
                             }
                         }
@@ -262,6 +267,33 @@ class DashboardScreen : Screen {
                     }
                 }
             }
+        }
+
+        // Delete confirmation dialog
+        deletingDeck?.let { deck ->
+            AlertDialog(
+                onDismissRequest = { deletingDeck = null },
+                title = { Text(strings.actionConfirm) },
+                text = { Text("确定要删除牌组「${deck.name}」及其所有卡片吗？") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            val deckId = deck.id
+                            deletingDeck = null
+                            scope.launch {
+                                viewModel.deleteDeck(deckId)
+                            }
+                        }
+                    ) {
+                        Text(strings.actionDelete, color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { deletingDeck = null }) {
+                        Text(strings.actionCancel)
+                    }
+                },
+            )
         }
     }
 
@@ -369,10 +401,13 @@ class DashboardScreen : Screen {
         progress: Float,
         onClick: () -> Unit,
         onStudy: () -> Unit,
+        onDelete: () -> Unit,
     ) {
         val strings = koinInject<I18nManager>().strings
         val spacing = LumeCardTheme.spacing
         val radius = LumeCardTheme.radius
+
+        var showMenu by remember { mutableStateOf(false) }
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -444,6 +479,30 @@ class DashboardScreen : Screen {
                             contentDescription = strings.actionLearning,
                             modifier = Modifier.size(20.dp),
                         )
+                    }
+
+                    // More options
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(
+                                Icons.Default.MoreVert,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text(strings.actionDelete, color = MaterialTheme.colorScheme.error) },
+                                onClick = {
+                                    showMenu = false
+                                    onDelete()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                },
+                            )
+                        }
                     }
                 }
             }

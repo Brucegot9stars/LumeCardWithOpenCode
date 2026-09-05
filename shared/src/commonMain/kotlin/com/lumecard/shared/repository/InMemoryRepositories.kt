@@ -142,6 +142,34 @@ class InMemoryCardRepository : CardRepository {
 
     override suspend fun rebuildFtsIndex() {
     }
+
+    override suspend fun resetScheduling() {
+        cards.update { list ->
+            list.map { it.copy(lastReviewedAt = null, nextReviewAt = null, updatedAt = Clock.System.now()) }
+        }
+    }
+}
+
+class InMemoryAlgorithmStateRepository : AlgorithmStateRepository {
+    private val states = mutableMapOf<String, Pair<String, String>>() // cardId -> (mode, stateJson)
+
+    override suspend fun get(cardId: String): String? = states[cardId]?.second
+
+    override suspend fun getMode(cardId: String): String? = states[cardId]?.first
+
+    override suspend fun getAll(): Map<String, String> = states.mapValues { it.value.second }
+
+    override suspend fun save(cardId: String, mode: String, stateJson: String) {
+        states[cardId] = mode to stateJson
+    }
+
+    override suspend fun delete(cardId: String) {
+        states.remove(cardId)
+    }
+
+    override suspend fun deleteAll() {
+        states.clear()
+    }
 }
 
 class InMemoryReviewLogRepository : ReviewLogRepository {
@@ -179,6 +207,10 @@ class InMemoryReviewLogRepository : ReviewLogRepository {
 
     override suspend fun markSynced(ids: List<String>, syncedAt: Instant) {
         println("[InMemory] markSynced no-op: ${ids.size} items")
+    }
+
+    override suspend fun deleteAll() {
+        reviewLogs.value = emptyList()
     }
 }
 

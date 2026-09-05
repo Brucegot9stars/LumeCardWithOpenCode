@@ -47,6 +47,12 @@ kotlin {
                 implementation(Dependencies.sqlDelightJvm)
             }
         }
+
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
     }
 }
 
@@ -61,6 +67,12 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        getByName("main") {
+            assets.srcDir("src/commonMain/resources")
+        }
     }
 }
 

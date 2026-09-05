@@ -5,17 +5,20 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import com.lumecard.shared.model.*
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
+import com.lumecard.shared.repository.KnowledgeBaseRepository
 import com.lumecard.shared.repository.LearningPlanRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
-import java.util.UUID
+import com.lumecard.shared.data.generateId
 
 class LearningPlanViewModel(
     private val planRepository: LearningPlanRepository,
+    private val knowledgeBaseRepository: KnowledgeBaseRepository,
     private val deckRepository: DeckRepository,
     private val cardRepository: CardRepository
 ) : ScreenModel {
@@ -23,11 +26,35 @@ class LearningPlanViewModel(
     private val _plans = MutableStateFlow<List<LearningPlan>>(emptyList())
     val plans: StateFlow<List<LearningPlan>> = _plans.asStateFlow()
 
+    private val _knowledgeBases = MutableStateFlow<List<KnowledgeBase>>(emptyList())
+    val knowledgeBases: StateFlow<List<KnowledgeBase>> = _knowledgeBases.asStateFlow()
+
+    private val _decks = MutableStateFlow<List<Deck>>(emptyList())
+    val decks: StateFlow<List<Deck>> = _decks.asStateFlow()
+
+    private val _cards = MutableStateFlow<List<Card>>(emptyList())
+    val cards: StateFlow<List<Card>> = _cards.asStateFlow()
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     init {
         loadPlans()
+        loadSelectionData()
+    }
+
+    fun loadSelectionData() {
+        screenModelScope.launch {
+            combine(
+                knowledgeBaseRepository.getAll(),
+                deckRepository.getAll(),
+                cardRepository.getAll()
+            ) { kbs, decks, cards -> Triple(kbs, decks, cards) }.collect { (kbs, decks, cards) ->
+                _knowledgeBases.value = kbs.filter { it.deletedAt == null }
+                _decks.value = decks.filter { it.deletedAt == null }
+                _cards.value = cards.filter { it.deletedAt == null }
+            }
+        }
     }
 
     suspend fun getPlanById(id: String): com.lumecard.shared.model.LearningPlan? {
@@ -37,8 +64,22 @@ class LearningPlanViewModel(
     fun loadPlans() {
         screenModelScope.launch {
             _isLoading.value = true
-            planRepository.getAll().collect { list ->
-                _plans.value = list
+            combine(planRepository.getAll(), cardRepository.getAll()) { plans, _ -> plans }.collect { list ->
+                val updated = list.map { plan ->
+                    val cards = getCardsForPlan(plan)
+                    val newTotal = cards.size
+                    val newCompleted = cards.count { it.lastReviewedAt != null }
+                    if (newTotal != plan.totalCards || newCompleted != plan.completedCards) {
+                        val fixed = plan.copy(
+                            totalCards = newTotal,
+                            completedCards = newCompleted.coerceAtMost(newTotal),
+                            updatedAt = kotlin.time.Clock.System.now()
+                        )
+                        planRepository.update(fixed)
+                        fixed
+                    } else plan
+                }
+                _plans.value = updated
                 _isLoading.value = false
             }
         }
@@ -58,7 +99,7 @@ class LearningPlanViewModel(
     ): LearningPlan {
         val allCardIds = resolveCardIds(knowledgeBaseIds, deckIds, cardIds)
         val plan = LearningPlan(
-            id = "plan_${UUID.randomUUID().toString().take(8)}",
+            id = generateId("plan"),
             name = name,
             description = description,
             status = PlanStatus.NOT_STARTED,

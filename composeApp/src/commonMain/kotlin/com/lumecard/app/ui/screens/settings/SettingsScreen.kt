@@ -28,11 +28,16 @@ import com.lumecard.shared.domain.scheduler.ReviewMode
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
 import com.lumecard.app.i18n.AppLocale
+import com.lumecard.app.ui.components.ContextHelpButton
 import com.lumecard.app.ui.components.LumeCardDialog
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.components.LumeCardTextField
 import com.lumecard.app.ui.screens.ai.AiConfigScreen
+import com.lumecard.app.ui.screens.aicard.AiCardScreen
 import com.lumecard.app.ui.screens.dashboard.DashboardScreen
+import com.lumecard.app.ui.screens.settings.quote.QuoteSettingsScreen
+import com.lumecard.app.ui.screens.stats.StatsScreen
+import com.lumecard.shared.settings.SettingsSearchResult
 import com.lumecard.app.ui.components.UpdateCheckDialog
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.theme.LumeCardTheme
@@ -57,6 +62,8 @@ import com.lumecard.app.platform.isDesktopPlatform
 import com.lumecard.app.font.FontInitializer
 import com.lumecard.app.font.FontRegistry
 import com.lumecard.app.font.registerFontFile
+import com.lumecard.app.font.getFontStorageDir
+import com.lumecard.app.platform.openDirectory
 import org.koin.compose.koinInject
 
 class SettingsScreen(
@@ -93,8 +100,30 @@ class SettingsScreen(
         var showUpdateDialog by remember { mutableStateOf(false) }
         var updateState by remember { mutableStateOf<UpdateState>(UpdateState.Idle) }
         var downloadJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
-        var currentDestFile by remember { mutableStateOf<java.io.File?>(null) }
+        var currentDestPath by remember { mutableStateOf<String?>(null) }
         var lastFontImportDir by remember { mutableStateOf<String?>(null) }
+
+        // ── Global Settings Search ──────────────────────────
+        var searchQuery by remember { mutableStateOf("") }
+        var searchResults by remember { mutableStateOf<List<SettingsSearchResult>>(emptyList()) }
+        val searchEngine = rememberSettingsSearchEngine(strings)
+        LaunchedEffect(searchQuery) {
+            searchResults = searchEngine.search(searchQuery)
+        }
+
+        fun navigateToSearchResult(result: SettingsSearchResult) {
+            searchQuery = ""
+            val route = result.entry.route
+            when (route) {
+                "QuoteSettings" -> navigator.push(com.lumecard.app.ui.screens.settings.quote.QuoteSettingsScreen())
+                "WebDAV" -> navigator.push(WebDavConfigScreen())
+                "AIConfig" -> navigator.push(AiConfigScreen())
+                "AICards" -> navigator.push(com.lumecard.app.ui.screens.aicard.AiCardScreen())
+                "Stats" -> navigator.push(StatsScreen())
+                "HelpCenter" -> navigator.push(com.lumecard.app.ui.screens.help.HelpScreen())
+                else -> {} // "Settings" entries are on the current page
+            }
+        }
 
         LaunchedEffect(Unit) {
             settingsViewModel.loadSettings()
@@ -111,16 +140,19 @@ class SettingsScreen(
                         else navigator.replace(DashboardScreen())
                     },
                     action = {
-                        if (settingsState.isDirty) {
-                            FilledTonalButton(
-                                onClick = { settingsViewModel.saveSettings() },
-                                enabled = !settingsState.isSaving,
-                                modifier = Modifier.padding(end = 0.dp)
-                            ) {
-                                if (settingsState.isSaving) {
-                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                                } else {
-                                    Text(strings.actionSave)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            ContextHelpButton(articleId = "settings-guide")
+                            if (settingsState.isDirty) {
+                                FilledTonalButton(
+                                    onClick = { settingsViewModel.saveSettings() },
+                                    enabled = !settingsState.isSaving,
+                                    modifier = Modifier.padding(end = 0.dp)
+                                ) {
+                                    if (settingsState.isSaving) {
+                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                    } else {
+                                        Text(strings.actionSave)
+                                    }
                                 }
                             }
                         }
@@ -130,16 +162,34 @@ class SettingsScreen(
             snackbarHost = { SnackbarHost(snackbarHostState) }
         ) { padding ->
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = spacing.md),
-                verticalArrangement = Arrangement.spacedBy(spacing.section),
+                modifier = Modifier.fillMaxSize().padding(padding),
             ) {
-                Spacer(modifier = Modifier.height(spacing.xs))
+                com.lumecard.app.ui.components.SettingsSearchBar(
+                    query = searchQuery,
+                    onQueryChange = { searchQuery = it },
+                    placeholder = strings.actionSearch,
+                    modifier = Modifier.padding(horizontal = spacing.md),
+                )
 
-                // === Learning ===
+                if (searchQuery.isNotBlank()) {
+                    SettingsSearchResults(
+                        query = searchQuery,
+                        results = searchResults,
+                        onResultClick = { navigateToSearchResult(it) },
+                        strings = strings,
+                        modifier = Modifier.weight(1f),
+                    )
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = spacing.md),
+                        verticalArrangement = Arrangement.spacedBy(spacing.section),
+                    ) {
+                        Spacer(modifier = Modifier.height(spacing.xs))
+
+                        // === Learning ===
                 Row(
                     modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
                     verticalAlignment = Alignment.CenterVertically,
@@ -538,6 +588,14 @@ class SettingsScreen(
                                 }
                             },
                         )
+                        if (isDesktopPlatform()) {
+                            HorizontalDivider()
+                            ListItem(
+                                headlineContent = { Text(strings.settingsFontOpenDir) },
+                                leadingContent = { Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                                modifier = Modifier.clickable { openDirectory(getFontStorageDir()) },
+                            )
+                        }
                         // User imported fonts list (with delete)
                         val userFonts = FontRegistry.fonts.filter { it.source == com.lumecard.app.font.FontSource.USER_IMPORTED }
                         userFonts.forEach { spec ->
@@ -568,16 +626,123 @@ class SettingsScreen(
                                                 Icon(Icons.Default.AddCircle, contentDescription = strings.actionConfirm, tint = MaterialTheme.colorScheme.primary)
                                             }
                                         }
-                                        IconButton(onClick = {
-                                            FontRegistry.remove(spec.id)
-                                            FontInitializer.saveUserFonts()
-                                        }) {
+                                        var showDeleteConfirm by remember { mutableStateOf(false) }
+                                        IconButton(onClick = { showDeleteConfirm = true }) {
                                             Icon(Icons.Default.Delete, contentDescription = strings.actionDelete, tint = MaterialTheme.colorScheme.error)
+                                        }
+                                        if (showDeleteConfirm) {
+                                            AlertDialog(
+                                                onDismissRequest = { showDeleteConfirm = false },
+                                                title = { Text(spec.displayName) },
+                                                text = { Text(strings.settingsFontDeleteConfirm) },
+                                                confirmButton = {
+                                                    Button(onClick = {
+                                                        scope.launch {
+                                                            FontRegistry.remove(spec.id)
+                                                            FontInitializer.saveUserFonts()
+                                                        }
+                                                        showDeleteConfirm = false
+                                                    }) { Text(strings.actionConfirm) }
+                                                },
+                                                dismissButton = {
+                                                    TextButton(onClick = { showDeleteConfirm = false }) {
+                                                        Text(strings.actionCancel)
+                                                    }
+                                                },
+                                            )
                                         }
                                     }
                                 },
                             )
                         }
+                    }
+                }
+
+                // === Splash Quote & Screen Saver ===
+                Row(
+                    modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(spacing.sm))
+                    Text(
+                        strings.splashQuoteTitle,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = radius.card,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                ) {
+                    ListItem(
+                        headlineContent = { Text(strings.splashQuoteTitle) },
+                        supportingContent = { Text(strings.splashQuoteSettingsDesc) },
+                        leadingContent = { Icon(Icons.Default.AutoAwesome, contentDescription = null) },
+                        modifier = Modifier.clickable { navigator.push(com.lumecard.app.ui.screens.settings.quote.QuoteSettingsScreen()) },
+                        trailingContent = {
+                            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        },
+                    )
+                }
+
+                // === Study Timer (inside Learning) ===
+                Row(
+                    modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.Timer, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(spacing.sm))
+                    Text(
+                        strings.settingsStudyTimer,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = radius.card,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                ) {
+                    Column {
+                        ListItem(
+                            headlineContent = { Text(strings.settingsStudyTimerIdlePause) },
+                            supportingContent = { Text(strings.settingsStudyTimerIdlePauseDesc) },
+                            trailingContent = {
+                                Switch(
+                                    checked = settingsState.idlePauseEnabled,
+                                    onCheckedChange = { settingsViewModel.setIdlePauseEnabled(it) },
+                                )
+                            },
+                        )
+                        HorizontalDivider()
+                        ListItem(
+                            headlineContent = { Text(strings.settingsStudyTimerIdlePauseThreshold) },
+                            trailingContent = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    FilledIconButton(onClick = {
+                                        val v = (settingsState.idlePauseThresholdSeconds - 5).coerceAtLeast(10)
+                                        settingsViewModel.setIdlePauseThresholdSeconds(v)
+                                    }, modifier = Modifier.size(32.dp)) {
+                                        Text("-", style = MaterialTheme.typography.titleMedium)
+                                    }
+                                    Text(
+                                        "${settingsState.idlePauseThresholdSeconds}",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        modifier = Modifier.padding(horizontal = 8.dp),
+                                    )
+                                    FilledIconButton(onClick = {
+                                        val v = (settingsState.idlePauseThresholdSeconds + 5).coerceAtMost(600)
+                                        settingsViewModel.setIdlePauseThresholdSeconds(v)
+                                    }, modifier = Modifier.size(32.dp)) {
+                                        Text("+", style = MaterialTheme.typography.titleMedium)
+                                    }
+                                }
+                            },
+                        )
                     }
                 }
 
@@ -829,6 +994,40 @@ class SettingsScreen(
                     }
                 }
 
+                // === Help Center ===
+                Row(
+                    modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.Help, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(spacing.sm))
+                    Text(
+                        strings.helpCenter,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = radius.card,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    ),
+                ) {
+                    Column {
+                        ListItem(
+                            headlineContent = { Text(strings.helpCenter) },
+                            supportingContent = { Text(strings.helpCenterSearchPlaceholder) },
+                            leadingContent = { Icon(Icons.Default.QuestionAnswer, contentDescription = null) },
+                            trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                            modifier = Modifier.clickable {
+                                navigator.push(com.lumecard.app.ui.screens.help.HelpScreen())
+                            },
+                        )
+                    }
+                }
+
                 // === About ===
                 Row(
                     modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.sm),
@@ -902,6 +1101,8 @@ class SettingsScreen(
                 }
 
                 Spacer(modifier = Modifier.height(spacing.xxl))
+                    }
+                }
             }
         }
 
@@ -963,13 +1164,13 @@ class SettingsScreen(
                                 val extension = platformAsset?.name?.substringAfterLast('.')
                                     ?: if (isDesktop) "exe" else "apk"
                                 val filename = "LumeCard-v${info.version}.$extension"
-                                currentDestFile = java.io.File(getApkCacheDir(), filename)
-                                val success = updateManager.downloadApk(downloadUrl, currentDestFile!!) { downloaded, total ->
+                                currentDestPath = com.lumecard.app.platform.platformJoinPath(getApkCacheDir().absolutePath, filename)
+                                val success = updateManager.downloadApk(downloadUrl, currentDestPath!!) { downloaded, total ->
                                     updateState = UpdateState.Downloading(downloaded, total)
                                 }
                                 if (success) {
                                     updateState = UpdateState.Installing
-                                    val installed = installApk(currentDestFile!!.absolutePath)
+                                    val installed = installApk(currentDestPath!!)
                                     if (installed) {
                                         updateState = UpdateState.Complete
                                     } else {
@@ -988,10 +1189,12 @@ class SettingsScreen(
                     onCancel = {
                         downloadJob?.cancel()
                         downloadJob = null
-                        if (currentDestFile != null && currentDestFile!!.exists()) {
-                            currentDestFile!!.delete()
+                        currentDestPath?.let { path ->
+                            if (com.lumecard.app.platform.platformPathExists(path)) {
+                                com.lumecard.app.platform.platformDeleteFile(path)
+                            }
                         }
-                        currentDestFile = null
+                        currentDestPath = null
                         updateState = UpdateState.Idle
                         showUpdateDialog = false
                     },

@@ -1,0 +1,261 @@
+package com.lumecard.shared.data
+
+import com.lumecard.shared.repository.SettingsRepository
+import com.lumecard.shared.util.loadTextResource
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlin.math.absoluteValue
+import kotlin.random.Random
+
+class SplashQuoteManager(
+    private val settingsRepository: SettingsRepository,
+) {
+    companion object {
+        private const val QUOTES_RESOURCE = "/config/quotes.json"
+        private const val KEY_USER_QUOTES = "splash_quote_user_quotes"
+        private const val KEY_HIDDEN_DEFAULTS = "splash_quote_hidden_defaults"
+        private const val KEY_QUOTES_VERSION = "splash_quotes_version"
+
+        private const val KEY_ENABLED = "splash_quote_enabled"
+        private const val KEY_DURATION = "splash_quote_duration"
+        private const val KEY_DIRECTION = "splash_quote_direction"
+        private const val KEY_FONT = "splash_quote_font"
+        private const val KEY_FONT_SIZE = "splash_quote_font_size"
+        private const val KEY_BACKGROUND = "splash_quote_background"
+        private const val KEY_STRATEGY = "splash_quote_strategy"
+        private const val KEY_SEQUENCE_INDEX = "splash_quote_sequence_index"
+        private const val KEY_SHOW_AUTHOR = "splash_quote_show_author"
+        private const val KEY_ENABLE_ANIMATION = "splash_quote_enable_animation"
+        private const val KEY_ANIMATION_STYLE = "splash_quote_animation_style"
+    }
+
+    private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
+    private var cachedDefaultQuotes: List<SplashQuoteData>? = null
+
+    // ── Settings ──────────────────────────────────────────
+
+    suspend fun loadSettings(): SplashQuoteSettings {
+        return SplashQuoteSettings(
+            enabled = settingsRepository.getBoolean(KEY_ENABLED, true),
+            durationSeconds = settingsRepository.getInt(KEY_DURATION, 3).coerceIn(1, 30),
+            direction = try { SplashQuoteDirection.valueOf(settingsRepository.get(KEY_DIRECTION) ?: "") } catch (_: Exception) { SplashQuoteDirection.HORIZONTAL },
+            font = settingsRepository.get(KEY_FONT) ?: "",
+            fontSize = settingsRepository.get(KEY_FONT_SIZE)?.toFloatOrNull() ?: 0f,
+            backgroundPath = settingsRepository.get(KEY_BACKGROUND) ?: "",
+            strategy = try { SplashQuoteStrategy.valueOf(settingsRepository.get(KEY_STRATEGY) ?: "") } catch (_: Exception) { SplashQuoteStrategy.RANDOM },
+            sequenceIndex = settingsRepository.getInt(KEY_SEQUENCE_INDEX, 0),
+            showAuthor = settingsRepository.getBoolean(KEY_SHOW_AUTHOR, true),
+            enableAnimation = settingsRepository.getBoolean(KEY_ENABLE_ANIMATION, true),
+            animationStyle = try { com.lumecard.shared.feature.quote.config.QuoteAnimationStyle.valueOf(settingsRepository.get(KEY_ANIMATION_STYLE) ?: "") } catch (_: Exception) { com.lumecard.shared.feature.quote.config.QuoteAnimationStyle.FADE_IN },
+        )
+    }
+
+    suspend fun saveSettings(s: SplashQuoteSettings) {
+        settingsRepository.set(KEY_ENABLED, s.enabled.toString())
+        settingsRepository.set(KEY_DURATION, s.durationSeconds.toString())
+        settingsRepository.set(KEY_DIRECTION, s.direction.name)
+        settingsRepository.set(KEY_FONT, s.font)
+        settingsRepository.set(KEY_FONT_SIZE, s.fontSize.toString())
+        settingsRepository.set(KEY_BACKGROUND, s.backgroundPath)
+        settingsRepository.set(KEY_STRATEGY, s.strategy.name)
+        settingsRepository.set(KEY_SEQUENCE_INDEX, s.sequenceIndex.toString())
+        settingsRepository.set(KEY_SHOW_AUTHOR, s.showAuthor.toString())
+        settingsRepository.set(KEY_ENABLE_ANIMATION, s.enableAnimation.toString())
+        settingsRepository.set(KEY_ANIMATION_STYLE, s.animationStyle.name)
+    }
+
+    // ── Quote version (for sync conflict resolution) ──────
+
+    suspend fun getQuotesVersion(): Long {
+        return settingsRepository.get(KEY_QUOTES_VERSION)?.toLongOrNull() ?: 0
+    }
+
+    private suspend fun saveQuotesVersion(version: Long) {
+        settingsRepository.set(KEY_QUOTES_VERSION, version.toString())
+    }
+
+    private suspend fun bumpQuotesVersion() {
+        val v = getQuotesVersion() + 1
+        saveQuotesVersion(v)
+    }
+
+    /** Get all data needed for sync export. */
+    suspend fun getQuotesExportData(): Triple<Long, List<SplashQuoteData>, String> {
+        val version = getQuotesVersion()
+        val userQuotes = loadUserQuotes()
+        val hidden = getHiddenDefaultIndices()
+        val hiddenStr = hidden.joinToString(",")
+        return Triple(version, userQuotes, hiddenStr)
+    }
+
+    /** Replace all user quotes and hidden-indices from a sync import (higher version wins). */
+    suspend fun importQuotesFromSync(version: Long, userQuotes: List<SplashQuoteData>, hiddenStr: String) {
+        val localVersion = getQuotesVersion()
+        if (version > localVersion) {
+            saveUserQuotes(userQuotes)
+            settingsRepository.set(KEY_HIDDEN_DEFAULTS, hiddenStr)
+            saveQuotesVersion(version)
+        }
+    }
+
+    // ── Background ────────────────────────────────────────
+
+    suspend fun getBackgroundPath(): String = settingsRepository.get(KEY_BACKGROUND) ?: ""
+
+    suspend fun setBackgroundPath(path: String) = settingsRepository.set(KEY_BACKGROUND, path)
+
+    // ── Quotes: combined (user + default fallback) ───────
+
+    suspend fun getAllQuotes(): List<SplashQuoteData> {
+        val userQuotes = loadUserQuotes()
+        val defaults = getFilteredDefaultQuotes()
+        return if (userQuotes.isNotEmpty()) userQuotes + defaults else defaults
+    }
+
+    fun getQuoteForDisplay(strategy: SplashQuoteStrategy, currentIndex: Int, quotes: List<SplashQuoteData>): Pair<SplashQuoteData?, Int> {
+        if (quotes.isEmpty()) return null to currentIndex
+        return when (strategy) {
+            SplashQuoteStrategy.RANDOM -> {
+                quotes[Random.nextInt(quotes.size)] to currentIndex
+            }
+            SplashQuoteStrategy.SEQUENTIAL -> {
+                val idx = if (currentIndex in quotes.indices) currentIndex else 0
+                quotes[idx] to ((idx + 1) % quotes.size)
+            }
+        }
+    }
+
+    // ── Default quotes ──────────────────────────────────
+
+    suspend fun getDefaultQuotes(): List<SplashQuoteData> {
+        return getFilteredDefaultQuotes()
+    }
+
+    suspend fun getHiddenDefaultIndices(): Set<Int> {
+        val raw = settingsRepository.get(KEY_HIDDEN_DEFAULTS) ?: return emptySet()
+        return try {
+            raw.split(",").mapNotNull { it.trim().toIntOrNull() }.toSet()
+        } catch (_: Exception) { emptySet() }
+    }
+
+    suspend fun hideDefaultQuote(quote: SplashQuoteData) {
+        val all = loadDefaultQuotes()
+        val originalIndex = all.indexOfFirst { it.text == quote.text && it.author == quote.author }
+        if (originalIndex >= 0) {
+            val hidden = getHiddenDefaultIndices().toMutableSet()
+            hidden.add(originalIndex)
+            saveHiddenIndices(hidden)
+            clearDefaultCache()
+            bumpQuotesVersion()
+        }
+    }
+
+    suspend fun restoreDefaultQuote(index: Int) {
+        val hidden = getHiddenDefaultIndices().toMutableSet()
+        hidden.remove(index)
+        saveHiddenIndices(hidden)
+        clearDefaultCache()
+        bumpQuotesVersion()
+    }
+
+    suspend fun restoreAllDefaultQuotes() {
+        saveHiddenIndices(emptySet())
+        clearDefaultCache()
+        bumpQuotesVersion()
+    }
+
+    private suspend fun getFilteredDefaultQuotes(): List<SplashQuoteData> {
+        val all = loadDefaultQuotes()
+        val hidden = getHiddenDefaultIndices()
+        return all.filterIndexed { index, _ -> index !in hidden }
+    }
+
+    private suspend fun saveHiddenIndices(indices: Set<Int>) {
+        settingsRepository.set(KEY_HIDDEN_DEFAULTS, indices.joinToString(","))
+    }
+
+    private fun clearDefaultCache() { cachedDefaultQuotes = null }
+
+    // ── Quotes: CRUD on user quotes ──────────────────────
+
+    suspend fun getUserQuotes(): List<SplashQuoteData> {
+        return loadUserQuotes()
+    }
+
+    suspend fun addQuote(quote: SplashQuoteData) {
+        val list = loadUserQuotes().toMutableList()
+        list.add(quote)
+        saveUserQuotes(list)
+        bumpQuotesVersion()
+    }
+
+    suspend fun updateQuote(index: Int, quote: SplashQuoteData) {
+        val list = loadUserQuotes().toMutableList()
+        if (index in list.indices) {
+            list[index] = quote
+            saveUserQuotes(list)
+            bumpQuotesVersion()
+        }
+    }
+
+    suspend fun deleteQuote(index: Int) {
+        val list = loadUserQuotes().toMutableList()
+        if (index in list.indices) {
+            list.removeAt(index)
+            saveUserQuotes(list)
+            bumpQuotesVersion()
+        }
+    }
+
+    suspend fun importQuotes(collection: SplashQuotesCollection, mode: ImportMode) {
+        when (mode) {
+            ImportMode.APPEND -> {
+                val list = loadUserQuotes().toMutableList()
+                list.addAll(collection.quotes)
+                saveUserQuotes(list)
+            }
+            ImportMode.OVERWRITE -> {
+                saveUserQuotes(collection.quotes)
+            }
+        }
+        bumpQuotesVersion()
+    }
+
+    suspend fun exportQuotes(): SplashQuotesCollection {
+        return SplashQuotesCollection(loadUserQuotes())
+    }
+
+    enum class ImportMode { APPEND, OVERWRITE }
+
+    // ── Internal ──────────────────────────────────────────
+
+    private suspend fun loadUserQuotes(): List<SplashQuoteData> {
+        val raw = settingsRepository.get(KEY_USER_QUOTES) ?: return emptyList()
+        return try {
+            json.decodeFromString<SplashQuotesCollection>(raw).quotes
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private suspend fun saveUserQuotes(quotes: List<SplashQuoteData>) {
+        val raw = json.encodeToString(SplashQuotesCollection(quotes))
+        settingsRepository.set(KEY_USER_QUOTES, raw)
+    }
+
+    private fun loadDefaultQuotes(): List<SplashQuoteData> {
+        if (cachedDefaultQuotes != null) return cachedDefaultQuotes!!
+        val raw = loadTextResource(QUOTES_RESOURCE) ?: return emptyList()
+        return try {
+            json.decodeFromString<SplashQuotesCollection>(raw).quotes.also { cachedDefaultQuotes = it }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun previewQuote(settings: SplashQuoteSettings): SplashQuoteData? {
+        val quotes = getAllQuotes()
+        val (quote, _) = getQuoteForDisplay(settings.strategy, settings.sequenceIndex, quotes)
+        return quote
+    }
+}

@@ -8,11 +8,30 @@ import kotlinx.datetime.DateTimeUnit
 import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
+import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
-import kotlin.random.Random
 
+/**
+ * FSRS-6 (Free Spaced Repetition Scheduler) implementation.
+ *
+ * Implements the official 21-parameter FSRS-6 model (awesome-fsrs "The Algorithm" wiki).
+ * Compared with the previous FSRS-4.5 build this adds:
+ *  - 21 weights (w[0]..w[20]) instead of 17.
+ *  - Exponential initial difficulty: D0(G) = w[4] - exp(w[5]*(G-1)) + 1, clamped to [1, 10].
+ *  - Trainable forgetting curve: R(t, S) = (1 + factor * t / S)^(-w[20]), where
+ *    factor = 0.9^(1/DECAY) - 1 and DECAY = -w[20] (so R(S, S) = 90%).
+ *  - Same-day review growth: when a card is reviewed again on the same day, stability uses
+ *    S' = S * e^{w[17]*(G-3+w[18])*S^(-w[19])} (grows fast when small, slow when large,
+ *    converges; SInc forced >= 1 for G >= 3).
+ *  - Lapse stability is clamped to sMin = S / exp(w[17]*w[18]).
+ *
+ * NOTE: we deliberately keep the interval deterministic (no fuzz) for testability, and we do
+ * NOT replicate FSRS-Kotlin's `coerceAtMost(0.1)` bug in initStability — here S0(G) = w[G-1]
+ * exactly as the spec. R (retrievability) is computed from the ACTUAL elapsed days, so reviewing
+ * early vs. late correctly affects the stability update.
+ */
 class FSRSAlgorithm(
     private val parameters: FSRSParameters = FSRSParameters(),
     private val desiredRetention: Double = 0.9,
@@ -20,10 +39,24 @@ class FSRSAlgorithm(
 ) {
     data class FSRSParameters(
         val w: List<Double> = listOf(
-            0.4, 0.6, 2.4, 5.8, 4.93, 0.94, 0.86, 0.01, 1.49, 0.14, 0.94, 2.18, 0.05, 0.34, 1.26, 0.29, 2.61,
-            0.0, 0.0, 0.0, 0.3
+            // w[0..3]  initial stability S0(Again/Hard/Good/Easy)
+            0.212, 1.2931, 2.3065, 8.2956,
+            // w[4..7]  difficulty (init, delta, mean-reversion)
+            6.4133, 0.8334, 3.0194, 0.001,
+            // w[8..10] successful-recall stability main term
+            1.8722, 0.1666, 0.796,
+            // w[11..14] forgetting (lapse) stability
+            1.4835, 0.0614, 0.2629, 1.6483,
+            // w[15..16] Hard / Easy multipliers on successful recall
+            0.6014, 1.8729,
+            // w[17..20] same-day growth + trainable forgetting-curve decay
+            0.5425, 0.0912, 0.0658, 0.1542
         )
     )
+
+    private val decay: Double get() = -parameters.w[20]
+    // factor is calibrated so that R(S, S) == 0.9 (the "stability == interval" point).
+    private val factor: Double get() = 0.9.pow(1.0 / decay) - 1.0
 
     fun initCard(): FSRSCard {
         val now = Clock.System.now()
@@ -42,138 +75,213 @@ class FSRSAlgorithm(
 
     fun schedule(card: FSRSCard, rating: Rating, daysElapsed: Int = card.elapsedDays): FSRSCard {
         return when (card.state) {
-            CardState.NEW -> initialSchedule(card, rating)
-            CardState.LEARNING -> learningSchedule(card, rating, daysElapsed)
-            CardState.REVIEW -> reviewSchedule(card, rating, daysElapsed)
-            CardState.RELEARNING -> relearningSchedule(card, rating, daysElapsed)
+            CardState.NEW -> initialReview(card, rating)
+            CardState.LEARNING -> learningStep(card, rating, daysElapsed)
+            CardState.REVIEW -> review(card, rating, daysElapsed)
+            CardState.RELEARNING -> relearning(card, rating, daysElapsed)
         }
     }
 
-    private fun initialSchedule(card: FSRSCard, rating: Rating): FSRSCard {
-        val w = parameters.w
-        val stability = w[0] + w[1] * rating.value
-        val difficulty = w[2] + w[3] * (rating.value - 3)
+    // ---- State transitions ----
 
-        val scheduledDays = when (rating) {
-            Rating.AGAIN -> 1
-            Rating.HARD -> 1
-            Rating.GOOD -> 1
-            Rating.EASY -> 4
-        }
-
-        val due = Clock.System.now().plus(scheduledDays, DateTimeUnit.DAY, TimeZone.UTC)
-
-        return card.copy(
-            due = due,
-            stability = stability,
-            difficulty = difficulty,
-            scheduledDays = scheduledDays,
-            reps = 1,
-            state = if (rating == Rating.EASY) CardState.REVIEW else CardState.LEARNING
-        )
-    }
-
-    private fun learningSchedule(card: FSRSCard, rating: Rating, daysElapsed: Int): FSRSCard {
-        val newDifficulty = calculateDifficulty(card.difficulty, rating)
-        val newStability = calculateStability(card.stability, card.difficulty, rating, daysElapsed)
-
-        val scheduledDays = when (rating) {
-            Rating.AGAIN -> 1
-            Rating.HARD -> 1
-            Rating.GOOD -> 1
-            Rating.EASY -> 4
-        }
-
-        val due = Clock.System.now().plus(scheduledDays, DateTimeUnit.DAY, TimeZone.UTC)
-
-        return card.copy(
-            due = due,
-            stability = newStability,
-            difficulty = newDifficulty,
-            scheduledDays = scheduledDays,
-            reps = card.reps + 1,
-            state = if (rating == Rating.EASY) CardState.REVIEW else CardState.LEARNING
-        )
-    }
-
-    private fun reviewSchedule(card: FSRSCard, rating: Rating, daysElapsed: Int): FSRSCard {
-        val newDifficulty = calculateDifficulty(card.difficulty, rating)
-        val newStability = calculateStability(card.stability, card.difficulty, rating, daysElapsed)
-
-        val scheduledDays = calculateInterval(newStability, rating)
-        val due = Clock.System.now().plus(scheduledDays, DateTimeUnit.DAY, TimeZone.UTC)
-
-        return card.copy(
-            due = due,
-            stability = newStability,
-            difficulty = newDifficulty,
-            scheduledDays = scheduledDays,
-            reps = card.reps + 1,
-            state = if (rating == Rating.AGAIN) CardState.RELEARNING else CardState.REVIEW
-        )
-    }
-
-    private fun relearningSchedule(card: FSRSCard, rating: Rating, daysElapsed: Int): FSRSCard {
-        val newDifficulty = calculateDifficulty(card.difficulty, rating)
-        val newStability = calculateStability(card.stability, card.difficulty, rating, daysElapsed)
-
-        val scheduledDays = when (rating) {
-            Rating.AGAIN -> 1
-            Rating.HARD -> 1
-            Rating.GOOD -> 1
-            Rating.EASY -> max(1, (newStability * 0.5).toInt())
-        }
-
-        val due = Clock.System.now().plus(scheduledDays, DateTimeUnit.DAY, TimeZone.UTC)
-
-        return card.copy(
-            due = due,
-            stability = newStability,
-            difficulty = newDifficulty,
-            scheduledDays = scheduledDays,
-            lapses = card.lapses + if (rating == Rating.AGAIN) 1 else 0,
-            state = if (rating == Rating.EASY) CardState.REVIEW else CardState.RELEARNING
-        )
-    }
-
-    private fun calculateDifficulty(currentDifficulty: Double, rating: Rating): Double {
-        val w = parameters.w
-        val newDifficulty = currentDifficulty + w[6] * (rating.value - 3)
-        return max(1.0, min(10.0, newDifficulty))
-    }
-
-    private fun calculateStability(stability: Double, difficulty: Double, rating: Rating, daysElapsed: Int): Double {
-        val w = parameters.w
-
-        return when (rating) {
-            Rating.AGAIN -> max(w[0], stability * w[9] * (1 - difficulty * w[10]))
-            Rating.HARD -> stability * (1 + w[11] * (10 - difficulty) * stability.pow(w[12] - 1))
-            Rating.GOOD -> stability * (1 + w[4] * (10 - difficulty) * stability.pow(w[5] - 1))
-            Rating.EASY -> stability * (1 + w[13] * (10 - difficulty) * stability.pow(w[14] - 1))
-        }
-    }
-
-    private fun calculateInterval(stability: Double, rating: Rating): Int {
-        if (rating == Rating.AGAIN) return 1
-
-        val rawDays = when (rating) {
-            Rating.HARD -> stability * ((1.0 - desiredRetention) / desiredRetention).pow(1.0 / parameters.w[20])
-            Rating.GOOD -> stability * ((1.0 - desiredRetention) / desiredRetention).pow(1.0 / parameters.w[20])
-            Rating.EASY -> stability * 1.3 * ((1.0 - desiredRetention) / desiredRetention).pow(1.0 / parameters.w[20])
-            else -> 0.0
-        }
-
-        val fuzz = 0.95 + Random.nextDouble() * 0.1
-        val interval = (rawDays * fuzz).toInt().coerceAtLeast(1)
-        return min(interval, maxInterval)
-    }
-
-    fun getNextReviewTime(card: FSRSCard): Instant {
-        return card.due
-    }
-
-    fun isDue(card: FSRSCard): Boolean {
+    private fun initialReview(card: FSRSCard, rating: Rating): FSRSCard {
+        val stability = initStability(rating)
+        val difficulty = initDifficulty(rating)
         val now = Clock.System.now()
-        return card.due <= now
+        return when (rating) {
+            Rating.AGAIN -> card.copy(
+                due = now.plus(1, DateTimeUnit.DAY, TimeZone.UTC),
+                stability = stability,
+                difficulty = difficulty,
+                scheduledDays = 1,
+                reps = 1,
+                lapses = 0,
+                state = CardState.LEARNING
+            )
+            else -> {
+                val interval = nextInterval(stability)
+                card.copy(
+                    due = now.plus(interval, DateTimeUnit.DAY, TimeZone.UTC),
+                    stability = stability,
+                    difficulty = difficulty,
+                    scheduledDays = interval,
+                    reps = 1,
+                    lapses = 0,
+                    state = CardState.REVIEW
+                )
+            }
+        }
     }
+
+    // Learning step (card failed during initial learning, never graduated yet).
+    private fun learningStep(card: FSRSCard, rating: Rating, daysElapsed: Int): FSRSCard {
+        val r = retrievability(card.stability, daysElapsed)
+        val stability = if (rating == Rating.AGAIN) {
+            nextForgetStability(card.stability, card.difficulty, r)
+        } else {
+            nextShortTermStability(card.stability, rating)
+        }
+        val difficulty = nextDifficulty(card.difficulty, rating)
+        val now = Clock.System.now()
+        return when (rating) {
+            Rating.AGAIN -> card.copy(
+                due = now.plus(1, DateTimeUnit.DAY, TimeZone.UTC),
+                stability = stability,
+                difficulty = difficulty,
+                scheduledDays = 1,
+                reps = card.reps + 1,
+                lapses = card.lapses,
+                state = CardState.RELEARNING
+            )
+            else -> {
+                val interval = nextInterval(stability)
+                card.copy(
+                    due = now.plus(interval, DateTimeUnit.DAY, TimeZone.UTC),
+                    stability = stability,
+                    difficulty = difficulty,
+                    scheduledDays = interval,
+                    reps = card.reps + 1,
+                    state = CardState.REVIEW
+                )
+            }
+        }
+    }
+
+    // Mature review.
+    private fun review(card: FSRSCard, rating: Rating, daysElapsed: Int): FSRSCard {
+        val r = retrievability(card.stability, daysElapsed)
+        val stability = if (rating == Rating.AGAIN) {
+            nextForgetStability(card.stability, card.difficulty, r)
+        } else {
+            nextRecallStability(card.stability, card.difficulty, r, rating)
+        }
+        val difficulty = nextDifficulty(card.difficulty, rating)
+        val now = Clock.System.now()
+        return when (rating) {
+            Rating.AGAIN -> card.copy(
+                due = now.plus(1, DateTimeUnit.DAY, TimeZone.UTC),
+                stability = stability,
+                difficulty = difficulty,
+                scheduledDays = 1,
+                reps = card.reps + 1,
+                lapses = card.lapses + 1,
+                state = CardState.RELEARNING
+            )
+            else -> {
+                val interval = nextInterval(stability)
+                card.copy(
+                    due = now.plus(interval, DateTimeUnit.DAY, TimeZone.UTC),
+                    stability = stability,
+                    difficulty = difficulty,
+                    scheduledDays = interval,
+                    reps = card.reps + 1,
+                    state = CardState.REVIEW
+                )
+            }
+        }
+    }
+
+    // Relearning after a lapse.
+    private fun relearning(card: FSRSCard, rating: Rating, daysElapsed: Int): FSRSCard {
+        val r = retrievability(card.stability, daysElapsed)
+        val stability = if (rating == Rating.AGAIN) {
+            nextForgetStability(card.stability, card.difficulty, r)
+        } else {
+            nextShortTermStability(card.stability, rating)
+        }
+        val difficulty = nextDifficulty(card.difficulty, rating)
+        val now = Clock.System.now()
+        return when (rating) {
+            Rating.AGAIN -> card.copy(
+                due = now.plus(1, DateTimeUnit.DAY, TimeZone.UTC),
+                stability = stability,
+                difficulty = difficulty,
+                scheduledDays = 1,
+                reps = card.reps + 1,
+                lapses = card.lapses + 1,
+                state = CardState.RELEARNING
+            )
+            else -> {
+                val interval = nextInterval(stability)
+                card.copy(
+                    due = now.plus(interval, DateTimeUnit.DAY, TimeZone.UTC),
+                    stability = stability,
+                    difficulty = difficulty,
+                    scheduledDays = interval,
+                    reps = card.reps + 1,
+                    state = CardState.REVIEW
+                )
+            }
+        }
+    }
+
+    // ---- FSRS-6 core math ----
+
+    /** Initial stability: S0(G) = w[G-1] (G = rating value 1..4). */
+    private fun initStability(rating: Rating): Double = parameters.w[rating.value - 1]
+
+    /** Initial difficulty: D0(G) = w[4] - exp(w[5]*(G-1)) + 1, clamped to [1, 10]. */
+    private fun initDifficulty(rating: Rating): Double =
+        (parameters.w[4] - exp(parameters.w[5] * (rating.value - 1)) + 1.0).coerceIn(1.0, 10.0)
+
+    /**
+     * Next difficulty: linear damping deltaD = -w[6]*(G-3), damped by (10-D)/9, then mean-reverted
+     * toward D0(4) with weight w[7], clamped to [1, 10].
+     */
+    private fun nextDifficulty(currentDifficulty: Double, rating: Rating): Double {
+        val w = parameters.w
+        val deltaD = -w[6] * (rating.value - 3)
+        val damped = deltaD * (10.0 - currentDifficulty) / 9.0
+        val nextD = currentDifficulty + damped
+        val reverted = w[7] * initDifficulty(Rating.EASY) + (1.0 - w[7]) * nextD
+        return reverted.coerceIn(1.0, 10.0)
+    }
+
+    /** Retrievability at the moment of review (FSRS-6 trainable forgetting curve). */
+    private fun retrievability(stability: Double, daysElapsed: Int): Double {
+        val s = max(stability, 1e-6)
+        val base = max(1.0 + factor * daysElapsed / s, 1e-6)
+        return base.pow(decay).coerceIn(0.0, 1.0)
+    }
+
+    /** Successful recall (mature review): FSRS-4.5/5/6 main formula with w[8..16]. */
+    private fun nextRecallStability(stability: Double, difficulty: Double, r: Double, rating: Rating): Double {
+        val w = parameters.w
+        val s = max(stability, 1e-6)
+        val hardEasy = when (rating) {
+            Rating.HARD -> w[15]
+            Rating.EASY -> w[16]
+            else -> 1.0
+        }
+        return s * (1.0 + exp(w[8]) * (11.0 - difficulty) * s.pow(-w[9]) * (exp(w[10] * (1.0 - r)) - 1.0) * hardEasy)
+    }
+
+    /** Same-day review (learning / relearning steps): FSRS-6 w[17..19] growth term. */
+    private fun nextShortTermStability(stability: Double, rating: Rating): Double {
+        val w = parameters.w
+        val s = max(stability, 1e-6)
+        var sInc = exp(w[17] * (rating.value - 3 + w[18]) * s.pow(-w[19]))
+        if (rating.value >= 3) sInc = max(sInc, 1.0)
+        return s * sInc
+    }
+
+    /** Forgetting / lapse: FSRS-4.5/5/6 w[11..14], clamped to sMin = S / exp(w[17]*w[18]). */
+    private fun nextForgetStability(stability: Double, difficulty: Double, r: Double): Double {
+        val w = parameters.w
+        val s = max(stability, 1e-6)
+        val sMin = s / exp(w[17] * w[18])
+        val result = w[11] * difficulty.pow(-w[12]) * ((s + 1.0).pow(w[13]) - 1.0) * exp(w[14] * (1.0 - r))
+        return max(min(result, sMin), 1e-6)
+    }
+
+    /** Next interval (in days) for a given stability at the desired retention level. */
+    private fun nextInterval(stability: Double): Int {
+        val s = max(stability, 1e-6)
+        val raw = (s / factor) * (desiredRetention.pow(1.0 / decay) - 1.0)
+        return min(raw.toInt().coerceAtLeast(1), maxInterval)
+    }
+
+    fun getNextReviewTime(card: FSRSCard): Instant = card.due
+
+    fun isDue(card: FSRSCard): Boolean = card.due <= Clock.System.now()
 }

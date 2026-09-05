@@ -269,7 +269,7 @@ class StudyModeScreen(
                     )
                 }
 
-                items(StudyMode.entries) { mode ->
+                items(StudyMode.entries, key = { it.name }) { mode ->
                     val count = when (mode) {
                         StudyMode.MIXED -> studyableDecks.sumOf { deckCardCounts[it.id] ?: 0 }
                         StudyMode.SINGLE, StudyMode.MULTI -> 0

@@ -12,7 +12,6 @@ import io.ktor.http.isSuccess
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
-import java.io.File
 
 data class UpdateInfo(
     val version: String,
@@ -101,11 +100,11 @@ class UpdateManager(
 
     suspend fun downloadApk(
         url: String,
-        destFile: File,
+        destPath: String,
         onProgress: (downloaded: Long, total: Long) -> Unit
     ): Boolean {
         return try {
-            withContext(Dispatchers.IO) {
+            withContext(Dispatchers.Default) {
                 val response = downloadClient.get(url) {
                     header("User-Agent", "LumeCard/Android")
                 }
@@ -115,24 +114,29 @@ class UpdateManager(
 
                 val totalBytes = response.contentLength() ?: 0L
                 val channel = response.bodyAsChannel()
-                destFile.parentFile?.mkdirs()
+                val buffer = ByteArray(16384)
+                val allBytes = ArrayList<ByteArray>()
                 var downloadedBytes = 0L
-                destFile.outputStream().use { output ->
-                    val buffer = ByteArray(16384)
-                    var bytesRead: Int
-                    while (true) {
-                        bytesRead = channel.readAvailable(buffer, 0, buffer.size)
-                        if (bytesRead == -1) break
-                        output.write(buffer, 0, bytesRead)
-                        downloadedBytes += bytesRead
-                        onProgress(downloadedBytes, totalBytes)
-                        ensureActive()
-                    }
+                while (true) {
+                    val bytesRead = channel.readAvailable(buffer, 0, buffer.size)
+                    if (bytesRead == -1) break
+                    allBytes.add(buffer.copyOf(bytesRead))
+                    downloadedBytes += bytesRead
+                    onProgress(downloadedBytes, totalBytes)
+                    ensureActive()
                 }
+                val combined = ByteArray(downloadedBytes.toInt())
+                var offset = 0
+                for (chunk in allBytes) {
+                    chunk.copyInto(combined, offset)
+                    offset += chunk.size
+                }
+                platformMkdirsForPath(destPath)
+                platformWriteAllBytes(destPath, combined)
                 true
             }
         } catch (e: Exception) {
-            if (destFile.exists()) destFile.delete()
+            if (platformFileExists(destPath)) platformDeleteFile(destPath)
             throw SyncException("下载失败：${e.message ?: "未知错误"}")
         }
     }

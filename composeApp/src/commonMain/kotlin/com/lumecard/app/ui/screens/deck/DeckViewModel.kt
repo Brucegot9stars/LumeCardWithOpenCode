@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.UUID
+import com.lumecard.shared.data.generateId
 
 enum class SortField { NAME, CREATED_AT, UPDATED_AT, STUDY_TIME }
 enum class SortOrder { ASC, DESC }
@@ -100,28 +100,28 @@ class DeckViewModel(
         return if (config.order == SortOrder.DESC) sorted.reversed() else sorted
     }
 
-    suspend fun createDeck(name: String, description: String?) {
+    suspend fun createDeck(name: String, description: String?, icon: String? = null) {
         val existingCount = _decks.value.size
         val deck = Deck(
-            id = "deck_${UUID.randomUUID().toString().take(8)}",
+            id = generateId("deck"),
             knowledgeBaseId = currentKnowledgeBaseId,
             name = name,
             description = description,
             color = deckColors[existingCount % deckColors.size],
-            icon = deckIcons[existingCount % deckIcons.size],
+            icon = icon ?: deckIcons[existingCount % deckIcons.size],
             createdAt = kotlin.time.Clock.System.now(),
             updatedAt = kotlin.time.Clock.System.now()
         )
         deckRepository.insert(deck)
     }
 
-    suspend fun updateDeck(id: String, name: String, description: String?) {
+    suspend fun updateDeck(id: String, name: String, description: String?, icon: String? = null) {
         val deck = deckRepository.getById(id) ?: return
         val updated = deck.copy(
             name = name,
             description = description,
             updatedAt = kotlin.time.Clock.System.now()
-        )
+        ).let { if (icon != null) it.copy(icon = icon) else it }
         deckRepository.update(updated)
     }
 

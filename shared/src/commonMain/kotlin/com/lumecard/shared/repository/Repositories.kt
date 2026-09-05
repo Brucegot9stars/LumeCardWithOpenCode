@@ -42,6 +42,7 @@ interface CardRepository {
     suspend fun getUpdatedSince(since: Instant): List<Card>
     suspend fun markSynced(ids: List<String>, syncedAt: Instant)
     suspend fun rebuildFtsIndex()
+    suspend fun resetScheduling()
 }
 
 interface ReviewLogRepository {
@@ -51,6 +52,7 @@ interface ReviewLogRepository {
     suspend fun getStats(): ReviewStats
     suspend fun getUpdatedSince(since: Instant): List<ReviewLog>
     suspend fun markSynced(ids: List<String>, syncedAt: Instant)
+    suspend fun deleteAll()
 }
 
 data class ReviewStats(
@@ -71,9 +73,11 @@ interface SettingsRepository {
 
 interface AlgorithmStateRepository {
     suspend fun get(cardId: String): String? // returns state_json
+    suspend fun getMode(cardId: String): String? // returns mode
     suspend fun getAll(): Map<String, String> // card_id -> state_json
     suspend fun save(cardId: String, mode: String, stateJson: String)
     suspend fun delete(cardId: String)
+    suspend fun deleteAll()
 }
 
 data class MediaCacheEntry(

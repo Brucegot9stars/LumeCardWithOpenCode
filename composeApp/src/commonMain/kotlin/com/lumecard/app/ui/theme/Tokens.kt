@@ -173,3 +173,9 @@ object LumeCardTheme {
         @Composable get() = LocalTypography.current
 }
 
+object LumeCardOpacity {
+    const val disabled = 0.4f
+    const val medium = 0.6f
+    const val light = 0.8f
+}
+

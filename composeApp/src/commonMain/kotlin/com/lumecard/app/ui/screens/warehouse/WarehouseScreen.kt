@@ -22,6 +22,7 @@ import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.i18n.I18nManager
+import com.lumecard.app.ui.components.EmojiPickerField
 import com.lumecard.app.ui.components.LumeCardDialog
 import com.lumecard.app.ui.components.LumeCardTextField
 import com.lumecard.app.ui.components.LumeCardTopBar
@@ -56,6 +57,7 @@ class WarehouseScreen : Screen {
         var createParentId by remember { mutableStateOf<String?>(null) }
         var dialogName by remember { mutableStateOf("") }
         var dialogDesc by remember { mutableStateOf("") }
+        var dialogTitle by remember { mutableStateOf("") }
         var editingNode by remember { mutableStateOf<TreeNode?>(null) }
         var showDeleteConfirm by remember { mutableStateOf(false) }
         var deleteTargetId by remember { mutableStateOf<String?>(null) }
@@ -232,14 +234,17 @@ class WarehouseScreen : Screen {
                                                     createParentId = child.id
                                                     dialogName = ""
                                                     dialogDesc = ""
+                                                    dialogTitle = ""
                                                     showCreateDialog = true
                                                 }
                                             } else null,
                                             onEditCard = if (child.type == NodeType.CARD) {
                                                 {
+                                                    val cardObj = child.data as? Card
                                                     editingNode = child
-                                                    dialogName = child.name
-                                                    dialogDesc = ""
+                                                    dialogName = cardObj?.front ?: child.name
+                                                    dialogDesc = cardObj?.back ?: ""
+                                                    dialogTitle = cardObj?.title ?: ""
                                                     showCreateDialog = true
                                                 }
                                             } else null,
@@ -267,9 +272,11 @@ class WarehouseScreen : Screen {
                                                         onToggleSelect = { viewModel.toggleSelect(card.id) },
                                                         onAddDeck = null,
                                                         onEdit = {
+                                                            val cardObj = card.data as? Card
                                                             editingNode = card
-                                                            dialogName = card.name
-                                                            dialogDesc = ""
+                                                            dialogName = cardObj?.front ?: card.name
+                                                            dialogDesc = cardObj?.back ?: ""
+                                                            dialogTitle = cardObj?.title ?: ""
                                                             showCreateDialog = true
                                                         },
                                                         onDelete = {
@@ -278,7 +285,7 @@ class WarehouseScreen : Screen {
                                                         },
                                                         onAddCard = null,
                                                         onEditCard = (card.data as? Card)?.let { cardObj ->
-                                                            { navigator.push(CreateCardScreen(child.id, child.name, editCard = cardObj)) }
+                                                            { navigator.push(CreateCardScreen(child.id, child.name, editCardId = cardObj.id)) }
                                                         },
                                                         onDeleteCard = null,
                                                         spacing = spacing,
@@ -305,22 +312,30 @@ class WarehouseScreen : Screen {
                 createType == NodeType.CARD -> strings.warehouseCreateCard
                 else -> strings.warehouseAdd
             }
+            val defaultIcon = when {
+                editingNode?.type == NodeType.KNOWLEDGE_BASE -> (editingNode?.data as? com.lumecard.shared.model.KnowledgeBase)?.icon ?: com.lumecard.shared.model.KnowledgeBase.emojis.first()
+                editingNode?.type == NodeType.DECK -> (editingNode?.data as? com.lumecard.shared.model.Deck)?.icon ?: com.lumecard.shared.model.Deck.icons.first()
+                createType == NodeType.KNOWLEDGE_BASE -> com.lumecard.shared.model.KnowledgeBase.emojis.first()
+                createType == NodeType.DECK -> com.lumecard.shared.model.Deck.icons.first()
+                else -> "\uD83D\uDCC1"
+            }
+            var dialogIcon by remember { mutableStateOf(defaultIcon) }
             LumeCardDialog(
                 title = title,
-                onDismiss = { showCreateDialog = false; editingNode = null },
+                onDismiss = { showCreateDialog = false; editingNode = null; dialogTitle = "" },
                 onConfirm = {
                     scope.launch {
                         if (editingNode != null) {
                             when (editingNode!!.type) {
-                                NodeType.KNOWLEDGE_BASE -> viewModel.updateKnowledgeBase(editingNode!!.id, dialogName, dialogDesc.ifBlank { null })
-                                NodeType.DECK -> viewModel.updateDeck(editingNode!!.id, dialogName, dialogDesc.ifBlank { null })
-                                NodeType.CARD -> viewModel.updateCard(editingNode!!.id, dialogName, dialogDesc)
+                                NodeType.KNOWLEDGE_BASE -> viewModel.updateKnowledgeBase(editingNode!!.id, dialogName, dialogDesc.ifBlank { null }, dialogIcon)
+                                NodeType.DECK -> viewModel.updateDeck(editingNode!!.id, dialogName, dialogDesc.ifBlank { null }, dialogIcon)
+                                NodeType.CARD -> viewModel.updateCard(editingNode!!.id, dialogName, dialogDesc, dialogTitle)
                             }
                         } else {
                             when (createType) {
-                                NodeType.KNOWLEDGE_BASE -> viewModel.createKnowledgeBase(dialogName, dialogDesc.ifBlank { null })
-                                NodeType.DECK -> viewModel.createDeck(createParentId!!, dialogName, dialogDesc.ifBlank { null })
-                                NodeType.CARD -> viewModel.createCard(createParentId!!, dialogName, dialogDesc)
+                                NodeType.KNOWLEDGE_BASE -> viewModel.createKnowledgeBase(dialogName, dialogDesc.ifBlank { null }, dialogIcon)
+                                NodeType.DECK -> viewModel.createDeck(createParentId!!, dialogName, dialogDesc.ifBlank { null }, dialogIcon)
+                                NodeType.CARD -> viewModel.createCard(createParentId!!, dialogName, dialogDesc, title = dialogTitle)
                             }
                         }
                         showCreateDialog = false
@@ -330,7 +345,17 @@ class WarehouseScreen : Screen {
                 confirmText = strings.actionSave,
                 confirmEnabled = dialogName.isNotBlank(),
             ) {
+                if (createType == NodeType.CARD || editingNode?.type == NodeType.CARD) {
+                    LumeCardTextField(value = dialogTitle, onValueChange = { dialogTitle = it }, label = strings.cardTitle)
+                }
                 LumeCardTextField(value = dialogName, onValueChange = { dialogName = it }, label = strings.fieldName)
+                if (createType != NodeType.CARD && editingNode?.type != NodeType.CARD) {
+                    EmojiPickerField(
+                        icon = dialogIcon,
+                        onIconChange = { dialogIcon = it },
+                        label = strings.emojiChoose,
+                    )
+                }
                 LumeCardTextField(
                     value = dialogDesc,
                     onValueChange = { dialogDesc = it },
@@ -389,6 +414,11 @@ private fun TreeNodeItem(
     radius: com.lumecard.app.ui.theme.LumeCardRadius,
 ) {
     val strings = koinInject<I18nManager>().strings
+    val entityEmoji = when (node.type) {
+        NodeType.KNOWLEDGE_BASE -> (node.data as? com.lumecard.shared.model.KnowledgeBase)?.icon
+        NodeType.DECK -> (node.data as? com.lumecard.shared.model.Deck)?.icon
+        NodeType.CARD -> null
+    }
     val icon = when (node.type) {
         NodeType.KNOWLEDGE_BASE -> Icons.Default.Star
         NodeType.DECK -> Icons.AutoMirrored.Filled.List
@@ -401,10 +431,14 @@ private fun TreeNodeItem(
     }
     val childCount = node.children.size
 
-    val cardModifier = if (node.type == NodeType.CARD && onEditCard != null) {
-        Modifier.fillMaxWidth().clickable { onEditCard() }
-    } else {
-        Modifier.fillMaxWidth()
+    val cardModifier = Modifier.fillMaxWidth().let { modifier ->
+        if (node.type == NodeType.CARD && onEditCard != null) {
+            modifier.clickable { onEditCard() }
+        } else if (node.type != NodeType.CARD && childCount > 0 && !isSelectMode) {
+            modifier.clickable { onToggleExpand() }
+        } else {
+            modifier
+        }
     }
 
     Card(
@@ -439,7 +473,11 @@ private fun TreeNodeItem(
                 Spacer(Modifier.width(32.dp))
             }
 
-            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
+            if (!entityEmoji.isNullOrBlank()) {
+                Text(entityEmoji, style = MaterialTheme.typography.titleLarge)
+            } else {
+                Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
+            }
             Spacer(Modifier.width(spacing.sm))
 
             Column(modifier = Modifier.weight(1f)) {

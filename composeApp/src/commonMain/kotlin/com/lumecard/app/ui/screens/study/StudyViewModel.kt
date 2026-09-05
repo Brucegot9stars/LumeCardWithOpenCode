@@ -12,6 +12,7 @@ import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
 import com.lumecard.shared.repository.LearningPlanRepository
 import com.lumecard.shared.repository.ReviewLogRepository
+import com.lumecard.shared.feature.quote.facade.QuoteFeature
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.Job
@@ -22,7 +23,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.time.Clock
 import kotlinx.serialization.json.Json
-import java.util.UUID
+import com.lumecard.shared.data.generateId
 
 enum class CardsStudyMode {
     DUE_FIRST,
@@ -38,7 +39,8 @@ class StudyViewModel(
     private val algorithmStateRepository: AlgorithmStateRepository,
     private val algorithm: ReviewAlgorithm,
     private val planRepository: LearningPlanRepository,
-    private val deckRepository: DeckRepository
+    private val deckRepository: DeckRepository,
+    private val quoteFeature: QuoteFeature,
 ) : ScreenModel {
 
     private val _error = MutableStateFlow<String?>(null)
@@ -80,7 +82,15 @@ class StudyViewModel(
     private val _elapsedSeconds = MutableStateFlow(0)
     val elapsedSeconds: StateFlow<Int> = _elapsedSeconds
 
-    private val _cardStartTimes = java.util.concurrent.ConcurrentHashMap<String, kotlin.time.Instant>()
+    init {
+        screenModelScope.launch {
+            quoteFeature.studyTimeSeconds.collect { secs ->
+                _elapsedSeconds.value = secs.toInt()
+            }
+        }
+    }
+
+    private val _cardStartTimes: MutableMap<String, kotlin.time.Instant> = java.util.Collections.synchronizedMap(mutableMapOf())
 
     private var activePlanIds: List<String> = emptyList()
     private var activeDeckIds: List<String> = emptyList()
@@ -152,8 +162,10 @@ class StudyViewModel(
                 _cards.value = shuffled
                 shuffled.forEach { card ->
                     if (!_algorithmStates.value.containsKey(card.id)) {
+                        val existingMode = algorithmStateRepository.getMode(card.id)
                         val existing = algorithmStateRepository.get(card.id)
-                        val state = if (existing != null) {
+                        // Reinitialize if mode doesn't match (user switched algorithms)
+                        val state = if (existing != null && existingMode == algorithm.mode.name) {
                             deserializeState(existing)
                         } else {
                             algorithm.initCard()
@@ -191,7 +203,7 @@ class StudyViewModel(
                     list[index] = fresh
                     _cards.value = list
                 }
-            } catch (_: Exception) { }
+            } catch (e: Exception) { println("[LumeCard] refreshCurrentCard failed: ${e.message}") }
         }
     }
 
@@ -200,17 +212,11 @@ class StudyViewModel(
         _hasStartedStudying = true
         _sessionStartTime.value = Clock.System.now()
         _elapsedSeconds.value = 0
-        timerJob?.cancel()
-        timerJob = screenModelScope.launch {
-            while (true) {
-                kotlinx.coroutines.delay(1000)
-                val start = _sessionStartTime.value ?: continue
-                _elapsedSeconds.value = ((Clock.System.now().toEpochMilliseconds() - start.toEpochMilliseconds()) / 1000).toInt()
-            }
-        }
+        quoteFeature.startStudy()
     }
 
     fun stopTimer() {
+        quoteFeature.stopStudy()
         timerJob?.cancel()
         timerJob = null
     }
@@ -256,7 +262,7 @@ class StudyViewModel(
         screenModelScope.launch {
             try {
                 val reviewLog = ReviewLog(
-                    id = UUID.randomUUID().toString(),
+                    id = generateId("review"),
                     cardId = currentCard.id,
                     rating = rating.value,
                     reviewTime = reviewTimeMs,

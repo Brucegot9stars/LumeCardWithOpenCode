@@ -19,6 +19,8 @@ import java.security.MessageDigest
 import java.util.zip.ZipOutputStream
 import javax.imageio.ImageIO
 
+private fun userHome(): String = System.getenv("USERPROFILE") ?: System.getenv("HOME") ?: System.getProperty("user.home")
+
 actual fun isDesktopPlatform(): Boolean = true
 
 actual fun scanMediaDirectory(basePath: String): List<MediaFileEntry> {
@@ -66,7 +68,7 @@ actual fun createZipPackage(outputPath: String, entries: List<ZipEntry>) {
 }
 
 actual fun getMediaBasePath(): String {
-    return System.getProperty("lumecard.media.dir") ?: "${System.getProperty("user.home")}/.lumecard/media"
+    return System.getProperty("lumecard.media.dir") ?: java.io.File(userHome(), ".lumecard/media").absolutePath
 }
 
 actual fun pasteClipboardMedia(mediaDir: String): List<String> {
@@ -165,6 +167,12 @@ private fun generateSweepTone(
         val harm = harmonicAmplitude * sin(2.0 * PI * 2.0 * freq * t)
         (amp * (fund + harm)).toInt().toShort()
     }
+}
+
+actual fun openDirectory(path: String) {
+    try {
+        java.awt.Desktop.getDesktop().open(java.io.File(path))
+    } catch (_: Exception) { }
 }
 
 actual fun playRatingSound(rating: Rating) {

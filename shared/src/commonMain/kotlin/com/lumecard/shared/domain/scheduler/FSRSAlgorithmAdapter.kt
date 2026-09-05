@@ -37,7 +37,10 @@ class FSRSAlgorithmAdapter(private val inner: FSRSAlgorithm) : ReviewAlgorithm {
             due = nextReviewAt,
             stability = stability,
             difficulty = difficulty,
-            elapsedDays = ((Clock.System.now().toEpochMilliseconds() - nextReviewAt.toEpochMilliseconds()) / 86400000).coerceAtLeast(0).toInt(),
+            // NOTE: elapsedDays is a placeholder here. The actual value is provided by
+            // StudyViewModel via the daysElapsed parameter, which calculates it from
+            // lastReviewedAt. This placeholder is overwritten before scheduling.
+            elapsedDays = 0,
             scheduledDays = intervalDays,
             reps = repetitions,
             lapses = lapses,

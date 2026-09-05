@@ -9,6 +9,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-windows-${{ github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: windows-latest
@@ -25,6 +29,31 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
+
+      - name: Extract version from tag
+        id: version
+        shell: pwsh
+        run: |
+          $tag = "$env:GITHUB_REF_NAME"
+          $ver = $tag -replace "^v", ""
+          echo "version=$ver" >> $env:GITHUB_OUTPUT
+          echo "Extracted version: $ver from tag $tag"
+
+      - name: Sync version into all platform assets
+        shell: pwsh
+        run: |
+          $ver = "${{ steps.version.outputs.version }}"
+          $files = @(
+            "version.properties",
+            "composeApp/src/androidMain/assets/version.properties",
+            "composeApp/src/desktopMain/resources/version.properties"
+          )
+          foreach ($f in $files) {
+            $content = Get-Content $f
+            $content = $content -replace "^APP_VERSION_NAME=.*", "APP_VERSION_NAME=$ver"
+            Set-Content -Path $f -Value $content
+          }
+          Write-Output "Synced all version.properties to v$ver"
 
       - name: Run unit tests
         run: .\gradlew.bat :shared:desktopTest
@@ -46,16 +75,6 @@ jobs:
 
       - name: Build all distributables
         run: .\gradlew.bat :composeApp:createDistributable :composeApp:packageExe :composeApp:packageMsi
-
-      - name: Extract version
-        id: version
-        shell: pwsh
-        run: |
-          $props = @{}
-          Get-Content version.properties | ForEach-Object {
-            if ($_ -match '^([^=]+)=(.*)$') { $props[$matches[1]] = $matches[2] }
-          }
-          echo "version=$($props['APP_VERSION_NAME'])" >> $env:GITHUB_OUTPUT
 
       - name: Package portable as ZIP
         shell: pwsh

@@ -18,6 +18,13 @@ class SettingsStateHolder {
     var language by mutableStateOf(AppLocale.SYSTEM)
     var defaultFontFamily by mutableStateOf("")
     var fontScale by mutableStateOf(1.0f)
+
+    var screenSaverEnabled by mutableStateOf(true)
+    var screenSaverIdleMinutes by mutableStateOf(3)
+    var screenSaverRotationSeconds by mutableStateOf(3)
+    var idlePauseEnabled by mutableStateOf(true)
+    var idlePauseThresholdSeconds by mutableStateOf(30)
+
     var isDirty by mutableStateOf(false)
     var isSaving by mutableStateOf(false)
 

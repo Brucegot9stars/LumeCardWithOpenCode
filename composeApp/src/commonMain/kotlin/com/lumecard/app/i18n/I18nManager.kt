@@ -46,6 +46,12 @@ class I18nManager {
     val systemStrings: I18nStrings
         get() = localeMap[systemLocale] ?: EnStrings
 
+    val resolvedLocaleCode: String
+        get() {
+            val locale = if (currentLocale == AppLocale.SYSTEM) systemLocale else currentLocale
+            return locale.code
+        }
+
     fun setLocale(locale: AppLocale) {
         if (locale == currentLocale) return
         currentLocale = locale

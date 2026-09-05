@@ -2,6 +2,7 @@ CREATE TABLE KnowledgeBase (
     id TEXT PRIMARY KEY NOT NULL,
     name TEXT NOT NULL,
     description TEXT,
+    icon TEXT DEFAULT '📁',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     version INTEGER NOT NULL DEFAULT 1,
@@ -32,6 +33,7 @@ CREATE TABLE Card (
     type TEXT NOT NULL,
     front TEXT NOT NULL,
     back TEXT NOT NULL,
+    title TEXT,
     tags TEXT DEFAULT '[]',
     media TEXT DEFAULT '[]',
     metadata TEXT DEFAULT '{}',
@@ -125,11 +127,11 @@ selectDueCards:
 SELECT * FROM Card WHERE deleted_at IS NULL AND next_review_at IS NOT NULL AND next_review_at <= ? ORDER BY next_review_at ASC;
 
 insertKnowledgeBase:
-INSERT OR REPLACE INTO KnowledgeBase(id, name, description, created_at, updated_at, version, deleted_at, synced_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO KnowledgeBase(id, name, description, icon, created_at, updated_at, version, deleted_at, synced_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 updateKnowledgeBase:
-UPDATE KnowledgeBase SET name = ?, description = ?, updated_at = ?, version = version + 1, deleted_at = ?, synced_at = ? WHERE id = ?;
+UPDATE KnowledgeBase SET name = ?, description = ?, icon = ?, updated_at = ?, version = version + 1, deleted_at = ?, synced_at = ? WHERE id = ?;
 
 insertDeck:
 INSERT OR REPLACE INTO Deck(id, knowledge_base_id, name, description, color, icon, parent_id, created_at, updated_at, version, deleted_at, synced_at)
@@ -139,16 +141,15 @@ updateDeck:
 UPDATE Deck SET knowledge_base_id = ?, name = ?, description = ?, color = ?, icon = ?, parent_id = ?, updated_at = ?, version = version + 1, deleted_at = ?, synced_at = ? WHERE id = ?;
 
 insertCard:
-INSERT OR REPLACE INTO Card(id, deck_id, type, front, back, tags, media, metadata, created_at, updated_at, last_reviewed_at, next_review_at, version, deleted_at, synced_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO Card(id, deck_id, type, title, front, back, tags, media, metadata, created_at, updated_at, last_reviewed_at, next_review_at, version, deleted_at, synced_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 insertReviewLog:
 INSERT OR REPLACE INTO ReviewLog(id, card_id, rating, review_time, interval, ease_factor, repetitions, lapse_count, reviewed_at, version, deleted_at, synced_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 updateCard:
-UPDATE Card SET deck_id = ?, type = ?, front = ?, back = ?, tags = ?, media = ?, metadata = ?, updated_at = ?, last_reviewed_at = ?, next_review_at = ?, version = version + 1
-WHERE id = ?;
+UPDATE Card SET deck_id = ?, type = ?, title = ?, front = ?, back = ?, tags = ?, media = ?, metadata = ?, updated_at = ?, last_reviewed_at = ?, next_review_at = ?, version = version + 1, synced_at = NULL WHERE id = ?;
 
 softDeleteCard:
 UPDATE Card SET deleted_at = ?, updated_at = ?, version = version + 1, synced_at = NULL WHERE id = ?;
@@ -190,6 +191,27 @@ DELETE FROM CardFTS WHERE card_id = ?;
 
 deleteAllCardFts:
 DELETE FROM CardFTS;
+
+deleteAllReviewLogs:
+DELETE FROM ReviewLog;
+
+deleteAllAlgorithmStates:
+DELETE FROM AlgorithmState;
+
+hardDeleteAllCards:
+DELETE FROM Card;
+
+hardDeleteAllDecks:
+DELETE FROM Deck;
+
+hardDeleteAllKnowledgeBases:
+DELETE FROM KnowledgeBase;
+
+hardDeleteAllLearningPlans:
+DELETE FROM LearningPlan;
+
+resetCardScheduling:
+UPDATE Card SET last_reviewed_at = NULL, next_review_at = NULL, updated_at = ?, version = version + 1, synced_at = NULL WHERE deleted_at IS NULL;
 
 rebuildCardFts:
 INSERT INTO CardFTS(card_id, front, back, tags) SELECT id, front, back, tags FROM Card WHERE deleted_at IS NULL;
@@ -298,3 +320,12 @@ DELETE FROM MediaCache WHERE path = ?;
 
 deleteAllMediaCache:
 DELETE FROM MediaCache;
+
+-- Indexes for common query patterns
+CREATE INDEX IF NOT EXISTS idx_card_deck_id ON Card(deck_id);
+CREATE INDEX IF NOT EXISTS idx_card_next_review ON Card(next_review_at);
+CREATE INDEX IF NOT EXISTS idx_card_deleted_at ON Card(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_review_log_card_id ON ReviewLog(card_id);
+CREATE INDEX IF NOT EXISTS idx_review_log_reviewed_at ON ReviewLog(reviewed_at);
+CREATE INDEX IF NOT EXISTS idx_deck_kb_id ON Deck(knowledge_base_id);
+CREATE INDEX IF NOT EXISTS idx_deck_parent_id ON Deck(parent_id);

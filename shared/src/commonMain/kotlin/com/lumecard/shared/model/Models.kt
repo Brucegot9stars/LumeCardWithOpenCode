@@ -9,12 +9,20 @@ data class KnowledgeBase(
     val id: String,
     val name: String,
     val description: String? = null,
+    val icon: String = "\uD83D\uDCC1",
     val createdAt: Instant = Clock.System.now(),
     val updatedAt: Instant = Clock.System.now(),
     val version: Long = 1,
     val deletedAt: Instant? = null,
     val syncedAt: Instant? = null
-)
+) {
+    companion object {
+        val emojis = listOf(
+            "\uD83D\uDCC1", "\uD83D\uDDC2\uFE0F", "\uD83D\uDCDA", "\uD83E\uDDE0",
+            "\uD83C\uDF0D", "\uD83D\uDD2C", "\uD83C\uDFA8", "\uD83D\uDCA1",
+        )
+    }
+}
 
 @Serializable
 data class Deck(
@@ -44,6 +52,7 @@ data class Card(
     val type: CardType,
     val front: String,
     val back: String,
+    val title: String = "",
     val tags: List<String> = emptyList(),
     val media: List<Media> = emptyList(),
     val metadata: Map<String, String> = emptyMap(),

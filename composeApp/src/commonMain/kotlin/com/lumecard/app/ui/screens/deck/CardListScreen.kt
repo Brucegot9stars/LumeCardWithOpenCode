@@ -172,10 +172,10 @@ class CardListScreen(
                             modifier = Modifier.padding(top = 8.dp)
                         )
                     }
-                    items(cards) { card ->
+                    items(cards, key = { it.id }) { card ->
                         CardItem(
                             card = card,
-                            onEdit = { navigator.push(CreateCardScreen(deckId, deckName, editCard = card)) },
+                            onEdit = { navigator.push(CreateCardScreen(deckId, deckName, editCardId = card.id)) },
                             onDelete = { viewModel.deleteCard(card.id) },
                             onMove = {
                                 moveCardTarget = card
@@ -294,12 +294,30 @@ fun CardItem(
                         t.replace(Regex("<[^>]+>"), "").trim()
                     else t
                 }
-                Text(
-                    displayFront,
-                    style = MaterialTheme.typography.bodyLarge,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
+                if (card.title.isNotBlank()) {
+                    Text(
+                        card.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        displayFront,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                } else {
+                    Text(
+                        displayFront,
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
                 if (card.tags.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(

@@ -26,6 +26,7 @@ import com.lumecard.app.platform.pickOpenFile
 import com.lumecard.app.platform.readFileContent
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.theme.LumeCardTheme
+import com.lumecard.app.util.formatDouble
 import com.lumecard.shared.data.AiCardMode
 import com.lumecard.shared.data.AiConfig
 import com.lumecard.shared.data.LogEntry
@@ -123,6 +124,14 @@ class AiCardScreen : Screen {
                     }
                 }
 
+                // AI config selector (always shown)
+                ConfigSelector(
+                    configs = state.allConfigs,
+                    selectedConfigId = state.selectedConfigId,
+                    onConfigSelected = { vm.selectConfig(it) },
+                    strings = strings,
+                )
+
                 // Config error warning
                 if (state.configError) {
                     Card(
@@ -138,16 +147,6 @@ class AiCardScreen : Screen {
                             Text(strings.aiCardNoConfigDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
                         }
                     }
-                }
-
-                // AI config selector
-                if (state.allConfigs.isNotEmpty()) {
-                    ConfigSelector(
-                        configs = state.allConfigs,
-                        selectedConfigId = state.selectedConfigId,
-                        onConfigSelected = { vm.selectConfig(it) },
-                        strings = strings,
-                    )
                 }
 
                 // Topic
@@ -278,7 +277,7 @@ class AiCardScreen : Screen {
                         ) {
                             Icon(Icons.Default.Stop, contentDescription = null)
                             Spacer(Modifier.width(spacing.sm))
-                            Text("停止制卡")
+                            Text(strings.aiCardStopGeneration)
                         }
                         OutlinedButton(
                             onClick = { navigator.push(AiCardScreen()) },
@@ -370,7 +369,7 @@ class AiCardScreen : Screen {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Error, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                                 Spacer(Modifier.width(spacing.sm))
-                                Text("错误", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+                                Text(strings.aiCardErrorHeader, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
                             }
                             Spacer(Modifier.height(spacing.sm))
                             Text(
@@ -384,14 +383,14 @@ class AiCardScreen : Screen {
                                 onClick = {
                                     try {
                                         val copyText = state.detailedError ?: errorMsg
-                                        copyToClipboard(copyText, "AI 错误信息")
-                                        scope.launch { snackbarHostState.showSnackbar("错误信息已复制") }
+                                        copyToClipboard(copyText, strings.aiCardErrorClipboardLabel)
+                                        scope.launch { snackbarHostState.showSnackbar(strings.aiCardErrorCopied) }
                                     } catch (_: Exception) { }
                                 },
                             ) {
                                 Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("复制错误信息", style = MaterialTheme.typography.bodySmall)
+                                Text(strings.aiCardErrorCopyButton, style = MaterialTheme.typography.bodySmall)
                             }
                         }
                     }
@@ -452,7 +451,7 @@ class AiCardScreen : Screen {
                     modifier = Modifier.fillMaxWidth().clickable { showLogPanel = !showLogPanel },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("交互日志 (${state.logEntries.size})", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Text(strings.aiCardLogTitle(state.logEntries.size), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                     Icon(
                         if (showLogPanel) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                         contentDescription = null,
@@ -474,7 +473,7 @@ class AiCardScreen : Screen {
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
                             if (state.logEntries.isEmpty()) {
-                                Text("暂无日志", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(strings.aiCardLogEmpty, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             } else {
                                 state.logEntries.forEach { entry ->
                                     LogEntryRow(entry)
@@ -536,10 +535,10 @@ class AiCardScreen : Screen {
         if (showStopDialog) {
             AlertDialog(
                 onDismissRequest = { showStopDialog = false },
-                title = { Text("停止制卡") },
+                title = { Text(strings.aiCardStopDialogTitle) },
                 text = {
                     Column {
-                        Text("确定要停止制卡吗？已完成的部分卡片将被保留。")
+                        Text(strings.aiCardStopDialogText)
                         Spacer(Modifier.height(spacing.md))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(
@@ -547,7 +546,7 @@ class AiCardScreen : Screen {
                                 onCheckedChange = { deletePartialCards = it },
                             )
                             Spacer(Modifier.width(spacing.sm))
-                            Text("删除已完成的部分制卡", style = MaterialTheme.typography.bodyMedium)
+                            Text(strings.aiCardDeletePartial, style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 },
@@ -557,7 +556,7 @@ class AiCardScreen : Screen {
                         vm.cancelGeneration(deletePartialCards)
                         deletePartialCards = false
                     }) {
-                        Text("停止")
+                        Text(strings.aiCardStopConfirm)
                     }
                 },
                 dismissButton = {
@@ -617,7 +616,7 @@ private fun formatDataSize(bytes: Long): String {
     return when {
         bytes < 1024L -> "$bytes B"
         bytes < 1024L * 1024L -> "${bytes / 1024L} KB"
-        else -> "${"%.1f".format(bytes.toDouble() / (1024.0 * 1024.0))} MB"
+        else -> "${formatDouble(bytes.toDouble() / (1024.0 * 1024.0))} MB"
     }
 }
 
@@ -766,37 +765,46 @@ private fun ConfigSelector(
     onConfigSelected: (String) -> Unit,
     strings: com.lumecard.app.i18n.I18nStrings,
 ) {
-    val selected = configs.find { it.id == selectedConfigId }
-    var showMenu by remember { mutableStateOf(false) }
-
     Text(strings.aiCardSelectConfigLabel, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-    Box {
-        OutlinedTextField(
-            value = selected?.name ?: "",
-            onValueChange = {},
-            label = { Text(strings.aiCardSelectConfig) },
-            placeholder = { Text(strings.aiCardSelectConfig) },
-            readOnly = true,
-            trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
-            modifier = Modifier.fillMaxWidth(),
+    if (configs.isEmpty()) {
+        Text(
+            strings.aiCardNoConfigDesc,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(vertical = 4.dp),
         )
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .clickable { showMenu = true },
-        )
-        DropdownMenu(
-            expanded = showMenu,
-            onDismissRequest = { showMenu = false },
-        ) {
-            configs.forEach { config ->
-                DropdownMenuItem(
-                    text = { Text(config.name) },
-                    onClick = {
-                        onConfigSelected(config.id)
-                        showMenu = false
-                    },
-                )
+    } else {
+        val selected = configs.find { it.id == selectedConfigId }
+        var showMenu by remember { mutableStateOf(false) }
+
+        Box {
+            OutlinedTextField(
+                value = selected?.name ?: "",
+                onValueChange = {},
+                label = { Text(strings.aiCardSelectConfig) },
+                placeholder = { Text(strings.aiCardSelectConfig) },
+                readOnly = true,
+                trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clickable { showMenu = true },
+            )
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false },
+            ) {
+                configs.forEach { config ->
+                    DropdownMenuItem(
+                        text = { Text(config.name) },
+                        onClick = {
+                            onConfigSelected(config.id)
+                            showMenu = false
+                        },
+                    )
+                }
             }
         }
     }

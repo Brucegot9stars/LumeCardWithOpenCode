@@ -6,13 +6,14 @@
 
 ## 功能特性
 
-- ✅ **复习算法选择** — FSRS（先进间隔重复）/ SM-2（Anki 标准算法）/ 莱特纳盒子 / 简单固定间隔，四种算法可随时切换，算法状态持久化存储
+- ✅ **复习算法选择** — FSRS-6（21 参数，可训练遗忘曲线）/ SM-2（经典 Anki 算法）/ 莱特纳盒子 / 简单固定间隔，四种算法可随时切换，算法状态持久化存储
 - ✅ **多人算法** — StudyViewModel 通过 `ReviewAlgorithm` 接口解耦，可扩展自定义算法
 - ✅ **每日学习目标** — 设置每日复习卡片数与每日新卡片数，支持进度追踪
 - ✅ **深色/浅色模式** — Material Design 3 主题，设置页面切换即生效
-- ✅ **卡片翻转模式** — 支持 Flip（点击翻转）与 Split（上下分区）两种复习查看模式
+- ✅ **卡片翻转模式** — 支持 Flip（3D 翻转动画，点击卡片也可翻转）与 Split（上下分区）两种复习查看模式
 - ✅ **知识库管理** — 树状结构管理知识库 → 牌组 → 卡牌层级，支持批量操作
-- ✅ **卡片管理** — 创建/编辑/删除卡片，支持 6 种卡片类型（Basic、Reversed、Cloze、Multiple Choice、Markdown、AI），Basic 卡支持独立水平/垂直居中与字体大小（12–120sp）
+- ✅ **卡片管理** — 创建/编辑/删除卡片，支持 7 种卡片类型（Basic、Reversed、Cloze、Multiple Choice、Markdown、AI、Rich Text），Basic 卡支持独立水平/垂直居中与字体大小（12–120sp）
+- ✅ **示例知识库** — 首次安装自动创建示例知识库，包含 4 个牌组、18 张卡片（覆盖全部 7 种卡片类型），用户可自由删除
 - ✅ **填空卡（Cloze）** — Anki 兼容格式 `{{c1::答案}}` / `{{c1::答案::提示}}`，正面自动挖空显示下划线，背面高亮答案
 - ✅ **学习流程** — 翻卡 → 评分（Again/Hard/Good/Easy），间隔重复调度，支持左滑/右滑手势评分
 - ✅ **学习计划** — 创建/编辑/删除学习计划，支持关联知识库/牌组/卡牌，进度追踪，状态管理
@@ -23,9 +24,9 @@
 - ✅ **数据导入导出** — JSON 格式完整导出/导入，支持分享导出（不含学习进度）与完整备份导出分离
 - ✅ **全文搜索** — SQL LIKE 搜索 + FTS5 虚拟表全文索引（FTS5 不可用时自动降级 LIKE）
 - ✅ **排序功能** — 牌组与卡片列表支持按名称、创建时间、更新时间排序（升序/降序）
-- ✅ **WebDAV 云同步** — 增量数据同步 + 版本冲突解决 + Anki 风格媒体同步（SHA-1 + mtime 缓存，仅哈希变更文件）+ 多配置管理
+- ✅ **WebDAV 云同步** — 手动强制覆盖（学习数据 / 配置分开独立同步）+ 覆盖前云端快照自动归档（可回滚）+ Anki 风格媒体同步（SHA-1 + mtime 缓存，仅哈希变更文件）+ 多配置管理
 - ✅ **级联软删除** — 删除知识库级联软删除下属牌组与卡片，删除牌组级联软删除下属卡片
-- ✅ **媒体贴入** — 粘贴图片到卡片编辑器字段（Desktop: AWT / Android: ClipboardManager），自动 SHA-1 去重保存，插入 Markdown 图片引用
+- ✅ **媒体贴入** — 粘贴图片到卡片编辑器字段（Desktop: AWT / Android: ClipboardManager），自动 SHA-1 去重保存，插入 Markdown 图片引用；Card 模型含 `media: List<Media>` 字段（IMAGE/AUDIO/VIDEO/FILE），但卡片创建 UI 尚未接入媒体附件选择器
 - ✅ **AI 制卡助手** — SSE 流式生成 + 增量 JSON 解析 + 批量自动分类到牌组/知识库 + 实时进度气泡 + 交互日志面板 + 停止生成（保留已完成卡片）
 - ✅ **AI 事件流框架** — 事件驱动架构：`AiEventBus`（SharedFlow）+ `AiEvent` 14 种事件类型 + `AiBatchGenerator` 批处理循环 + `AiTaskStateMachine` 状态验证
 - ✅ **字体系统** — 跨平台自定义字体加载（TTF/OTF），平台字体检测（Android: `Typeface.create` / Desktop: `GraphicsEnvironment`），用户导入字体存储
@@ -36,13 +37,15 @@
 - ✅ **CI/CD** — GitHub Actions 自动构建 Android APK + Windows 打包 + Tag 触发 Release
 - ✅ **版本管理** — 统一版本管理（version.properties），支持 V0.x.y 开发阶段版本规范
 - ✅ **平台文件对话框** — Android SAF 与 Desktop JFileChooser 完整实现，用于导出/导入/媒体操作
+- ✅ **加密模块** — PBKDF2 + AES-256-GCM 敏感数据加密，密钥管理
 
 ### 待实现
 
 - ❌ 知识图谱
 - ❌ 学习热力图 / 日历贡献图
 - ❌ iOS 平台
-- ❌ 单元测试
+- ❌ 卡片媒体附件 — Card 模型已有 `media` 字段与 `MediaManager` 后端，但创建/编辑 UI 未接入文件选择器，学习界面未渲染图片/音视频
+- ❌ 学习界面多媒体渲染 — CardFace 仅渲染文本，不支持内嵌图片查看器、音频/视频播放器
 
 ## 技术栈
 
@@ -62,125 +65,191 @@
 
 ```
 LumeCard/
-├── composeApp/                     # Compose 应用
+├── composeApp/                         # Compose 应用
 │   └── src/
 │       ├── commonMain/kotlin/
-│       │   ├── App.kt              # 入口 + 底部导航（首页/统计/仓管/设置）
+│       │   ├── App.kt                  # 入口 + 底部导航
+│       │   ├── CrashLogHolder.kt       # 崩溃日志
 │       │   ├── data/
-│       │   │   └── AiCardGenerationManager.kt # AI 制卡状态机
+│       │   │   └── AiCardGenerationManager.kt
 │       │   ├── di/
-│       │   │   ├── AppModule.kt    # Koin 应用模块入口
-│       │   │   └── PlatformModule.kt # 平台相关 Koin 模块（expect）
-│       │   ├── font/               # 字体系统
-│       │   │   ├── FontSystem.kt   # 字体注册表/缓存/导入
-│       │   │   ├── FontInitializer.kt # 字体初始化
-│       │   │   ├── FontPlatform.kt # expect 声明
-│       │   │   ├── FontPlatform.android.kt
-│       │   │   └── FontPlatform.desktop.kt
-│       │   ├── i18n/               # 国际化
-│       │   │   ├── I18nManager.kt  # 多语言管理
-│   │   │   ├── I18nStrings.kt  # 字符串接口（350+ 条）
-│   │   │   └── Strings*.kt     # 各语言实现
-│       │   ├── platform/           # 平台抽象
-│       │   └── ui/
-│       │       ├── components/     # 可复用组件
-│       │       │   ├── AnimatedDonutChart.kt  # 环形进度图
-│       │       │   ├── LumeCardDialog.kt      # 统一弹窗组件
-│       │       │   ├── ProgressRing.kt        # 进度环
-│       │       │       ├── RichTextCardEditor.kt  # 富文本编辑器（BASIC 卡片）
-    ├── UpdateCheckDialog.kt   # 更新检查弹窗
-    └── MarkdownRenderer.kt    # GFM 渲染
-│       │       ├── navigation/Navigation.kt
-│       │       ├── theme/Theme.kt  # Material 3 绿色调主题
-│       │       └── screens/
-│       │           ├── dashboard/  # 首页看板
-│       │           ├── stats/      # 统计（环形图 + 学习数据）
-│       │           ├── warehouse/  # 仓管（树状数据管理）
-│       │           ├── study/      # 学习（模式选择/学习界面/评分）
-│       │           ├── learningplan/ # 学习计划管理
-│       │           ├── knowledgebase/ # 知识库管理
-│       │           ├── deck/       # 牌组管理
-│       │           ├── card/       # 卡片创建/编辑
-│       │           └── settings/   # 设置 + WebDAV 配置
-│       ├── androidMain/            # Android 入口 + 平台实现
-│       ├── desktopMain/            # Desktop 入口
-│       └── iosMain/                # iOS 入口
+│       │   │   ├── AppModule.kt        # Koin 应用模块入口
+│       │   │   └── PlatformModule.kt   # 平台 Koin 模块（expect）
+│       │   ├── font/                   # 字体系统
+│       │   │   ├── FontSystem.kt
+│       │   │   ├── FontInitializer.kt
+│       │   │   └── FontPlatform.kt     # expect/actual
+│       │   ├── feature/quote/          # 每日一句
+│       │   │   ├── screen/ScreenSaverOverlay.kt
+│       │   │   └── viewer/             # 引言动画/渲染
+│       │   ├── i18n/                   # 国际化（5 语言）
+│       │   │   ├── I18nManager.kt
+│       │   │   ├── I18nStrings.kt      # 字符串接口（350+ 条）
+│       │   │   └── Strings*.kt         # 各语言实现
+│       │   ├── platform/               # 平台抽象（expect/actual）
+│       │   │   ├── Platform.kt         # 媒体/剪贴板/路径
+│       │   │   ├── FilePicker.kt       # 文件选择器
+│       │   │   ├── MediaDropTarget.kt  # 拖拽放入
+│       │   │   └── ...                 # 其他平台适配
+│       │   ├── ui/
+│       │   │   ├── components/         # 可复用组件
+│       │   │   │   ├── AnimatedDonutChart.kt
+│       │   │   │   ├── CardTypeSelector.kt
+│       │   │   │   ├── LumeCardDialog.kt
+│       │   │   │   ├── RichTextCardEditor.kt  # 富文本编辑器
+│       │   │   │   ├── MarkdownEditor.kt
+│       │   │   │   ├── MarkdownRenderer.kt
+│       │   │   │   ├── SearchBar.kt
+│       │   │   │   └── UpdateCheckDialog.kt
+│       │   │   ├── screens/
+│       │   │   │   ├── dashboard/      # 首页看板
+│       │   │   │   ├── stats/          # 统计分析
+│       │   │   │   ├── warehouse/      # 仓管（树状数据管理）
+│       │   │   │   ├── study/          # 学习（模式/界面/评分/卡片组件）
+│       │   │   │   ├── learningplan/   # 学习计划
+│       │   │   │   ├── knowledgebase/  # 知识库管理
+│       │   │   │   ├── deck/           # 牌组管理 + 卡片列表
+│       │   │   │   ├── card/           # 卡片创建/编辑
+│       │   │   │   ├── aicard/         # AI 制卡助手
+│       │   │   │   ├── ai/             # AI 配置
+│       │   │   │   ├── splash/         # 每日一句管理
+│       │   │   │   ├── help/           # 帮助中心 + 欢迎导览
+│       │   │   │   └── settings/       # 设置 + WebDAV + 引言设置
+│       │   │   └── theme/Theme.kt      # Material 3 绿色调主题
+│       │   └── util/FormatUtils.kt
+│       ├── androidMain/                # Android 入口 + 平台实现
+│       ├── desktopMain/                # Desktop 入口 (main.kt)
+│       └── iosMain/                    # iOS 入口（骨架）
 │
-├── shared/                         # 共享业务逻辑
+├── shared/                             # 共享业务逻辑
 │   └── src/commonMain/
 │       ├── kotlin/
-│       │   ├── AppVersion.kt              # 统一版本管理
-│       │   ├── model/Models.kt            # 数据模型
-│       │   ├── domain/scheduler/          # 复习算法
-│       │   ├── repository/                # 仓库接口 + 实现
+│       │   ├── AppVersion.kt           # 统一版本管理
+│       │   ├── model/Models.kt         # 数据模型
+│       │   ├── domain/scheduler/       # 复习算法（FSRS-6/SM-2/Leitner/Simple）
+│       │   ├── repository/             # 仓库接口 + SqlDelight/InMemory 实现
+│       │   ├── crypto/                 # 加密模块（PBKDF2 + AES-256-GCM）
 │       │   ├── data/
-│       │   │   ├── ai/
-│       │   │   │   ├── event/
-│       │   │   │   │   ├── AiEvent.kt     # 14 种事件类型
-│       │   │   │   │   └── AiEventBus.kt  # 事件总线
-│       │   │   │   ├── task/
-│       │   │   │   │   ├── AiBatchGenerator.kt # 批处理循环
-│       │   │   │   │   └── AiTask.kt      # 状态机
-│       │   │   │   ├── stream/
-│       │   │   │   │   ├── AiStreamParser.kt   # 增量 JSON 解析
-│       │   │   │   │   └── AiStreamReader.kt   # Ktor 流读取
-│       │   │   │   ├── progress/
-│       │   │   │   │   └── AiProgressManager.kt # 进度计算
-│       │   │   │   ├── AiCardGenerator.kt  # 卡片生成器
-│       │   │   │   ├── AiClient.kt         # AI API 客户端
-│       │   │   │   └── AiModels.kt         # 数据模型
-│       │   │   ├── ExportManager.kt       # 导入导出（v2 格式）
-│       │   │   ├── SyncManager.kt         # WebDAV 增量同步
-│       │   │   ├── MediaManager.kt        # 媒体 Manifest & 缓存管理
-│       │   │   ├── WebDavConfigManager.kt # 多配置管理
-│       │   │   └── WebDavProviders.kt     # 服务商配置
-│       │   └── di/SharedModule.kt         # Koin 共享模块
+│       │   │   ├── ai/                 # AI 事件流框架
+│       │   │   │   ├── AiClientAdapter.kt
+│       │   │   │   ├── AiFallbackManager.kt
+│       │   │   │   ├── AiModelListFetcher.kt
+│       │   │   │   ├── ProviderAdapter.kt
+│       │   │   │   └── stream/AiStreamParser.kt
+│       │   │   ├── AiCardGenerator.kt  # AI 卡片生成
+│       │   │   ├── AiClient.kt         # AI API 客户端
+│       │   │   ├── ExportManager.kt    # 导入导出（v2 格式）
+│       │   │   ├── SyncManager.kt      # WebDAV 同步（含媒体同步）
+│       │   │   ├── MediaManager.kt     # 媒体 Manifest & 缓存
+│       │   │   ├── DemoDataManager.kt  # 示例知识库
+│       │   │   ├── WebDavConfigManager.kt
+│       │   │   └── SplashQuoteManager.kt
+│       │   ├── feature/quote/          # 引言功能
+│       │   ├── help/                   # 帮助中心
+│       │   ├── settings/               # 设置索引/搜索
+│       │   └── di/SharedModule.kt      # Koin 共享模块
 │       └── sqldelight/
-│           └── LumeCardDatabase.sq        # 10 张表
+│           └── com/lumecard/shared/database/
+│               ├── LumeCardDatabase.sq # 10 张表（schema v2）
+│               └── migrations/1.sqm    # v1→v2 迁移
 │
 ├── buildSrc/src/main/kotlin/
-│   └── Dependencies.kt                    # 统一版本管理
+│   └── Dependencies.kt                 # 统一版本管理
 │
 ├── .github/workflows/
-│   ├── android.yml                        # Android APK 自动构建
-│   ├── pr-validation.yml                  # PR 校验
-│   ├── release.yml                        # Tag 触发 Release（Android APK/AAB）
-│   └── windows.yml                        # Tag 触发 Windows EXE/MSI/ZIP 打包
+│   ├── android.yml                     # Android APK 自动构建
+│   ├── pr-validation.yml               # PR 校验
+│   ├── release.yml                     # Tag 触发 Release
+│   └── windows.yml                     # Tag 触发 Windows 打包
 │
-├── version.properties                     # 应用版本（唯一来源）
-├── build.gradle.kts                       # 根构建脚本
-├── settings.gradle.kts                    # 项目设置
-└── gradlew / gradlew.bat / gradle/        # Gradle Wrapper
+├── version.properties                  # 应用版本（唯一来源）
+├── build.gradle.kts
+├── settings.gradle.kts
+└── gradlew / gradlew.bat / gradle/
 ```
 
 ## 快速开始
 
 ### 环境要求
 
-- JDK 17+（推荐使用 Android Studio 自带 JBR）
+- JDK 17+（推荐使用 Android Studio 自带 JBR；打包安装包需 JDK 21+，含 `jpackage`）
 - Android Studio（最新版，含 Android SDK 35）
-- Gradle 8.12.1 (已内嵌)
-- Android SDK 编译目标 35
+- Gradle 9.6.0 (已内嵌，通过 `gradlew` 使用)
+- Android SDK 编译目标 36
+
+> **Windows 用户名含非 ASCII 字符（如中文）时**，必须事先设置 `JAVA_HOME` 与 `GRADLE_USER_HOME`，否则 Gradle 会因缓存/临时目录路径含中文而失败。
+
+**PowerShell**（推荐）：
+```powershell
+$env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"
+$env:GRADLE_USER_HOME="C:\gradle-home"
+```
+
+**cmd.exe**：
+```cmd
+set JAVA_HOME=C:\Program Files\Android\Android Studio\jbr
+set GRADLE_USER_HOME=C:\gradle-home
+```
+
+> 以下命令均假设已按上述方式设置环境变量。打包安装包需改用 JDK 21+（见「构建 Desktop 安装包」）。
 
 ### 构建 Android APK
 
 ```bash
-set JAVA_HOME=C:\Program Files\Android\Android Studio\jbr
-set GRADLE_USER_HOME=C:\gradle-home
 .\gradlew.bat :composeApp:assembleDebug
 ```
 
 APK 输出: `composeApp/build/outputs/apk/debug/LumeCard-v{version}-debug.apk`
 
-### 运行 Desktop 版本
+### 调试启动 Desktop 客户端
+
+#### 方式一：开发模式直接启动（最常用）
+
+编译并启动桌面窗口，适合边改代码边调试：
 
 ```bash
 .\gradlew.bat :composeApp:run
 ```
 
+入口为 `composeApp/src/desktopMain/kotlin/com/lumecard/app/main.kt` 的 `main()`（`mainClass = "com.lumecard.app.MainKt"`），无需额外参数。
+
+#### 方式二：免安装「绿色版」直接运行
+
+生成免安装、可直接运行的程序目录：
+
+```bash
+.\gradlew.bat :composeApp:createDistributable
+```
+
+产物目录 `composeApp/build/compose/binaries/main/app/LumeCard/`，其中的 `LumeCard.exe` 可直接启动：
+
+```powershell
+.\composeApp\build\compose\binaries\main\app\LumeCard\LumeCard.exe
+```
+
+#### 方式三：构建并运行安装包
+
+`packageExe` / `packageMsi` 生成的是 **jpackage 安装器**（`.exe` / `.msi`），运行后会先安装到系统、而非免安装启动，见下文「构建 Desktop 安装包」。
+
+### 常用调试命令
+
+```bash
+# 快速 Desktop 编译（跳过 Android 与测试，仅校验编译）
+.\gradlew.bat :shared:compileKotlinDesktop :composeApp:compileKotlinDesktop
+
+# 快速 Android 编译检查（跳过 APK 打包）
+.\gradlew.bat :shared:compileDebugKotlinAndroid :composeApp:compileDebugKotlinAndroid
+
+# 运行共享模块测试（CI 同款）
+.\gradlew.bat :shared:desktopTest
+
+# 构建/依赖异常时强制刷新依赖
+.\gradlew.bat --refresh-dependencies
+```
+
 ### 构建 Desktop 安装包
 
-需要 JDK 21+（含 `jpackage`）：
+需要 JDK 21+（含 `jpackage`；Android Studio 自带 JBR 不含 `jpackage.exe`）：
 
 ```bash
 set JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot
@@ -188,20 +257,31 @@ set GRADLE_USER_HOME=C:\gradle-home
 .\gradlew.bat :composeApp:packageExe :composeApp:packageMsi
 ```
 
-EXE 输出: `composeApp/build/compose/binaries/main/exe/LumeCard-{version}.exe`
+- EXE 安装器输出: `composeApp/build/compose/binaries/main/exe/LumeCard-{version}.exe`
+- MSI 安装包输出: `composeApp/build/compose/binaries/main/msi/LumeCard-{version}.msi`
+- 安装时提供「创建桌面快捷方式」选项
 
-### Windows 注意事项
+### 常见构建问题排查
 
-若 Windows 用户名包含非 ASCII 字符（如中文），需要额外设置：
+**`AccessDeniedException` / `Could not create ZIP`（Windows）**
 
-```bash
-set JAVA_HOME=C:\Program Files\Android\Android Studio\jbr
-set GRADLE_USER_HOME=C:\gradle-home
+表现为：`desktopJar` 或 `run` 报 `Could not create ZIP '...-desktop.jar'`、`AccessDeniedException: build/reports/problems/problems-report.html`、末尾 `Could not update ...last-build.bin`。
+
+原因是残留的 Gradle daemon 进程锁住了 `build/` 下的产物文件（常见于多次后台编译之后）。先停掉所有 daemon 再重试：
+
+```powershell
+.\gradlew.bat --stop
+```
+
+若仍被占用，可改用单次运行模式（不常驻 daemon）：
+
+```powershell
+.\gradlew.bat :composeApp:run --no-daemon
 ```
 
 ## 数据库
 
-SQLDelight 管理 10 张表，全部查询在 `LumeCardDatabase.sq` 中定义：
+SQLDelight 管理 10 张表（schema v2），全部查询在 `LumeCardDatabase.sq` 中定义：
 
 | 表 | 用途 |
 |------|---------|
@@ -226,22 +306,47 @@ Knowledge Base → Deck → Card
 
 - **KnowledgeBase** — 顶层知识库，卡片与牌组的容器
 - **Deck** — 牌组，支持层级嵌套（`parentId` 引用），配有颜色与 emoji 图标
-- **Card** — 闪卡，6 种类型（Basic、Reversed、Cloze、Multiple Choice、Markdown、AI），支持标签（tags）、媒体附件（media）、元数据（metadata）
+- **Card** — 闪卡，7 种类型（Basic、Reversed、Cloze、Multiple Choice、Markdown、AI、Rich Text），支持标题（title）、标签（tags）、媒体附件（media）、元数据（metadata）
+
+### 媒体附件
+
+Card 模型定义了 `media: List<Media>` 字段，支持 IMAGE、AUDIO、VIDEO、FILE 四种类型。后端基础设施已就绪：
+- `MediaManager` — Manifest 序列化、SHA-1 缓存、同步差异计算
+- `MediaCacheRepository` — 媒体缓存持久化
+- 平台函数 — `pasteClipboardMedia`、`saveMediaFile`、`scanMediaDirectory`（Desktop/Android 各有实现）
+- WebDAV 媒体同步 — `SyncManager.uploadMedia()` / `downloadMedia()`
+
+**当前状态**：模型与后端已实现，但卡片创建/编辑 UI 未提供文件选择器，学习界面 CardFace 未渲染图片/音视频。
 
 ### 复习算法架构
 
 所有算法实现 `ReviewAlgorithm` 接口：
 - `initCard()` → 返回初始 `AlgorithmState`
-- `schedule(state, rating)` → 根据评分返回新的 `AlgorithmState`
+- `schedule(state, rating, daysElapsed)` → 根据评分返回新的 `AlgorithmState`
 
-状态通过 `AlgorithmStateRepository` 序列化为字符串持久化到数据库，支持算法间切换。
+状态通过 `AlgorithmStateRepository` 序列化为字符串持久化到数据库，支持算法间切换（切换时自动重置算法状态）。
+
+**FSRS-6 算法**（默认）：
+- 21 个可训练参数（w[0]..w[20]），支持指数初始难度、可训练遗忘曲线、同日复习稳定性增长
+- 遗忘曲线：`R(t,S) = (1 + factor·t/S)^(-w[20])`，`factor = 0.9^(1/w[20]) - 1`
+- 同日复习增长：`S' = S · e^{w[17]·(G-3+w[18])·S^(-w[19])}`
+- 状态机：NEW → LEARNING → REVIEW → RELEARNING（ lapse 时回退）
+- 遗忘稳定性：`S' = w[11]·D^(-w[12})·((S+1)^w[13}-1)·e^{w[14]·(1-R)}`，下限 `sMin = S/e^{w[17]·w[18]}`
+
+**SM-2 算法**：
+- 映射 Rating(1-4) → SM-2 quality(2-5)
+- 仅 AGAIN 重置（reps=0，EF 不变），HARD/EASY 有区间乘数（0.8x/1.3x）
+
+**Leitner 盒子**：AGAIN → box 0，HARD → 保持，GOOD → +1，EASY → +2
+
+**简单固定间隔**：AGAIN → stage 0，HARD → 保持，GOOD → +1，EASY → +2
 
 ## 关键架构决策
 
 - **Repository 模式**：`Repositories.kt` 定义接口，`SqlDelightRepositories` 与 `InMemoryRepositories` 两套实现，便于测试
 - **MVVM 架构**：Voyager `ScreenModel` + Koin DI，状态通过 `StateFlow` 驱动 UI
 - **算法接口解耦**：`StudyViewModel` 通过 DI 注入 `ReviewAlgorithm`，可配置不同算法
-- **WebDAV 多配置管理**：支持多个同步配置保存、默认标记、连接测试、双向同步
+- **WebDAV 多配置管理**：支持多个同步配置保存、默认标记、连接测试、手动强制覆盖（学习数据与配置分开同步）
 - **平台抽象**：使用 Kotlin `expect/actual` 机制处理数据库驱动、平台样式等差异
 
 ## License
