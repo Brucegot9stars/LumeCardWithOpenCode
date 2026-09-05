@@ -1,5 +1,6 @@
 package com.lumecard.app.platform
 
+import com.lumecard.shared.database.AndroidContextHolder
 import java.io.File
 
 actual fun platformGetFileName(path: String): String = File(path).name
@@ -20,7 +21,8 @@ actual fun platformGetFileNameWithoutExtension(path: String): String =
     File(path).nameWithoutExtension
 
 actual fun platformGetUserHome(): String? =
-    System.getenv("HOME") ?: System.getProperty("user.home")
+    try { AndroidContextHolder.context.filesDir.absolutePath } catch (_: Exception) { null }
+        ?: System.getenv("HOME") ?: System.getProperty("user.home")
 
 actual fun platformGetSystemProperty(key: String): String? = System.getProperty(key)
 
