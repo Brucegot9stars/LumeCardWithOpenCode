@@ -858,6 +858,7 @@ class SettingsScreen(
                                                 knowledgeBaseRepository.insert(
                                                     KnowledgeBase(
                                                         id = ekb.id, name = ekb.name, description = ekb.description,
+                                                        icon = ekb.icon,
                                                         createdAt = Instant.parse(ekb.createdAt),
                                                         updatedAt = Instant.parse(ekb.updatedAt),
                                                         version = ekb.version
