@@ -122,7 +122,7 @@
       "title": "WebDAV Sync",
       "order": 6,
       "tags": ["sync", "backup", "cloud"],
-      "keywords": ["WebDAV", "cloud sync", "multi-device", "sync settings", "data sync", "sync now", "force sync", "merge conflict"],
+      "keywords": ["WebDAV", "cloud sync", "multi-device", "sync settings", "data sync", "sync now", "force sync", "merge conflict", "local backup", "cloud backup"],
       "relatedArticles": ["backup-restore", "settings-guide"],
       "hasDangerContent": true,
       "sections": [
@@ -134,13 +134,16 @@
           "Select this configuration as default",
           "Tap 'Sync Now' to perform your first synchronization"
         ]},
-        { "type": "paragraph", "title": "Sync Modes", "content": "Sync Now: Performs bidirectional merge with automatic conflict resolution (newer version wins). Sync Data: Same as Sync Now but without uploading settings. Sync Config: Upload settings only. Force Upload: Overwrite cloud data with local data. Force Download: Overwrite local data with cloud data. Restore from Cloud: Download cloud data without overwriting local unsaved changes." },
+        { "type": "paragraph", "title": "Sync Modes", "content": "Sync Now: Performs bidirectional merge with automatic conflict resolution (newer version wins). Sync Data: Same as Sync Now but without uploading settings. Sync Config: Upload settings only. Force Upload: Overwrite cloud data with local data. Force Download: Overwrite local data with cloud data." },
+        { "type": "paragraph", "title": "Backup Protection", "content": "Before each force upload or force download, the system automatically creates a local backup to prevent data loss. Force upload backs up the current cloud state first; force download backs up the current local state first. Config sync (upload/download settings) also auto-backs up." },
+        { "type": "paragraph", "title": "Backup Limits", "content": "You can configure the max cloud backup count and max local backup count in sync settings (1-365, default 7). Oldest backups beyond the limit are automatically cleaned up." },
         { "type": "danger", "content": "Force Upload and Force Download are destructive operations. Force Upload will overwrite ALL cloud data with your local data. Force Download will delete ALL local data and replace it with cloud data. Use these only when you are certain of the direction you want to synchronize." },
         { "type": "tip", "content": "Sync also transfers your custom fonts and background images across devices. Media files are synchronized by SHA-1 hash to avoid re-uploading unchanged files." },
         { "type": "faq", "title": "Common Questions", "items": [
           { "question": "Which WebDAV providers are supported?", "answer": "Any WebDAV-compatible server. Popular options include Jianguoyun (Nutstore), Nextcloud, ownCloud, and Synology WebDAV." },
           { "question": "What data is synchronized?", "answer": "All cards, decks, knowledge bases, review logs, learning plans, splash quotes, settings, fonts, and media files." },
-          { "question": "How are conflicts resolved?", "answer": "During bidirectional sync, each entity has a version number. The entity with the higher version wins. This ensures that the most recent change on either device is preserved." }
+          { "question": "How are conflicts resolved?", "answer": "During bidirectional sync, each entity has a version number. The entity with the higher version wins. This ensures that the most recent change on either device is preserved." },
+          { "question": "Sync fails with 'backup file not found'?", "answer": "If you experienced this on a previous version, upgrade to 0.26.15 or later. The issue has been fixed: backup path on Android now uses app internal storage." }
         ]}
       ]
     },
@@ -149,23 +152,26 @@
       "title": "Data Backup & Restore",
       "order": 7,
       "tags": ["backup", "restore", "data-safety"],
-      "keywords": ["backup", "restore", "export data", "import data", "CSV export", "data safety", "sync history", "snapshot"],
+      "keywords": ["backup", "restore", "export data", "import data", "CSV export", "data safety", "restore history", "local backup", "cloud backup", "restore from cloud"],
       "relatedArticles": ["webdav-sync", "card-management"],
       "hasDangerContent": true,
       "sections": [
-        { "type": "paragraph", "title": "Backup Options", "content": "LumeCard offers multiple ways to protect your data: WebDAV cloud sync, local file export, and automatic sync history snapshots on the cloud server." },
+        { "type": "paragraph", "title": "Backup Options", "content": "LumeCard offers multiple ways to protect your data: automatic local backups during WebDAV sync, local file export/import, and automatic config backups during config sync." },
+        { "type": "paragraph", "title": "Automatic Local Backups", "content": "Before each force sync operation, the system automatically creates a local backup. Force download backs up local data (shown in 'Local History'), force upload backs up cloud data (shown in 'Cloud History'). Config sync (upload/download settings) also auto-backs up." },
         { "type": "steps", "title": "Exporting Data", "items": [
           "Go to Settings > Data Management",
-          "Tap 'Export Data' to create a full backup file (.json) including cards, decks, and review history",
+          "Tap 'Export Data' to create a backup file (.json) with cards, decks, and knowledge bases",
           "Choose a save location on your device"
         ]},
         { "type": "steps", "title": "Importing Data", "items": [
           "Go to Settings > Data Management",
           "Tap 'Import Data' and select a previously exported .json file",
-          "The imported data will be merged with your existing content"
+          "The imported data will be merged with your existing content (same-ID entities are overwritten)"
         ]},
-        { "type": "danger", "content": "When importing data, entities with the same ID will be overwritten by the imported version. Review logs and learning plans from the import will also be merged. It is recommended to create a WebDAV backup before performing a major import." },
-        { "type": "tip", "content": "Sync history snapshots are automatically saved to your WebDAV server before each sync operation. You can restore from any history snapshot via the 'Restore History' button in Cloud Sync settings." }
+        { "type": "paragraph", "title": "Restore History", "content": "Restore history is split into two entries: 'Local History' shows local data backed up before force download, 'Cloud History' shows cloud data backed up before force upload. Each entry lets you restore data or config." },
+        { "type": "paragraph", "title": "Restore from Cloud", "content": "The 'Restore from Cloud' feature downloads data from your WebDAV server and overwrites local data. It requires 3-step confirmation: first confirm -> confirm again -> manually type the confirmation word ('confirm' in English). Use with caution." },
+        { "type": "danger", "content": "When importing data, entities with the same ID will be overwritten by the imported version. Restore from Cloud completely replaces local data with cloud data and cannot be undone. Create a backup before performing these operations." },
+        { "type": "tip", "content": "You can configure backup limits in sync settings (1-365, default 7). Oldest backups beyond the limit are automatically cleaned up." }
       ]
     },
     {
@@ -180,7 +186,8 @@
         { "type": "paragraph", "title": "Learning Settings", "content": "Configure your daily learning goals: daily new card limit, daily review limit, and review mode (FSRS-6, SM-2, Leitner, or Simple). These settings affect how new cards are introduced and how review cards are scheduled." },
         { "type": "paragraph", "title": "Appearance Settings", "content": "Toggle dark mode, adjust font scale (70%-150%), and change the app language. Fonts: you can import custom .ttf or .otf font files and set them as the default card font." },
         { "type": "paragraph", "title": "Study Timer", "content": "The study timer tracks how much time you spend studying. You can configure it to pause when you are idle for a set duration, preventing inaccurate time tracking." },
-        { "type": "tip", "content": "Learning Plans let you organize cards into structured study goals. Create a plan with specific decks or knowledge bases, track completion progress, and set default plans for quick access." }
+        { "type": "tip", "content": "Learning Plans let you organize cards into structured study goals. Create a plan with specific decks or knowledge bases, track completion progress, and set default plans for quick access." },
+        { "type": "paragraph", "title": "Backup Limit Settings", "content": "In Cloud Sync settings, you can configure the max cloud backup count and max local backup count (1-365, default 7). Cloud backups preserve cloud state before force upload; local backups preserve local state before force download. Oldest backups beyond the limit are automatically cleaned up." }
       ]
     },
     {
@@ -218,6 +225,7 @@
       "relatedArticles": [],
       "hasDangerContent": false,
       "sections": [
+        { "type": "paragraph", "title": "Version 0.26.x", "content": "Cloud sync backup overhaul: force upload backs up remote state, force download backs up local state. Restore history split into Local History and Cloud History. New Restore from Cloud with 3-step confirmation + manual input. Configurable backup limits (1-365, default 7). Export fixes (.json extension auto-append, knowledge base icon import). Android backup path fix (uses app internal storage). AI card generation event stream framework. Schema v3 (knowledge base icon field)." },
         { "type": "paragraph", "title": "Version 0.25.x", "content": "FSRS-6 algorithm upgrade (21 parameters, trainable forgetting curve). Sample knowledge base (auto-created on first launch). Dashboard deck deletion. Card title field. Database migration to schema v2. Windows installer desktop shortcut option. Algorithm stability fixes (NaN crash, negative stability)." },
         { "type": "paragraph", "title": "Version 0.17.6", "content": "WebDAV sync improvements with bidirectional version-based merge. Splash quote sync via WebDAV. Font deletion cleanup. Background image persistence. Startup animation fix." },
         { "type": "paragraph", "title": "Version 0.17.2 - 0.17.5", "content": "Unified Quote Settings screen with collapsible sections. Global settings search. Animation support for splash quotes. Screen saver mode with auto-exit on activity. Study timer idle pause." },

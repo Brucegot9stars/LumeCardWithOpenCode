@@ -122,7 +122,7 @@
       "title": "Sincronización WebDAV",
       "order": 6,
       "tags": ["sync", "backup", "cloud"],
-      "keywords": ["WebDAV", "sincronización en la nube", "multidispositivo", "ajustes de sincronización", "sincronización de datos", "sincronizar ahora", "sincronización forzada", "conflicto de fusión"],
+      "keywords": ["WebDAV", "sincronización en la nube", "multidispositivo", "ajustes de sincronización", "sincronización de datos", "sincronizar ahora", "sincronización forzada", "conflicto de fusión", "copia local", "copia nube"],
       "relatedArticles": ["backup-restore", "settings-guide"],
       "hasDangerContent": true,
       "sections": [
@@ -134,13 +134,16 @@
           "Selecciona esta configuración como predeterminada",
           "Pulsa 'Sincronizar ahora' para realizar tu primera sincronización"
         ]},
-        { "type": "paragraph", "title": "Modos de sincronización", "content": "Sincronizar ahora: Realiza una fusión bidireccional con resolución automática de conflictos (gana la versión más reciente). Sincronizar datos: Igual que Sincronizar ahora pero sin subir la configuración. Sincronizar config: Sube solo la configuración. Subida forzada: Sobrescribe los datos de la nube con los datos locales. Descarga forzada: Sobrescribe los datos locales con los datos de la nube. Restaurar desde la nube: Descarga los datos de la nube sin sobrescribir los cambios locales no guardados." },
+        { "type": "paragraph", "title": "Modos de sincronización", "content": "Sincronizar ahora: Realiza una fusión bidireccional con resolución automática de conflictos (gana la versión más reciente). Sincronizar datos: Igual que Sincronizar ahora, pero sin subir la configuración. Sincronizar configuración: Solo sube la configuración. Subida forzada: Sobrescribir datos en la nube con datos locales. Descarga forzada: Sobrescribir datos locales con datos de la nube." },
+        { "type": "paragraph", "title": "Protección de copias de seguridad", "content": "Antes de cada subida o descarga forzada, el sistema crea automáticamente una copia de seguridad local para evitar la pérdida de datos. La subida forzada respalda el estado actual de la nube primero; la descarga forzada respalda el estado local actual primero. La sincronización de configuración también crea copias automáticas." },
+        { "type": "paragraph", "title": "Límites de copias de seguridad", "content": "Puede configurar el límite máximo de copias en la nube y locales en la configuración de sincronización (1-365, predeterminado 7). Las copias más antiguas que excedan el límite se eliminan automáticamente." },
         { "type": "danger", "content": "La Subida forzada y la Descarga forzada son operaciones destructivas. La Subida forzada sobrescribirá TODOS los datos de la nube con tus datos locales. La Descarga forzada eliminará TODOS los datos locales y los reemplazará con los datos de la nube. Úsalas solo cuando estés seguro de la dirección en la que deseas sincronizar." },
         { "type": "tip", "content": "La sincronización también transfiere tus fuentes personalizadas e imágenes de fondo entre dispositivos. Los archivos multimedia se sincronizan mediante hash SHA-1 para evitar la re-subida de archivos no modificados." },
         { "type": "faq", "title": "Preguntas comunes", "items": [
           { "question": "¿Qué proveedores WebDAV están soportados?", "answer": "Cualquier servidor compatible con WebDAV. Las opciones populares incluyen Jianguoyun (Nutstore), Nextcloud, ownCloud y Synology WebDAV." },
           { "question": "¿Qué datos se sincronizan?", "answer": "Todas las tarjetas, mazos, bases de conocimiento, registros de revisión, planes de aprendizaje, citas de inicio, ajustes, fuentes y archivos multimedia." },
-          { "question": "¿Cómo se resuelven los conflictos?", "answer": "Durante la sincronización bidireccional, cada entidad tiene un número de versión. La entidad con el número de versión más alto gana. Esto asegura que el cambio más reciente en cualquier dispositivo se conserve." }
+          { "question": "¿Cómo se resuelven los conflictos?", "answer": "Durante la sincronización bidireccional, cada entidad tiene un número de versión. La entidad con el número de versión más alto gana. Esto asegura que el cambio más reciente en cualquier dispositivo se conserve." },
+          { "question": "¿La sincronización falla con 'archivo de respaldo no encontrado'?", "answer": "Si experimentó esto en una versión anterior, actualice a 0.26.15 o posterior. El problema se ha corregido: la ruta de respaldo en Android ahora usa el almacenamiento interno de la aplicación." }
         ]}
       ]
     },
@@ -149,23 +152,26 @@
       "title": "Copia de seguridad y restauración",
       "order": 7,
       "tags": ["backup", "restore", "data-safety"],
-      "keywords": ["copia de seguridad", "restaurar", "exportar datos", "importar datos", "exportación CSV", "seguridad de datos", "historial de sincronización", "instantánea"],
+      "keywords": ["copia de seguridad", "restaurar", "exportar datos", "importar datos", "exportación CSV", "seguridad de datos", "historial de sincronización", "instantánea", "historial de restauración", "copia local", "copia en la nube", "restaurar desde la nube"],
       "relatedArticles": ["webdav-sync", "card-management"],
       "hasDangerContent": true,
       "sections": [
-        { "type": "paragraph", "title": "Opciones de copia de seguridad", "content": "LumeCard ofrece múltiples formas de proteger tus datos: sincronización en la nube WebDAV, exportación a archivo local e instantáneas automáticas del historial de sincronización en el servidor en la nube." },
+        { "type": "paragraph", "title": "Opciones de copia de seguridad", "content": "LumeCard ofrece múltiples formas de proteger sus datos: copias de seguridad locales automáticas durante la sincronización WebDAV, exportación/importación de archivos locales y copias automáticas durante la sincronización de configuración." },
         { "type": "steps", "title": "Exportando datos", "items": [
           "Ve a Ajustes > Gestión de datos",
-          "Pulsa 'Exportar datos' para crear un archivo de copia de seguridad completo (.json) que incluye tarjetas, mazos e historial de revisión",
+          "Pulsa 'Exportar datos' para crear un archivo de respaldo (.json) con tarjetas, mazos y bases de conocimiento",
           "Elige una ubicación de almacenamiento en tu dispositivo"
         ]},
         { "type": "steps", "title": "Importando datos", "items": [
           "Ve a Ajustes > Gestión de datos",
-          "Pulsa 'Importar datos' y selecciona un archivo .json exportado previamente",
-          "Los datos importados se fusionarán con tu contenido existente"
+          "Pulsa 'Importar datos' y selecciona un archivo de respaldo previamente exportado",
+          "Los datos importados se fusionarán con su contenido existente (entidades con el mismo ID se sobrescriben)"
         ]},
-        { "type": "danger", "content": "Al importar datos, las entidades con el mismo ID serán sobrescritas por la versión importada. Los registros de revisión y los planes de aprendizaje de la importación también se fusionarán. Se recomienda crear una copia de seguridad WebDAV antes de realizar una importación importante." },
-        { "type": "tip", "content": "Las instantáneas del historial de sincronización se guardan automáticamente en tu servidor WebDAV antes de cada operación de sincronización. Puedes restaurar desde cualquier instantánea histórica mediante el botón 'Restaurar historial' en los ajustes de Sincronización en la nube." }
+        { "type": "danger", "content": "Al importar datos, las entidades con el mismo ID serán sobrescritas por la versión importada. Restaurar desde la nube reemplaza completamente los datos locales con datos de la nube y no se puede deshacer. Se recomienda crear una copia de seguridad antes de realizar estas operaciones." },
+        { "type": "tip", "content": "Puede configurar límites de copias de seguridad en la configuración de sincronización (1-365, predeterminado 7). Las copias más antiguas que excedan el límite se eliminan automáticamente." },
+        { "type": "paragraph", "title": "Copias de seguridad locales automáticas", "content": "Antes de cada operación de sincronización forzada, el sistema crea automáticamente una copia de seguridad local. La descarga forzada respalda datos locales (mostrados en 'Historial local'), la subida forzada respalda datos de la nube (mostrados en 'Historial en la nube'). La sincronización de configuración también crea copias automáticas." },
+        { "type": "paragraph", "title": "Historial de restauración", "content": "La aplicación mantiene un historial dividido en dos secciones: Historial local (copias del estado local antes de la descarga forzada) e Historial en la nube (copias del estado de la nube antes de la subida forzada). Puede navegar por el historial y restaurar desde cualquier punto." },
+        { "type": "paragraph", "title": "Restaurar desde la nube", "content": "Restaurar desde la nube descarga los datos del servidor y reemplaza completamente los datos locales. El proceso incluye confirmación de 3 pasos y entrada manual para evitar restauraciones accidentales. Los datos locales actuales se respaldan automáticamente antes de la restauración." }
       ]
     },
     {
@@ -180,7 +186,8 @@
         { "type": "paragraph", "title": "Ajustes de aprendizaje", "content": "Configura tus metas diarias de aprendizaje: límite diario de tarjetas nuevas, límite diario de revisión y modo de revisión (FSRS-6, SM-2, Leitner o Simple). Estos ajustes afectan cómo se introducen las tarjetas nuevas y cómo se programan las tarjetas de revisión." },
         { "type": "paragraph", "title": "Ajustes de apariencia", "content": "Activa el modo oscuro, ajusta la escala de fuente (70%-150%) y cambia el idioma de la aplicación. Fuentes: puedes importar archivos de fuente .ttf o .otf personalizados y establecerlos como la fuente de tarjeta predeterminada." },
         { "type": "paragraph", "title": "Temporizador de estudio", "content": "El temporizador de estudio registra cuánto tiempo pasas estudiando. Puedes configurarlo para que se pause cuando estés inactivo durante un tiempo determinado, evitando un seguimiento incorrecto del tiempo." },
-        { "type": "tip", "content": "Los Planes de aprendizaje te permiten organizar tarjetas en objetivos de estudio estructurados. Crea un plan con mazos o bases de conocimiento específicos, realiza un seguimiento del progreso de finalización y establece planes predeterminados para acceso rápido." }
+        { "type": "tip", "content": "Los Planes de aprendizaje te permiten organizar tarjetas en objetivos de estudio estructurados. Crea un plan con mazos o bases de conocimiento específicos, realiza un seguimiento del progreso de finalización y establece planes predeterminados para acceso rápido." },
+        { "type": "paragraph", "title": "Configuración de límites de copias", "content": "En la configuración de sincronización en la nube, puede configurar el límite máximo de copias en la nube y locales (1-365, predeterminado 7). Las copias en la nube preservan el estado de la nube antes de la subida forzada; las copias locales preservan el estado local antes de la descarga forzada. Las copias más antiguas que excedan el límite se eliminan automáticamente." }
       ]
     },
     {
@@ -218,6 +225,7 @@
       "relatedArticles": [],
       "hasDangerContent": false,
       "sections": [
+        { "type": "paragraph", "title": "Versión 0.26.x", "content": "Reestructuración de copias de seguridad de sincronización en la nube: la subida forzada respalda el estado remoto, la descarga forzada respalda el estado local. Historial de restauración dividido en Historial local y Historial en la nube. Nueva función Restaurar desde la nube con confirmación de 3 pasos + entrada manual. Límites de copias configurables (1-365, predeterminado 7). Correcciones de exportación (extensión .json automática, corrección de importación de icono de base de conocimiento). Corrección de ruta de respaldo en Android (usa almacenamiento interno de la aplicación). Marco de eventos de generación de tarjetas AI. Schema v3 (campo de icono de base de conocimiento)." },
         { "type": "paragraph", "title": "Versión 0.25.x", "content": "Actualización del algoritmo FSRS-6 (21 parámetros, curva de olvido entrenable). Base de conocimientos de ejemplo (creada automáticamente en el primer inicio). Eliminación de mazos en el panel. Campo de título de tarjeta. Migración de base de datos a schema v2. Opción de acceso directo del escritorio en el instalador de Windows. Correcciones de estabilidad del algoritmo (crash NaN, estabilidad negativa)." },
         { "type": "paragraph", "title": "Versión 0.17.6", "content": "Mejoras en la sincronización WebDAV con fusión bidireccional basada en versiones. Sincronización de citas de inicio mediante WebDAV. Limpieza al eliminar fuentes. Persistencia de imágenes de fondo. Corrección de animación de inicio." },
         { "type": "paragraph", "title": "Versión 0.17.2 - 0.17.5", "content": "Pantalla unificada de Ajustes de citas con secciones plegables. Búsqueda global de ajustes. Soporte de animación para citas de inicio. Modo protector de pantalla con salida automática al interactuar. Pausa por inactividad en el temporizador de estudio." },
