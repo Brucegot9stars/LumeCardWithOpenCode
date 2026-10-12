@@ -16,7 +16,11 @@ actual suspend fun pickSaveFile(suggestedName: String, mimeType: String): String
             }
             val result = chooser.showSaveDialog(null)
             if (result == JFileChooser.APPROVE_OPTION) {
-                chooser.selectedFile.absolutePath
+                var path = chooser.selectedFile.absolutePath
+                if (!path.endsWith(".json", ignoreCase = true)) {
+                    path += ".json"
+                }
+                path
             } else {
                 null
             }
