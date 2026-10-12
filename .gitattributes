@@ -1,4 +1,4 @@
-# Normalize all text files to LF on check-in, checkout as-is on all platforms.
+# Normalize all text files to LF on check-in and checkout on all platforms.
 # This keeps the repo consistent between Windows and Linux/macOS and prevents
 # noisy diffs from CRLF/LF mismatches.
 #
