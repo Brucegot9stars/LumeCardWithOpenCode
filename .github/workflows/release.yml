@@ -46,7 +46,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run unit tests
-        run: ./gradlew :shared:desktopTest
+        run: ./gradlew :shared:desktopTest :composeApp:desktopTest --no-daemon --console=plain
 
       - name: Sync version into all platform assets
         run: |

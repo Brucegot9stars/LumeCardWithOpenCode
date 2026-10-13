@@ -27,14 +27,16 @@ jobs:
     - name: Build Android APK
       run: ./gradlew :composeApp:assembleDebug
 
-    - name: Run unit tests
-      run: ./gradlew :shared:desktopTest
+    - name: Compile desktop app and run unit tests
+      run: ./gradlew :composeApp:compileKotlinDesktop :composeApp:desktopTest :shared:desktopTest --no-daemon --console=plain
 
     - name: Upload test results
       uses: actions/upload-artifact@v6
       if: always()
       with:
         name: validation-results
-        path: shared/build/reports/tests/
+        path: |
+          shared/build/reports/tests/
+          composeApp/build/reports/tests/
         retention-days: 7
 

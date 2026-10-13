@@ -56,7 +56,7 @@ jobs:
           Write-Output "Synced all version.properties to v$ver"
 
       - name: Run unit tests
-        run: .\gradlew.bat :shared:desktopTest
+        run: .\gradlew.bat :shared:desktopTest :composeApp:desktopTest --no-daemon --console=plain
 
       - name: Install WiX 7.0.0
         shell: pwsh

@@ -119,14 +119,7 @@ class StudyViewModel(
                 if (generation != sessionGeneration) return@launch
                 _allCardsCache.value = allCards
                 val now = Clock.System.now()
-                val selected = when (mode) {
-                    CardsStudyMode.DUE_FIRST -> allCards.filter { it.nextReviewAt == null || it.nextReviewAt <= now }
-                        .ifEmpty { allCards }
-                    CardsStudyMode.DUE_ONLY -> allCards.filter { it.nextReviewAt != null && it.nextReviewAt <= now }
-                    CardsStudyMode.ALL_CARDS -> allCards
-                    CardsStudyMode.NEW_CARDS -> allCards.filter { it.lastReviewedAt == null }.shuffled().take(limit.coerceAtLeast(0))
-                    CardsStudyMode.RANDOM -> allCards.shuffled().take(limit.coerceAtLeast(0))
-                }
+                val selected = selectStudyCards(allCards, mode, now, limit)
                 _cards.value = selected.shuffled()
                 _algorithmStates.value = states.filterKeys { id -> selected.any { it.id == id } }
                 _currentCardIndex.value = 0

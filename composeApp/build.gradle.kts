@@ -13,6 +13,17 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 import java.io.File
 
+// These overrides are needed by the application UI only. Keep them out of :shared.
+configurations.configureEach {
+    resolutionStrategy {
+        force("androidx.lifecycle:lifecycle-runtime:2.8.7")
+        // Rich editor 1.0.0 requests an alpha Material3 desktop artifact whose text span
+        // rendering breaks bold/size styles. Revisit both pins together when upgrading it.
+        force("org.jetbrains.compose.material3:material3:1.9.0")
+        force("org.jetbrains.compose.material3:material3-desktop:1.9.0")
+    }
+}
+
 val appVersionProps = Properties().apply {
     val f = rootProject.file("version.properties")
     if (f.exists()) f.inputStream().use { load(it) }
@@ -63,6 +74,10 @@ kotlin {
                 implementation(Dependencies.kotlinxDateTime)
                 implementation(Dependencies.kotlinxSerialization)
             }
+        }
+
+        val commonTest by getting {
+            dependencies { implementation(kotlin("test")) }
         }
 
         val androidMain by getting {
