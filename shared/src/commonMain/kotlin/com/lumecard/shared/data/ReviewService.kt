@@ -68,7 +68,21 @@ class ReviewService(private val database: LumeCardDatabase, fsrs: FSRSAlgorithm)
                 ?.takeIf { it.deleted_at == null } ?: return@transaction
             val now = Clock.System.now().toString()
             queries.insertSetting(PlanProgressKeys.forPlan(planId), now)
+            queries.deleteSetting(PlanProgressKeys.manualComplete(planId))
             queries.updateLearningPlanProgress(plan.total_cards, 0L, PlanStatus.NOT_STARTED.name, now, planId)
+        }
+    }
+
+    /** Manual completion is distinct from reaching the current card total through reviews. */
+    fun completePlan(planId: String) {
+        database.transaction(noEnclosing = true) {
+            val now = Clock.System.now()
+            refreshPlans(now, planId = planId)
+            val plan = queries.selectLearningPlanById(planId).executeAsOneOrNull()
+                ?.takeIf { it.deleted_at == null } ?: return@transaction
+            queries.insertSetting(PlanProgressKeys.manualComplete(planId), "true")
+            queries.updateLearningPlanProgress(plan.total_cards, plan.total_cards,
+                PlanStatus.COMPLETED.name, now.toString(), planId)
         }
     }
 
@@ -101,13 +115,15 @@ class ReviewService(private val database: LumeCardDatabase, fsrs: FSRSAlgorithm)
                     else Instant.parse(it.reviewed_at) > boundary)
             }
                 .map { it.card_id }.distinct().count().toLong()
+            val manuallyCompleted = queries.selectSetting(PlanProgressKeys.manualComplete(plan.id))
+                .executeAsOneOrNull()?.setting_value == "true"
             val status = when {
-                plan.status == PlanStatus.COMPLETED.name -> PlanStatus.COMPLETED
+                manuallyCompleted -> PlanStatus.COMPLETED
                 total > 0L && completed >= total -> PlanStatus.COMPLETED
                 completed > 0L || plan.status == PlanStatus.IN_PROGRESS.name -> PlanStatus.IN_PROGRESS
                 else -> PlanStatus.NOT_STARTED
             }
-            val finalCompleted = if (plan.status == PlanStatus.COMPLETED.name) total else completed
+            val finalCompleted = if (manuallyCompleted) total else completed
             if (total != plan.total_cards || finalCompleted != plan.completed_cards || status.name != plan.status) {
                 queries.updateLearningPlanProgress(total, finalCompleted, status.name, now.toString(), plan.id)
             }

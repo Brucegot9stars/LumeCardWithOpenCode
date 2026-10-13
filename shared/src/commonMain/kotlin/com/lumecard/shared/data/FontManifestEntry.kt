@@ -24,7 +24,9 @@ fun generateUuid(): String {
 }
 
 fun generateId(prefix: String = ""): String {
-    val uuid = generateUuid().take(8)
+    // Keep the full random identifier: an eight-hex-digit suffix collides too easily
+    // once review logs accumulate. Existing persisted IDs remain valid unchanged.
+    val uuid = generateUuid()
     return if (prefix.isEmpty()) uuid else "${prefix}_$uuid"
 }
 

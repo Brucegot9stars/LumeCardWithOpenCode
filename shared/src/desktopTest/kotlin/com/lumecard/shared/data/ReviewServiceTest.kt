@@ -26,7 +26,7 @@ class ReviewServiceTest {
                 decks = listOf(ExportDeck("deck", "kb", "Deck", null, "#4CAF50", "📚", createdAt = date, updatedAt = date)),
                 cards = listOf(ExportCard("card", "deck", "BASIC", "front", "back", tags = emptyList(),
                     createdAt = date, updatedAt = date)),
-                learningPlans = listOf(ExportLearningPlan("plan", "Plan", cardIds = listOf("card"),
+                learningPlans = listOf(ExportLearningPlan("plan", "Plan", deckIds = listOf("deck"),
                     totalCards = 1, createdAt = date, updatedAt = date)),
             ))
             block(driver, db, ReviewService(db, FSRSAlgorithm()))
@@ -63,5 +63,45 @@ class ReviewServiceTest {
         assertEquals(boundary, queries.selectSetting(PlanProgressKeys.forPlan("plan")).executeAsOne().setting_value)
         BackupRestoreService(db).replace(snapshot)
         assertEquals(boundary, queries.selectSetting(PlanProgressKeys.forPlan("plan")).executeAsOne().setting_value)
+    }
+
+    @Test
+    fun duplicateReviewIdCannotReplaceExistingLogOrScheduling() = withDatabase { _, db, service ->
+        val queries = db.lumeCardDatabaseQueries
+        service.review("card", Rating.GOOD, 1000, "same-id")
+        val card = queries.selectCardById("card").executeAsOne()
+        val state = queries.selectAlgorithmState("card").executeAsOne()
+        assertFailsWith<Exception> { service.review("card", Rating.AGAIN, 1000, "same-id") }
+        assertEquals(1, queries.selectAllReviewLogs().executeAsList().size)
+        assertEquals(3L, queries.selectAllReviewLogs().executeAsOne().rating)
+        assertEquals(card.last_reviewed_at, queries.selectCardById("card").executeAsOne().last_reviewed_at)
+        assertEquals(state.state_json, queries.selectAlgorithmState("card").executeAsOne().state_json)
+    }
+
+    @Test
+    fun automaticCompletionReopensWhenPlanGrowsButManualCompletionPersists() = withDatabase { _, db, service ->
+        val queries = db.lumeCardDatabaseQueries
+        fun addCard(id: String) {
+            queries.insertCard(id, "deck", "BASIC", null, id, "back", "[]", "[]", "{}",
+                date, date, null, null, 1L, null, null)
+        }
+        service.review("card", Rating.GOOD, 1000, "review-1")
+        assertEquals("COMPLETED", queries.selectLearningPlanById("plan").executeAsOne().status)
+        addCard("new-card")
+        service.reconcilePlan("plan")
+        val reopened = queries.selectLearningPlanById("plan").executeAsOne()
+        assertEquals(2L, reopened.total_cards)
+        assertEquals(1L, reopened.completed_cards)
+        assertEquals("IN_PROGRESS", reopened.status)
+        service.completePlan("plan")
+        assertTrue(BackupRestoreService(db).snapshot().learningPlans.single().manuallyCompleted)
+        addCard("another-card")
+        service.reconcilePlan("plan")
+        val manual = queries.selectLearningPlanById("plan").executeAsOne()
+        assertEquals(3L, manual.total_cards)
+        assertEquals(3L, manual.completed_cards)
+        assertEquals("COMPLETED", manual.status)
+        service.resetPlanProgress("plan")
+        assertNull(queries.selectSetting(PlanProgressKeys.manualComplete("plan")).executeAsOneOrNull())
     }
 }

@@ -19,9 +19,9 @@ class BackupRestoreService(private val database: LumeCardDatabase) {
     fun replaceSettings(settings: Map<String, String>) {
         database.transaction(noEnclosing = true) {
             queries.selectAllSettings().executeAsList()
-                .filterNot { it.key.startsWith(PlanProgressKeys.PREFIX) }
+                .filterNot { PlanProgressKeys.isPlanMetadata(it.key) }
                 .forEach { queries.deleteSetting(it.key) }
-            settings.filterKeys { !it.startsWith(PlanProgressKeys.PREFIX) }
+            settings.filterKeys { !PlanProgressKeys.isPlanMetadata(it) }
                 .forEach { (key, value) -> queries.insertSetting(key, value) }
         }
     }
@@ -63,6 +63,7 @@ class BackupRestoreService(private val database: LumeCardDatabase) {
                     createdAt = it.created_at, updatedAt = it.updated_at, version = it.version,
                     deletedAt = it.deleted_at, syncedAt = it.synced_at,
                     progressSince = settings[PlanProgressKeys.forPlan(it.id)],
+                    manuallyCompleted = settings[PlanProgressKeys.manualComplete(it.id)] == "true",
                 )
             },
             algorithmStates = queries.selectAllAlgorithmStates().executeAsList().map {
@@ -85,7 +86,7 @@ class BackupRestoreService(private val database: LumeCardDatabase) {
         val decks = validateAndOrderDecks(data)
         val syncTime = syncedAt?.toString()
         database.transaction(noEnclosing = true) {
-            queries.selectAllSettings().executeAsList().filter { it.key.startsWith(PlanProgressKeys.PREFIX) }
+            queries.selectAllSettings().executeAsList().filter { PlanProgressKeys.isPlanMetadata(it.key) }
                 .forEach { queries.deleteSetting(it.key) }
             queries.deleteAllCardFts()
             queries.deleteAllAlgorithmStates()
@@ -144,6 +145,7 @@ class BackupRestoreService(private val database: LumeCardDatabase) {
                 val effective = if (local != null && Instant.parse(local) > Instant.parse(boundary)) local else boundary
                 queries.insertSetting(key, effective)
             }
+            if (it.manuallyCompleted) queries.insertSetting(PlanProgressKeys.manualComplete(it.id), "true")
         }
         data.algorithmStates.orEmpty().forEach { queries.insertAlgorithmState(it.cardId, it.mode, it.stateJson) }
         // Preserve the existing whole-collection "higher version wins" quote policy.

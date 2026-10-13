@@ -190,12 +190,7 @@ class LearningPlanViewModel(
     }
 
     suspend fun completePlan(id: String) {
-        val plan = planRepository.getById(id) ?: return
-        planRepository.update(plan.copy(
-            status = PlanStatus.COMPLETED,
-            completedCards = plan.totalCards,
-            updatedAt = Clock.System.now()
-        ))
+        withContext(Dispatchers.IO) { reviewService.completePlan(id) }
     }
 
     suspend fun getCardsForPlan(plan: LearningPlan): List<Card> {

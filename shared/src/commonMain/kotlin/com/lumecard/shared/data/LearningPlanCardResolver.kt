@@ -50,5 +50,8 @@ object LearningPlanCardResolver {
 /** Stored in AppSettings, but owned by data backup and excluded from config sync. */
 object PlanProgressKeys {
     const val PREFIX = "learning_plan_progress_since:"
+    const val MANUAL_COMPLETE_PREFIX = "learning_plan_manual_complete:"
     fun forPlan(id: String) = PREFIX + id
+    fun manualComplete(id: String) = MANUAL_COMPLETE_PREFIX + id
+    fun isPlanMetadata(key: String) = key.startsWith(PREFIX) || key.startsWith(MANUAL_COMPLETE_PREFIX)
 }
