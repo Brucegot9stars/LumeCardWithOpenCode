@@ -335,6 +335,10 @@ setLearningPlanDefault:
 UPDATE LearningPlan SET is_default = ?, updated_at = ?, version = version + 1, synced_at = NULL
 WHERE id = ? AND deleted_at IS NULL;
 
+startLearningPlan:
+UPDATE LearningPlan SET status = 'IN_PROGRESS', updated_at = ?, version = version + 1, synced_at = NULL
+WHERE id = ? AND status = 'NOT_STARTED' AND deleted_at IS NULL;
+
 updateLearningPlan:
 UPDATE LearningPlan SET name = ?, description = ?, status = ?, is_default = ?, knowledge_base_ids = ?, deck_ids = ?, card_ids = ?, total_cards = ?, completed_cards = ?, updated_at = ?, version = version + 1, deleted_at = ?, synced_at = ? WHERE id = ?;
 

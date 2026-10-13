@@ -167,13 +167,7 @@ class LearningPlanViewModel(
     }
 
     suspend fun startPlan(id: String) {
-        val plan = planRepository.getById(id) ?: return
-        if (plan.status == PlanStatus.NOT_STARTED) {
-            planRepository.update(plan.copy(
-                status = PlanStatus.IN_PROGRESS,
-                updatedAt = Clock.System.now()
-            ))
-        }
+        withContext(Dispatchers.IO) { planMutations.start(id) }
     }
 
     suspend fun completePlan(id: String) {

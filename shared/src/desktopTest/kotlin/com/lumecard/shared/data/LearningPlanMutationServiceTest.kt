@@ -4,6 +4,7 @@ import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.lumecard.shared.database.LumeCardDatabase
 import com.lumecard.shared.database.initializeDesktopSchema
 import com.lumecard.shared.domain.scheduler.FSRSAlgorithm
+import com.lumecard.shared.model.LearningPlan
 import com.lumecard.shared.model.Rating
 import com.lumecard.shared.repository.SqlDelightCardRepository
 import com.lumecard.shared.repository.SqlDelightDeckRepository
@@ -46,6 +47,20 @@ class LearningPlanMutationServiceTest {
         assertFailsWith<Exception> { mutations.setDefault("second") }
         assertEquals(1L, queries.selectLearningPlanById("first").executeAsOne().is_default)
         assertEquals(0L, queries.selectLearningPlanById("second").executeAsOne().is_default)
+    }
+
+    @Test
+    fun createReconcilesStaleTotalAndStartChangesOnlyStatus() = withDatabase { _, db, _, mutations ->
+        val queries = db.lumeCardDatabaseQueries
+        mutations.create(LearningPlan(id = "third", name = "Third", deckIds = listOf("deck"), totalCards = 0))
+        assertEquals(1L, queries.selectLearningPlanById("third").executeAsOne().total_cards)
+        mutations.start("third")
+        mutations.start("third")
+        val started = queries.selectLearningPlanById("third").executeAsOne()
+        assertEquals("IN_PROGRESS", started.status)
+        assertEquals("[\"deck\"]", started.deck_ids)
+        assertEquals(1L, started.total_cards)
+        assertEquals(3L, started.version)
     }
 
     @Test

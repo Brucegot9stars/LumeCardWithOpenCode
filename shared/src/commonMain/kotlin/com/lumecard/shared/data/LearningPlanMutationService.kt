@@ -22,6 +22,7 @@ class LearningPlanMutationService(
                 json.encodeToString(plan.deckIds), json.encodeToString(plan.cardIds),
                 plan.totalCards.toLong(), plan.completedCards.toLong(), plan.createdAt.toString(),
                 plan.updatedAt.toString(), plan.version, plan.deletedAt?.toString(), null)
+            reviewService.reconcilePlanInCurrentTransaction(plan.id)
         }
     }
 
@@ -51,6 +52,10 @@ class LearningPlanMutationService(
                 ?.takeIf { it.deleted_at == null } ?: return@transaction
             if (plan.is_default == 1L) queries.setLearningPlanDefault(0L, Clock.System.now().toString(), planId)
         }
+    }
+
+    fun start(planId: String) {
+        queries.startLearningPlan(Clock.System.now().toString(), planId)
     }
 
     fun delete(planId: String) {
