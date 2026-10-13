@@ -79,6 +79,18 @@ class StudyViewModel(
 
     fun loadCards(deckIds: List<String>, planIds: List<String> = emptyList(), mode: CardsStudyMode = CardsStudyMode.DUE_FIRST, limit: Int = 20) {
         if (isRating) return
+        stopTimer()
+        _sessionStartTime.value = null
+        _elapsedSeconds.value = 0
+        elapsedBeforeResume = 0
+        _cards.value = emptyList()
+        _allCardsCache.value = emptyList()
+        _algorithmStates.value = emptyMap()
+        _currentCardIndex.value = 0
+        _completedCards.value = 0
+        _history.value = emptyList()
+        _isFlipped.value = false
+        cardStartTimes.clear()
         activeDeckIds = deckIds.distinct()
         activePlanIds = planIds.distinct()
         val generation = ++sessionGeneration
@@ -134,10 +146,6 @@ class StudyViewModel(
 
     fun reloadWithMode(mode: CardsStudyMode, limit: Int = 20) {
         if (isRating) return
-        stopTimer()
-        _sessionStartTime.value = null
-        _elapsedSeconds.value = 0
-        elapsedBeforeResume = 0
         loadCards(activeDeckIds, activePlanIds, mode, limit)
     }
 
