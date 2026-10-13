@@ -2,6 +2,7 @@ package com.lumecard.app.ui.screens.dashboard
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import com.lumecard.shared.data.LearningPlanCardResolver
 import com.lumecard.shared.model.Deck
 import com.lumecard.shared.model.LearningPlan
 import com.lumecard.shared.model.PlanStatus
@@ -124,10 +125,11 @@ class DashboardViewModel(
             val allPlans = withContext(Dispatchers.IO) { planRepository.getAll().first() }
             val allDecks = withContext(Dispatchers.IO) { deckRepository.getAll().first() }
 
-            val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+            val timeZone = TimeZone.currentSystemDefault()
+            val today = Clock.System.now().toLocalDateTime(timeZone).date
             val todayCount = withContext(Dispatchers.Default) {
                 allLogs.count { log ->
-                    log.reviewedAt.toLocalDateTime(TimeZone.currentSystemDefault()).date == today
+                    log.reviewedAt.toLocalDateTime(timeZone).date == today
                 }
             }
             _todayReviews.value = todayCount
@@ -142,17 +144,14 @@ class DashboardViewModel(
             _totalDueCards.value = dueCount
 
             val duePlanCount = withContext(Dispatchers.Default) {
-                val planCardIdsSet = allPlans.map { it.cardIds.toSet() }
-                val planDeckIdsSet = allPlans.map { it.deckIds.toSet() }
-                val planKbIdsSet = allPlans.map { it.knowledgeBaseIds.toSet() }
-                allPlans.indices.count { i ->
-                    allCards.any { card ->
-                        card.deletedAt == null && (
-                            card.id in planCardIdsSet[i] ||
-                            card.deckId in planDeckIdsSet[i] ||
-                            allDecks.any { it.id == card.deckId && it.knowledgeBaseId in planKbIdsSet[i] }
-                        ) && card.nextReviewAt?.let { it <= now } == true
-                    }
+                val dueIds = allCards.filter { it.deletedAt == null && it.nextReviewAt?.let { t -> t <= now } == true }
+                    .map { it.id }.toSet()
+                val cardRefs = LearningPlanCardResolver.cardRefs(allCards)
+                val deckRefs = LearningPlanCardResolver.deckRefs(allDecks)
+                allPlans.count { plan ->
+                    LearningPlanCardResolver.cardIds(
+                        LearningPlanCardResolver.selection(plan), cardRefs, deckRefs
+                    ).any { it in dueIds }
                 }
             }
             _duePlanCount.value = duePlanCount

@@ -52,6 +52,8 @@ class ReviewServiceTest {
         assertEquals(1L, queries.selectLearningPlanById("plan").executeAsOne().completed_cards)
         service.resetPlanProgress("plan")
         assertEquals(0L, queries.selectLearningPlanById("plan").executeAsOne().completed_cards)
+        service.reconcilePlan("plan")
+        assertEquals(0L, queries.selectLearningPlanById("plan").executeAsOne().completed_cards)
         val boundary = queries.selectSetting(PlanProgressKeys.forPlan("plan")).executeAsOne().setting_value
         assertNotNull(boundary)
         val snapshot = BackupRestoreService(db).snapshot()

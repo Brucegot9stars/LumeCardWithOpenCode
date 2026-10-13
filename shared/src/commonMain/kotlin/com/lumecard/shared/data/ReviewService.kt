@@ -100,29 +100,37 @@ class ReviewService(private val database: LumeCardDatabase, fsrs: FSRSAlgorithm)
     }
 
     private fun refreshPlans(now: Instant, cardId: String? = null, planId: String? = null) {
+        val plans = queries.selectAllLearningPlans().executeAsList()
+            .filter { planId == null || it.id == planId }
+        if (plans.isEmpty()) return
         val cards = queries.selectAllCards().executeAsList().map { PlanCardRef(it.id, it.deck_id) }
         val decks = queries.selectAllDecks().executeAsList().map { PlanDeckRef(it.id, it.knowledge_base_id) }
-        val logs = queries.selectAllReviewLogs().executeAsList()
-        queries.selectAllLearningPlans().executeAsList().forEach { plan ->
-            if (planId != null && plan.id != planId) return@forEach
+        val membersByPlan = plans.mapNotNull { plan ->
             val selection = PlanSelection(
                 json.decodeFromString(plan.knowledge_base_ids ?: "[]"),
                 json.decodeFromString(plan.deck_ids ?: "[]"),
                 json.decodeFromString(plan.card_ids ?: "[]"),
             )
             val members = LearningPlanCardResolver.cardIds(selection, cards, decks)
-            if (cardId != null && cardId !in members) return@forEach
-            val resetBoundary = queries.selectSetting(PlanProgressKeys.forPlan(plan.id))
-                .executeAsOneOrNull()?.setting_value?.let { Instant.parse(it) }
+            if (cardId != null && cardId !in members) null else plan to members
+        }
+        if (membersByPlan.isEmpty()) return
+        val latestReviewByCard = mutableMapOf<String, Instant>()
+        queries.selectActiveReviewTimestamps().executeAsList().forEach { log ->
+            val reviewedAt = Instant.parse(log.reviewed_at)
+            val previous = latestReviewByCard[log.card_id]
+            if (previous == null || reviewedAt > previous) latestReviewByCard[log.card_id] = reviewedAt
+        }
+        val settings = queries.selectAllSettings().executeAsList().associate { it.key to it.setting_value }
+        membersByPlan.forEach { (plan, members) ->
+            val resetBoundary = settings[PlanProgressKeys.forPlan(plan.id)]?.let { Instant.parse(it) }
             val boundary = resetBoundary ?: Instant.parse(plan.created_at)
             val total = members.size.toLong()
-            val completed = logs.asSequence().filter {
-                it.card_id in members && (if (resetBoundary == null) Instant.parse(it.reviewed_at) >= boundary
-                    else Instant.parse(it.reviewed_at) > boundary)
-            }
-                .map { it.card_id }.distinct().count().toLong()
-            val manuallyCompleted = queries.selectSetting(PlanProgressKeys.manualComplete(plan.id))
-                .executeAsOneOrNull()?.setting_value == "true"
+            val completed = members.count { memberId ->
+                val reviewedAt = latestReviewByCard[memberId]
+                reviewedAt != null && (if (resetBoundary == null) reviewedAt >= boundary else reviewedAt > boundary)
+            }.toLong()
+            val manuallyCompleted = settings[PlanProgressKeys.manualComplete(plan.id)] == "true"
             val status = when {
                 manuallyCompleted -> PlanStatus.COMPLETED
                 total > 0L && completed >= total -> PlanStatus.COMPLETED

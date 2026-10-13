@@ -282,6 +282,9 @@ SELECT * FROM Card WHERE deleted_at IS NULL AND (front LIKE '%' || ? || '%' OR b
 selectAllReviewLogs:
 SELECT * FROM ReviewLog WHERE deleted_at IS NULL ORDER BY reviewed_at DESC;
 
+selectActiveReviewTimestamps:
+SELECT card_id, reviewed_at FROM ReviewLog WHERE deleted_at IS NULL;
+
 selectReviewLogsByCardId:
 SELECT * FROM ReviewLog WHERE card_id = ? AND deleted_at IS NULL ORDER BY reviewed_at DESC;
 
