@@ -2,179 +2,124 @@ package com.lumecard.app.ui.screens.study
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import com.lumecard.shared.data.LearningPlanCardResolver
+import com.lumecard.shared.data.ReviewService
+import com.lumecard.shared.data.generateId
 import com.lumecard.shared.domain.scheduler.AlgorithmState
-import com.lumecard.shared.domain.scheduler.ReviewAlgorithm
+import com.lumecard.shared.feature.quote.facade.QuoteFeature
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.Rating
-import com.lumecard.shared.model.ReviewLog
-import com.lumecard.shared.repository.AlgorithmStateRepository
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
 import com.lumecard.shared.repository.LearningPlanRepository
-import com.lumecard.shared.repository.ReviewLogRepository
-import com.lumecard.shared.feature.quote.facade.QuoteFeature
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlin.time.Clock
-import kotlinx.serialization.json.Json
-import com.lumecard.shared.data.generateId
+import kotlin.time.Instant
 
-enum class CardsStudyMode {
-    DUE_FIRST,
-    DUE_ONLY,
-    ALL_CARDS,
-    NEW_CARDS,
-    RANDOM
-}
+enum class CardsStudyMode { DUE_FIRST, DUE_ONLY, ALL_CARDS, NEW_CARDS, RANDOM }
 
 class StudyViewModel(
     private val cardRepository: CardRepository,
-    private val reviewLogRepository: ReviewLogRepository,
-    private val algorithmStateRepository: AlgorithmStateRepository,
-    private val algorithm: ReviewAlgorithm,
     private val planRepository: LearningPlanRepository,
     private val deckRepository: DeckRepository,
+    private val reviewService: ReviewService,
     private val quoteFeature: QuoteFeature,
 ) : ScreenModel {
-
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
-
     fun clearError() { _error.value = null }
 
-    private fun reportError(e: Throwable, context: String) {
-        val stackTrace = e.stackTraceToString()
-        val msg = "[$context] ${e.message ?: e::class.simpleName}\n$stackTrace"
-        println("[LumeCard ERROR] $msg")
-        _error.value = msg
-    }
     private val _cards = MutableStateFlow<List<Card>>(emptyList())
     val cards: StateFlow<List<Card>> = _cards
-
     private val _currentCardIndex = MutableStateFlow(0)
     val currentCardIndex: StateFlow<Int> = _currentCardIndex
-
     private val _isFlipped = MutableStateFlow(false)
     val isFlipped: StateFlow<Boolean> = _isFlipped
-
     private val _completedCards = MutableStateFlow(0)
     val completedCards: StateFlow<Int> = _completedCards
-
     private val _algorithmStates = MutableStateFlow<Map<String, AlgorithmState>>(emptyMap())
     val algorithmStates: StateFlow<Map<String, AlgorithmState>> = _algorithmStates
-
     private val _history = MutableStateFlow<List<Pair<Int, Boolean>>>(emptyList())
     val history: StateFlow<List<Pair<Int, Boolean>>> = _history
-
-    val canGoBack: Boolean get() = _history.value.isNotEmpty()
-
-    private var timerJob: Job? = null
-
-    private val _sessionStartTime = MutableStateFlow<kotlin.time.Instant?>(null)
-    val sessionStartTime: StateFlow<kotlin.time.Instant?> = _sessionStartTime
-
+    val canGoBack: Boolean get() = _history.value.isNotEmpty() && !isRating
+    private val _sessionStartTime = MutableStateFlow<Instant?>(null)
+    val sessionStartTime: StateFlow<Instant?> = _sessionStartTime
     private val _elapsedSeconds = MutableStateFlow(0)
     val elapsedSeconds: StateFlow<Int> = _elapsedSeconds
+    private val _allCardsCache = MutableStateFlow<List<Card>>(emptyList())
+    val totalCardCount get() = _allCardsCache.value.size
+    val unlearnedCardCount get() = _allCardsCache.value.count { it.lastReviewedAt == null }
+
+    private val cardStartTimes = mutableMapOf<String, Instant>()
+    private var activePlanIds: List<String> = emptyList()
+    private var activeDeckIds: List<String> = emptyList()
+    private var loadCardsJob: Job? = null
+    private var isRating = false
+    private var sessionGeneration = 0
+    private var isTimerRunning = false
 
     init {
         screenModelScope.launch {
-            quoteFeature.studyTimeSeconds.collect { secs ->
-                _elapsedSeconds.value = secs.toInt()
-            }
+            quoteFeature.studyTimeSeconds.collect { _elapsedSeconds.value = it.coerceAtMost(Int.MAX_VALUE.toLong()).toInt() }
         }
     }
 
-    private val _cardStartTimes: MutableMap<String, kotlin.time.Instant> = java.util.Collections.synchronizedMap(mutableMapOf())
-
-    private var activePlanIds: List<String> = emptyList()
-    private var activeDeckIds: List<String> = emptyList()
-    private var loadCardsJob: kotlinx.coroutines.Job? = null
-    private val rateMutex = Mutex()
-    private var planBaselineCompleted: Map<String, Int> = emptyMap()
-    private val ratedCardIds = mutableSetOf<String>()
-
-    private var _hasStartedStudying = false
-
-    private val _allCardsCache = MutableStateFlow<List<Card>>(emptyList())
-    val totalCardCount: Int get() = _allCardsCache.value.size
-    val unlearnedCardCount: Int get() = _allCardsCache.value.count { it.lastReviewedAt == null }
-
     fun loadCards(deckIds: List<String>, planIds: List<String> = emptyList(), mode: CardsStudyMode = CardsStudyMode.DUE_FIRST, limit: Int = 20) {
-        activePlanIds = planIds
-        activeDeckIds = deckIds
-        _hasStartedStudying = false
-        planBaselineCompleted = emptyMap()
+        if (isRating) return
+        activeDeckIds = deckIds.distinct()
+        activePlanIds = planIds.distinct()
+        val generation = ++sessionGeneration
         loadCardsJob?.cancel()
         loadCardsJob = screenModelScope.launch {
             try {
-                planBaselineCompleted = activePlanIds.mapNotNull { id ->
-                    planRepository.getById(id)?.let { it.id to it.completedCards }
-                }.toMap()
-                println("[LumeCard] loadCards called mode=$mode limit=$limit deckIds=$deckIds")
-                val allCards = mutableListOf<Card>()
-                for (deckId in deckIds) {
-                    val deckCards = cardRepository.getByDeck(deckId).first()
-                    println("[LumeCard] Found ${deckCards.size} cards for deck $deckId")
-                    allCards.addAll(deckCards)
+                val (allCards, states) = withContext(Dispatchers.IO) {
+                    val cards = cardRepository.getAll().first()
+                    val decks = deckRepository.getAll().first()
+                    val activeDecks = decks.filter { it.deletedAt == null }.map { it.id }.toSet()
+                    val eligible = if (activePlanIds.isEmpty()) null else {
+                        val selectedPlans = activePlanIds.mapNotNull { planRepository.getById(it) }
+                            .filter { it.deletedAt == null }
+                        val cardRefs = LearningPlanCardResolver.cardRefs(cards)
+                        val deckRefs = LearningPlanCardResolver.deckRefs(decks)
+                        selectedPlans.flatMap {
+                            LearningPlanCardResolver.cardIds(LearningPlanCardResolver.selection(it), cardRefs, deckRefs)
+                        }.toSet()
+                    }
+                    val selectedCards = cards.filter {
+                        it.deletedAt == null && it.deckId in activeDecks && it.deckId in activeDeckIds &&
+                            (eligible == null || it.id in eligible)
+                    }.distinctBy { it.id }
+                    selectedCards to selectedCards.associate { it.id to reviewService.stateForCard(it.id) }
                 }
-                _allCardsCache.value = allCards.toList()
-
+                if (generation != sessionGeneration) return@launch
+                _allCardsCache.value = allCards
+                val now = Clock.System.now()
                 val selected = when (mode) {
-                    CardsStudyMode.DUE_FIRST -> {
-                        val now = Clock.System.now()
-                        val dueCards = allCards.filter { card ->
-                            val next = card.nextReviewAt
-                            next == null || next <= now
-                        }
-                        if (dueCards.isEmpty() && allCards.isNotEmpty()) {
-                            println("[LumeCard] No due cards, using all cards")
-                            allCards
-                        } else {
-                            dueCards
-                        }
-                    }
-                    CardsStudyMode.DUE_ONLY -> {
-                        val now = Clock.System.now()
-                        allCards.filter { card ->
-                            val next = card.nextReviewAt
-                            next != null && next <= now
-                        }
-                    }
+                    CardsStudyMode.DUE_FIRST -> allCards.filter { it.nextReviewAt == null || it.nextReviewAt <= now }
+                        .ifEmpty { allCards }
+                    CardsStudyMode.DUE_ONLY -> allCards.filter { it.nextReviewAt != null && it.nextReviewAt <= now }
                     CardsStudyMode.ALL_CARDS -> allCards
-                    CardsStudyMode.NEW_CARDS -> {
-                        val unlearned = allCards.filter { it.lastReviewedAt == null }
-                        val count = unlearned.size.coerceAtMost(limit)
-                        if (count <= 0) allCards else unlearned.shuffled().take(count)
-                    }
-                    CardsStudyMode.RANDOM -> {
-                        val count = allCards.size.coerceAtMost(limit)
-                        if (count <= 0) allCards else allCards.shuffled().take(count)
-                    }
+                    CardsStudyMode.NEW_CARDS -> allCards.filter { it.lastReviewedAt == null }.shuffled().take(limit.coerceAtLeast(0))
+                    CardsStudyMode.RANDOM -> allCards.shuffled().take(limit.coerceAtLeast(0))
                 }
-                println("[LumeCard] Total: ${allCards.size}, studying: ${selected.size}")
-                val shuffled = selected.shuffled()
-                _cards.value = shuffled
-                shuffled.forEach { card ->
-                    if (!_algorithmStates.value.containsKey(card.id)) {
-                        val existingMode = algorithmStateRepository.getMode(card.id)
-                        val existing = algorithmStateRepository.get(card.id)
-                        // Reinitialize if mode doesn't match (user switched algorithms)
-                        val state = if (existing != null && existingMode == algorithm.mode.name) {
-                            deserializeState(existing)
-                        } else {
-                            algorithm.initCard()
-                        }
-                        _algorithmStates.update { it + (card.id to state) }
-                    }
-                }
-                shuffled.firstOrNull()?.let { _cardStartTimes[it.id] = Clock.System.now() }
-                println("[LumeCard] loadCards completed successfully, ${shuffled.size} cards ready")
+                _cards.value = selected.shuffled()
+                _algorithmStates.value = states.filterKeys { id -> selected.any { it.id == id } }
+                _currentCardIndex.value = 0
+                _completedCards.value = 0
+                _history.value = emptyList()
+                _isFlipped.value = false
+                cardStartTimes.clear()
+                _cards.value.firstOrNull()?.let { cardStartTimes[it.id] = Clock.System.now() }
+                _error.value = null
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 reportError(e, "loadCards")
             }
@@ -182,43 +127,42 @@ class StudyViewModel(
     }
 
     fun reloadWithMode(mode: CardsStudyMode, limit: Int = 20) {
-        _cards.value = emptyList()
-        _currentCardIndex.value = 0
-        _completedCards.value = 0
-        ratedCardIds.clear()
-        _isFlipped.value = false
-        _history.value = emptyList()
-        _hasStartedStudying = false
+        if (isRating) return
+        stopTimer()
+        _sessionStartTime.value = null
+        _elapsedSeconds.value = 0
         loadCards(activeDeckIds, activePlanIds, mode, limit)
     }
 
     fun refreshCurrentCard() {
-        val index = _currentCardIndex.value
-        val card = _cards.value.getOrNull(index) ?: return
+        if (isRating) return
+        val cardId = _cards.value.getOrNull(_currentCardIndex.value)?.id ?: return
+        val generation = sessionGeneration
         screenModelScope.launch {
             try {
-                val fresh = cardRepository.getById(card.id)
-                if (fresh != null) {
-                    val list = _cards.value.toMutableList()
-                    list[index] = fresh
-                    _cards.value = list
-                }
-            } catch (e: Exception) { println("[LumeCard] refreshCurrentCard failed: ${e.message}") }
+                val fresh = withContext(Dispatchers.IO) { cardRepository.getById(cardId) } ?: return@launch
+                if (generation != sessionGeneration) return@launch
+                val index = _cards.value.indexOfFirst { it.id == cardId }
+                if (index >= 0) _cards.value = _cards.value.toMutableList().also { it[index] = fresh }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) { reportError(e, "refreshCurrentCard") }
         }
     }
 
     private fun startTimerIfNeeded() {
-        if (_hasStartedStudying) return
-        _hasStartedStudying = true
-        _sessionStartTime.value = Clock.System.now()
-        _elapsedSeconds.value = 0
+        if (isTimerRunning) return
+        isTimerRunning = true
+        if (_sessionStartTime.value == null) {
+            _sessionStartTime.value = Clock.System.now()
+            _elapsedSeconds.value = 0
+        }
         quoteFeature.startStudy()
     }
 
     fun stopTimer() {
-        quoteFeature.stopStudy()
-        timerJob?.cancel()
-        timerJob = null
+        if (isTimerRunning) quoteFeature.stopStudy()
+        isTimerRunning = false
     }
 
     override fun onDispose() {
@@ -226,156 +170,62 @@ class StudyViewModel(
         super.onDispose()
     }
 
-    fun flipCard() {
-        _isFlipped.value = !_isFlipped.value
-    }
+    fun flipCard() { if (!isRating) _isFlipped.value = !_isFlipped.value }
 
     fun goBack() {
-        val hist = _history.value.toMutableList()
-        if (hist.isEmpty()) return
-        val (prevIndex, wasFlipped) = hist.removeLast()
-        _history.value = hist
-        _currentCardIndex.value = prevIndex
-        _isFlipped.value = wasFlipped
-        if (_completedCards.value > 0) _completedCards.value--
-        _cards.value.getOrNull(prevIndex)?.let { _cardStartTimes[it.id] = Clock.System.now() }
+        if (isRating) return
+        val last = _history.value.lastOrNull() ?: return
+        _history.value = _history.value.dropLast(1)
+        _currentCardIndex.value = last.first
+        _isFlipped.value = last.second
+        _completedCards.value = (_completedCards.value - 1).coerceAtLeast(0)
+        _cards.value.getOrNull(last.first)?.let { cardStartTimes[it.id] = Clock.System.now() }
     }
 
     fun rateCard(rating: Rating) {
-        val currentCard = _cards.value.getOrNull(_currentCardIndex.value) ?: return
-        val state = _algorithmStates.value[currentCard.id] ?: return
-
-        startTimerIfNeeded()
-
-        val daysElapsed = currentCard.lastReviewedAt?.let {
-            ((Clock.System.now().toEpochMilliseconds() - it.toEpochMilliseconds()) / 86400000).toInt().coerceAtLeast(0)
-        } ?: 0
-        val updatedState = algorithm.schedule(state, rating, daysElapsed)
-        _algorithmStates.update { it + (currentCard.id to updatedState) }
-
-        val now = Clock.System.now()
-        val startTime = _cardStartTimes.remove(currentCard.id) ?: now
-        val reviewTimeMs = ((now.toEpochMilliseconds() - startTime.toEpochMilliseconds()).coerceAtLeast(0)).toInt()
-
-        _history.update { it + (_currentCardIndex.value to _isFlipped.value) }
-
+        if (isRating) return
+        val index = _currentCardIndex.value
+        val card = _cards.value.getOrNull(index) ?: return
+        isRating = true // Set before launch: a second click cannot create a duplicate review.
+        val wasFlipped = _isFlipped.value
+        val generation = sessionGeneration
+        val startedAt = cardStartTimes[card.id] ?: Clock.System.now()
         screenModelScope.launch {
             try {
-                val reviewLog = ReviewLog(
-                    id = generateId("review"),
-                    cardId = currentCard.id,
-                    rating = rating.value,
-                    reviewTime = reviewTimeMs,
-                    interval = updatedState.intervalDays,
-                    easeFactor = updatedState.easeFactor,
-                    repetitions = updatedState.repetitions,
-                    lapseCount = updatedState.lapses,
-                    reviewedAt = now
-                )
-                rateMutex.withLock {
-                    reviewLogRepository.insert(reviewLog)
-
-                    val updatedCard = currentCard.copy(
-                        lastReviewedAt = now,
-                        nextReviewAt = updatedState.nextReviewAt,
-                        updatedAt = now
-                    )
-                    cardRepository.update(updatedCard)
-
-                    algorithmStateRepository.save(
-                        cardId = currentCard.id,
-                        mode = algorithm.mode.name,
-                        stateJson = serializeState(updatedState)
-                    )
-
-                    _isFlipped.value = false
-                    _completedCards.update { it + 1 }
-                    ratedCardIds.add(currentCard.id)
-                    updatePlanProgress()
-
-                    if (_currentCardIndex.value < _cards.value.size - 1) {
-                        _currentCardIndex.value++
-                        _cards.value.getOrNull(_currentCardIndex.value)?.let { _cardStartTimes[it.id] = Clock.System.now() }
-                    } else {
-                        _currentCardIndex.value = _cards.value.size
-                    }
+                val duration = (Clock.System.now().toEpochMilliseconds() - startedAt.toEpochMilliseconds())
+                    .coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
+                val result = withContext(Dispatchers.IO) {
+                    reviewService.review(card.id, rating, duration, generateId("review"))
                 }
+                if (generation != sessionGeneration) return@launch
+                _algorithmStates.value = _algorithmStates.value + (card.id to result.state)
+                _cards.value = _cards.value.toMutableList().also { list ->
+                    val position = list.indexOfFirst { it.id == card.id }
+                    if (position >= 0) list[position] = list[position].copy(
+                        lastReviewedAt = result.reviewedAt, nextReviewAt = result.state.nextReviewAt,
+                        updatedAt = result.reviewedAt
+                    )
+                }
+                cardStartTimes.remove(card.id)
+                _history.value = _history.value + (index to wasFlipped)
+                _completedCards.value++
+                _isFlipped.value = false
+                _currentCardIndex.value = index + 1
+                _cards.value.getOrNull(index + 1)?.let { cardStartTimes[it.id] = Clock.System.now() }
+                startTimerIfNeeded()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                reportError(e, "rateCard-persist")
+                reportError(e, "rateCard")
+            } finally {
+                isRating = false
             }
         }
     }
 
-    fun savePlanProgress() {
-        if (activePlanIds.isEmpty()) return
-        screenModelScope.launch {
-            try {
-                val allCards = cardRepository.getAll().first()
-                val allDecks = deckRepository.getAll().first()
-                for (planId in activePlanIds) {
-                    val plan = planRepository.getById(planId) ?: continue
-                    val planCardIds = plan.cardIds.toSet()
-                    val planDeckIds = plan.deckIds.toSet()
-                    val planKbIds = plan.knowledgeBaseIds.toSet()
-                    val ratedInPlan = ratedCardIds.count { cardId ->
-                        val card = allCards.find { it.id == cardId }
-                        card != null && card.deletedAt == null && (
-                            card.id in planCardIds ||
-                            card.deckId in planDeckIds ||
-                            allDecks.any { it.id == card.deckId && it.knowledgeBaseId in planKbIds }
-                        )
-                    }
-                    val baseline = planBaselineCompleted[planId] ?: plan.completedCards
-                    val newCompleted = (baseline + ratedInPlan).coerceAtMost(plan.totalCards)
-                    val newStatus = if (newCompleted >= plan.totalCards) {
-                        com.lumecard.shared.model.PlanStatus.COMPLETED
-                    } else if (newCompleted > 0) {
-                        com.lumecard.shared.model.PlanStatus.IN_PROGRESS
-                    } else {
-                        plan.status
-                    }
-                    planRepository.update(plan.copy(
-                        completedCards = newCompleted,
-                        status = newStatus,
-                        updatedAt = kotlin.time.Clock.System.now()
-                    ))
-                }
-            } catch (e: Exception) {
-                reportError(e, "savePlanProgress")
-            }
-        }
-    }
-
-    private fun updatePlanProgress() {
-        savePlanProgress()
-    }
-
-    private val json = Json { ignoreUnknownKeys = true }
-
-    private fun serializeState(state: AlgorithmState): String {
-        return json.encodeToString(AlgorithmState.serializer(), state)
-    }
-
-    private fun deserializeState(data: String): AlgorithmState {
-        return try {
-            json.decodeFromString(AlgorithmState.serializer(), data)
-        } catch (_: Exception) {
-            deserializeLegacyState(data)
-        }
-    }
-
-    private fun deserializeLegacyState(data: String): AlgorithmState {
-        val parts = data.split("|")
-        return AlgorithmState(
-            intervalDays = parts.getOrNull(0)?.toIntOrNull() ?: 0,
-            nextReviewAt = parts.getOrNull(1)?.let { try { kotlin.time.Instant.parse(it) } catch (_: Exception) { Clock.System.now() } } ?: Clock.System.now(),
-            repetitions = parts.getOrNull(2)?.toIntOrNull() ?: 0,
-            lapses = parts.getOrNull(3)?.toIntOrNull() ?: 0,
-            easeFactor = parts.getOrNull(4)?.toFloatOrNull() ?: 2.5f,
-            stage = parts.getOrNull(5)?.toIntOrNull() ?: 0,
-            stability = parts.getOrNull(6)?.toDoubleOrNull() ?: 0.0,
-            difficulty = parts.getOrNull(7)?.toDoubleOrNull() ?: 0.0
-        )
+    private fun reportError(e: Throwable, context: String) {
+        val msg = "[$context] ${e.message ?: e::class.simpleName}\n${e.stackTraceToString()}"
+        println("[LumeCard ERROR] $msg")
+        _error.value = msg
     }
 }
-

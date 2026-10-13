@@ -2,7 +2,7 @@ package com.lumecard.shared.data
 
 import com.lumecard.shared.database.LumeCardDatabase
 import com.lumecard.shared.AppVersion
-import com.lumecard.shared.domain.scheduler.AlgorithmState
+import com.lumecard.shared.domain.scheduler.AlgorithmStateCodec
 import com.lumecard.shared.domain.scheduler.ReviewMode
 import com.lumecard.shared.model.CardType
 import com.lumecard.shared.model.PlanStatus
@@ -18,8 +18,11 @@ class BackupRestoreService(private val database: LumeCardDatabase) {
 
     fun replaceSettings(settings: Map<String, String>) {
         database.transaction(noEnclosing = true) {
-            queries.selectAllSettings().executeAsList().forEach { queries.deleteSetting(it.key) }
-            settings.forEach { (key, value) -> queries.insertSetting(key, value) }
+            queries.selectAllSettings().executeAsList()
+                .filterNot { it.key.startsWith(PlanProgressKeys.PREFIX) }
+                .forEach { queries.deleteSetting(it.key) }
+            settings.filterKeys { !it.startsWith(PlanProgressKeys.PREFIX) }
+                .forEach { (key, value) -> queries.insertSetting(key, value) }
         }
     }
 
@@ -59,6 +62,7 @@ class BackupRestoreService(private val database: LumeCardDatabase) {
                     totalCards = it.total_cards.exportInt(), completedCards = it.completed_cards.exportInt(),
                     createdAt = it.created_at, updatedAt = it.updated_at, version = it.version,
                     deletedAt = it.deleted_at, syncedAt = it.synced_at,
+                    progressSince = settings[PlanProgressKeys.forPlan(it.id)],
                 )
             },
             algorithmStates = queries.selectAllAlgorithmStates().executeAsList().map {
@@ -81,6 +85,8 @@ class BackupRestoreService(private val database: LumeCardDatabase) {
         val decks = validateAndOrderDecks(data)
         val syncTime = syncedAt?.toString()
         database.transaction(noEnclosing = true) {
+            queries.selectAllSettings().executeAsList().filter { it.key.startsWith(PlanProgressKeys.PREFIX) }
+                .forEach { queries.deleteSetting(it.key) }
             queries.deleteAllCardFts()
             queries.deleteAllAlgorithmStates()
             queries.deleteAllReviewLogs()
@@ -132,6 +138,12 @@ class BackupRestoreService(private val database: LumeCardDatabase) {
                 json.encodeToString(it.knowledgeBaseIds), json.encodeToString(it.deckIds), json.encodeToString(it.cardIds),
                 it.totalCards.toLong(), it.completedCards.toLong(), it.createdAt, it.updatedAt, it.version,
                 it.deletedAt, syncTime ?: it.syncedAt)
+            it.progressSince?.let { boundary ->
+                val key = PlanProgressKeys.forPlan(it.id)
+                val local = if (merge) queries.selectSetting(key).executeAsOneOrNull()?.setting_value else null
+                val effective = if (local != null && Instant.parse(local) > Instant.parse(boundary)) local else boundary
+                queries.insertSetting(key, effective)
+            }
         }
         data.algorithmStates.orEmpty().forEach { queries.insertAlgorithmState(it.cardId, it.mode, it.stateJson) }
         // Preserve the existing whole-collection "higher version wins" quote policy.
@@ -184,12 +196,12 @@ class BackupRestoreService(private val database: LumeCardDatabase) {
         data.learningPlans.forEach {
             PlanStatus.valueOf(it.status)
             require(it.totalCards >= 0 && it.completedCards >= 0)
-            timestamps(it.createdAt, it.updatedAt, it.deletedAt, it.syncedAt)
+            timestamps(it.createdAt, it.updatedAt, it.deletedAt, it.syncedAt, it.progressSince)
         }
         data.algorithmStates.orEmpty().forEach {
             require(it.cardId in cardIds) { "Scheduling state references a missing card" }
             ReviewMode.valueOf(it.mode)
-            val state = json.decodeFromString<AlgorithmState>(it.stateJson)
+            val state = AlgorithmStateCodec.decode(it.stateJson)
             require(state.stability.isFinite() && state.difficulty.isFinite() && state.easeFactor.isFinite())
             require(state.intervalDays >= 0 && state.repetitions >= 0 && state.lapses >= 0 && state.stage >= 0)
         }

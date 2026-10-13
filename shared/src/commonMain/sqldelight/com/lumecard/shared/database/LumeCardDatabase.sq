@@ -205,6 +205,12 @@ ON CONFLICT(id) DO UPDATE SET name = excluded.name, description = excluded.descr
 updateCard:
 UPDATE Card SET deck_id = ?, type = ?, title = ?, front = ?, back = ?, tags = ?, media = ?, metadata = ?, updated_at = ?, last_reviewed_at = ?, next_review_at = ?, version = version + 1, synced_at = NULL WHERE id = ?;
 
+updateCardScheduling:
+UPDATE Card SET last_reviewed_at = ?, next_review_at = ?, updated_at = ?, version = version + 1, synced_at = NULL WHERE id = ? AND deleted_at IS NULL;
+
+updateLearningPlanProgress:
+UPDATE LearningPlan SET total_cards = ?, completed_cards = ?, status = ?, updated_at = ?, version = version + 1, synced_at = NULL WHERE id = ? AND deleted_at IS NULL;
+
 softDeleteCard:
 UPDATE Card SET deleted_at = ?, updated_at = ?, version = version + 1, synced_at = NULL WHERE id = ?;
 

@@ -200,7 +200,6 @@ class StudyScreen(
 
         DisposableEffect(Unit) {
             onDispose {
-                viewModel.savePlanProgress()
                 viewModel.stopTimer()
             }
         }

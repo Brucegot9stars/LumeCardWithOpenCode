@@ -166,7 +166,8 @@ data class ExportLearningPlan(
     val updatedAt: String,
     val version: Long = 1,
     val deletedAt: String? = null,
-    val syncedAt: String? = null
+    val syncedAt: String? = null,
+    val progressSince: String? = null,
 )
 
 /** Splash quotes bundled in data.json sync (whole-collection version for conflict resolution). */
@@ -302,7 +303,7 @@ class ExportManager {
         settings: Map<String, String>,
         deviceId: String? = null
     ): String {
-        val cleaned = settings.filterKeys { it !in DEPRECATED_SETTINGS_KEYS }
+        val cleaned = settings.filterKeys { it !in DEPRECATED_SETTINGS_KEYS && !it.startsWith(PlanProgressKeys.PREFIX) }
         val export = ConfigExport(
             exportDate = Clock.System.now().toString(),
             deviceId = deviceId,

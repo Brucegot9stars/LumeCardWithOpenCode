@@ -2,6 +2,8 @@ package com.lumecard.app.ui.screens.learningplan
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import com.lumecard.shared.data.LearningPlanCardResolver
+import com.lumecard.shared.data.ReviewService
 import com.lumecard.shared.model.*
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
@@ -12,7 +14,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.time.Clock
 import com.lumecard.shared.data.generateId
 
@@ -20,7 +26,8 @@ class LearningPlanViewModel(
     private val planRepository: LearningPlanRepository,
     private val knowledgeBaseRepository: KnowledgeBaseRepository,
     private val deckRepository: DeckRepository,
-    private val cardRepository: CardRepository
+    private val cardRepository: CardRepository,
+    private val reviewService: ReviewService,
 ) : ScreenModel {
 
     private val _plans = MutableStateFlow<List<LearningPlan>>(emptyList())
@@ -37,6 +44,8 @@ class LearningPlanViewModel(
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    private var plansJob: Job? = null
+    private var selectionJob: Job? = null
 
     init {
         loadPlans()
@@ -44,7 +53,8 @@ class LearningPlanViewModel(
     }
 
     fun loadSelectionData() {
-        screenModelScope.launch {
+        if (selectionJob?.isActive == true) return
+        selectionJob = screenModelScope.launch {
             combine(
                 knowledgeBaseRepository.getAll(),
                 deckRepository.getAll(),
@@ -58,28 +68,24 @@ class LearningPlanViewModel(
     }
 
     suspend fun getPlanById(id: String): com.lumecard.shared.model.LearningPlan? {
-        return try { planRepository.getById(id) } catch (_: Exception) { null }
+        return planRepository.getById(id)
     }
 
     fun loadPlans() {
-        screenModelScope.launch {
+        if (plansJob?.isActive == true) return
+        plansJob = screenModelScope.launch {
             _isLoading.value = true
-            combine(planRepository.getAll(), cardRepository.getAll()) { plans, _ -> plans }.collect { list ->
-                val updated = list.map { plan ->
-                    val cards = getCardsForPlan(plan)
-                    val newTotal = cards.size
-                    val newCompleted = cards.count { it.lastReviewedAt != null }
-                    if (newTotal != plan.totalCards || newCompleted != plan.completedCards) {
-                        val fixed = plan.copy(
-                            totalCards = newTotal,
-                            completedCards = newCompleted.coerceAtMost(newTotal),
-                            updatedAt = kotlin.time.Clock.System.now()
-                        )
-                        planRepository.update(fixed)
-                        fixed
-                    } else plan
+            combine(planRepository.getAll(), cardRepository.getAll(), deckRepository.getAll()) { plans, cards, decks ->
+                Triple(plans, cards, decks)
+            }.collect { (list, cards, decks) ->
+                val cardRefs = LearningPlanCardResolver.cardRefs(cards)
+                val deckRefs = LearningPlanCardResolver.deckRefs(decks)
+                _plans.value = list.map { plan ->
+                    val total = LearningPlanCardResolver.cardIds(
+                        LearningPlanCardResolver.selection(plan), cardRefs, deckRefs
+                    ).size
+                    plan.copy(totalCards = total, completedCards = plan.completedCards.coerceAtMost(total))
                 }
-                _plans.value = updated
                 _isLoading.value = false
             }
         }
@@ -144,6 +150,7 @@ class LearningPlanViewModel(
             clearDefaultPlan()
         }
         planRepository.update(updated)
+        withContext(Dispatchers.IO) { reviewService.reconcilePlan(id) }
     }
 
     suspend fun deletePlan(id: String) {
@@ -156,8 +163,8 @@ class LearningPlanViewModel(
     }
 
     suspend fun setDefault(id: String) {
-        clearDefaultPlan()
         val plan = planRepository.getById(id) ?: return
+        clearDefaultPlan()
         planRepository.update(plan.copy(isDefault = true, updatedAt = Clock.System.now()))
     }
 
@@ -167,12 +174,7 @@ class LearningPlanViewModel(
     }
 
     suspend fun resetProgress(id: String) {
-        val plan = planRepository.getById(id) ?: return
-        planRepository.update(plan.copy(
-            status = PlanStatus.NOT_STARTED,
-            completedCards = 0,
-            updatedAt = Clock.System.now()
-        ))
+        withContext(Dispatchers.IO) { reviewService.resetPlanProgress(id) }
     }
 
     suspend fun startPlan(id: String) {
@@ -196,36 +198,21 @@ class LearningPlanViewModel(
 
     suspend fun getCardsForPlan(plan: LearningPlan): List<Card> {
         val allCards = cardRepository.getAll().first()
-        val planCardIds = plan.cardIds.toSet()
-        val planDeckIds = plan.deckIds.toSet()
-        val planKbIds = plan.knowledgeBaseIds.toSet()
-
-        return allCards.filter { card ->
-            card.deletedAt == null && (
-                card.id in planCardIds ||
-                card.deckId in planDeckIds ||
-                run {
-                    val deck = deckRepository.getById(card.deckId)
-                    deck != null && deck.knowledgeBaseId in planKbIds
-                }
-            )
-        }
+        val allDecks = deckRepository.getAll().first()
+        val ids = LearningPlanCardResolver.cardIds(LearningPlanCardResolver.selection(plan),
+            LearningPlanCardResolver.cardRefs(allCards), LearningPlanCardResolver.deckRefs(allDecks))
+        return allCards.filter { it.id in ids }
     }
 
     suspend fun getDeckIdsForPlan(plan: LearningPlan): List<String> {
-        if (plan.deckIds.isNotEmpty()) return plan.deckIds
+        val allCards = cardRepository.getAll().first()
         val allDecks = deckRepository.getAll().first()
-        return allDecks.filter { it.deletedAt == null && it.knowledgeBaseId in plan.knowledgeBaseIds }.map { it.id }
+        return LearningPlanCardResolver.deckIds(LearningPlanCardResolver.selection(plan),
+            LearningPlanCardResolver.cardRefs(allCards), LearningPlanCardResolver.deckRefs(allDecks)).toList()
     }
 
     suspend fun getDeckCountForPlan(plan: LearningPlan): Int {
-        val allDecks = deckRepository.getAll().first()
-        return allDecks.count { deck ->
-            deck.deletedAt == null && (
-                deck.id in plan.deckIds ||
-                deck.knowledgeBaseId in plan.knowledgeBaseIds
-            )
-        }
+        return getDeckIdsForPlan(plan).size
     }
 
     suspend fun getDueCardCountForPlan(plan: LearningPlan): Int {
@@ -242,16 +229,9 @@ class LearningPlanViewModel(
     private suspend fun resolveCardIds(kbIds: List<String>, deckIds: List<String>, cardIds: List<String>): Set<String> {
         val allCards = cardRepository.getAll().first()
         val allDecks = deckRepository.getAll().first()
-        val result = mutableSetOf<String>()
-        result.addAll(cardIds)
-        for (deckId in deckIds) {
-            result.addAll(allCards.filter { it.deckId == deckId && it.deletedAt == null }.map { it.id })
-        }
-        for (kbId in kbIds) {
-            val kbDeckIds = allDecks.filter { it.knowledgeBaseId == kbId && it.deletedAt == null }.map { it.id }.toSet()
-            result.addAll(allCards.filter { it.deckId in kbDeckIds && it.deletedAt == null }.map { it.id })
-        }
-        return result
+        return LearningPlanCardResolver.cardIds(
+            com.lumecard.shared.data.PlanSelection(kbIds, deckIds, cardIds),
+            LearningPlanCardResolver.cardRefs(allCards), LearningPlanCardResolver.deckRefs(allDecks))
     }
 
     private suspend fun clearDefaultPlan() {

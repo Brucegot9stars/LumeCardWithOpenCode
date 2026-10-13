@@ -2,6 +2,7 @@ package com.lumecard.shared.di
 
 import com.lumecard.shared.data.AiCardGenerator
 import com.lumecard.shared.data.BackupRestoreService
+import com.lumecard.shared.data.ReviewService
 import com.lumecard.shared.data.AiCardPromptManager
 import com.lumecard.shared.data.DemoDataManager
 import com.lumecard.shared.help.HelpRepository
@@ -63,6 +64,7 @@ val sharedModule = module {
     single { AiCardGenerator(get(), get(), get(), get(), get(), get()) }
     single { SplashQuoteManager(get()) }
     single { BackupRestoreService(get()) }
+    single { ReviewService(get(), get()) }
 
     // Demo data
     single { DemoDataManager(get(), get(), get(), get()) }
@@ -94,17 +96,4 @@ val sharedModule = module {
     // Algorithm implementations
     single { FSRSAlgorithm() }
 
-    factory<ReviewAlgorithm> {
-        val settings = get<SettingsRepository>()
-        val modeStr = kotlinx.coroutines.runBlocking {
-            settings.get("reviewMode") ?: ReviewMode.FSRS.name
-        }
-        val mode = try { ReviewMode.valueOf(modeStr) } catch (_: Exception) { ReviewMode.FSRS }
-        when (mode) {
-            ReviewMode.FSRS -> FSRSAlgorithmAdapter(get())
-            ReviewMode.SM2 -> SM2Algorithm()
-            ReviewMode.LEITNER -> LeitnerAlgorithm()
-            ReviewMode.SIMPLE -> SimpleAlgorithm()
-        }
-    }
 }

@@ -54,13 +54,25 @@ class StudyModeScreen(
         val scope = rememberCoroutineScope()
         val decks by deckViewModel.decks.collectAsState()
         val deckCardCounts by deckViewModel.deckCardCounts.collectAsState()
+        val plans by planViewModel.plans.collectAsState()
+        val planCards by planViewModel.cards.collectAsState()
+        val planDecks by planViewModel.decks.collectAsState()
 
         val snackbarHostState = remember { SnackbarHostState() }
         var selectedMode by remember { mutableStateOf(StudyMode.MIXED) }
         var selectedDeckIds by remember { mutableStateOf(setOf<String>()) }
         var errorMsg by remember { mutableStateOf<String?>(null) }
 
-        val studyableDecks = decks.filter { (deckCardCounts[it.id] ?: 0) > 0 }
+        val visibleDeckCounts = if (planIds.isEmpty()) deckCardCounts else {
+            val cardRefs = com.lumecard.shared.data.LearningPlanCardResolver.cardRefs(planCards)
+            val deckRefs = com.lumecard.shared.data.LearningPlanCardResolver.deckRefs(planDecks)
+            val eligibleIds = plans.filter { it.id in planIds }.flatMap {
+                com.lumecard.shared.data.LearningPlanCardResolver.cardIds(
+                    com.lumecard.shared.data.LearningPlanCardResolver.selection(it), cardRefs, deckRefs)
+            }.toSet()
+            planCards.filter { it.id in eligibleIds }.groupingBy { it.deckId }.eachCount()
+        }
+        val studyableDecks = decks.filter { (visibleDeckCounts[it.id] ?: 0) > 0 }
 
         LaunchedEffect(Unit) {
             try {
@@ -74,7 +86,7 @@ class StudyModeScreen(
 
         LaunchedEffect(decks, planIds, preSelectedDeckIds) {
             if (planIds.isNotEmpty() && preSelectedDeckIds.isNotEmpty() && decks.isNotEmpty()) {
-                val validIds = preSelectedDeckIds.filter { id -> decks.any { it.id == id } }
+                val validIds = preSelectedDeckIds.filter { id -> studyableDecks.any { it.id == id } }
                 if (validIds.isNotEmpty()) {
                     selectedDeckIds = validIds.toSet()
                     selectedMode = if (validIds.size == 1) StudyMode.SINGLE else StudyMode.MULTI
@@ -134,12 +146,12 @@ class StudyModeScreen(
             bottomBar = {
                 val enabled = when (selectedMode) {
                     StudyMode.MIXED -> studyableDecks.isNotEmpty()
-                    StudyMode.SINGLE -> selectedDeckIds.size == 1
-                    StudyMode.MULTI -> selectedDeckIds.isNotEmpty()
+                    StudyMode.SINGLE -> selectedDeckIds.size == 1 && selectedDeckIds.all { id -> studyableDecks.any { it.id == id } }
+                    StudyMode.MULTI -> selectedDeckIds.isNotEmpty() && selectedDeckIds.all { id -> studyableDecks.any { it.id == id } }
                 }
                 val totalCards = when (selectedMode) {
-                    StudyMode.MIXED -> studyableDecks.sumOf { deckCardCounts[it.id] ?: 0 }
-                    StudyMode.SINGLE, StudyMode.MULTI -> selectedDeckIds.sumOf { deckCardCounts[it] ?: 0 }
+                    StudyMode.MIXED -> studyableDecks.sumOf { visibleDeckCounts[it.id] ?: 0 }
+                    StudyMode.SINGLE, StudyMode.MULTI -> selectedDeckIds.sumOf { visibleDeckCounts[it] ?: 0 }
                 }
                 Surface(
                     tonalElevation = 3.dp
@@ -220,20 +232,6 @@ class StudyModeScreen(
                                             )
                                             listOf(plan.id)
                                         } else planIds
-                                        if (resolvedPlanIds.isNotEmpty() && selectedMode != StudyMode.MIXED) {
-                                            val plan = planViewModel.getPlanById(resolvedPlanIds.first())
-                                            if (plan != null) {
-                                                planViewModel.updatePlan(
-                                                    id = plan.id,
-                                                    name = plan.name,
-                                                    description = plan.description,
-                                                    knowledgeBaseIds = plan.knowledgeBaseIds,
-                                                    deckIds = deckIds,
-                                                    cardIds = plan.cardIds,
-                                                    isDefault = plan.isDefault
-                                                )
-                                            }
-                                        }
                                         navigator.push(StudyScreen(deckIds, name, planIds = resolvedPlanIds))
                                     } catch (e: Exception) {
                                         println("[LumeCard ERROR] StudyModeScreen navigate: ${e.message}")
@@ -271,7 +269,7 @@ class StudyModeScreen(
 
                 items(StudyMode.entries, key = { it.name }) { mode ->
                     val count = when (mode) {
-                        StudyMode.MIXED -> studyableDecks.sumOf { deckCardCounts[it.id] ?: 0 }
+                        StudyMode.MIXED -> studyableDecks.sumOf { visibleDeckCounts[it.id] ?: 0 }
                         StudyMode.SINGLE, StudyMode.MULTI -> 0
                     }
                     Card(
@@ -366,7 +364,7 @@ class StudyModeScreen(
                         }
                     } else {
                         items(studyableDecks, key = { it.id }) { deck ->
-                            val cardCount = deckCardCounts[deck.id] ?: 0
+                            val cardCount = visibleDeckCounts[deck.id] ?: 0
                             val isSelected = deck.id in selectedDeckIds
                             val canSelect = if (selectedMode == StudyMode.SINGLE) !isSelected || selectedDeckIds.size <= 1 else true
 

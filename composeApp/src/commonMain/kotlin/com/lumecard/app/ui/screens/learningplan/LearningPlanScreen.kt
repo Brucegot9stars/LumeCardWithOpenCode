@@ -81,24 +81,14 @@ class LearningPlanScreen(
         val cardsByDeck: Map<String, List<Card>> = remember(cards) {
             cards.groupBy { it.deckId }
         }
-        val selectedCardCount = remember(
-            selectedKbIds, selectedDeckIds, selectedCardIds, decksByKb, cardsByDeck
-        ) {
-            var count = 0
-            for (kbId in selectedKbIds) {
-                count += (decksByKb[kbId] ?: emptyList()).sumOf { deck ->
-                    (cardsByDeck[deck.id] ?: emptyList()).size
-                }
-            }
-            for (deckId in selectedDeckIds) {
-                val coveredByKb = selectedKbIds.any { kbId ->
-                    (decksByKb[kbId] ?: emptyList()).any { it.id == deckId }
-                }
-                if (!coveredByKb) {
-                    count += (cardsByDeck[deckId] ?: emptyList()).size
-                }
-            }
-            count + selectedCardIds.size
+        val selectedCardCount = remember(selectedKbIds, selectedDeckIds, selectedCardIds, decks, cards) {
+            com.lumecard.shared.data.LearningPlanCardResolver.cardIds(
+                com.lumecard.shared.data.PlanSelection(
+                    selectedKbIds.toList(), selectedDeckIds.toList(), selectedCardIds.toList()
+                ),
+                com.lumecard.shared.data.LearningPlanCardResolver.cardRefs(cards),
+                com.lumecard.shared.data.LearningPlanCardResolver.deckRefs(decks)
+            ).size
         }
 
         val canSave = name.isNotBlank()
