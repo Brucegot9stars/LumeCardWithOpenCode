@@ -53,6 +53,30 @@ actual fun hashFileSha1(absPath: String): String {
     return File(absPath).sha1()
 }
 
+actual fun hashBytesSha1(bytes: ByteArray): String =
+    MessageDigest.getInstance("SHA-1").digest(bytes).joinToString("") { "%02x".format(it) }
+
+actual fun resolveMediaFilePath(basePath: String, relativePath: String): String {
+    val root = File(basePath).canonicalFile.toPath()
+    val target = File(basePath, relativePath).canonicalFile.toPath()
+    require(target.startsWith(root) && target != root) { "Media path escapes its root" }
+    return target.toString()
+}
+
+actual fun writeMediaFileAtomically(path: String, bytes: ByteArray) {
+    val target = File(path).toPath()
+    java.nio.file.Files.createDirectories(target.parent)
+    val temporary = java.nio.file.Files.createTempFile(target.parent, ".lumecard-media-", ".tmp")
+    try {
+        java.nio.file.Files.write(temporary, bytes)
+        try {
+            java.nio.file.Files.move(temporary, target, java.nio.file.StandardCopyOption.ATOMIC_MOVE, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
+            java.nio.file.Files.move(temporary, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        }
+    } finally { java.nio.file.Files.deleteIfExists(temporary) }
+}
+
 actual fun createZipPackage(outputPath: String, entries: List<ZipEntry>) {
     ZipOutputStream(FileOutputStream(outputPath)).use { zos ->
         for (entry in entries) {

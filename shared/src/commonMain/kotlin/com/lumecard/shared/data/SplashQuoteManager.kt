@@ -12,9 +12,9 @@ class SplashQuoteManager(
 ) {
     companion object {
         private const val QUOTES_RESOURCE = "/config/quotes.json"
-        private const val KEY_USER_QUOTES = "splash_quote_user_quotes"
-        private const val KEY_HIDDEN_DEFAULTS = "splash_quote_hidden_defaults"
-        private const val KEY_QUOTES_VERSION = "splash_quotes_version"
+        internal const val KEY_USER_QUOTES = "splash_quote_user_quotes"
+        internal const val KEY_HIDDEN_DEFAULTS = "splash_quote_hidden_defaults"
+        internal const val KEY_QUOTES_VERSION = "splash_quotes_version"
 
         private const val KEY_ENABLED = "splash_quote_enabled"
         private const val KEY_DURATION = "splash_quote_duration"

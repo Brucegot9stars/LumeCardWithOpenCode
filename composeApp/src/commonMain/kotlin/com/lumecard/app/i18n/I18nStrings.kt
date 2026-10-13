@@ -353,6 +353,7 @@ interface I18nStrings {
     val syncRestoreCloudConfirm3: String
     val syncRestoreCloudInputHint: String
     val syncRestoreCloudDone: String
+    val syncLegacyStateWarning: String
     val syncRestoreLocalHistory: String
     val syncRestoreRemoteHistory: String
     val settingsBackupLimits: String

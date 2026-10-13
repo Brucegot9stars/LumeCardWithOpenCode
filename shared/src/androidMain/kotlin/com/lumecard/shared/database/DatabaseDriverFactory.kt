@@ -2,6 +2,7 @@ package com.lumecard.shared.database
 
 import android.content.Context
 import android.util.Log
+import androidx.sqlite.db.SupportSQLiteDatabase
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 
@@ -14,13 +15,26 @@ actual class DatabaseDriverFactory {
         val driver = AndroidSqliteDriver(
             schema = LumeCardDatabase.Schema,
             context = AndroidContextHolder.context,
-            name = "lumecard.db"
+            name = "lumecard.db",
+            callback = object : AndroidSqliteDriver.Callback(LumeCardDatabase.Schema) {
+                override fun onConfigure(db: SupportSQLiteDatabase) {
+                    db.setForeignKeyConstraintsEnabled(true)
+                }
+            },
         )
-        DatabaseDriverHolder.driver = driver
-        driver.execute(null, "PRAGMA foreign_keys = ON", 0, null)
-        upgradeToFts5(driver)
-        ensureMediaCacheTable(driver)
-        return driver
+        try {
+            upgradeToFts5(driver)
+            ensureMediaCacheTable(driver)
+            DatabaseDriverHolder.driver = driver
+            return driver
+        } catch (failure: Throwable) {
+            try {
+                driver.close()
+            } catch (closeFailure: Throwable) {
+                failure.addSuppressed(closeFailure)
+            }
+            throw failure
+        }
     }
 }
 

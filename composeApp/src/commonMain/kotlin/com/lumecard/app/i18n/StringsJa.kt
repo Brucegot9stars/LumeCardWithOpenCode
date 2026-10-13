@@ -333,6 +333,7 @@ object JaStrings : I18nStrings {
     override val syncRestoreCloudConfirm3 = "最終確認：続行するには「確認」と入力してください"
     override val syncRestoreCloudInputHint = "「確認」と入力してください"
     override val syncRestoreCloudDone = "クラウドデータを復元しました"
+    override val syncLegacyStateWarning = "旧形式のバックアップには復習アルゴリズムの状態がないため、復習の進捗を完全には復元できません。"
     override val syncRestoreLocalHistory = "ローカル履歴"
     override val syncRestoreRemoteHistory = "クラウド履歴"
     override val settingsBackupLimits = "バックアップ上限"

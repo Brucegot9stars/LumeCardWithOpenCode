@@ -333,6 +333,7 @@ object EsStrings : I18nStrings {
     override val syncRestoreCloudConfirm3 = "Confirmación final: Escriba 'confirmar' para proceder"
     override val syncRestoreCloudInputHint = "Escriba 'confirmar'"
     override val syncRestoreCloudDone = "Datos de la nube restaurados"
+    override val syncLegacyStateWarning = "Esta copia antigua no incluye el estado de repaso; el progreso no se puede restaurar por completo."
     override val syncRestoreLocalHistory = "Historial local"
     override val syncRestoreRemoteHistory = "Historial en la nube"
     override val settingsBackupLimits = "Límites de copia de seguridad"

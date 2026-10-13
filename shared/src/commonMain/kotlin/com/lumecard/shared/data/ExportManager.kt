@@ -24,7 +24,13 @@ data class DataExport(
     val reviewLogs: List<ExportReviewLog> = emptyList(),
     val learningPlans: List<ExportLearningPlan> = emptyList(),
     val splashQuotes: ExportSplashQuotes? = null,
+    // null identifies legacy/content-only exports that do not contain scheduling state.
+    val algorithmStates: List<ExportAlgorithmState>? = null,
+    val backupFormatVersion: Int = 1,
 )
+
+@Serializable
+data class ExportAlgorithmState(val cardId: String, val mode: String, val stateJson: String)
 
 /** Share-friendly: only knowledge-base content. No private learning plans or progress. */
 @Serializable
@@ -240,7 +246,8 @@ class ExportManager {
         reviewLogs: List<ReviewLog> = emptyList(),
         learningPlans: List<LearningPlan> = emptyList(),
         splashQuotes: ExportSplashQuotes? = null,
-        deviceId: String? = null
+        deviceId: String? = null,
+        algorithmStates: List<ExportAlgorithmState>? = null,
     ): String {
         val export = DataExport(
             exportDate = Clock.System.now().toString(),
@@ -251,8 +258,18 @@ class ExportManager {
             reviewLogs = exportReviewLogs(reviewLogs),
             learningPlans = exportPlans(learningPlans),
             splashQuotes = splashQuotes,
+            algorithmStates = algorithmStates,
+            backupFormatVersion = if (algorithmStates == null) 1 else 2,
         )
-        return json.encodeToString(DataExport.serializer(), export)
+        return encodeBackup(export)
+    }
+
+    fun encodeBackup(export: DataExport): String = json.encodeToString(DataExport.serializer(), export)
+
+    /** Destructive restore must never interpret a share/delta as a complete backup. */
+    fun importBackup(jsonString: String): DataExport? = importData(jsonString)?.takeIf {
+        it.exportType == "backup" && it.backupFormatVersion in 1..2 &&
+            (it.backupFormatVersion == 1 || it.algorithmStates != null)
     }
 
     /** Export knowledge base content only — no private learning plans or review logs. */
@@ -301,42 +318,16 @@ class ExportManager {
         )
     }
 
-    /** Full backup import. Also accepts share-format files (converts to DataExport). */
+    /** Content imports accept share files, but preserve their type for restore safety. */
     fun importData(jsonString: String): DataExport? {
-        val direct = try {
+        return try {
             val export = json.decodeFromString(DataExport.serializer(), jsonString)
+            if (export.exportType !in setOf("backup", "share") || export.backupFormatVersion !in 1..2) return null
             when (export.schemaVersion) {
-                AppVersion.SCHEMA_VERSION -> export
                 1 -> migrateV1DataToV2(export)
-                else -> export
+                AppVersion.SCHEMA_VERSION -> export
+                else -> null
             }
-        } catch (_: Exception) { null }
-        if (direct != null) return direct
-
-        return try {
-            val share = json.decodeFromString(ShareExport.serializer(), jsonString)
-            DataExport(
-                exportType = "backup",
-                exportDate = share.exportDate,
-                deviceId = share.deviceId,
-                knowledgeBases = share.knowledgeBases,
-                decks = share.decks,
-                cards = share.cards
-            )
-        } catch (_: Exception) { null }
-
-        return try {
-            val inc = json.decodeFromString(IncrementalExport.serializer(), jsonString)
-            DataExport(
-                exportType = "backup",
-                exportDate = inc.exportDate,
-                deviceId = inc.deviceId,
-                knowledgeBases = inc.knowledgeBases,
-                decks = inc.decks,
-                cards = inc.cards,
-                reviewLogs = inc.reviewLogs,
-                learningPlans = inc.learningPlans
-            )
         } catch (_: Exception) { null }
     }
 
@@ -378,7 +369,7 @@ class ExportManager {
             id = "default", name = "Default", description = null,
             createdAt = v1Export.exportDate, updatedAt = v1Export.exportDate, version = 1
         )
-        val kbs = v1Export.knowledgeBases.ifEmpty { listOf(defaultKb) }
+        val kbs = v1Export.knowledgeBases.ifEmpty { if (migratedDecks.isEmpty()) emptyList() else listOf(defaultKb) }
         return v1Export.copy(
             schemaVersion = AppVersion.SCHEMA_VERSION,
             version = AppVersion.EXPORT_VERSION,

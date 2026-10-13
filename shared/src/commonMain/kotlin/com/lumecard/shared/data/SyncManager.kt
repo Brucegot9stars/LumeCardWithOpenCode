@@ -6,6 +6,7 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.utils.io.core.readBytes
 import kotlin.time.Clock
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 
@@ -68,7 +69,9 @@ class SyncManager(
                 basicAuth(config.username, config.password)
             }
             if (response.status == HttpStatusCode.OK) Result.success(response.bodyAsText())
-            else Result.failure(SyncException("No data found"))
+            else Result.failure(SyncException("Download data failed: ${response.status}", response.status.value))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -97,7 +100,9 @@ class SyncManager(
                 basicAuth(config.username, config.password)
             }
             if (response.status == HttpStatusCode.OK) Result.success(response.bodyAsText())
-            else Result.failure(SyncException("No config found"))
+            else Result.failure(SyncException("Download config failed: ${response.status}", response.status.value))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -139,7 +144,9 @@ class SyncManager(
                 basicAuth(config.username, config.password)
             }
             if (response.status == HttpStatusCode.OK) Result.success(response.bodyAsText())
-            else Result.failure(SyncException("No manifest found"))
+            else Result.failure(SyncException("Download manifest failed: ${response.status}", response.status.value))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -147,9 +154,13 @@ class SyncManager(
 
     suspend fun uploadMedia(config: WebDavConfig, relativePath: String, data: ByteArray): Result<Unit> {
         return try {
-            val dir = MEDIA_DIR + "/" + relativePath.substringBeforeLast("/")
-            ensureDir(config.url, config.username, config.password, dir)
-            val url = config.url.trimEnd('/') + "/" + MEDIA_DIR + "/" + relativePath
+            validateMediaPath(relativePath)
+            val segments = MEDIA_DIR.split('/') + relativePath.split('/')
+            for (index in 1 until segments.size) {
+                val dir = segments.take(index).joinToString("/") { it.encodeURLPathPart() }
+                ensureDir(config.url, config.username, config.password, dir)
+            }
+            val url = mediaFileUrl(config, relativePath)
             val response = client.put(url) {
                 basicAuth(config.username, config.password)
                 contentType(ContentType.Application.OctetStream)
@@ -157,6 +168,8 @@ class SyncManager(
             }
             if (response.status.isSuccess()) Result.success(Unit)
             else Result.failure(SyncException("Upload media failed: ${response.status}"))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -164,7 +177,8 @@ class SyncManager(
 
     suspend fun downloadMedia(config: WebDavConfig, relativePath: String): Result<ByteArray> {
         return try {
-            val url = config.url.trimEnd('/') + "/" + MEDIA_DIR + "/" + relativePath
+            validateMediaPath(relativePath)
+            val url = mediaFileUrl(config, relativePath)
             val response = client.get(url) {
                 basicAuth(config.username, config.password)
             }
@@ -174,10 +188,16 @@ class SyncManager(
             } else {
                 Result.failure(SyncException("Media not found: $relativePath"))
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
+
+    private fun mediaFileUrl(config: WebDavConfig, relativePath: String): String = URLBuilder(config.url.trimEnd('/')).apply {
+        appendPathSegments(*(MEDIA_DIR.split('/') + relativePath.split('/')).toTypedArray())
+    }.buildString()
 
     private fun fontFileUrl(config: WebDavConfig, fileName: String): String {
         val segments = FONTS_DIR.split("/") + fileName
@@ -406,7 +426,14 @@ class SyncManager(
 
 }
 
-class SyncException(message: String) : Exception(message)
+class SyncException(message: String, val statusCode: Int? = null) : Exception(message)
+
+/** Only a confirmed HTTP 404 means absent; auth/network/server failures must abort overwrites. */
+fun <T> Result<T>.getOrNullIfNotFound(): T? {
+    val failure = exceptionOrNull()
+    if (failure is SyncException && failure.statusCode == 404) return null
+    return getOrThrow()
+}
 
 fun ExportKnowledgeBase.toKnowledgeBase() = com.lumecard.shared.model.KnowledgeBase(
     id = id, name = name, description = description, icon = icon,

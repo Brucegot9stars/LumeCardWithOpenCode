@@ -21,6 +21,13 @@ expect fun scanMediaDirectoryRaw(basePath: String): List<RawFileEntry>
 
 /** Compute SHA-1 hash of a file (faster than SHA-256, sufficient for dedup). */
 expect fun hashFileSha1(absPath: String): String
+expect fun hashBytesSha1(bytes: ByteArray): String
+
+/** Resolve beneath the media root, also rejecting escape through local symlinks. */
+expect fun resolveMediaFilePath(basePath: String, relativePath: String): String
+
+/** Replace a downloaded file only after its contents have been fully written. */
+expect fun writeMediaFileAtomically(path: String, bytes: ByteArray)
 
 expect fun createZipPackage(outputPath: String, entries: List<ZipEntry>)
 

@@ -10,8 +10,7 @@ expect class DatabaseDriverFactory {
 expect fun upgradeToFts5(driver: SqlDriver)
 
 /**
- * Holds a reference to the active SqlDriver so that raw PRAGMA statements
- * can be executed (e.g. PRAGMA foreign_keys = OFF during force-download).
+ * Holds a reference to the successfully initialized SqlDriver for diagnostics.
  * Set by [DatabaseDriverFactory.createDriver] on each platform.
  */
 object DatabaseDriverHolder {

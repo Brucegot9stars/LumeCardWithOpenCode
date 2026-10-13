@@ -45,6 +45,8 @@ class MediaManager(
         cacheRepository.set(path, mtime, sha1)
     }
 
+    suspend fun invalidateCache(path: String) = cacheRepository.remove(path)
+
     /** Mark files as synced in cache. */
     suspend fun markCachedSynced(paths: List<String>, syncedAt: Instant) {
         paths.forEach { cacheRepository.set(it, 0L, "", syncedAt) }

@@ -53,6 +53,11 @@ kotlin {
                 implementation(kotlin("test"))
             }
         }
+        val desktopTest by getting {
+            dependencies {
+                implementation("io.ktor:ktor-client-mock:${Versions.ktor}")
+            }
+        }
     }
 }
 

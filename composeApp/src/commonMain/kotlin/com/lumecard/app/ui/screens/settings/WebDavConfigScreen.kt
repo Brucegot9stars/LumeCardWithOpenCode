@@ -23,10 +23,12 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.i18n.AppLocale
-import com.lumecard.app.platform.MediaFileEntry
 import com.lumecard.app.platform.hashFileSha1
+import com.lumecard.app.platform.hashBytesSha1
+import com.lumecard.app.platform.getMediaBasePath
+import com.lumecard.app.platform.resolveMediaFilePath
+import com.lumecard.app.platform.writeMediaFileAtomically
 import com.lumecard.app.platform.platformGetUserHome
-import com.lumecard.app.platform.platformGetSystemProperty
 import com.lumecard.app.platform.platformJoinPath
 import com.lumecard.app.platform.platformPathExists
 import com.lumecard.app.platform.platformMkdirs
@@ -38,20 +40,17 @@ import com.lumecard.app.platform.platformReadFileText
 import com.lumecard.app.platform.platformWriteFileBytes
 import com.lumecard.app.platform.platformWriteFileText
 import com.lumecard.app.platform.platformDeleteFile
-import com.lumecard.app.platform.scanMediaDirectory
 import com.lumecard.app.platform.scanMediaDirectoryRaw
 import com.lumecard.app.ui.components.ContextHelpButton
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.theme.LumeCardTheme
-import com.lumecard.shared.data.DataExport
+import com.lumecard.shared.data.BackupRestoreService
 import com.lumecard.shared.data.ExportManager
-import com.lumecard.shared.data.ExportSplashQuotes
 import com.lumecard.shared.data.MediaManager
+import com.lumecard.shared.data.MediaSyncService
 import com.lumecard.shared.data.SyncHistoryEntry
 import com.lumecard.shared.data.MediaManifest
 import com.lumecard.shared.data.MediaManifestEntry
-import com.lumecard.shared.data.SplashQuoteData
-import com.lumecard.shared.data.SplashQuoteManager
 import com.lumecard.shared.crypto.SensitiveDataEncryptor
 import com.lumecard.shared.crypto.SensitiveKeys
 import com.lumecard.shared.data.FontManifestEntry
@@ -59,17 +58,12 @@ import com.lumecard.shared.data.SyncManager
 import com.lumecard.shared.data.BackupNameGenerator
 import com.lumecard.shared.data.downloadFontManifestEntries
 import com.lumecard.shared.data.generateUuid
+import com.lumecard.shared.data.getOrNullIfNotFound
 import com.lumecard.shared.data.mergeFontEntries
 import com.lumecard.shared.data.uploadFontManifestEntries
 import com.lumecard.shared.data.WebDavConfig
 import com.lumecard.shared.data.WebDavConfigManager
 import com.lumecard.shared.data.WebDavProviders
-import com.lumecard.shared.data.toCard
-import com.lumecard.shared.data.toDeck
-import com.lumecard.shared.data.toKnowledgeBase
-import com.lumecard.shared.data.toLearningPlan
-import com.lumecard.shared.data.toReviewLog
-import com.lumecard.shared.database.DatabaseDriverHolder
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
 import com.lumecard.shared.repository.KnowledgeBaseRepository
@@ -103,6 +97,7 @@ class WebDavConfigScreen : Screen {
         val webDavConfigManager: WebDavConfigManager = koinInject()
         val syncManager: SyncManager = koinInject()
         val exportManager: ExportManager = koinInject()
+        val backupRestoreService: BackupRestoreService = koinInject()
         val mediaManager: MediaManager = koinInject()
         val deckRepository: DeckRepository = koinInject()
         val cardRepository: CardRepository = koinInject()
@@ -110,7 +105,6 @@ class WebDavConfigScreen : Screen {
         val reviewLogRepository: ReviewLogRepository = koinInject()
         val planRepository: LearningPlanRepository = koinInject()
         val settingsRepository: SettingsRepository = koinInject()
-        val splashQuoteManager: SplashQuoteManager = koinInject()
         val scope = rememberCoroutineScope()
         val snackbarHostState = remember { SnackbarHostState() }
 
@@ -904,12 +898,14 @@ class WebDavConfigScreen : Screen {
                 isSyncing = true
                 syncStatus = strings.settingsSyncing
                 try {
+                    var legacyState = false
                     val result = withContext(Dispatchers.IO) {
                         if (restoreData) {
                             val json = readLocalBackup(filename) ?: throw Exception("Backup not found")
-                            val imported = exportManager.importData(json) ?: throw Exception("Failed to parse backup")
+                            val imported = exportManager.importBackup(json) ?: throw Exception("Failed to parse full backup")
+                            legacyState = imported.cards.isNotEmpty() && imported.algorithmStates == null
                             val decks = imported.decks.size
-                            writeMergedToLocal(imported, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository)
+                            backupRestoreService.merge(imported)
                             decks
                         } else {
                             val config = defaultConfig ?: throw Exception("No sync config")
@@ -933,6 +929,7 @@ class WebDavConfigScreen : Screen {
                     }
                     syncStatus = if (restoreData) strings.settingsSyncSuccess(result) else strings.syncConfigSyncSuccess
                     snackbarHostState.showSnackbar(if (restoreData) strings.settingsSyncSuccess(result) else strings.syncConfigSyncSuccess)
+                    if (legacyState) snackbarHostState.showSnackbar(strings.syncLegacyStateWarning)
                     reloadConfigs()
                 } catch (e: Exception) {
                     syncStatus = strings.settingsSyncError(e.message ?: strings.errorUnknown)
@@ -1160,17 +1157,20 @@ class WebDavConfigScreen : Screen {
                                 syncStatus = strings.settingsSyncing
                                 try {
                                     val config = defaultConfig ?: return@launch
+                                    var legacyState = false
                                     val result = withContext(Dispatchers.IO) {
                                         val remoteResult = syncManager.downloadData(config)
                                         if (remoteResult.isFailure) throw Exception("No remote data found")
                                         val remoteJson = remoteResult.getOrThrow()
-                                        val remote = exportManager.importData(remoteJson) ?: throw Exception("Failed to parse remote data")
+                                        val remote = exportManager.importBackup(remoteJson) ?: throw Exception("Failed to parse full backup")
+                                        legacyState = remote.cards.isNotEmpty() && remote.algorithmStates == null
                                         val decks = remote.decks.size
-                                        writeMergedToLocal(remote, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository)
+                                        backupRestoreService.merge(remote)
                                         decks
                                     }
                                     syncStatus = strings.syncRestoreCloudDone
                                     snackbarHostState.showSnackbar(strings.syncRestoreCloudDone)
+                                    if (legacyState) snackbarHostState.showSnackbar(strings.syncLegacyStateWarning)
                                     reloadConfigs()
                                 } catch (e: Exception) {
                                     syncStatus = strings.settingsSyncError(e.message ?: strings.errorUnknown)
@@ -1207,7 +1207,7 @@ class WebDavConfigScreen : Screen {
                                 val deckCount: Int
                                 val backupName: String?
                                 withContext(Dispatchers.IO) {
-                                    val result = forceUpload(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager, maxBackupCount = maxCloudBackups)
+                                    val result = forceUpload(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, backupRestoreService, maxBackupCount = maxCloudBackups)
                                     deckCount = result.first
                                     backupName = result.second
                                     webDavConfigManager.updateLastSync(config.id)
@@ -1245,15 +1245,14 @@ class WebDavConfigScreen : Screen {
                             syncStatus = strings.settingsSyncing
                             try {
                                 val config = defaultConfig ?: return@launch
-                                val deckCount: Int
-                                val backupName: String?
-                                withContext(Dispatchers.IO) {
-                                    val result = forceDownload(config, knowledgeBaseRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, exportManager, syncManager, mediaManager, splashQuoteManager, maxBackupCount = maxLocalBackups)
-                                    deckCount = result.first
-                                    backupName = result.second
+                                val result = withContext(Dispatchers.IO) {
+                                    val restored = forceDownload(config, exportManager, syncManager, mediaManager, backupRestoreService, maxBackupCount = maxLocalBackups)
                                     webDavConfigManager.updateLastSync(config.id)
+                                    restored
                                 }
-                                val msg = if (backupName != null) "${strings.settingsSyncSuccess(deckCount)}\n$backupName" else strings.settingsSyncSuccess(deckCount)
+                                val success = strings.settingsSyncSuccess(result.first)
+                                val msg = listOfNotNull(success, result.second,
+                                    strings.syncLegacyStateWarning.takeIf { result.third }).joinToString("\n")
                                 syncStatus = msg
                                 snackbarHostState.showSnackbar(msg)
                                 reloadConfigs()
@@ -1325,7 +1324,7 @@ class WebDavConfigScreen : Screen {
                                 val config = defaultConfig ?: return@launch
                                 val backupName: String?
                                 withContext(Dispatchers.IO) {
-                                    backupName = forceDownloadConfig(config, syncManager, settingsRepository, exportManager, maxBackupCount = maxLocalBackups)
+                                    backupName = forceDownloadConfig(config, syncManager, settingsRepository, exportManager, backupRestoreService, maxBackupCount = maxLocalBackups)
                                     webDavConfigManager.updateLastSync(config.id)
                                 }
                                 val msg = if (backupName != null) "${strings.syncConfigSyncSuccess}\n$backupName" else strings.syncConfigSyncSuccess
@@ -1351,45 +1350,6 @@ class WebDavConfigScreen : Screen {
 
 private val fontManifestJson = Json { ignoreUnknownKeys = true }
 
-private suspend fun writeMergedToLocal(
-    data: DataExport,
-    kbRepository: KnowledgeBaseRepository,
-    deckRepository: DeckRepository,
-    cardRepository: CardRepository,
-    reviewLogRepository: ReviewLogRepository,
-    planRepository: LearningPlanRepository,
-) {
-    val localKbIds = kbRepository.getAll().first().map { it.id }.toSet()
-    for (ekb in data.knowledgeBases) {
-        val kb = ekb.toKnowledgeBase()
-        if (kb.id in localKbIds) kbRepository.update(kb) else kbRepository.insert(kb)
-    }
-
-    val localDeckIds = deckRepository.getAll().first().map { it.id }.toSet()
-    for (edeck in data.decks) {
-        val deck = edeck.toDeck()
-        if (deck.id in localDeckIds) deckRepository.update(deck) else deckRepository.insert(deck)
-    }
-
-    val localCardIds = cardRepository.getAll().first().map { it.id }.toSet()
-    for (ecard in data.cards) {
-        val card = ecard.toCard()
-        if (card.id in localCardIds) cardRepository.update(card) else cardRepository.insert(card)
-    }
-
-    val localLogIds = reviewLogRepository.getAll().first().map { it.id }.toSet()
-    for (elog in data.reviewLogs) {
-        val log = elog.toReviewLog()
-        if (log.id !in localLogIds) reviewLogRepository.insert(log)
-    }
-
-    val localPlanIds = planRepository.getAll().first().map { it.id }.toSet()
-    for (eplan in data.learningPlans) {
-        val plan = eplan.toLearningPlan()
-        if (plan.id in localPlanIds) planRepository.update(plan) else planRepository.insert(plan)
-    }
-}
-
 private suspend fun forceUpload(
     config: WebDavConfig,
     kbRepository: KnowledgeBaseRepository,
@@ -1400,7 +1360,7 @@ private suspend fun forceUpload(
     exportManager: ExportManager,
     syncManager: SyncManager,
     mediaManager: MediaManager,
-    splashQuoteManager: SplashQuoteManager? = null,
+    backupRestoreService: BackupRestoreService,
     maxBackupCount: Int = 7,
 ): Pair<Int, String?> {
     // Backup remote data before uploading (preserve cloud state)
@@ -1408,18 +1368,15 @@ private suspend fun forceUpload(
     val backupName = backupFile?.let { readBackupDisplayName(it) }
     pruneOldBackups("上行", maxBackupCount)
 
-    val allKbs = kbRepository.getAll().first()
-    val allDecks = deckRepository.getAll().first()
-    val allCards = cardRepository.getAll().first()
-    val allLogs = reviewLogRepository.getAll().first()
-    val allPlans = planRepository.getAll().first()
-
-    val quotesExport = if (splashQuoteManager != null) {
-        val (qv, qu, hi) = splashQuoteManager.getQuotesExportData()
-        ExportSplashQuotes(qv, qu, hi)
-    } else null
-
-    val json = exportManager.exportData(allKbs, allDecks, allCards, allLogs, allPlans, quotesExport)
+    val snapshot = backupRestoreService.snapshot()
+    val allKbs = snapshot.knowledgeBases
+    val allDecks = snapshot.decks
+    val allCards = snapshot.cards
+    val allLogs = snapshot.reviewLogs
+    val allPlans = snapshot.learningPlans
+    val json = exportManager.encodeBackup(snapshot)
+    // Referenced media must be available before publishing data.json.
+    syncMedia(config, syncManager, mediaManager)
     syncManager.uploadData(config, json).getOrThrow()
 
     val now = Clock.System.now()
@@ -1429,121 +1386,59 @@ private suspend fun forceUpload(
     reviewLogRepository.markSynced(allLogs.map { it.id }, now)
     planRepository.markSynced(allPlans.map { it.id }, now)
 
-    syncMedia(config, syncManager, mediaManager)
-    return Pair(allDecks.size, backupName)
+    return Pair(allDecks.count { it.deletedAt == null }, backupName)
 }
 
 private suspend fun forceDownload(
     config: WebDavConfig,
-    kbRepository: KnowledgeBaseRepository,
-    deckRepository: DeckRepository,
-    cardRepository: CardRepository,
-    reviewLogRepository: ReviewLogRepository,
-    planRepository: LearningPlanRepository,
     exportManager: ExportManager,
     syncManager: SyncManager,
     mediaManager: MediaManager,
-    splashQuoteManager: SplashQuoteManager? = null,
+    backupRestoreService: BackupRestoreService,
     maxBackupCount: Int = 7,
-): Pair<Int, String?> {
+): Triple<Int, String?, Boolean> {
     // Local backup before downloading (backup stays on local disk)
-    val backupFile = archiveDataLocally(exportManager, kbRepository, deckRepository, cardRepository, reviewLogRepository, planRepository, splashQuoteManager, direction = "下行")
+    val backupFile = archiveDataLocally(exportManager, backupRestoreService, direction = "下行")
     val backupName = backupFile?.let { readBackupDisplayName(it) }
     pruneOldBackups("下行", maxBackupCount)
 
-    val remoteResult = syncManager.downloadData(config)
-    if (remoteResult.isFailure) throw Exception("No remote data found")
+    val remoteJson = syncManager.downloadData(config).getOrThrow()
+    val remote = exportManager.importBackup(remoteJson) ?: throw Exception("Invalid or unsupported full backup")
+    val legacyState = remote.cards.isNotEmpty() && remote.algorithmStates == null
+    backupRestoreService.replace(remote, syncedAt = Clock.System.now())
 
-    val remoteJson = remoteResult.getOrThrow()
-    val remote = exportManager.importData(remoteJson) ?: throw Exception("Failed to parse remote data")
-
-    val driver = DatabaseDriverHolder.driver
-        ?: throw IllegalStateException("Database driver not initialized")
-
-    // Disable FK constraints for the entire delete+insert operation.
-    // This is necessary because:
-    // 1. INSERT OR REPLACE internally does DELETE+INSERT; soft-deleted children
-    //    still reference parent rows, blocking the DELETE.
-    // 2. Deck has self-referencing FK (parent_id -> Deck.id); if export order
-    //    puts a child deck before its parent, the INSERT would fail.
-    driver.execute(null, "PRAGMA foreign_keys = OFF", 0, null)
-
-    try {
-        // Hard-delete ALL local data
-        driver.execute(null, "DELETE FROM CardFTS", 0, null)
-        driver.execute(null, "DELETE FROM AlgorithmState", 0, null)
-        driver.execute(null, "DELETE FROM ReviewLog", 0, null)
-        driver.execute(null, "DELETE FROM Card", 0, null)
-        driver.execute(null, "DELETE FROM Deck", 0, null)
-        driver.execute(null, "DELETE FROM KnowledgeBase", 0, null)
-        driver.execute(null, "DELETE FROM LearningPlan", 0, null)
-
-        // Insert remote data
-        for (kb in remote.knowledgeBases) { kbRepository.insert(kb.toKnowledgeBase()) }
-        for (deck in remote.decks) { deckRepository.insert(deck.toDeck()) }
-        for (card in remote.cards) { cardRepository.insert(card.toCard()) }
-        for (log in remote.reviewLogs) { reviewLogRepository.insert(log.toReviewLog()) }
-        for (plan in remote.learningPlans) { planRepository.insert(plan.toLearningPlan()) }
-
-        val remoteSplash = remote.splashQuotes
-        if (remoteSplash != null && splashQuoteManager != null) {
-            splashQuoteManager.importQuotesFromSync(
-                remoteSplash.version, remoteSplash.userQuotes, remoteSplash.hiddenDefaultIndices,
-            )
-        }
-
-        val now = Clock.System.now()
-        kbRepository.markSynced(remote.knowledgeBases.map { it.id }, now)
-        deckRepository.markSynced(remote.decks.map { it.id }, now)
-        cardRepository.markSynced(remote.cards.map { it.id }, now)
-        reviewLogRepository.markSynced(remote.reviewLogs.map { it.id }, now)
-        planRepository.markSynced(remote.learningPlans.map { it.id }, now)
-    } finally {
-        // Always re-enable FK constraints
-        driver.execute(null, "PRAGMA foreign_keys = ON", 0, null)
-    }
-
-    syncMedia(config, syncManager, mediaManager)
-    return Pair(remote.decks.size, backupName)
+    syncMedia(config, syncManager, mediaManager, downloadOnly = true)
+    return Triple(remote.decks.count { it.deletedAt == null }, backupName, legacyState)
 }
 
 private suspend fun syncMedia(
     config: WebDavConfig,
     syncManager: SyncManager,
     mediaManager: MediaManager,
+    downloadOnly: Boolean = false,
 ) {
-    try {
-        val userHome = platformGetUserHome() ?: ""
-        val mediaBase = platformGetSystemProperty("lumecard.media.dir") ?: platformJoinPath(userHome, ".lumecard/media")
+    val mediaBase = getMediaBasePath()
     val rawFiles = scanMediaDirectoryRaw(mediaBase)
-        if (rawFiles.isNotEmpty()) {
-            val resolved = rawFiles.map { raw ->
-                val cachedHash = mediaManager.getCachedHash(raw.relativePath, raw.mtime)
-                if (cachedHash != null) {
-                    MediaManifestEntry(raw.relativePath, raw.size, cachedHash)
-                } else {
-                    val sha1 = hashFileSha1("$mediaBase/${raw.relativePath}")
-                    mediaManager.updateCache(raw.relativePath, raw.mtime, sha1)
-                    MediaManifestEntry(raw.relativePath, raw.size, sha1)
-                }
+    val resolved = rawFiles.map { raw ->
+        val cachedHash = mediaManager.getCachedHash(raw.relativePath, raw.mtime)
+        val hash = cachedHash?.takeIf { it.isNotEmpty() }
+            ?: hashFileSha1(resolveMediaFilePath(mediaBase, raw.relativePath)).also {
+                mediaManager.updateCache(raw.relativePath, raw.mtime, it)
             }
-
-            val localManifest = MediaManifest(version = 1, entries = resolved)
-            syncManager.uploadManifest(config, mediaManager.manifestToJson(localManifest))
-
-            val remoteResult = syncManager.downloadManifest(config)
-            val remoteManifest = if (remoteResult.isSuccess) mediaManager.manifestFromJson(remoteResult.getOrThrow()) else null
-
-            val needUpload = mediaManager.filesToUpload(resolved, remoteManifest)
-            for (path in needUpload) {
-                val absPath = "$mediaBase/$path"
-                try {
-                    val data = platformReadFileBytes(absPath) ?: byteArrayOf()
-                    syncManager.uploadMedia(config, path, data).getOrThrow()
-                } catch (_: Exception) { }
-            }
-        }
-    } catch (_: Exception) { }
+        MediaManifestEntry(raw.relativePath, raw.size, hash)
+    }
+    val local = MediaManifest(entries = resolved)
+    val service = MediaSyncService(syncManager, mediaManager)
+    if (downloadOnly) {
+        service.download(config, local, writeFile = { path, bytes ->
+            writeMediaFileAtomically(resolveMediaFilePath(mediaBase, path), bytes)
+            mediaManager.invalidateCache(path)
+        }, hashBytes = ::hashBytesSha1)
+    } else {
+        service.upload(config, local, readFile = { path ->
+            checkNotNull(platformReadFileBytes(resolveMediaFilePath(mediaBase, path))) { "Cannot read media: $path" }
+        }, hashBytes = ::hashBytesSha1)
+    }
 }
 
 private suspend fun syncFonts(
@@ -1724,8 +1619,8 @@ private suspend fun forceUploadConfig(
     settingsRepository: SettingsRepository,
     maxBackupCount: Int = 7,
 ): String? {
-    // Local backup before uploading config
-    val backupFile = archiveConfigLocally(exportManager, syncManager, settingsRepository, config, direction = "上行")
+    // Preserve the cloud config before overwriting it, just like data uploads.
+    val backupFile = archiveRemoteDataLocally(syncManager, config, direction = "上行", backupConfig = true)
     val backupName = backupFile?.let { readBackupDisplayName(it) }
     pruneOldBackups("上行", maxBackupCount)
 
@@ -1743,24 +1638,18 @@ private suspend fun forceDownloadConfig(
     config: WebDavConfig,
     syncManager: SyncManager,
     settingsRepository: SettingsRepository,
-    exportManager: ExportManager? = null,
+    exportManager: ExportManager,
+    backupRestoreService: BackupRestoreService,
     maxBackupCount: Int = 7,
 ): String? {
     // Local backup before downloading config
-    val backupName = if (exportManager != null) {
-        val backupFile = archiveConfigLocally(exportManager, syncManager, settingsRepository, config, direction = "下行")
-        backupFile?.let { readBackupDisplayName(it) }
-    } else null
+    val backupFile = archiveConfigLocally(exportManager, syncManager, settingsRepository, config, direction = "下行")
+    val backupName = backupFile?.let { readBackupDisplayName(it) }
     pruneOldBackups("下行", maxBackupCount)
 
     val remoteSettings = downloadRemoteSettings(config, syncManager)
         ?: throw Exception("No remote config found")
-    for (key in settingsRepository.getAll().keys) {
-        settingsRepository.delete(key)
-    }
-    for ((key, value) in remoteSettings) {
-        settingsRepository.set(key, value)
-    }
+    backupRestoreService.replaceSettings(remoteSettings)
 
     // 字体归配置：下载远端字体到本地
     syncFonts(config, syncManager, settingsRepository, forcePush = false)
@@ -1840,41 +1729,33 @@ private fun resolveLocalBackupDir(): String? {
 private fun ensureLocalBackupDir(): String? {
     val dir = resolveLocalBackupDir() ?: return null
     if (!platformPathExists(dir)) platformMkdirs(dir)
+    check(platformPathExists(dir)) { "Cannot create local backup directory" }
     return dir
+}
+
+private fun writeVerifiedBackup(path: String, content: String) {
+    check(!platformFileExists(path)) { "Backup already exists: $path" }
+    platformWriteFileText(path, content)
+    check(platformReadFileText(path) == content) { "Backup verification failed: $path" }
 }
 
 /** Save the current local data as a JSON backup before a force-upload or force-download. */
 private suspend fun archiveDataLocally(
     exportManager: ExportManager,
-    kbRepository: KnowledgeBaseRepository,
-    deckRepository: DeckRepository,
-    cardRepository: CardRepository,
-    reviewLogRepository: ReviewLogRepository,
-    planRepository: LearningPlanRepository,
-    splashQuoteManager: SplashQuoteManager? = null,
+    backupRestoreService: BackupRestoreService,
     direction: String = "本地",
 ): String? {
-    val dir = ensureLocalBackupDir() ?: return null
+    val dir = ensureLocalBackupDir() ?: throw IllegalStateException("Local backup directory is unavailable")
     val now = Clock.System.now()
     val local = now.toLocalDateTime(TimeZone.currentSystemDefault())
     val ts = "${local.date.year}${local.date.monthNumber.toString().padStart(2, '0')}${local.date.dayOfMonth.toString().padStart(2, '0')}" +
         "_" +
         "${local.time.hour.toString().padStart(2, '0')}${local.time.minute.toString().padStart(2, '0')}${local.time.second.toString().padStart(2, '0')}"
     val seq = nextBackupSeq()
-    val filename = "data_${ts}.json"
+    val filename = "data_${ts}_${generateUuid()}.json"
 
-    val allKbs = kbRepository.getAll().first()
-    val allDecks = deckRepository.getAll().first()
-    val allCards = cardRepository.getAll().first()
-    val allLogs = reviewLogRepository.getAll().first()
-    val allPlans = planRepository.getAll().first()
-    val quotesExport = if (splashQuoteManager != null) {
-        val (qv, qu, hi) = splashQuoteManager.getQuotesExportData()
-        ExportSplashQuotes(qv, qu, hi)
-    } else null
-
-    val json = exportManager.exportData(allKbs, allDecks, allCards, allLogs, allPlans, quotesExport)
-    platformWriteFileText(platformJoinPath(dir, filename), json)
+    val json = exportManager.encodeBackup(backupRestoreService.snapshot())
+    writeVerifiedBackup(platformJoinPath(dir, filename), json)
     // Save display name as sidecar file
     val displayName = BackupNameGenerator().generateName(direction, "D", seq)
     platformWriteFileText(platformJoinPath(dir, "${filename.removeSuffix(".json")}.name"), displayName)
@@ -1886,22 +1767,22 @@ private suspend fun archiveRemoteDataLocally(
     syncManager: SyncManager,
     config: WebDavConfig,
     direction: String = "上行",
+    backupConfig: Boolean = false,
 ): String? {
-    val remoteResult = syncManager.downloadData(config)
-    if (remoteResult.isFailure) return null
-    val remoteJson = remoteResult.getOrThrow()
+    val remoteResult = if (backupConfig) syncManager.downloadConfig(config) else syncManager.downloadData(config)
+    val remoteJson = remoteResult.getOrNullIfNotFound() ?: return null
 
-    val dir = ensureLocalBackupDir() ?: return null
+    val dir = ensureLocalBackupDir() ?: throw IllegalStateException("Local backup directory is unavailable")
     val now = Clock.System.now()
     val local = now.toLocalDateTime(TimeZone.currentSystemDefault())
     val ts = "${local.date.year}${local.date.monthNumber.toString().padStart(2, '0')}${local.date.dayOfMonth.toString().padStart(2, '0')}" +
         "_" +
         "${local.time.hour.toString().padStart(2, '0')}${local.time.minute.toString().padStart(2, '0')}${local.time.second.toString().padStart(2, '0')}"
     val seq = nextBackupSeq()
-    val filename = "data_${ts}.json"
+    val filename = "${if (backupConfig) "config" else "data"}_${ts}_${generateUuid()}.json"
 
-    platformWriteFileText(platformJoinPath(dir, filename), remoteJson)
-    val displayName = BackupNameGenerator().generateName(direction, "D", seq)
+    writeVerifiedBackup(platformJoinPath(dir, filename), remoteJson)
+    val displayName = BackupNameGenerator().generateName(direction, if (backupConfig) "C" else "D", seq)
     platformWriteFileText(platformJoinPath(dir, "${filename.removeSuffix(".json")}.name"), displayName)
     return filename
 }
@@ -1914,19 +1795,19 @@ private suspend fun archiveConfigLocally(
     config: WebDavConfig,
     direction: String = "本地",
 ): String? {
-    val dir = ensureLocalBackupDir() ?: return null
+    val dir = ensureLocalBackupDir() ?: throw IllegalStateException("Local backup directory is unavailable")
     val now = Clock.System.now()
     val local = now.toLocalDateTime(TimeZone.currentSystemDefault())
     val ts = "${local.date.year}${local.date.monthNumber.toString().padStart(2, '0')}${local.date.dayOfMonth.toString().padStart(2, '0')}" +
         "_" +
         "${local.time.hour.toString().padStart(2, '0')}${local.time.minute.toString().padStart(2, '0')}${local.time.second.toString().padStart(2, '0')}"
     val seq = nextBackupSeq()
-    val filename = "config_${ts}.json"
+    val filename = "config_${ts}_${generateUuid()}.json"
 
     val encryptor = SensitiveDataEncryptor(config.password)
     val settings = encryptor.encryptSettings(settingsRepository.getAll())
     val configJson = exportManager.exportConfig(settings)
-    platformWriteFileText(platformJoinPath(dir, filename), configJson)
+    writeVerifiedBackup(platformJoinPath(dir, filename), configJson)
     // Save display name as sidecar file
     val displayName = BackupNameGenerator().generateName(direction, "C", seq)
     platformWriteFileText(platformJoinPath(dir, "${filename.removeSuffix(".json")}.name"), displayName)

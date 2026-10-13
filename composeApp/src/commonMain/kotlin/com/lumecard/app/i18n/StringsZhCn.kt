@@ -333,6 +333,7 @@ object ZhCnStrings : I18nStrings {
     override val syncRestoreCloudConfirm3 = "最后确认：请输入[确认]以执行恢复操作"
     override val syncRestoreCloudInputHint = "请输入[确认]"
     override val syncRestoreCloudDone = "云端数据已恢复"
+    override val syncLegacyStateWarning = "旧版备份不含复习算法状态，无法完整恢复复习进度。"
     override val syncRestoreLocalHistory = "恢复本地历史记录"
     override val syncRestoreRemoteHistory = "恢复云端历史记录"
     override val settingsBackupLimits = "备份数量"

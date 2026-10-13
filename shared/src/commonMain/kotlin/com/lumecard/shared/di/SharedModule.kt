@@ -1,6 +1,7 @@
 package com.lumecard.shared.di
 
 import com.lumecard.shared.data.AiCardGenerator
+import com.lumecard.shared.data.BackupRestoreService
 import com.lumecard.shared.data.AiCardPromptManager
 import com.lumecard.shared.data.DemoDataManager
 import com.lumecard.shared.help.HelpRepository
@@ -61,6 +62,7 @@ val sharedModule = module {
     single { AiModelListFetcher(get(), get()) }
     single { AiCardGenerator(get(), get(), get(), get(), get(), get()) }
     single { SplashQuoteManager(get()) }
+    single { BackupRestoreService(get()) }
 
     // Demo data
     single { DemoDataManager(get(), get(), get(), get()) }

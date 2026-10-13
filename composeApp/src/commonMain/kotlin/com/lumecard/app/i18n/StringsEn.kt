@@ -333,6 +333,7 @@ object EnStrings : I18nStrings {
     override val syncRestoreCloudConfirm3 = "Final confirmation: Type 'confirm' to proceed"
     override val syncRestoreCloudInputHint = "Type 'confirm'"
     override val syncRestoreCloudDone = "Cloud data restored"
+    override val syncLegacyStateWarning = "This legacy backup has no scheduling state; review progress cannot be fully restored."
     override val syncRestoreLocalHistory = "Local History"
     override val syncRestoreRemoteHistory = "Cloud History"
     override val settingsBackupLimits = "Backup Limits"

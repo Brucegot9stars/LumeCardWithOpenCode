@@ -327,6 +327,7 @@ object ZhTwStrings : I18nStrings {
     override val syncRestoreCloudConfirm3 = "最後確認：請輸入[確認]以執行還原操作"
     override val syncRestoreCloudInputHint = "請輸入[確認]"
     override val syncRestoreCloudDone = "雲端資料已還原"
+    override val syncLegacyStateWarning = "舊版備份不含複習演算法狀態，無法完整還原複習進度。"
     override val syncRestoreLocalHistory = "還原本地歷史記錄"
     override val syncRestoreRemoteHistory = "還原雲端歷史記錄"
     override val settingsBackupLimits = "備份數量"

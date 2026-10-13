@@ -1,9 +1,10 @@
 package com.lumecard.shared.database
 
 import app.cash.sqldelight.db.QueryResult
+import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
-import com.lumecard.shared.database.LumeCardDatabase
 import java.io.File
+import java.util.Properties
 
 private fun log(msg: String) = System.err.println("[LumeCard] $msg")
 
@@ -36,116 +37,107 @@ private fun resolveAppDir(): File {
 }
 
 actual class DatabaseDriverFactory {
-    actual fun createDriver(): app.cash.sqldelight.db.SqlDriver {
+    actual fun createDriver(): SqlDriver {
         val appDir = resolveAppDir()
         val dbFile = File(appDir, "lumecard.db")
         log("Database path: ${dbFile.absolutePath}")
-
-        // IMPORTANT: decide whether this is a brand-new database BEFORE opening
-        // the connection. JdbcSqliteDriver creates the file automatically on
-        // connect (SQLITE_OPEN_CREATE), so checking dbFile.exists() after
-        // connecting always returns true and a fresh DB would incorrectly take
-        // the migration path instead of Schema.create().
-        val isNewDb = !dbFile.exists()
-
-        val driver = JdbcSqliteDriver("jdbc:sqlite:${dbFile.absolutePath}")
+        val driver = openDesktopDatabase(dbFile)
         DatabaseDriverHolder.driver = driver
-        driver.execute(null, "PRAGMA foreign_keys = ON", 0, null)
-        val targetVersion = LumeCardDatabase.Schema.version
-
-        if (isNewDb || !hasAppSchema(driver)) {
-            // Brand-new or damaged/incomplete database: rebuild from scratch.
-            dropSchema(driver)
-            LumeCardDatabase.Schema.create(driver)
-            driver.execute(null, "PRAGMA user_version = $targetVersion", 0, null)
-            log("Database created from scratch (version $targetVersion)")
-        } else {
-            val rawVersion = readUserVersion(driver)
-            val currentVersion = if (rawVersion == 0L) 1L else rawVersion
-            if (currentVersion < targetVersion) {
-                var migrated = false
-                try {
-                    LumeCardDatabase.Schema.migrate(driver, currentVersion, targetVersion)
-                    migrated = true
-                } catch (e: Exception) {
-                    log("WARNING: Schema.migrate($currentVersion → $targetVersion) failed: ${e.message}")
-                    // Manual fallback: apply known migrations one-by-one
-                    migrated = applyManualMigrations(driver, currentVersion, targetVersion)
-                }
-                if (migrated) {
-                    driver.execute(null, "PRAGMA user_version = $targetVersion", 0, null)
-                    log("Schema migrated to version $targetVersion")
-                } else {
-                    log("ERROR: Migration incomplete, user_version NOT updated — will retry next launch")
-                }
-            }
-        }
-        upgradeToFts5(driver)
-        driver.execute(null, "CREATE TABLE IF NOT EXISTS MediaCache(path TEXT PRIMARY KEY NOT NULL, mtime INTEGER NOT NULL, sha1 TEXT NOT NULL, synced_at TEXT)", 0, null)
         return driver
     }
 }
 
-/**
- * True if the core business tables exist (a healthy schema). A database that
- * exists on disk but has no business tables (e.g. auto-created empty file, or a
- * crashed install that only left FTS shadow tables) is treated as "new" and is
- * rebuilt via Schema.create().
- */
-private fun hasAppSchema(driver: JdbcSqliteDriver): Boolean {
-    return try {
-        val result = driver.executeQuery(
-            null,
-            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN ('Card','Deck','KnowledgeBase','AppSettings')",
-            { cursor -> if (cursor.next().value) QueryResult.Value(cursor.getLong(0)) else QueryResult.Value(0L) },
-            0,
-            null
-        )
-        (result.value ?: 0L) >= 4L
-    } catch (_: Exception) {
-        false
+/** Open failures must preserve the existing database, not silently rebuild it. */
+internal fun openDesktopDatabase(dbFile: File): JdbcSqliteDriver {
+    // File-backed SQLDelight opens connections per thread/operation. Configure
+    // every connection, not just the one used by an initialization PRAGMA.
+    val driver = JdbcSqliteDriver("jdbc:sqlite:${dbFile.absolutePath}", Properties().apply {
+        setProperty("foreign_keys", "true")
+    })
+    try {
+        initializeDesktopSchema(driver)
+        upgradeToFts5(driver)
+        driver.execute(null, "CREATE TABLE IF NOT EXISTS MediaCache(path TEXT PRIMARY KEY NOT NULL, mtime INTEGER NOT NULL, sha1 TEXT NOT NULL, synced_at TEXT)", 0, null)
+        return driver
+    } catch (failure: Throwable) {
+        try {
+            driver.close()
+        } catch (closeFailure: Throwable) {
+            failure.addSuppressed(closeFailure)
+        }
+        throw IllegalStateException("无法安全打开数据库 ${dbFile.absolutePath}，原有数据已保留；请备份后检查数据库结构。", failure)
     }
 }
 
-/** Drop all tables (and FTS shadow tables) so the schema can be rebuilt cleanly. */
-private fun dropSchema(driver: JdbcSqliteDriver) {
-    try {
-        driver.execute(null, "DROP TABLE IF EXISTS CardFTS", 0, null)
-        driver.execute(null, "DROP TABLE IF EXISTS AlgorithmState", 0, null)
-        driver.execute(null, "DROP TABLE IF EXISTS ReviewLog", 0, null)
-        driver.execute(null, "DROP TABLE IF EXISTS Card", 0, null)
-        driver.execute(null, "DROP TABLE IF EXISTS Deck", 0, null)
-        driver.execute(null, "DROP TABLE IF EXISTS KnowledgeBase", 0, null)
-        driver.execute(null, "DROP TABLE IF EXISTS LearningPlan", 0, null)
-        driver.execute(null, "DROP TABLE IF EXISTS AppSettings", 0, null)
-        driver.execute(null, "DROP TABLE IF EXISTS MediaCache", 0, null)
-    } catch (e: Exception) {
-        log("WARNING: dropSchema incomplete: ${e.message}")
+internal fun initializeDesktopSchema(driver: SqlDriver) {
+    driver.execute(null, "PRAGMA foreign_keys = ON", 0, null)
+    val tables = driver.executeQuery(null,
+        "SELECT name FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%'",
+        { cursor ->
+            val names = mutableSetOf<String>()
+            while (cursor.next().value) names.add(checkNotNull(cursor.getString(0)))
+            QueryResult.Value(names)
+        }, 0, null).value
+    val rawVersion = readUserVersion(driver)
+    val targetVersion = LumeCardDatabase.Schema.version
+    check(rawVersion <= targetVersion) { "Database version $rawVersion is newer than supported version $targetVersion" }
+    val database = LumeCardDatabase(driver)
+    if (tables.isEmpty()) {
+        check(rawVersion == 0L) { "Versioned database has no tables" }
+        database.transaction {
+            LumeCardDatabase.Schema.create(driver)
+            driver.execute(null, "PRAGMA user_version = $targetVersion", 0, null)
+        }
+        return
+    }
+    val required = setOf("KnowledgeBase", "Deck", "Card", "ReviewLog", "AppSettings", "AlgorithmState", "LearningPlan")
+    check(tables.containsAll(required)) { "Incomplete schema; missing ${required - tables}" }
+    val currentVersion = rawVersion.takeIf { it > 0L } ?: 1L
+    if (currentVersion < targetVersion) {
+        try {
+            database.transaction {
+                LumeCardDatabase.Schema.migrate(driver, currentVersion, targetVersion)
+                verifyBusinessColumns(driver)
+                driver.execute(null, "PRAGMA user_version = $targetVersion", 0, null)
+            }
+        } catch (migrationFailure: Exception) {
+            // Older releases may have added a column without updating user_version.
+            // The failed generated migration has already rolled back in full.
+            try {
+                database.transaction {
+                    applyKnownMigrations(driver, currentVersion, targetVersion)
+                    verifyBusinessColumns(driver)
+                    driver.execute(null, "PRAGMA user_version = $targetVersion", 0, null)
+                }
+            } catch (fallbackFailure: Exception) {
+                fallbackFailure.addSuppressed(migrationFailure)
+                throw fallbackFailure
+            }
+        }
+    } else {
+        verifyBusinessColumns(driver)
     }
 }
 
-/**
- * Read PRAGMA user_version via executeQuery (execute() returns the affected-row
- * count for non-query statements, which is always 0 for a SELECT-like pragma).
- */
-private fun readUserVersion(driver: JdbcSqliteDriver): Long {
-    var result = 0L
-    try {
-        val queryResult = driver.executeQuery(
-            null,
-            "PRAGMA user_version",
-            { cursor ->
-                if (cursor.next().value) QueryResult.Value(cursor.getLong(0))
-                else QueryResult.Value(0L)
-            },
-            0,
-            null
-        )
-        result = queryResult.value ?: 0L
-    } catch (e: Exception) {
-        log("WARNING: failed to read user_version: ${e.message}")
+private fun readUserVersion(driver: SqlDriver): Long = driver.executeQuery(
+    null, "PRAGMA user_version",
+    { cursor -> QueryResult.Value(if (cursor.next().value) checkNotNull(cursor.getLong(0)) else error("Missing user_version")) },
+    0, null,
+).value
+
+private fun verifyBusinessColumns(driver: SqlDriver) {
+    val columns = mapOf(
+        "KnowledgeBase" to "id,name,description,icon,created_at,updated_at,version,deleted_at,synced_at",
+        "Deck" to "id,knowledge_base_id,name,description,color,icon,parent_id,created_at,updated_at,version,deleted_at,synced_at",
+        "Card" to "id,deck_id,type,title,front,back,tags,media,metadata,created_at,updated_at,last_reviewed_at,next_review_at,version,deleted_at,synced_at",
+        "ReviewLog" to "id,card_id,rating,review_time,interval,ease_factor,repetitions,lapse_count,reviewed_at,version,deleted_at,synced_at",
+        "AppSettings" to "key,setting_value",
+        "AlgorithmState" to "card_id,mode,state_json",
+        "LearningPlan" to "id,name,description,status,is_default,knowledge_base_ids,deck_ids,card_ids,total_cards,completed_cards,created_at,updated_at,version,deleted_at,synced_at",
+    )
+    for ((table, fields) in columns) {
+        driver.executeQuery(null, "SELECT $fields FROM $table LIMIT 0", { QueryResult.Value(Unit) }, 0, null).value
     }
-    return result
 }
 
 actual fun upgradeToFts5(driver: app.cash.sqldelight.db.SqlDriver) {
@@ -174,7 +166,8 @@ actual fun upgradeToFts5(driver: app.cash.sqldelight.db.SqlDriver) {
  * Manual migration fallback when SQLDelight Schema.migrate() fails.
  * Tries each ALTER TABLE; "duplicate column name" means already applied (skip).
  */
-private fun applyManualMigrations(driver: JdbcSqliteDriver, from: Long, to: Long): Boolean {
+private fun applyKnownMigrations(driver: SqlDriver, from: Long, to: Long) {
+    check(to <= 3L) { "No manual migration available for schema version $to" }
     val migrations = mutableListOf<Pair<Long, String>>()
     if (from < 2 && to >= 2) {
         migrations.add(2L to "ALTER TABLE Card ADD COLUMN title TEXT")
@@ -183,17 +176,16 @@ private fun applyManualMigrations(driver: JdbcSqliteDriver, from: Long, to: Long
         migrations.add(3L to "ALTER TABLE KnowledgeBase ADD COLUMN icon TEXT DEFAULT '📁'")
     }
     for ((targetVer, sql) in migrations) {
-        try {
+        val table = if (targetVer == 2L) "Card" else "KnowledgeBase"
+        val column = if (targetVer == 2L) "title" else "icon"
+        val columns = driver.executeQuery(null, "PRAGMA table_info($table)", { cursor ->
+            val names = mutableSetOf<String>()
+            while (cursor.next().value) names.add(checkNotNull(cursor.getString(1)))
+            QueryResult.Value(names)
+        }, 0, null).value
+        if (column !in columns) {
             driver.execute(null, sql, 0, null)
             log("Manual migration → v$targetVer: applied")
-        } catch (e: Exception) {
-            if (e.message?.contains("duplicate column") == true) {
-                log("Manual migration → v$targetVer: column already exists, skipping")
-            } else {
-                log("WARNING: manual migration → v$targetVer failed: ${e.message}")
-                return false
-            }
         }
     }
-    return true
 }

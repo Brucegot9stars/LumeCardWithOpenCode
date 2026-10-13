@@ -96,6 +96,22 @@ CREATE TABLE LearningPlan (
 selectAllKnowledgeBases:
 SELECT * FROM KnowledgeBase WHERE deleted_at IS NULL ORDER BY created_at ASC;
 
+-- Full snapshots include tombstones so references and deletion history are preserved.
+selectBackupKnowledgeBases:
+SELECT * FROM KnowledgeBase;
+
+selectBackupDecks:
+SELECT * FROM Deck;
+
+selectBackupCards:
+SELECT * FROM Card;
+
+selectBackupReviewLogs:
+SELECT * FROM ReviewLog;
+
+selectBackupLearningPlans:
+SELECT * FROM LearningPlan;
+
 selectKnowledgeBaseById:
 SELECT * FROM KnowledgeBase WHERE id = ?;
 
@@ -147,6 +163,44 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 insertReviewLog:
 INSERT OR REPLACE INTO ReviewLog(id, card_id, rating, review_time, interval, ease_factor, repetitions, lapse_count, reviewed_at, version, deleted_at, synced_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- Restore upserts never DELETE the existing parent row (unlike OR REPLACE).
+upsertBackupKnowledgeBase:
+INSERT INTO KnowledgeBase(id, name, description, icon, created_at, updated_at, version, deleted_at, synced_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, description = excluded.description, icon = excluded.icon,
+    updated_at = excluded.updated_at, version = MAX(KnowledgeBase.version, excluded.version) + 1,
+    deleted_at = excluded.deleted_at, synced_at = NULL;
+
+upsertBackupDeck:
+INSERT INTO Deck(id, knowledge_base_id, name, description, color, icon, parent_id, created_at, updated_at, version, deleted_at, synced_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET knowledge_base_id = excluded.knowledge_base_id, name = excluded.name,
+    description = excluded.description, color = excluded.color, icon = excluded.icon, parent_id = excluded.parent_id,
+    updated_at = excluded.updated_at, version = MAX(Deck.version, excluded.version) + 1,
+    deleted_at = excluded.deleted_at, synced_at = NULL;
+
+upsertBackupCard:
+INSERT INTO Card(id, deck_id, type, title, front, back, tags, media, metadata, created_at, updated_at, last_reviewed_at, next_review_at, version, deleted_at, synced_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET deck_id = excluded.deck_id, type = excluded.type, title = excluded.title,
+    front = excluded.front, back = excluded.back, tags = excluded.tags, media = excluded.media, metadata = excluded.metadata,
+    updated_at = excluded.updated_at, last_reviewed_at = excluded.last_reviewed_at, next_review_at = excluded.next_review_at,
+    version = MAX(Card.version, excluded.version) + 1, deleted_at = excluded.deleted_at, synced_at = NULL;
+
+insertBackupReviewLogIfAbsent:
+INSERT INTO ReviewLog(id, card_id, rating, review_time, interval, ease_factor, repetitions, lapse_count, reviewed_at, version, deleted_at, synced_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(id) DO NOTHING;
+
+upsertBackupLearningPlan:
+INSERT INTO LearningPlan(id, name, description, status, is_default, knowledge_base_ids, deck_ids, card_ids, total_cards, completed_cards, created_at, updated_at, version, deleted_at, synced_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, description = excluded.description, status = excluded.status,
+    is_default = excluded.is_default, knowledge_base_ids = excluded.knowledge_base_ids, deck_ids = excluded.deck_ids,
+    card_ids = excluded.card_ids, total_cards = excluded.total_cards, completed_cards = excluded.completed_cards,
+    updated_at = excluded.updated_at, version = MAX(LearningPlan.version, excluded.version) + 1,
+    deleted_at = excluded.deleted_at, synced_at = NULL;
 
 updateCard:
 UPDATE Card SET deck_id = ?, type = ?, title = ?, front = ?, back = ?, tags = ?, media = ?, metadata = ?, updated_at = ?, last_reviewed_at = ?, next_review_at = ?, version = version + 1, synced_at = NULL WHERE id = ?;
