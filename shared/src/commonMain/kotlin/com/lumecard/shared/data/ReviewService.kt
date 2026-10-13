@@ -61,6 +61,12 @@ class ReviewService(private val database: LumeCardDatabase, fsrs: FSRSAlgorithm)
         database.transaction(noEnclosing = true) { refreshPlans(Clock.System.now(), planId = planId) }
     }
 
+    /** For repository mutations already enclosed in a database transaction. */
+    internal fun reconcileAllInCurrentTransaction() = refreshPlans(Clock.System.now())
+
+    internal fun reconcilePlanInCurrentTransaction(planId: String) =
+        refreshPlans(Clock.System.now(), planId = planId)
+
     /** A reset has its own review boundary and never changes the cards shared by other plans. */
     fun resetPlanProgress(planId: String) {
         database.transaction(noEnclosing = true) {
@@ -120,6 +126,7 @@ class ReviewService(private val database: LumeCardDatabase, fsrs: FSRSAlgorithm)
             val status = when {
                 manuallyCompleted -> PlanStatus.COMPLETED
                 total > 0L && completed >= total -> PlanStatus.COMPLETED
+                total == 0L -> PlanStatus.NOT_STARTED
                 completed > 0L || plan.status == PlanStatus.IN_PROGRESS.name -> PlanStatus.IN_PROGRESS
                 else -> PlanStatus.NOT_STARTED
             }

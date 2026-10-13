@@ -5,7 +5,6 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import com.lumecard.shared.model.Deck
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
-import com.lumecard.shared.repository.LearningPlanRepository
 import com.lumecard.shared.repository.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,7 +27,6 @@ class DeckViewModel(
     private val deckRepository: DeckRepository,
     private val cardRepository: CardRepository,
     private val settingsRepository: SettingsRepository,
-    private val planRepository: LearningPlanRepository
 ) : ScreenModel {
 
     private val _decks = MutableStateFlow<List<Deck>>(emptyList())
@@ -127,23 +125,6 @@ class DeckViewModel(
 
     suspend fun deleteDeck(id: String) {
         deckRepository.delete(id)
-        val plans = planRepository.getAll().first()
-        for (plan in plans) {
-            if (id in plan.deckIds) {
-                val newDeckIds = plan.deckIds - id
-                val allCards = cardRepository.getAll().first()
-                val resolved = (plan.knowledgeBaseIds.flatMap { kbId ->
-                    allCards.filter { it.deletedAt == null && decks.value.any { d -> d.knowledgeBaseId == kbId && d.id == it.deckId } }.map { it.id }
-                } + newDeckIds.flatMap { deckId ->
-                    allCards.filter { it.deletedAt == null && it.deckId == deckId }.map { it.id }
-                } + plan.cardIds.filter { cid -> allCards.any { it.id == cid && it.deletedAt == null } }).toSet()
-                planRepository.update(plan.copy(
-                    deckIds = newDeckIds,
-                    totalCards = resolved.size,
-                    updatedAt = kotlin.time.Clock.System.now()
-                ))
-            }
-        }
     }
 
     suspend fun getDeckById(id: String): Deck? = deckRepository.getById(id)

@@ -4,6 +4,7 @@ import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import com.lumecard.shared.data.LearningPlanCardResolver
 import com.lumecard.shared.data.ReviewService
+import com.lumecard.shared.data.LearningPlanMutationService
 import com.lumecard.shared.model.*
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
@@ -28,6 +29,7 @@ class LearningPlanViewModel(
     private val deckRepository: DeckRepository,
     private val cardRepository: CardRepository,
     private val reviewService: ReviewService,
+    private val planMutations: LearningPlanMutationService,
 ) : ScreenModel {
 
     private val _plans = MutableStateFlow<List<LearningPlan>>(emptyList())
@@ -120,10 +122,7 @@ class LearningPlanViewModel(
             createdAt = Clock.System.now(),
             updatedAt = Clock.System.now()
         )
-        if (isDefault) {
-            clearDefaultPlan()
-        }
-        planRepository.insert(plan)
+        withContext(Dispatchers.IO) { planMutations.create(plan) }
         return plan
     }
 
@@ -148,31 +147,19 @@ class LearningPlanViewModel(
             isDefault = isDefault,
             updatedAt = Clock.System.now()
         )
-        if (isDefault) {
-            clearDefaultPlan()
-        }
-        planRepository.update(updated)
-        withContext(Dispatchers.IO) { reviewService.reconcilePlan(id) }
+        withContext(Dispatchers.IO) { planMutations.update(updated) }
     }
 
     suspend fun deletePlan(id: String) {
-        val plan = planRepository.getById(id)
-        planRepository.delete(id)
-        if (plan != null && plan.isDefault) {
-            val remaining = planRepository.getAll().first().filter { it.id != id && it.deletedAt == null }
-            remaining.firstOrNull()?.let { planRepository.update(it.copy(isDefault = true, updatedAt = Clock.System.now())) }
-        }
+        withContext(Dispatchers.IO) { planMutations.delete(id) }
     }
 
     suspend fun setDefault(id: String) {
-        val plan = planRepository.getById(id) ?: return
-        clearDefaultPlan()
-        planRepository.update(plan.copy(isDefault = true, updatedAt = Clock.System.now()))
+        withContext(Dispatchers.IO) { planMutations.setDefault(id) }
     }
 
     suspend fun unsetDefault(id: String) {
-        val plan = planRepository.getById(id) ?: return
-        planRepository.update(plan.copy(isDefault = false, updatedAt = Clock.System.now()))
+        withContext(Dispatchers.IO) { planMutations.unsetDefault(id) }
     }
 
     suspend fun resetProgress(id: String) {
@@ -231,10 +218,4 @@ class LearningPlanViewModel(
             LearningPlanCardResolver.cardRefs(allCards), LearningPlanCardResolver.deckRefs(allDecks))
     }
 
-    private suspend fun clearDefaultPlan() {
-        val current = planRepository.getDefault()
-        if (current != null) {
-            planRepository.update(current.copy(isDefault = false, updatedAt = Clock.System.now()))
-        }
-    }
 }

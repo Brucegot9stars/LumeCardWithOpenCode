@@ -3,6 +3,7 @@ package com.lumecard.shared.repository
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import com.lumecard.shared.database.LumeCardDatabase
+import com.lumecard.shared.data.LearningPlanMutationService
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
 import com.lumecard.shared.model.Deck
@@ -23,7 +24,8 @@ private fun safeInstantOrNull(value: String?): Instant? = value?.let { try { Ins
 private fun safeCardType(value: String): CardType = try { CardType.valueOf(value) } catch (_: Exception) { CardType.BASIC }
 
 class SqlDelightKnowledgeBaseRepository(
-    private val database: LumeCardDatabase
+    private val database: LumeCardDatabase,
+    private val planMutations: LearningPlanMutationService,
 ) : KnowledgeBaseRepository {
 
     private val queries get() = database.lumeCardDatabaseQueries
@@ -74,6 +76,7 @@ class SqlDelightKnowledgeBaseRepository(
             queries.softDeleteCardsByKnowledgeBase(now, now, id)
             queries.softDeleteDecksByKnowledgeBase(now, now, id)
             queries.softDeleteKnowledgeBase(now, now, id)
+            planMutations.knowledgeBaseDeleted(id)
         }
     }
 
@@ -88,7 +91,8 @@ class SqlDelightKnowledgeBaseRepository(
 }
 
 class SqlDelightDeckRepository(
-    private val database: LumeCardDatabase
+    private val database: LumeCardDatabase,
+    private val planMutations: LearningPlanMutationService,
 ) : DeckRepository {
 
     private val queries get() = database.lumeCardDatabaseQueries
@@ -131,18 +135,22 @@ class SqlDelightDeckRepository(
     }
 
     override suspend fun update(deck: Deck) {
-        queries.updateDeck(
-            knowledge_base_id = deck.knowledgeBaseId,
-            name = deck.name,
-            description = deck.description,
-            color = deck.color,
-            icon = deck.icon,
-            parent_id = deck.parentId,
-            updated_at = deck.updatedAt.toString(),
-            deleted_at = deck.deletedAt?.toString(),
-            synced_at = deck.syncedAt?.toString(),
-            id = deck.id
-        )
+        database.transaction {
+            val oldKbId = queries.selectDeckById(deck.id).executeAsOneOrNull()?.knowledge_base_id
+            queries.updateDeck(
+                knowledge_base_id = deck.knowledgeBaseId,
+                name = deck.name,
+                description = deck.description,
+                color = deck.color,
+                icon = deck.icon,
+                parent_id = deck.parentId,
+                updated_at = deck.updatedAt.toString(),
+                deleted_at = deck.deletedAt?.toString(),
+                synced_at = deck.syncedAt?.toString(),
+                id = deck.id
+            )
+            if (oldKbId != null && oldKbId != deck.knowledgeBaseId) planMutations.contentChanged()
+        }
     }
 
     override suspend fun delete(id: String) {
@@ -150,6 +158,7 @@ class SqlDelightDeckRepository(
         database.transaction {
             queries.softDeleteCardsByDeck(now, now, id)
             queries.softDeleteDeck(now, now, id)
+            planMutations.deckDeleted(id)
         }
     }
 
@@ -164,7 +173,8 @@ class SqlDelightDeckRepository(
 }
 
 class SqlDelightCardRepository(
-    private val database: LumeCardDatabase
+    private val database: LumeCardDatabase,
+    private val planMutations: LearningPlanMutationService,
 ) : CardRepository {
 
     private val queries get() = database.lumeCardDatabaseQueries
@@ -214,11 +224,13 @@ class SqlDelightCardRepository(
                 synced_at = card.syncedAt?.toString()
             )
             queries.insertCardFts(card.id, card.front, card.back, card.tags.joinToString(" "))
+            planMutations.contentChanged()
         }
     }
 
     override suspend fun update(card: Card) {
         database.transaction {
+            val oldDeckId = queries.selectCardById(card.id).executeAsOneOrNull()?.deck_id
             queries.updateCard(
                 deck_id = card.deckId,
                 type = card.type.name,
@@ -235,6 +247,7 @@ class SqlDelightCardRepository(
             )
             queries.deleteCardFts(card.id)
             queries.insertCardFts(card.id, card.front, card.back, card.tags.joinToString(" "))
+            if (oldDeckId != null && oldDeckId != card.deckId) planMutations.contentChanged()
         }
     }
 
@@ -243,6 +256,7 @@ class SqlDelightCardRepository(
         database.transaction {
             queries.softDeleteCard(now, now, id)
             queries.deleteCardFts(id)
+            planMutations.contentChanged()
         }
     }
 

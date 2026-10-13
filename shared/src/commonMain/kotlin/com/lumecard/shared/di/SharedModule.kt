@@ -3,6 +3,7 @@ package com.lumecard.shared.di
 import com.lumecard.shared.data.AiCardGenerator
 import com.lumecard.shared.data.BackupRestoreService
 import com.lumecard.shared.data.ReviewService
+import com.lumecard.shared.data.LearningPlanMutationService
 import com.lumecard.shared.data.AiCardPromptManager
 import com.lumecard.shared.data.DemoDataManager
 import com.lumecard.shared.help.HelpRepository
@@ -41,9 +42,9 @@ val sharedModule = module {
     }
 
     // Repositories
-    single<KnowledgeBaseRepository> { SqlDelightKnowledgeBaseRepository(get()) }
-    single<DeckRepository> { SqlDelightDeckRepository(get()) }
-    single<CardRepository> { SqlDelightCardRepository(get()) }
+    single<KnowledgeBaseRepository> { SqlDelightKnowledgeBaseRepository(get(), get()) }
+    single<DeckRepository> { SqlDelightDeckRepository(get(), get()) }
+    single<CardRepository> { SqlDelightCardRepository(get(), get()) }
     single<ReviewLogRepository> { SqlDelightReviewLogRepository(get()) }
     single<SettingsRepository> { SqlDelightSettingsRepository(get()) }
     single<AlgorithmStateRepository> { SqlDelightAlgorithmStateRepository(get()) }
@@ -65,6 +66,7 @@ val sharedModule = module {
     single { SplashQuoteManager(get()) }
     single { BackupRestoreService(get()) }
     single { ReviewService(get(), get()) }
+    single { LearningPlanMutationService(get(), get()) }
 
     // Demo data
     single { DemoDataManager(get(), get(), get(), get()) }

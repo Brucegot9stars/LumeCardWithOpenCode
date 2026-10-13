@@ -321,8 +321,16 @@ selectDefaultLearningPlan:
 SELECT * FROM LearningPlan WHERE is_default = 1 AND deleted_at IS NULL;
 
 insertLearningPlan:
-INSERT OR REPLACE INTO LearningPlan(id, name, description, status, is_default, knowledge_base_ids, deck_ids, card_ids, total_cards, completed_cards, created_at, updated_at, version, deleted_at, synced_at)
+INSERT INTO LearningPlan(id, name, description, status, is_default, knowledge_base_ids, deck_ids, card_ids, total_cards, completed_cards, created_at, updated_at, version, deleted_at, synced_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+clearOtherDefaultLearningPlans:
+UPDATE LearningPlan SET is_default = 0, updated_at = ?, version = version + 1, synced_at = NULL
+WHERE is_default = 1 AND id != ? AND deleted_at IS NULL;
+
+setLearningPlanDefault:
+UPDATE LearningPlan SET is_default = ?, updated_at = ?, version = version + 1, synced_at = NULL
+WHERE id = ? AND deleted_at IS NULL;
 
 updateLearningPlan:
 UPDATE LearningPlan SET name = ?, description = ?, status = ?, is_default = ?, knowledge_base_ids = ?, deck_ids = ?, card_ids = ?, total_cards = ?, completed_cards = ?, updated_at = ?, version = version + 1, deleted_at = ?, synced_at = ? WHERE id = ?;
