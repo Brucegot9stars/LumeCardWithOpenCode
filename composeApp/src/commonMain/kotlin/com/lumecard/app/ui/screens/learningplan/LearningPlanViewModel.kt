@@ -68,7 +68,9 @@ class LearningPlanViewModel(
     }
 
     suspend fun getPlanById(id: String): com.lumecard.shared.model.LearningPlan? {
-        return planRepository.getById(id)
+        return try { planRepository.getById(id) }
+        catch (e: CancellationException) { throw e }
+        catch (_: Exception) { null }
     }
 
     fun loadPlans() {

@@ -1,5 +1,7 @@
 package com.lumecard.app.ui.screens.settings
 
+import com.lumecard.app.di.rememberInjectedScreenModel
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -75,7 +77,7 @@ class SettingsScreen(
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
-        val settingsViewModel: SettingsViewModel = koinInject()
+        val settingsViewModel: SettingsViewModel = rememberInjectedScreenModel()
         val strings = koinInject<I18nManager>().strings
         val i18nManager = koinInject<I18nManager>()
         val settingsState = settingsViewModel.state

@@ -1,5 +1,7 @@
 package com.lumecard.app.ui.screens.deck
 
+import com.lumecard.app.di.rememberInjectedScreenModel
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -54,7 +56,7 @@ class DeckListScreen(
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
-        val viewModel: DeckViewModel = koinInject()
+        val viewModel: DeckViewModel = rememberInjectedScreenModel()
         val strings = koinInject<I18nManager>().strings
         val decks by viewModel.decks.collectAsState()
         val isLoading by viewModel.isLoading.collectAsState()

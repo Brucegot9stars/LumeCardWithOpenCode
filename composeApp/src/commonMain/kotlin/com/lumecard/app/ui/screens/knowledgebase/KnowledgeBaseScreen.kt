@@ -1,5 +1,7 @@
 package com.lumecard.app.ui.screens.knowledgebase
 
+import com.lumecard.app.di.rememberInjectedScreenModel
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -53,7 +55,7 @@ class KnowledgeBaseScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
-        val viewModel: KnowledgeBaseViewModel = koinInject()
+        val viewModel: KnowledgeBaseViewModel = rememberInjectedScreenModel()
         val i18nManager = koinInject<I18nManager>()
         val strings = i18nManager.strings
         val spacing = LumeCardTheme.spacing

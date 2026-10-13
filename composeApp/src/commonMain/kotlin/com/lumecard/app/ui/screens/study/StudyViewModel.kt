@@ -64,10 +64,16 @@ class StudyViewModel(
     private var isRating = false
     private var sessionGeneration = 0
     private var isTimerRunning = false
+    private var elapsedBeforeResume = 0
 
     init {
         screenModelScope.launch {
-            quoteFeature.studyTimeSeconds.collect { _elapsedSeconds.value = it.coerceAtMost(Int.MAX_VALUE.toLong()).toInt() }
+            quoteFeature.studyTimeSeconds.collect {
+                if (_sessionStartTime.value != null && isTimerRunning) {
+                    _elapsedSeconds.value = (elapsedBeforeResume.toLong() + it)
+                        .coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+                }
+            }
         }
     }
 
@@ -131,6 +137,7 @@ class StudyViewModel(
         stopTimer()
         _sessionStartTime.value = null
         _elapsedSeconds.value = 0
+        elapsedBeforeResume = 0
         loadCards(activeDeckIds, activePlanIds, mode, limit)
     }
 
@@ -161,7 +168,12 @@ class StudyViewModel(
     }
 
     fun stopTimer() {
-        if (isTimerRunning) quoteFeature.stopStudy()
+        if (isTimerRunning) {
+            quoteFeature.stopStudy()
+            elapsedBeforeResume = (elapsedBeforeResume.toLong() + quoteFeature.studyTimeSeconds.value)
+                .coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            _elapsedSeconds.value = elapsedBeforeResume
+        }
         isTimerRunning = false
     }
 

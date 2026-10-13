@@ -1,5 +1,7 @@
 package com.lumecard.app.ui.screens.study
 
+import com.lumecard.app.di.rememberInjectedScreenModel
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -24,6 +26,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.ui.screens.deck.DeckViewModel
 import com.lumecard.app.ui.screens.learningplan.LearningPlanViewModel
 import com.lumecard.shared.model.Deck
+import com.lumecard.shared.data.generateUuid
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.theme.LumeCardTheme
@@ -41,15 +44,15 @@ class StudyModeScreen(
     private val planIds: List<String> = emptyList(),
     private val preSelectedDeckIds: List<String> = emptyList()
 ) : Screen {
-    override val key: ScreenKey = "StudyMode_${planIds.sorted().joinToString("_")}"
+    override val key: ScreenKey = "StudyMode_${planIds.sorted().joinToString("_")}_${generateUuid()}"
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Suppress("OverloadResolutionAmbiguity")
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
-        val deckViewModel: DeckViewModel = koinInject()
-        val planViewModel: LearningPlanViewModel = koinInject()
+        val deckViewModel: DeckViewModel = rememberInjectedScreenModel()
+        val planViewModel: LearningPlanViewModel = rememberInjectedScreenModel()
         val strings = koinInject<I18nManager>().strings
         val scope = rememberCoroutineScope()
         val decks by deckViewModel.decks.collectAsState()
@@ -84,7 +87,7 @@ class StudyModeScreen(
             }
         }
 
-        LaunchedEffect(decks, planIds, preSelectedDeckIds) {
+        LaunchedEffect(studyableDecks, planIds, preSelectedDeckIds) {
             if (planIds.isNotEmpty() && preSelectedDeckIds.isNotEmpty() && decks.isNotEmpty()) {
                 val validIds = preSelectedDeckIds.filter { id -> studyableDecks.any { it.id == id } }
                 if (validIds.isNotEmpty()) {

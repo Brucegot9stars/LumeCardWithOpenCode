@@ -1,5 +1,7 @@
 package com.lumecard.app.ui.screens.settings.quote
 
+import com.lumecard.app.di.rememberInjectedScreenModel
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -44,7 +46,7 @@ class QuoteSettingsScreen : Screen {
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
         val strings = koinInject<I18nManager>().strings
-        val vm: QuoteSettingsViewModel = koinInject()
+        val vm: QuoteSettingsViewModel = rememberInjectedScreenModel()
         val settings by vm.settings.collectAsState()
         val sections by vm.sections.collectAsState()
         val isDirty by vm.isDirty.collectAsState()

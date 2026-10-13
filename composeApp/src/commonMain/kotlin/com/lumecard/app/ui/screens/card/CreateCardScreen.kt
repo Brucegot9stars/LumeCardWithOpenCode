@@ -1,5 +1,7 @@
 package com.lumecard.app.ui.screens.card
 
+import com.lumecard.app.di.rememberInjectedScreenModel
+
 import androidx.compose.animation.*
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -44,7 +46,7 @@ class CreateCardScreen(
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
-        val viewModel: CardViewModel = koinInject()
+        val viewModel: CardViewModel = rememberInjectedScreenModel()
         val strings = koinInject<I18nManager>().strings
 
         var editCard: Card? by remember { mutableStateOf(null) }

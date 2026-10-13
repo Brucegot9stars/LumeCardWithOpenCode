@@ -74,18 +74,18 @@ class DeckViewModel(
         loadDecksJob?.cancel()
         loadDecksJob = screenModelScope.launch {
             _isLoading.value = true
-            combine(deckRepository.getAll(), _sortConfig) { deckList, sort ->
+            combine(deckRepository.getAll(), cardRepository.getAll(), _sortConfig) { deckList, cards, sort ->
                 val filtered = if (knowledgeBaseId != null) {
                     deckList.filter { it.knowledgeBaseId == knowledgeBaseId && it.deletedAt == null }
                 } else {
                     deckList.filter { it.deletedAt == null }
                 }
-                sortDecks(filtered, sort)
-            }.collect { sorted ->
+                sortDecks(filtered, sort) to cards.filter { it.deletedAt == null }
+                    .groupingBy { it.deckId }.eachCount()
+            }.collect { (sorted, counts) ->
                 _decks.update { sorted }
+                _deckCardCounts.value = counts
                 _isLoading.value = false
-                val allCards = cardRepository.getAll().first()
-                _deckCardCounts.update { allCards.groupBy { it.deckId }.mapValues { it.value.size } }
             }
         }
     }

@@ -1,5 +1,7 @@
 package com.lumecard.app.ui.screens.warehouse
 
+import com.lumecard.app.di.rememberInjectedScreenModel
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -42,7 +44,7 @@ class WarehouseScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
-        val viewModel: WarehouseViewModel = koinInject()
+        val viewModel: WarehouseViewModel = rememberInjectedScreenModel()
         val strings = koinInject<I18nManager>().strings
         val spacing = LumeCardTheme.spacing
         val radius = LumeCardTheme.radius

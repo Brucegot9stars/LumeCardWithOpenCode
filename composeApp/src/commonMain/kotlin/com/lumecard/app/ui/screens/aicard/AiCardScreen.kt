@@ -1,5 +1,7 @@
 package com.lumecard.app.ui.screens.aicard
 
+import com.lumecard.app.di.rememberInjectedScreenModel
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -47,7 +49,7 @@ class AiCardScreen : Screen {
         val strings = i18nManager.strings
         val spacing = LumeCardTheme.spacing
         val radius = LumeCardTheme.radius
-        val vm: AiCardViewModel = koinInject()
+        val vm: AiCardViewModel = rememberInjectedScreenModel()
         val state by vm.state.collectAsState()
         val scope = rememberCoroutineScope()
         val snackbarHostState = remember { SnackbarHostState() }

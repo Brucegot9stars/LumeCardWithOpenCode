@@ -1,5 +1,7 @@
 package com.lumecard.app.ui.screens.deck
 
+import com.lumecard.app.di.rememberInjectedScreenModel
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -43,7 +45,7 @@ class CardListScreen(
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
-        val viewModel: CardViewModel = koinInject()
+        val viewModel: CardViewModel = rememberInjectedScreenModel()
         val strings = koinInject<I18nManager>().strings
         val cards by viewModel.cards.collectAsState()
         val isLoading by viewModel.isLoading.collectAsState()

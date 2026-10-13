@@ -1,5 +1,7 @@
 package com.lumecard.app.ui.screens.study
 
+import com.lumecard.app.di.rememberInjectedScreenModel
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.spring
@@ -44,6 +46,7 @@ import com.lumecard.app.ui.screens.settings.SettingsStateHolder
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
 import com.lumecard.shared.model.Rating
+import com.lumecard.shared.data.generateUuid
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
@@ -64,7 +67,7 @@ class StudyScreen(
 ) : Screen {
     constructor(deckId: String, deckName: String) : this(listOf(deckId), deckName)
 
-    override val key: ScreenKey = "Study_${deckIds.sorted().joinToString("_")}_${planIds.sorted().joinToString("_")}"
+    override val key: ScreenKey = "Study_${deckIds.sorted().joinToString("_")}_${planIds.sorted().joinToString("_")}_${generateUuid()}"
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Suppress("OverloadResolutionAmbiguity")
@@ -82,7 +85,7 @@ class StudyScreen(
         if (crashError != null) return
 
         val navigator = LocalNavigator.currentOrThrow
-        val viewModel: StudyViewModel = koinInject()
+        val viewModel: StudyViewModel = rememberInjectedScreenModel()
         val settingsState: SettingsStateHolder = koinInject()
         val cards by viewModel.cards.collectAsState()
         val currentIndex by viewModel.currentCardIndex.collectAsState()

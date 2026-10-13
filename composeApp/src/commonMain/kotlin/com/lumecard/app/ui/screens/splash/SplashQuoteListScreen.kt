@@ -1,5 +1,7 @@
 package com.lumecard.app.ui.screens.splash
 
+import com.lumecard.app.di.rememberInjectedScreenModel
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -47,7 +49,7 @@ class SplashQuoteListScreen : Screen {
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
         val strings = koinInject<I18nManager>().strings
-        val vm: SplashQuoteViewModel = koinInject()
+        val vm: SplashQuoteViewModel = rememberInjectedScreenModel()
         val userQuotes by vm.userQuotes.collectAsState()
         val defaultQuotes by vm.defaultQuotes.collectAsState()
         val settings by vm.settings.collectAsState()

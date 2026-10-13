@@ -1,5 +1,7 @@
 package com.lumecard.app.ui.screens.stats
 
+import com.lumecard.app.di.rememberInjectedScreenModel
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -38,7 +40,7 @@ class StatsScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
-        val viewModel: StatsViewModel = koinInject()
+        val viewModel: StatsViewModel = rememberInjectedScreenModel()
         val strings = koinInject<I18nManager>().strings
         val stats by viewModel.stats.collectAsState()
         val resetStep by viewModel.resetStep.collectAsState()

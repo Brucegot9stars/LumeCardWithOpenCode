@@ -1,5 +1,7 @@
 package com.lumecard.app.ui.screens.deck
 
+import com.lumecard.app.di.rememberInjectedScreenModel
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -31,7 +33,7 @@ class DeckManagementScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
-        val viewModel: DeckViewModel = koinInject()
+        val viewModel: DeckViewModel = rememberInjectedScreenModel()
         val strings = koinInject<I18nManager>().strings
         val decks by viewModel.decks.collectAsState()
         val isLoading by viewModel.isLoading.collectAsState()

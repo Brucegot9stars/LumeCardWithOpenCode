@@ -1,5 +1,7 @@
 package com.lumecard.app.ui.screens.learningplan
 
+import com.lumecard.app.di.rememberInjectedScreenModel
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -37,7 +39,7 @@ class LearningPlanScreen(
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
-        val viewModel: LearningPlanViewModel = koinInject()
+        val viewModel: LearningPlanViewModel = rememberInjectedScreenModel()
         val strings = koinInject<I18nManager>().strings
         val spacing = LumeCardTheme.spacing
         val radius = LumeCardTheme.radius

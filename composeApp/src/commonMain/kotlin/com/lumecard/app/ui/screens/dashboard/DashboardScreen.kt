@@ -1,5 +1,7 @@
 package com.lumecard.app.ui.screens.dashboard
 
+import com.lumecard.app.di.rememberInjectedScreenModel
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -45,7 +47,7 @@ class DashboardScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
-        val viewModel: DashboardViewModel = koinInject()
+        val viewModel: DashboardViewModel = rememberInjectedScreenModel()
         val strings = koinInject<I18nManager>().strings
         val spacing = LumeCardTheme.spacing
         val radius = LumeCardTheme.radius

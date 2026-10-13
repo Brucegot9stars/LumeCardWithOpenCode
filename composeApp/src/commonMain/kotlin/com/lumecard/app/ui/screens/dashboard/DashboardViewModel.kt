@@ -17,6 +17,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -103,11 +104,10 @@ class DashboardViewModel(
                     }
                 }
                 launch {
-                    deckRepository.getAll().collect { deckList ->
-                        val withCount = deckList.map { deck ->
-                            val cards = withContext(Dispatchers.IO) { cardRepository.getByDeck(deck.id).first() }
-                            DeckWithCount(deck, cards.size)
-                        }
+                    combine(deckRepository.getAll(), cardRepository.getAll()) { deckList, cards ->
+                        val counts = cards.filter { it.deletedAt == null }.groupingBy { it.deckId }.eachCount()
+                        deckList to deckList.map { DeckWithCount(it, counts[it.id] ?: 0) }
+                    }.collect { (deckList, withCount) ->
                         _decks.update { deckList }
                         _decksWithCount.update { withCount }
                         _isLoading.value = false

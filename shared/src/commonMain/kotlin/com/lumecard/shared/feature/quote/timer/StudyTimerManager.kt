@@ -58,6 +58,7 @@ class StudyTimerManager(
     fun startStudy() {
         stopTimer()
         accumulatedMs = 0L
+        _studyTimeSeconds.value = 0L
         isStudyActive = true
         _isPaused.value = false
         lastTickMark = timeSource.markNow()
