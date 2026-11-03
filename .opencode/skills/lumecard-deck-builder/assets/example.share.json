@@ -1,0 +1,186 @@
+{
+  "exportType": "share",
+  "version": "1.0.0",
+  "schemaVersion": 1,
+  "exportDate": "2026-11-03T08:00:00.000Z",
+  "knowledgeBases": [
+    {
+      "id": "lcg_spanish_a1_kb",
+      "name": "西班牙语 A1 核心",
+      "description": "零基础问候、自我介绍与 ser/estar 基础用法",
+      "icon": "📚",
+      "createdAt": "2026-11-03T08:00:00.000Z",
+      "updatedAt": "2026-11-03T08:00:00.000Z",
+      "version": 1
+    }
+  ],
+  "decks": [
+    {
+      "id": "lcg_spanish_a1_d01",
+      "knowledgeBaseId": "lcg_spanish_a1_kb",
+      "name": "日常问候",
+      "description": "打招呼、告别与礼貌用语",
+      "color": "#4CAF50",
+      "icon": "🎯",
+      "parentId": null,
+      "createdAt": "2026-11-03T08:00:00.000Z",
+      "updatedAt": "2026-11-03T08:00:00.000Z",
+      "version": 1
+    },
+    {
+      "id": "lcg_spanish_a1_d02",
+      "knowledgeBaseId": "lcg_spanish_a1_kb",
+      "name": "ser 与 estar",
+      "description": "系动词的本质与状态用法",
+      "color": "#2196F3",
+      "icon": "💡",
+      "parentId": null,
+      "createdAt": "2026-11-03T08:00:00.000Z",
+      "updatedAt": "2026-11-03T08:00:00.000Z",
+      "version": 1
+    }
+  ],
+  "cards": [
+    {
+      "id": "lcg_spanish_a1_d01_c001",
+      "deckId": "lcg_spanish_a1_d01",
+      "type": "BASIC",
+      "front": "Hola",
+      "back": "你好",
+      "title": "西班牙语问候 Hola",
+      "tags": ["问候", "A1"],
+      "metadata": {
+        "hcenter": "true",
+        "vcenter": "true",
+        "fontSize": "22"
+      },
+      "createdAt": "2026-11-03T08:00:00.000Z",
+      "updatedAt": "2026-11-03T08:00:00.000Z",
+      "version": 1
+    },
+    {
+      "id": "lcg_spanish_a1_d01_c002",
+      "deckId": "lcg_spanish_a1_d01",
+      "type": "BASIC",
+      "front": "¿Cómo te llamas?",
+      "back": "你叫什么名字？",
+      "title": "询问姓名 ¿Cómo te llamas?",
+      "tags": ["自我介绍", "A1"],
+      "metadata": {
+        "hcenter": "true",
+        "vcenter": "true",
+        "fontSize": "20"
+      },
+      "createdAt": "2026-11-03T08:00:00.000Z",
+      "updatedAt": "2026-11-03T08:00:00.000Z",
+      "version": 1
+    },
+    {
+      "id": "lcg_spanish_a1_d01_c003",
+      "deckId": "lcg_spanish_a1_d01",
+      "type": "CLOZE",
+      "front": "Buenos {{c1::días}}.",
+      "back": "Buenos días.",
+      "title": "早上好 Buenos días",
+      "tags": ["问候", "A1"],
+      "metadata": {
+        "fontSize": "18"
+      },
+      "createdAt": "2026-11-03T08:00:00.000Z",
+      "updatedAt": "2026-11-03T08:00:00.000Z",
+      "version": 1
+    },
+    {
+      "id": "lcg_spanish_a1_d01_c004",
+      "deckId": "lcg_spanish_a1_d01",
+      "type": "MULTIPLE_CHOICE",
+      "front": "下列哪一句表示「晚上好」？",
+      "back": "+Buenas noches\nBuenos días\nBuenas tardes\nHasta luego",
+      "title": "晚上好 Buenas noches",
+      "tags": ["问候", "A1"],
+      "metadata": {},
+      "createdAt": "2026-11-03T08:00:00.000Z",
+      "updatedAt": "2026-11-03T08:00:00.000Z",
+      "version": 1
+    },
+    {
+      "id": "lcg_spanish_a1_d01_c005",
+      "deckId": "lcg_spanish_a1_d01",
+      "type": "BASIC",
+      "front": "Gracias",
+      "back": "谢谢",
+      "title": "西班牙语感谢 Gracias",
+      "tags": ["礼貌用语", "A1"],
+      "metadata": {
+        "hcenter": "true",
+        "vcenter": "true",
+        "fontSize": "24",
+        "fontFamily": "serif"
+      },
+      "createdAt": "2026-11-03T08:00:00.000Z",
+      "updatedAt": "2026-11-03T08:00:00.000Z",
+      "version": 1
+    },
+    {
+      "id": "lcg_spanish_a1_d01_c006",
+      "deckId": "lcg_spanish_a1_d01",
+      "type": "REVERSED",
+      "front": "¿Cómo estás?",
+      "back": "你好吗？",
+      "title": "询问近况 ¿Cómo estás?",
+      "tags": ["问候", "A1"],
+      "metadata": {
+        "hcenter": "true",
+        "vcenter": "true",
+        "fontSize": "20"
+      },
+      "createdAt": "2026-11-03T08:00:00.000Z",
+      "updatedAt": "2026-11-03T08:00:00.000Z",
+      "version": 1
+    },
+    {
+      "id": "lcg_spanish_a1_d02_c001",
+      "deckId": "lcg_spanish_a1_d02",
+      "type": "RICH_TEXT",
+      "front": "<h3>ser 与 estar</h3><p><strong>ser</strong> 表示<strong>本质、身份、来源</strong>；<strong>estar</strong> 表示<strong>状态、位置</strong>。</p>",
+      "back": "<p>例：<i>Soy</i> estudiante.（身份）<br><i>Estoy</i> cansado.（状态）</p>",
+      "title": "ser 与 estar 的核心区别",
+      "tags": ["语法", "系动词", "A1"],
+      "metadata": {
+        "hcenter": "true",
+        "vcenter": "true"
+      },
+      "createdAt": "2026-11-03T08:00:00.000Z",
+      "updatedAt": "2026-11-03T08:00:00.000Z",
+      "version": 1
+    },
+    {
+      "id": "lcg_spanish_a1_d02_c002",
+      "deckId": "lcg_spanish_a1_d02",
+      "type": "MARKDOWN",
+      "front": "## ser 与 estar 对比\n\n| 动词 | 用法 | 例子 |\n|---|---|---|\n| ser | 身份、来源、本质 | Soy chino. |\n| estar | 状态、位置 | Estoy en casa. |",
+      "back": "记住：**ser** 回答「是谁/是什么」，**estar** 回答「现在怎样/在哪里」。",
+      "title": "ser 与 estar 对比表",
+      "tags": ["语法", "系动词", "A1"],
+      "metadata": {},
+      "createdAt": "2026-11-03T08:00:00.000Z",
+      "updatedAt": "2026-11-03T08:00:00.000Z",
+      "version": 1
+    },
+    {
+      "id": "lcg_spanish_a1_d02_c003",
+      "deckId": "lcg_spanish_a1_d02",
+      "type": "BASIC",
+      "front": "为什么说「Estoy cansado」而不是「Soy cansado」？",
+      "back": "因为「累」是暂时的状态，不是永久身份；描述状态用 estar。若用 ser，会被理解为「我是一个疲惫的人」这种本质描述，语义不自然。",
+      "title": "疲惫状态为什么用 estar",
+      "tags": ["语法", "系动词", "易错点"],
+      "metadata": {
+        "fontSize": "16"
+      },
+      "createdAt": "2026-11-03T08:00:00.000Z",
+      "updatedAt": "2026-11-03T08:00:00.000Z",
+      "version": 1
+    }
+  ]
+}

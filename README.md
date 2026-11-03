@@ -349,6 +349,14 @@ Card 模型定义了 `media: List<Media>` 字段，支持 IMAGE、AUDIO、VIDEO�
 - **WebDAV 多配置管理**：支持多个同步配置保存、默认标记、连接测试、手动强制覆盖（学习数据与配置分开同步）
 - **平台抽象**：使用 Kotlin `expect/actual` 机制处理数据库驱动、平台样式等差异
 
+## AI 制卡 Skill
+
+仓库内置 `lumecard-deck-builder` Skill：把文档、笔记、教材或大纲转换成可直接导入 LumeCard 的「知识库 → 牌组 → 卡牌」JSON，并自动选择卡型、居中方式与字号。同一份 Skill 兼容 OpenCode、Claude Code、Codex、CodeBuddy。
+
+- 使用指南：[`.opencode/skills/lumecard-deck-builder/USAGE.md`](.opencode/skills/lumecard-deck-builder/USAGE.md)
+- 多 agent 副本同步：`node scripts/sync-skill.mjs`（检查：`--check`）
+- 手动校验生成结果：`node .opencode/skills/lumecard-deck-builder/scripts/validate.mjs <json>`
+
 ## License
 
 MIT
