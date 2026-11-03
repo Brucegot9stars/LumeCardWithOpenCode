@@ -883,7 +883,9 @@ class SettingsScreen(
                                                     Card(
                                                         id = ec.id, deckId = ec.deckId,
                                                         type = try { CardType.valueOf(ec.type) } catch (_: Exception) { CardType.BASIC },
-                                                        front = ec.front, back = ec.back, tags = ec.tags,
+                                                        front = ec.front, back = ec.back,
+                                                        title = ec.title, tags = ec.tags,
+                                                        media = ec.media, metadata = ec.metadata,
                                                         createdAt = Instant.parse(ec.createdAt),
                                                         updatedAt = Instant.parse(ec.updatedAt),
                                                         lastReviewedAt = ec.lastReviewedAt?.let { Instant.parse(it) },
