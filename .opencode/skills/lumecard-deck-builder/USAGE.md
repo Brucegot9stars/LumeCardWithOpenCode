@@ -22,6 +22,8 @@
 
 > 目录名必须是 `lumecard-deck-builder`（小写字母、数字、连字符），否则 Claude Code 等 agent 可能拒绝加载。
 
+> **Codex 没有 `.codex/skills` 目录**：Codex 已采用 Agent Skills 标准，仓库级扫描 `.agents/skills/`（从当前目录逐级向上直到仓库根），用户级是 `~/.agents/skills/`。`.codex/` 只存放 `config.toml`、`agents/`、`rules/` 等配置；旧的 `~/.codex/skills` 仅作兼容保留，新技能不要放那里。
+
 仓库中已经预置了四份内容一致的副本：
 
 ```
