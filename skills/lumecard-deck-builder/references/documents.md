@@ -45,12 +45,14 @@ PDF reader, an already installed local converter such as pdftotext, or ask permi
 install pypdf in an isolated Python environment. Never install it automatically.
 
 ```sh
-python3 -m venv .pdf-reader-venv
-.pdf-reader-venv/bin/python -m pip install 'pypdf>=6,<7'
-.pdf-reader-venv/bin/python scripts/extract_document.py textbook.pdf extracted.json
+python3 -m venv ../lumecard-pdf-reader-venv
+../lumecard-pdf-reader-venv/bin/python -m pip install 'pypdf>=6,<7'
+../lumecard-pdf-reader-venv/bin/python scripts/extract_document.py textbook.pdf extracted.json
 ```
 
-On Windows use `.\.pdf-reader-venv\Scripts\python.exe` for both commands. The dependency
+On Windows create `..\lumecard-pdf-reader-venv` and use
+`..\lumecard-pdf-reader-venv\Scripts\python.exe` for both commands. Keep the environment
+outside the skill directory to avoid copying dependencies into installations/packages. The dependency
 is limited to PDF extraction; every other core workflow remains standard-library-only.
 Encrypted PDFs require an authorized decrypted copy. Do not solicit a password in logs
 or attempt bypasses. All-empty PDFs fail with NO_TEXT; some empty pages yield `partial`
