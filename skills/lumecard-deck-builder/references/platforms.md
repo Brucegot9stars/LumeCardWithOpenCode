@@ -22,6 +22,36 @@ not something the open format itself guarantees. Permission policies may disable
 or shell access. Duplicate copies in native and compatibility directories can cause
 duplicate discovery; install once per scope.
 
+## Installer auto-detection (0.3.0)
+
+Omitting --agent is equivalent to --agent auto. Detection checks PATH via Python's
+shutil.which (including Windows executable suffix handling), known config locations,
+project config directories when a project is specified, and this installer's marker.
+No Agent process is launched and no credentials or config contents are read. The shared
+`.agents` directory alone does not identify Codex; its CLI, `.codex`/CODEX_HOME or an
+existing managed skill is needed. XDG_CONFIG_HOME and HERMES_HOME are honored.
+
+Inspiration: locally inspected CodeGraph 1.0.1 installer `targets/*`, registry detection
+and interactive preselection. This implementation independently uses configuration
+presence plus PATH and does not depend on CodeGraph or copy its source. A detected
+config directory is evidence, not proof of an installed/running Agent. There is no
+default Agent fallback when detection finds nothing.
+
+TTY sessions allow selecting detected eligible names (Enter=all, none=cancel).
+Noninteractive sessions need --yes for automatic mutations. --list-agents and --dry-run
+perform no writes. Explicit --agent bypasses detection selection and retains the original
+single-Agent behavior; comma-separated names select multiple targets. Unsupported scopes
+(Hermes project scope) and blocked destinations are reported and excluded from automatic
+selection. --dest needs an explicit single Agent. Automatic uninstall only considers
+managed installations, even when the Agent CLI was removed.
+
+Automatic installation reuses a selected Codex/Claude compatibility root for OpenCode
+when its native target does not already exist. No additional OpenCode copy is created.
+Explicit selections keep native destinations. Existing managed installs are left in
+place after integrity checks; incompatible/unmanaged conflicts fail preflight. Multi-Agent
+preflight checks all targets before changes, but an unforeseen runtime I/O failure can
+still leave earlier successful installations in place; output identifies those successes.
+
 ## Primary sources
 
 - [Agent Skills specification](https://agentskills.io/specification): portable directory/frontmatter and progressive disclosure.

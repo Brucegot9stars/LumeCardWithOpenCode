@@ -2,7 +2,7 @@
 
 将文档、笔记、教材、文章或大纲转换为 LumeCard 可导入的闪卡 JSON。
 知识库 → 牌组 → 卡牌通过 ID 关联；自动选择卡型、居中、字号和内置字体。
-版本 0.2.0。核心定义只有标准 `SKILL.md`，没有平台专用工具依赖。
+版本 0.3.0。核心定义只有标准 `SKILL.md`，没有平台专用工具依赖。
 
 Agent 负责理解资料、提炼知识和形成内容计划；Python 标准库脚本负责生成唯一 ID、
 选择默认样式、编码与校验。没有模型 API、网络请求、自动安装依赖或外传文档。
@@ -15,6 +15,9 @@ Agent 负责理解资料、提炼知识和形成内容计划；Python 标准库�
 先下载或 clone，再进入本目录。默认拒绝覆盖已存在的安装。
 
 ```sh
+sh install.sh
+sh install.sh --list-agents
+sh install.sh --yes
 sh install.sh --agent codex --scope user
 sh install.sh --agent claude --scope project --project /path/to/project
 sh install.sh --agent opencode --scope user
@@ -25,12 +28,26 @@ sh install.sh --agent codebuddy --scope project --project /path/to/project
 Windows PowerShell：
 
 ```powershell
+.\install.ps1
+.\install.ps1 -ListAgents
+.\install.ps1 -Yes
 .\install.ps1 -Agent codex -Scope user
 .\install.ps1 -Agent claude -Scope project -Project 'D:\Workspace\My Project'
 ```
 
 目标 Agent：`codex`、`claude`、`opencode`、`hermes`、`codebuddy`、`custom`。
+省略 `--agent` / `-Agent` 或指定 `auto` 会检测本机 CLI、配置目录及本安装器管理的已有安装，
+展示检测依据与目标目录。交互终端可输入逗号分隔的 Agent 名称；回车选全部，`none` 取消。
+非交互环境使用 `--yes` / `-Yes` 安装全部检测到且支持当前作用域的 Agent，或显式指定 Agent。
+也可用 `--agent codex,claude` / `-Agent 'codex,claude'` 指定多个目标。
+`--list-agents` / `-ListAgents` 仅检测；`--dry-run` / `-DryRun` 预览检测后的全部目标，无需确认。
+没有检测到时会报错并提示显式指定，不会默认选择某个平台。配置残留也可能被检测到，
+检测不代表 Agent 可正常运行或一定具有写入权限。已有完整受管安装会保留；更新仍需先卸载。
+自动模式检测到 OpenCode 与 Codex/Claude 时，优先复用同作用域兼容目录，避免再创建
+OpenCode 原生目录副本；显式指定的目标则按指定目录处理。目标冲突会在整批安装开始前检查。
 其他 Agent 用 `--agent custom --dest /verified/skills/parent`；PowerShell 用 `-Dest`。
+`--dest` 必须配显式单个 Agent。自动卸载只选择当前作用域已有的受管安装：
+`sh install.sh --uninstall --yes` 或 `.\install.ps1 -Uninstall -Yes`。
 `--dry-run` / `-DryRun` 只显示目标。Hermes 项目级发现机制未确认，默认拒绝项目级安装。
 安装器检查目录、拒绝符号链接、只复制文件、不修改 Agent 配置。
 详细安装目录、调用方式和来源见 [兼容性矩阵](references/platforms.md)。
@@ -90,7 +107,7 @@ lumecard-deck-builder/
 
 ```sh
 python3 -m unittest discover -s tests -v
-python3 scripts/package.py /path/to/lumecard-deck-builder-0.2.0.zip
+python3 scripts/package.py /path/to/lumecard-deck-builder-0.3.0.zip
 ```
 
 打包拒绝覆盖，排除缓存和安装清单。独立发布仓库的 CI 覆盖 Linux、Windows 和 macOS；

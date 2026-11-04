@@ -3,7 +3,7 @@ name: lumecard-deck-builder
 description: Convert PDF, DOCX, Markdown, TXT, HTML documents or supplied notes and outlines into LumeCard importable flashcard JSON with knowledge bases, decks and cards. Use for LumeCard deck creation or conversion, not generic summaries, Anki exports or application code changes.
 license: MIT
 metadata:
-  version: "0.2.0"
+  version: "0.3.0"
 ---
 
 # LumeCard deck builder

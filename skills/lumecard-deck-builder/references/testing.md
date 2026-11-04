@@ -10,12 +10,15 @@ review, Agent discovery tests and GUI import. No Gradle build/test is run in thi
 | 0.1.0 baseline, Linux / Python 3.12 | 24 cases passed, including PowerShell 7.6.9 install/uninstall |
 | 0.2.0 standard-library environment, Linux / Python 3.12 | 36 cases: 34 passed, 2 PDF extraction cases skipped because optional pypdf is absent; missing-dependency behavior tested |
 | 0.2.0 optional-PDF environment, Linux / Python 3.11.15 + pypdf 6.21.4 | 36 cases passed, no skips, including PowerShell install/uninstall |
+| 0.3.0 optional-PDF environment, Linux / Python 3.11.15 + pypdf 6.21.4 | 54 cases passed, no skips, including detection, interactive selection, multi-Agent install/uninstall and both wrappers |
+| Automatic detection | PATH-only, config-only, custom homes/XDG, project scopes, missing Agents, blocked destinations and removed CLIs tested in isolated directories; existing edited installations preserved |
+| Local shell / PowerShell 7.6.9 previews | Both wrappers accept omitted Agent and show matching detection/dry-run results; actual home Agent directories not modified |
 | Document formats | Markdown indentation/line locators, UTF BOMs, explicit GB18030, static HTML and excluded active content, DOCX body/table text, malformed/empty/unsupported inputs tested |
 | PDF extraction | Real generated two-page PDF verifies text, page locators and partial coverage; all-blank PDF verifies NO_TEXT fallback. OCR/complex textbooks/encrypted PDFs not actually validated |
 | ZIP distribution | Extracted standalone archive validates its included import fixture; caches excluded |
 | YAML Frontmatter | Parsed successfully with PyYAML in the development environment; not a runtime dependency |
 | Bundled skill-creator quick_validate.py | Passed after moving optional compatibility text into body |
-| Official skills-ref | Passed against upstream commit `69ef37e9424c0a7ea9dd2293b559e43ec8176379`, downloaded into temporary cache |
+| Official skills-ref | 0.1.0/0.2.0 passed against upstream commit `69ef37e9424c0a7ea9dd2293b559e43ec8176379`; 0.3.0 uses the same frontmatter fields and passed the bundled validator |
 | Positive/negative/injection scenarios | Eight cases manually reviewed; see tests/scenario-review.md. Automatic Agent routing NOT tested |
 | Source → curated plan → import | 1 knowledge base, 1 deck, 4 cards; references/type/style validation passed |
 | Shell wrapper and absent Python | Linux install/uninstall passed; empty-PATH simulation returned clear error with manual fallback |
