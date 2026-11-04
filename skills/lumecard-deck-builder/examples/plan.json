@@ -1,0 +1,14 @@
+{
+  "knowledgeBases": [{
+    "name": "Kotlin 与 JVM",
+    "decks": [{
+      "name": "运行时与集合",
+      "cards": [
+        {"front": "JVM 执行什么？", "back": "Java 字节码。", "source": "notes.md paragraph 1"},
+        {"front": "Kotlin val 保证{{c1::绑定不可重新赋值}}，但不保证引用对象不可变。", "source": "notes.md paragraph 1"},
+        {"front": "哪项准确描述 Kotlin List？", "options": [{"text": "只读接口，不保证底层集合不会改变", "correct": true}, {"text": "保证底层集合不可变", "correct": false}], "source": "notes.md paragraph 1"},
+        {"front": "这段代码能运行吗？\n```kotlin\nval names = mutableListOf(\"Ada\")\nnames.add(\"Lin\")\n```", "back": "可以。val 限制绑定重新赋值，不限制可变列表内容的修改。", "source": "notes.md code block"}
+      ]
+    }]
+  }]
+}

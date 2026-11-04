@@ -1,0 +1,107 @@
+{
+  "exportType": "share",
+  "version": "1.0.0",
+  "schemaVersion": 1,
+  "exportDate": "2026-11-04T01:32:13Z",
+  "knowledgeBases": [
+    {
+      "id": "kb_2a4b0662-8d27-4397-a9b5-109d15490c7e",
+      "createdAt": "2026-11-04T01:32:13Z",
+      "updatedAt": "2026-11-04T01:32:13Z",
+      "version": 1,
+      "name": "Kotlin 与 JVM",
+      "icon": "📁"
+    }
+  ],
+  "decks": [
+    {
+      "id": "deck_64b77dd9-a2ef-4a67-b016-11d432a5d651",
+      "createdAt": "2026-11-04T01:32:13Z",
+      "updatedAt": "2026-11-04T01:32:13Z",
+      "version": 1,
+      "name": "运行时与集合",
+      "knowledgeBaseId": "kb_2a4b0662-8d27-4397-a9b5-109d15490c7e",
+      "description": null,
+      "color": "#4CAF50",
+      "icon": "📚"
+    }
+  ],
+  "cards": [
+    {
+      "id": "card_ce39fa20-ef4d-4b95-b15f-bd4841844c97",
+      "createdAt": "2026-11-04T01:32:13Z",
+      "updatedAt": "2026-11-04T01:32:13Z",
+      "version": 1,
+      "deckId": "deck_64b77dd9-a2ef-4a67-b016-11d432a5d651",
+      "type": "BASIC",
+      "front": "JVM 执行什么？",
+      "back": "Java 字节码。",
+      "tags": [],
+      "media": [],
+      "metadata": {
+        "hcenter": "true",
+        "vcenter": "true",
+        "fontSize": "24",
+        "fontFamily": "sans-serif",
+        "source": "notes.md paragraph 1"
+      }
+    },
+    {
+      "id": "card_9682145e-8f96-4094-855d-d9a8f2ff3862",
+      "createdAt": "2026-11-04T01:32:13Z",
+      "updatedAt": "2026-11-04T01:32:13Z",
+      "version": 1,
+      "deckId": "deck_64b77dd9-a2ef-4a67-b016-11d432a5d651",
+      "type": "CLOZE",
+      "front": "Kotlin val 保证{{c1::绑定不可重新赋值}}，但不保证引用对象不可变。",
+      "back": "绑定不可重新赋值",
+      "tags": [],
+      "media": [],
+      "metadata": {
+        "hcenter": "false",
+        "vcenter": "false",
+        "fontSize": "24",
+        "fontFamily": "sans-serif",
+        "source": "notes.md paragraph 1"
+      }
+    },
+    {
+      "id": "card_f13c36e8-fed1-4490-890f-49a643dda5ca",
+      "createdAt": "2026-11-04T01:32:13Z",
+      "updatedAt": "2026-11-04T01:32:13Z",
+      "version": 1,
+      "deckId": "deck_64b77dd9-a2ef-4a67-b016-11d432a5d651",
+      "type": "MULTIPLE_CHOICE",
+      "front": "哪项准确描述 Kotlin List？",
+      "back": "+只读接口，不保证底层集合不会改变\n保证底层集合不可变",
+      "tags": [],
+      "media": [],
+      "metadata": {
+        "hcenter": "false",
+        "vcenter": "false",
+        "fontSize": "16",
+        "fontFamily": "sans-serif",
+        "source": "notes.md paragraph 1"
+      }
+    },
+    {
+      "id": "card_20bbaa8f-9e04-4580-bc60-cd5c4ae92eaf",
+      "createdAt": "2026-11-04T01:32:13Z",
+      "updatedAt": "2026-11-04T01:32:13Z",
+      "version": 1,
+      "deckId": "deck_64b77dd9-a2ef-4a67-b016-11d432a5d651",
+      "type": "MARKDOWN",
+      "front": "这段代码能运行吗？\n```kotlin\nval names = mutableListOf(\"Ada\")\nnames.add(\"Lin\")\n```",
+      "back": "可以。val 限制绑定重新赋值，不限制可变列表内容的修改。",
+      "tags": [],
+      "media": [],
+      "metadata": {
+        "hcenter": "false",
+        "vcenter": "false",
+        "fontSize": "16",
+        "fontFamily": "monospace",
+        "source": "notes.md code block"
+      }
+    }
+  ]
+}
