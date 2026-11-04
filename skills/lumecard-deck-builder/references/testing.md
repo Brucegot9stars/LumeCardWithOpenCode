@@ -7,7 +7,7 @@ review, Agent discovery tests and GUI import. No Gradle build/test is run in thi
 
 | Check | Observed result |
 |---|---|
-| Standard-library suite, Linux / Python 3.12 | 24 cases: 23 passed, 1 skipped (PowerShell unavailable) |
+| Standard-library suite, Linux / Python 3.12 | 24 cases: all passed, no skips; includes PowerShell 7.6.9 install/uninstall |
 | ZIP distribution | Extracted standalone archive validates its included import fixture; caches excluded |
 | YAML Frontmatter | Parsed successfully with PyYAML in the development environment; not a runtime dependency |
 | Bundled skill-creator quick_validate.py | Passed after moving optional compatibility text into body |
@@ -20,7 +20,8 @@ review, Agent discovery tests and GUI import. No Gradle build/test is run in thi
 | Hermes actual loading attempt | Blocked before discovery by read-only install lock under `~/.hermes`; NOT verified; no repair or user-config mutation performed |
 | Claude Code / CodeBuddy | Runtime loading NOT verified; CLI presence is insufficient evidence |
 | OpenCode | CLI not found; NOT verified |
-| Windows / macOS / PowerShell | Native execution NOT verified; cross-OS CI supplied for standalone repository, not run here |
+| PowerShell 7.6.9 on Linux | Project-scope wrapper installation and uninstallation passed. Initial sandbox run failed because PowerShell needed its user data directory; authorized execution outside the sandbox passed |
+| Windows / macOS | Native execution NOT verified; cross-OS CI supplied for standalone repository, not run here |
 | LumeCard GUI import / visual fit | NOT verified; contract checked against source only |
 
 Reproduce Codex discovery without inference with `python3 tests/probe_codex.py` when
@@ -46,7 +47,7 @@ not an automatic document-understanding test.
 
 ## External acceptance still required
 
-Windows/macOS native execution, PowerShell wrapper, Claude/OpenCode/CodeBuddy loading,
+Windows/macOS native execution, Claude/OpenCode/CodeBuddy loading,
 automatic triggering in each model, and LumeCard GUI import/rendering remain unverified
 unless explicitly recorded below. CLI existence or --help alone does not prove skill loading.
 Check Chinese text, code, cloze and choices on both desktop and Android, then verify
