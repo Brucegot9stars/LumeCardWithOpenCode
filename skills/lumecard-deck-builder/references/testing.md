@@ -11,6 +11,8 @@ review, Agent discovery tests and GUI import. No Gradle build/test is run in thi
 | 0.2.0 standard-library environment, Linux / Python 3.12 | 36 cases: 34 passed, 2 PDF extraction cases skipped because optional pypdf is absent; missing-dependency behavior tested |
 | 0.2.0 optional-PDF environment, Linux / Python 3.11.15 + pypdf 6.21.4 | 36 cases passed, no skips, including PowerShell install/uninstall |
 | 0.3.0 optional-PDF environment, Linux / Python 3.11.15 + pypdf 6.21.4 | 54 cases passed, no skips, including detection, interactive selection, multi-Agent install/uninstall and both wrappers |
+| Remote packaging follow-up, same Linux/Python/PDF environment | 61 cases passed, including tag/version validation, ZIP+SHA256 generation, non-overwrite and GitHub output metadata |
+| Root Skill workflow | actionlint 1.7.12 passed; dedicated Skill tag matches this workflow but neither existing application release workflow; locally built ZIP passed sha256sum verification |
 | Automatic detection | PATH-only, config-only, custom homes/XDG, project scopes, missing Agents, blocked destinations and removed CLIs tested in isolated directories; existing edited installations preserved |
 | Local shell / PowerShell 7.6.9 previews | Both wrappers accept omitted Agent and show matching detection/dry-run results; actual home Agent directories not modified |
 | Document formats | Markdown indentation/line locators, UTF BOMs, explicit GB18030, static HTML and excluded active content, DOCX body/table text, malformed/empty/unsupported inputs tested |
@@ -52,6 +54,9 @@ Unicode/space paths, overwrite refusal, missing third-party packages, install/un
 modified-install preservation and both OS wrappers when their runtimes are available.
 The workflow under `.github/workflows` is for the extracted standalone GitHub repository.
 In the LumeCard monorepo that nested workflow is not automatically discovered by Actions.
+The root `.github/workflows/skill-release.yml` now defines the executable monorepo
+pipeline: manual Artifact builds and dedicated Skill-tag Releases after the OS matrix.
+Remote execution of that new workflow remains unverified until it is pushed and triggered.
 
 ## Trigger and workflow evaluation
 

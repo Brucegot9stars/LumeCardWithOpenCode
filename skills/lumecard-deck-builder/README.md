@@ -6,6 +6,8 @@
 
 首次使用请阅读 [安装与使用指南](references/installation-and-usage.md)：包含下载、依赖准备、
 自动检测、各 Agent 调用、多格式资料、图片限制、LumeCard 导入、升级卸载和常见问题。
+维护者远程出包见 [GitHub Actions 发布指南](references/releasing.md)：支持手动生成 Artifact，
+或推送独立 Skill 标签生成 GitHub Release，`dist/` 压缩包无需提交。
 
 Agent 负责理解资料、提炼知识和形成内容计划；Python 标准库脚本负责生成唯一 ID、
 选择默认样式、编码与校验。没有模型 API、网络请求、自动安装依赖或外传文档。
@@ -117,6 +119,10 @@ python3 scripts/package.py /path/to/lumecard-deck-builder-0.3.0.zip
 当前实际执行结果及未验证项见 [测试记录](references/testing.md)。文件结构/示例验证不等于
 各 Agent 自动触发成功，也不等于应用 UI 导入验收。发布前对目标 Agent 开新会话，运行
 `tests/scenarios.json` 的案例，保存实际发现/触发和成品结果。
+
+本仓库可执行的 Skill 出包工作流位于仓库根目录 `.github/workflows/skill-release.yml`；
+Skill 文件夹内的同名目录是独立仓库模板。远程产物统一从 SKILL.md 读取版本并附带 SHA256，
+手动运行不发布 Release，`lumecard-deck-builder-v*` 标签才会公开发布。
 
 维护优先级：P1 跟踪 LumeCard 序列化和渲染格式变更；P1 完成各 Agent、各 OS 的真实加载及
 应用导入验收；P2 用用户资料评估提取质量、卡牌和样式；P3 按需加 OCR/自定义字体适配。

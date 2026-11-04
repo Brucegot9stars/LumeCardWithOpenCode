@@ -10,6 +10,9 @@
 - 解压分发包 `lumecard-deck-builder-0.3.0.zip`，进入其中的 `lumecard-deck-builder` 目录。
 - 在 LumeCardWithOpenCode 仓库中，进入 `skills/lumecard-deck-builder`。
 
+发布后可从仓库的同名 Skill Release 下载 ZIP 和 SHA256；手动构建则从对应 Actions 运行的
+Artifacts 下载。远程出包及文件校验步骤见 [GitHub Actions 发布指南](releasing.md)。
+
 下面的命令均从这个目录运行。确认目录内存在 `SKILL.md`、`install.sh`、`install.ps1`、
 `scripts/` 和 `references/`。不要只复制 SKILL.md，否则会缺少格式参考与辅助脚本。
 
