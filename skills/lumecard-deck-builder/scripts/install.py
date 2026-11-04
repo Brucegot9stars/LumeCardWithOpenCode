@@ -8,6 +8,8 @@ from pathlib import Path
 import shutil
 import stat
 import sys
+sys.dont_write_bytecode = True  # Running an installed adapter must not alter its integrity manifest.
+from distribution import payload_files
 
 NAME = "lumecard-deck-builder"
 ROOT = Path(__file__).resolve().parent.parent
@@ -128,7 +130,7 @@ def check_install(target):
         raise ValueError("destination exists; inspect and uninstall before updating: " + str(target))
     if ROOT == target or ROOT in target.parents or target in ROOT.parents:
         raise ValueError("installation destination overlaps source")
-    if any(linked(p) for p in ROOT.rglob("*")):
+    if any(linked(p) for p in payload_files(ROOT)):
         raise ValueError("source symlinks not supported")
 
 
@@ -137,13 +139,10 @@ def install(target):
     target.parent.mkdir(parents=True, exist_ok=True)
     target.mkdir()  # Exclusive creation prevents overwriting an existing skill.
     try:
-        for source in ROOT.iterdir():
-            if source.name in {"__pycache__", "dist", ".git", MARKER}:
-                continue
-            if source.is_dir():
-                shutil.copytree(source, target / source.name, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
-            else:
-                shutil.copy2(source, target / source.name)
+        for source in payload_files(ROOT):
+            destination = target / source.relative_to(ROOT)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, destination)
         (target / MARKER).write_text(json.dumps({"skill": NAME, "files": files(target)}, indent=2), encoding="utf-8")
     except BaseException:
         shutil.rmtree(target)
@@ -210,7 +209,11 @@ def main():
             raise ValueError("custom Agent requires --dest; consult its official discovery documentation")
         targets = [(agent, destination(agent, args.scope, args.project, args.dest)) for agent in selected]
         if automatic and not args.uninstall:
-            compatible = next((target for agent, target in targets if agent in {"codex", "claude"}), None)
+            external_disabled = os.environ.get("OPENCODE_DISABLE_EXTERNAL_SKILLS", "").lower() in {"1", "true"}
+            claude_disabled = any(os.environ.get(key, "").lower() in {"1", "true"} for key in
+                                  ("OPENCODE_DISABLE_CLAUDE_CODE", "OPENCODE_DISABLE_CLAUDE_CODE_SKILLS"))
+            compatible = next((target for agent, target in targets
+                               if not external_disabled and (agent == "codex" or agent == "claude" and not claude_disabled)), None)
             if compatible is not None:
                 # OpenCode also discovers these standard compatibility roots.
                 kept = []

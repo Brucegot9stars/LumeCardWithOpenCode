@@ -1,19 +1,25 @@
 # lumecard-deck-builder 安装与使用指南
 
-适用版本：0.3.0。支持 Codex、Claude Code、OpenCode、Hermes Agent、CodeBuddy，
+适用版本：0.3.1。支持 Codex、Claude Code、OpenCode、Hermes Agent、CodeBuddy，
 其他支持标准 SKILL.md 的 Agent 可指定安装目录。安装器和核心脚本不依赖 CodeGraph。
+
+0.3.1 修复了私人中间文件混入分发包、HTML 省略闭合标签造成漏文、选择题换行规则不一致、
+部分 JSON 被校验器错误放行的问题；OpenCode 禁用兼容目录时会改用原生目录安装。
+已有安装仍按第 8 节先卸载再安装。新校验器会拒绝未知成品字段、非字符串 deviceId、
+越界记录版本及备份字段；`options`、`style` 等应放在内容计划中，由生成器转换。
 
 ## 1. 获取 Skill
 
 任选一种方式：
 
-- 解压分发包 `lumecard-deck-builder-0.3.0.zip`，进入其中的 `lumecard-deck-builder` 目录。
+- 解压分发包 `lumecard-deck-builder-0.3.1.zip`，进入其中的 `lumecard-deck-builder` 目录。
 - 在 LumeCardWithOpenCode 仓库中，进入 `skills/lumecard-deck-builder`。
 
 发布后可从仓库的同名 Skill Release 下载 ZIP 和 SHA256；手动构建则从对应 Actions 运行的
 Artifacts 下载。远程出包及文件校验步骤见 [GitHub Actions 发布指南](releasing.md)。
 
-下面的命令均从这个目录运行。确认目录内存在 `SKILL.md`、`install.sh`、`install.ps1`、
+下面的安装命令从这个目录运行；文档提取和制卡在外部任务目录执行，使用脚本绝对路径。
+确认 Skill 目录内存在 `SKILL.md`、`install.sh`、`install.ps1`、
 `scripts/` 和 `references/`。不要只复制 SKILL.md，否则会缺少格式参考与辅助脚本。
 
 ## 2. 准备运行环境
@@ -160,7 +166,7 @@ CodeBuddy 可用 `/skills` 检查，Hermes 可用 `hermes skills list` 检查。
 | 扫描 PDF、照片、图表 | 需要宿主 OCR/视觉能力；未提供该能力时不能声称已读取 |
 | 其他格式 | 使用宿主已有读取/转换工具，或请求提供可读文本 |
 
-0.3.0 没有完整的自动识图流程。脚本不会识别 DOCX/PDF 内嵌图片，也不会读取 HTML/Markdown
+0.3.1 没有完整的自动识图流程。脚本不会识别 DOCX/PDF 内嵌图片，也不会读取 HTML/Markdown
 引用的图片。宿主 Agent 若支持视觉或 OCR，可补充理解，但必须记录未读内容和识别不确定性。
 当前生成的卡牌为文字内容，不会把原图片打包进卡牌，`media` 保持为空。
 
@@ -187,6 +193,10 @@ py -3 -m venv ..\lumecard-pdf-reader-venv
 ## 7. 从资料生成并导入 LumeCard
 
 推荐让 Agent 完成整个流程。手动运行辅助脚本时，分清三个产物：
+
+将原始资料和这三个产物放在 Skill 安装目录外的任务目录；在任务目录运行命令时，
+把下方 `scripts/...` 替换为 Skill 中对应脚本的绝对路径。这样日常制卡不会修改安装目录，
+也不会触发卸载完整性检查。自动安装和打包只复制明确列出的发布资源。
 
 1. `extracted.json`：带来源定位与覆盖警告的资料提取结果。
 2. `plan.json`：Agent 理解资料后整理的知识库、牌组、卡牌内容计划。

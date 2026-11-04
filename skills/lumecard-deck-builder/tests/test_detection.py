@@ -11,6 +11,7 @@ from unittest import mock
 import shutil
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
 spec = importlib.util.spec_from_file_location("installer_detection", ROOT / "scripts/install.py")
 installer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(installer)
@@ -26,7 +27,8 @@ class DetectionTests(unittest.TestCase):
         self.commands = set()
         patches = [mock.patch.object(installer.Path, "home", return_value=self.home),
                    mock.patch.object(installer.shutil, "which", side_effect=lambda name: "/bin/" + name if name in self.commands else None),
-                   mock.patch.dict(os.environ, {"CODEX_HOME": str(self.home / ".codex"), "HERMES_HOME": str(self.home / ".hermes"), "XDG_CONFIG_HOME": str(self.home / ".config")})]
+                   mock.patch.dict(os.environ, {"CODEX_HOME": str(self.home / ".codex"), "HERMES_HOME": str(self.home / ".hermes"), "XDG_CONFIG_HOME": str(self.home / ".config"),
+                                                "OPENCODE_DISABLE_EXTERNAL_SKILLS": "", "OPENCODE_DISABLE_CLAUDE_CODE": "", "OPENCODE_DISABLE_CLAUDE_CODE_SKILLS": ""})]
         for patch in patches:
             patch.start()
             self.addCleanup(patch.stop)
@@ -123,6 +125,29 @@ class DetectionTests(unittest.TestCase):
         code, output, error = self.run_main("--yes")
         self.assertEqual(code, 0, error)
         self.assertIn("already installed", output)
+
+    def test_disabled_compatibility_uses_opencode_native_directory(self):
+        cases = (("OPENCODE_DISABLE_EXTERNAL_SKILLS", "codex"),
+                 ("OPENCODE_DISABLE_CLAUDE_CODE", "claude"),
+                 ("OPENCODE_DISABLE_CLAUDE_CODE_SKILLS", "claude"))
+        for flag, agent in cases:
+            for value in ("1", "true", "TRUE"):
+                self.commands = {agent, "opencode"}
+                with self.subTest(flag=flag, value=value), mock.patch.dict(os.environ, {flag: value}):
+                    code, output, error = self.run_main("--yes")
+                    self.assertEqual(code, 0, error)
+                    target = self.home / ".config/opencode/skills" / installer.NAME
+                    self.assertTrue((target / "SKILL.md").is_file())
+                    self.assertNotIn("uses compatible", output)
+                    self.assertEqual(self.run_main("--yes", "--uninstall")[0], 0)
+
+    def test_disabled_claude_compatibility_can_still_reuse_codex(self):
+        self.commands = {"codex", "claude", "opencode"}
+        with mock.patch.dict(os.environ, {"OPENCODE_DISABLE_CLAUDE_CODE_SKILLS": "1"}):
+            code, output, error = self.run_main("--yes")
+        self.assertEqual(code, 0, error)
+        self.assertIn("opencode: uses compatible", output)
+        self.assertFalse((self.home / ".config/opencode/skills" / installer.NAME).exists())
 
     def test_modified_managed_install_blocks_auto_update(self):
         self.commands.add("codex")

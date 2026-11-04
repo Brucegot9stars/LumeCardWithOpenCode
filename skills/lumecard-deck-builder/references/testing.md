@@ -1,7 +1,7 @@
 # Verification record
 
 Date: 2026-11-04. This report separates deterministic helper tests, manual instruction
-review, Agent discovery tests and GUI import. No Gradle build/test is run in this environment.
+review, Agent discovery tests, application contract tests and GUI import.
 
 ## Executed results
 
@@ -55,7 +55,8 @@ modified-install preservation and both OS wrappers when their runtimes are avail
 The workflow under `.github/workflows` is for the extracted standalone GitHub repository.
 In the LumeCard monorepo that nested workflow is not automatically discovered by Actions.
 The root `.github/workflows/skill-release.yml` now defines the executable monorepo
-pipeline: manual Artifact builds and dedicated Skill-tag Releases after the OS matrix.
+pipeline: relevant branch/PR checks, manual Artifact builds and dedicated Skill-tag Releases
+after the OS matrix and application contract job.
 Remote execution of that new workflow remains unverified until it is pushed and triggered.
 
 ## Trigger and workflow evaluation
@@ -74,3 +75,36 @@ automatic triggering in each model, and LumeCard GUI import/rendering remain unv
 unless explicitly recorded below. CLI existence or --help alone does not prove skill loading.
 Check Chinese text, code, cloze and choices on both desktop and Android, then verify
 knowledge-base/deck/card counts and absence of learning history changes.
+
+## 0.3.1 regression verification
+
+The regression suite covers private-file exclusion from ZIPs/installations, distribution
+preflight, self-uninstall without creating bytecode, OpenCode compatibility-disable flags,
+optional HTML end tags and nested scopes, Kotlin Long boundaries, strict share fields,
+plan-only fields in exports, non-finite JSON and renderer-compatible choice separators.
+
+Local Linux runs: 74 tests passed with the cached optional pypdf environment; the
+standard-library environment runs the same suite with its two PDF extraction tests
+skipped. Skill frontmatter, root workflow actionlint and Git whitespace checks passed.
+Windows/macOS native results and remote Actions execution remain unverified locally.
+
+The new application contract job generates eight fixtures from the actual builder:
+two valid shares (including Long.MAX_VALUE) and six invalid importer-boundary cases.
+Python fixture generation and classification passed locally. Kotlin
+`SkillImportContractTest` must additionally pass before the monorepo pipeline packages
+a distribution. The local Gradle attempt was blocked by sandbox networking; an authorized
+retry started downloading Gradle but was stopped after slow progress before compilation.
+The Kotlin test has not been executed locally; GUI import/rendering is also unverified.
+
+To run the application contract from the LumeCard repository root (requires its normal
+JDK/Gradle/Android build environment and downloadable/cached dependencies):
+
+```sh
+python3 skills/lumecard-deck-builder/tests/write_contract_fixtures.py /tmp/lumecard-contract-new
+LUMECARD_SKILL_CONTRACT_DIR=/tmp/lumecard-contract-new bash gradlew :shared:desktopTest --tests '*SkillImportContractTest' --no-daemon --console=plain
+```
+
+Use a fresh fixture directory. This application-level test lives in the monorepo;
+the standalone Skill ZIP can generate its fixtures but does not include the application.
+The existing Agent scenarios remain manual evaluation material; a helper or importer
+test does not establish automatic routing or semantic card quality.

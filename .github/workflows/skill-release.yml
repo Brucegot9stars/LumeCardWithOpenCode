@@ -3,8 +3,20 @@ name: Skill Build and Release
 on:
   workflow_dispatch:
   push:
+    branches: ['**']
     tags:
       - 'lumecard-deck-builder-v*'
+    paths:
+      - 'skills/lumecard-deck-builder/**'
+      - '.github/workflows/skill-release.yml'
+      - 'shared/src/commonMain/kotlin/com/lumecard/shared/data/ExportManager.kt'
+      - 'shared/src/desktopTest/kotlin/com/lumecard/shared/data/SkillImportContractTest.kt'
+  pull_request:
+    paths:
+      - 'skills/lumecard-deck-builder/**'
+      - '.github/workflows/skill-release.yml'
+      - 'shared/src/commonMain/kotlin/com/lumecard/shared/data/ExportManager.kt'
+      - 'shared/src/desktopTest/kotlin/com/lumecard/shared/data/SkillImportContractTest.kt'
 
 permissions:
   contents: read
@@ -33,7 +45,7 @@ jobs:
         id: metadata
         working-directory: skills/lumecard-deck-builder
         env:
-          EXPECTED_TAG: ${{ github.event_name == 'push' && github.ref_name || '' }}
+          EXPECTED_TAG: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
         run: python scripts/release_skill.py metadata --expected-tag "$EXPECTED_TAG" --github-output "$GITHUB_OUTPUT"
 
   test:
@@ -66,8 +78,31 @@ jobs:
           TMPDIR: ${{ runner.temp }}
         run: python -m unittest discover -s tests -v
 
+  app-contract:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Generate real builder output and invalid boundary cases
+        run: python skills/lumecard-deck-builder/tests/write_contract_fixtures.py "$RUNNER_TEMP/skill-contract"
+      - name: Verify with the application importer
+        env:
+          LUMECARD_SKILL_CONTRACT_DIR: ${{ runner.temp }}/skill-contract
+        run: bash gradlew :shared:desktopTest --tests '*SkillImportContractTest' --no-daemon --console=plain
+
   build:
-    needs: [prepare, test]
+    needs: [prepare, test, app-contract]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -82,7 +117,7 @@ jobs:
           python-version: '3.11'
       - name: Build ZIP and SHA256 from SKILL.md version
         env:
-          EXPECTED_TAG: ${{ github.event_name == 'push' && github.ref_name || '' }}
+          EXPECTED_TAG: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
         run: python scripts/release_skill.py build --output-dir dist --expected-tag "$EXPECTED_TAG"
       - name: Verify checksum
         working-directory: skills/lumecard-deck-builder/dist

@@ -2,7 +2,10 @@
 """Create a portable zip without caches, installations or build artifacts."""
 import argparse
 from pathlib import Path
+import sys
 import zipfile
+sys.dont_write_bytecode = True
+from distribution import payload_files
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -11,13 +14,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("output", help="new ZIP file path")
     args = parser.parse_args()
+    files = payload_files(ROOT)
     with zipfile.ZipFile(args.output, "x", compression=zipfile.ZIP_DEFLATED) as archive:
-        for file in sorted(ROOT.rglob("*")):
+        for file in files:
             rel = file.relative_to(ROOT)
-            if file.is_symlink():
-                raise ValueError("source symlinks cannot be packaged")
-            if file.is_file() and not any(x in {"__pycache__", "dist", ".git"} for x in rel.parts) and file.suffix not in {".pyc", ".zip"} and file.name != ".lumecard-install.json":
-                archive.write(file, ROOT.name + "/" + rel.as_posix())
+            archive.write(file, ROOT.name + "/" + rel.as_posix())
     print(args.output)
 
 

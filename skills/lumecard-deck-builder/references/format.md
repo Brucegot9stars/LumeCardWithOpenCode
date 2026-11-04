@@ -1,4 +1,4 @@
-# LumeCard content contract (skill 0.2.0; unchanged since 0.1.0)
+# LumeCard content contract (skill 0.3.1; serialization unchanged since 0.1.0)
 
 Audited against LumeCardWithOpenCode commit `1cc6e56` (repository HEAD when work began;
 verify with Git history if the app changes), export version `1.0.0`, schema `1`.
@@ -41,6 +41,10 @@ Use new UUIDs for real generated IDs. Dates are UTC ISO 8601 strings. `descripti
 on a deck is required by serialization even when null; `tags` is required on cards.
 Metadata is `Map<String,String>`: booleans and font size MUST be strings in output.
 Never include private learning plans, settings, review logs, scheduling or tombstones.
+The strict validator accepts only documented share/record fields; plan-only fields such
+as `options`, `style` and `bidirectional` do not belong in an export. `deviceId`, if
+present, must be a string or null. Record versions must be integers 1..9223372036854775807
+(Kotlin Long). `backupFormatVersion` is forbidden in this new-content subset.
 
 ## Card syntax and renderer limits
 
@@ -51,6 +55,9 @@ Never include private learning plans, settings, review logs, scheduling or tombs
 - `MULTIPLE_CHOICE`: front is the question; back contains one option per line with
   `+` at column zero for each correct option. Multiple correct answers are supported.
   Never append explanation paragraphs to back: they would become extra options.
+  Export option separators must be LF (`\n`), matching the app renderer. The builder
+  normalizes CRLF/CR in a plan's choice back; validation never rewrites an existing file.
+  Individual option text cannot contain line breaks, including Unicode separators.
 - `MARKDOWN`: fenced code, lists, headings or tables; preserve valid Markdown syntax.
   Renderer currently applies its own font/alignment settings; stored metadata does
   not guarantee a visible change for this card type.

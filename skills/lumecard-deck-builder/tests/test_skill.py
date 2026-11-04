@@ -10,6 +10,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
 
 
 def module(name):
@@ -101,6 +102,56 @@ class WorkflowTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "title"):
             builder.validate(self.data)
 
+    def test_share_fields_and_long_version_boundaries(self):
+        for field, value in (("deviceId", {}), ("deviceId", 123), ("backupFormatVersion", 99),
+                             ("extra", "unexpected")):
+            data = copy.deepcopy(self.data)
+            data[field] = value
+            with self.subTest(field=field, value=value), self.assertRaises(ValueError):
+                builder.validate(data)
+        for collection in ("knowledgeBases", "decks", "cards"):
+            for value in (0, True, 2**63):
+                data = copy.deepcopy(self.data)
+                data[collection][0]["version"] = value
+                with self.subTest(collection=collection, value=value), self.assertRaises(ValueError):
+                    builder.validate(data)
+            data = copy.deepcopy(self.data)
+            data[collection][0]["version"] = 2**63 - 1
+            builder.validate(data)
+        for value in (None, "device"):
+            data = copy.deepcopy(self.data)
+            data["deviceId"] = value
+            builder.validate(data)
+
+    def test_plan_fields_cannot_override_validation_of_export(self):
+        for field, value in (("options", [{"text": "A", "correct": True}, {"text": "B", "correct": False}]),
+                             ("style", {}), ("bidirectional", True)):
+            data = copy.deepcopy(self.data)
+            data["cards"][2]["back"] = "broken"
+            data["cards"][2][field] = value
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                builder.validate(data)
+
+    def test_choice_newlines_match_app_renderer(self):
+        for separator in ("\r", "\r\n"):
+            card = {"front": "Q?", "back": "+A" + separator + "B", "type": "MULTIPLE_CHOICE"}
+            self.assertEqual(builder.card_content(card)[1], "+A\nB")
+            plan = copy.deepcopy(self.plan)
+            plan["knowledgeBases"][0]["decks"][0]["cards"] = [card]
+            data = builder.build(plan)
+            self.assertEqual(data["cards"][0]["back"].split("\n"), ["+A", "B"])
+            builder.validate(data)
+        for separator in ("\r", "\r\n", "\u2028", "\u2029", "\x85", "\v"):
+            data = copy.deepcopy(self.data)
+            data["cards"][2]["back"] = "+A" + separator + "B"
+            with self.subTest(separator=repr(separator)), self.assertRaises(ValueError):
+                builder.validate(data)
+        for separator in ("\n", "\r", "\u2028", "\u2029", "\x85", "\v"):
+            card = {"front": "Q?", "options": [{"text": "A" + separator, "correct": True},
+                                                {"text": "B", "correct": False}]}
+            with self.subTest(separator=repr(separator)), self.assertRaises(ValueError):
+                builder.card_content(card)
+
     def test_cli_roundtrip_overwrite_and_errors(self):
         with tempfile.TemporaryDirectory(prefix="lumecard 中文 ") as tmp:
             out = Path(tmp) / "卡牌.json"
@@ -120,12 +171,29 @@ class WorkflowTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "duplicate JSON"):
                 builder.load(file)
 
+    def test_non_finite_json_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            file = Path(tmp) / "invalid.json"
+            for value in ("NaN", "Infinity", "-Infinity"):
+                file.write_text('{"value":' + value + '}', encoding="utf-8")
+                with self.subTest(value=value), self.assertRaisesRegex(ValueError, "non-finite"):
+                    builder.load(file)
+
     def test_stdlib_only(self):
         result = subprocess.run([sys.executable, "-S", str(ROOT / "scripts/build_deck.py"), "validate", str(ROOT / "examples/import.json")], capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
 
 
 class InstallationTests(unittest.TestCase):
+    def test_installed_adapter_can_uninstall_itself(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / installer.NAME
+            installer.install(target)
+            result = subprocess.run([sys.executable, str(target / "scripts/install.py"),
+                                     "--agent", "custom", "--dest", tmp, "--uninstall"], capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertFalse(target.exists())
+
     def test_install_refuses_overwrite_and_preserves_modified(self):
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / installer.NAME
@@ -198,6 +266,60 @@ class InstallationTests(unittest.TestCase):
 
 
 class StructureTests(unittest.TestCase):
+    def test_app_contract_fixtures_are_generated_and_classified(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            command = [sys.executable, "-S", str(ROOT / "tests/write_contract_fixtures.py"), tmp]
+            result = subprocess.run(command, capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            cases = builder.load(Path(tmp) / "manifest.json")["cases"]
+            self.assertEqual(len(cases), 8)
+            self.assertEqual(sum(case["accepted"] for case in cases), 2)
+            for case in cases:
+                data = builder.load(Path(tmp) / case["file"])
+                if case["accepted"]:
+                    self.assertEqual(builder.validate(data)["cards"], 5)
+                else:
+                    with self.assertRaises(ValueError):
+                        builder.validate(data)
+            original = (Path(tmp) / "manifest.json").read_bytes()
+            self.assertNotEqual(subprocess.run(command, capture_output=True).returncode, 0)
+            self.assertEqual((Path(tmp) / "manifest.json").read_bytes(), original)
+
+    def test_distribution_excludes_private_work_from_zip_and_install(self):
+        import zipfile
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            source = tmp / ROOT.name
+            shutil.copytree(ROOT, source, ignore=shutil.ignore_patterns("__pycache__", "dist"))
+            private = ("private-extracted.json", "plan.json", "references/private.md", "scripts/secret.py")
+            for name in private:
+                (source / name).write_text("PRIVATE", encoding="utf-8")
+            archive = tmp / "skill.zip"
+            subprocess.run([sys.executable, str(source / "scripts/package.py"), str(archive)], check=True, capture_output=True)
+            with zipfile.ZipFile(archive) as bundle:
+                self.assertTrue(all(source.name + "/" + name not in bundle.namelist() for name in private))
+            target = tmp / "installed" / ROOT.name
+            with mock.patch.object(installer, "ROOT", source):
+                installer.install(target)
+            self.assertTrue(all(not (target / name).exists() for name in private))
+            installer.uninstall(target)
+
+    @unittest.skipIf(os.name == "nt", "symlink creation may require privileges")
+    def test_missing_or_linked_payload_fails_before_creating_archive(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / ROOT.name
+            shutil.copytree(ROOT, source, ignore=shutil.ignore_patterns("__pycache__", "dist"))
+            file = source / "examples/notes.md"
+            file.unlink()
+            archive = Path(tmp) / "skill.zip"
+            for linked in (False, True):
+                if linked:
+                    file.symlink_to(ROOT / "examples/notes.md")
+                result = subprocess.run([sys.executable, str(source / "scripts/package.py"), str(archive)], capture_output=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(archive.exists())
+
     def test_zip_contains_runnable_standalone_skill(self):
         import zipfile
         with tempfile.TemporaryDirectory() as tmp:

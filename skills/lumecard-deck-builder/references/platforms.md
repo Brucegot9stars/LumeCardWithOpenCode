@@ -52,6 +52,11 @@ place after integrity checks; incompatible/unmanaged conflicts fail preflight. M
 preflight checks all targets before changes, but an unforeseen runtime I/O failure can
 still leave earlier successful installations in place; output identifies those successes.
 
+Since 0.3.1, compatibility reuse honors `OPENCODE_DISABLE_EXTERNAL_SKILLS`,
+`OPENCODE_DISABLE_CLAUDE_CODE` and `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS`
+(`1`/`true`, case-insensitive). When no selected compatible root is enabled, the
+installer uses OpenCode's native directory. It does not change those settings.
+
 ## Primary sources
 
 - [Agent Skills specification](https://agentskills.io/specification): portable directory/frontmatter and progressive disclosure.

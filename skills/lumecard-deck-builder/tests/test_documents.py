@@ -84,6 +84,32 @@ class DocumentTests(unittest.TestCase):
         result = extractor.extract(self.file("article.htm", source))
         self.assertTrue(any("知识" in s["text"] for s in result["segments"]))
 
+    def test_html_optional_end_tags_preserve_visible_siblings(self):
+        cases = (
+            ("<h1>Lesson</h1><p hidden>secret<p>visible", ["Lesson", "visible"]),
+            ("<ul><li hidden>secret<li>visible</ul>", ["visible"]),
+            ("<dl><dt hidden>secret<dd>definition<dt>term<dd>explanation</dl>", ["definition", "term", "explanation"]),
+            ("<table><tr hidden><td>secret<tr><td>A<td>B</table>", ["A\tB"]),
+            ("<head><title>secret</title><body><p>visible", ["visible"]),
+            ("<p hidden>secret<div>visible</div>", ["visible"]),
+        )
+        for source, expected in cases:
+            with self.subTest(source=source):
+                result = extractor.extract(self.file("optional.html", source.encode()))
+                lines = [s["text"].strip() for s in result["segments"] if s["text"].strip()]
+                self.assertEqual(lines, expected)
+
+    def test_html_nested_lists_and_inert_content_keep_scope(self):
+        source = '<ul><li hidden>secret<ul><li>also secret</ul><li>visible</ul><template><p>private<p>private2</template><p>outside'
+        result = extractor.extract(self.file("nested.html", source.encode()))
+        lines = [s["text"].strip() for s in result["segments"] if s["text"].strip()]
+        self.assertEqual(lines, ["visible", "outside"])
+
+    def test_html_definition_and_list_boundaries(self):
+        result = extractor.extract(self.file("blocks.html", b'<ul><li>one<li>two</ul><dl><dt>Term<dd>Definition</dl>'))
+        lines = [s["text"].strip() for s in result["segments"] if s["text"].strip()]
+        self.assertEqual(lines, ["one", "two", "Term", "Definition"])
+
     def make_docx(self, xml):
         path = self.root / "教材.docx"
         with zipfile.ZipFile(path, "w") as archive:

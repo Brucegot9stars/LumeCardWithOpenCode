@@ -4,6 +4,8 @@ permissions:
   contents: read
 jobs:
   test:
+    env:
+      TMPDIR: ${{ runner.temp }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]

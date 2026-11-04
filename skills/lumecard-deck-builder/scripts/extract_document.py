@@ -32,8 +32,14 @@ def decode(raw, encoding=None, html=False):
 
 
 class HTMLText(HTMLParser):
-    BLOCKS = {"p", "div", "section", "article", "li", "h1", "h2", "h3", "h4", "h5", "h6", "tr", "blockquote", "pre", "br", "hr"}
+    BLOCKS = {"p", "div", "section", "article", "li", "ul", "ol", "menu", "dl", "dt", "dd",
+              "h1", "h2", "h3", "h4", "h5", "h6", "table", "tr", "thead", "tbody", "tfoot",
+              "blockquote", "pre", "br", "hr", "header", "footer", "main", "nav", "aside",
+              "address", "figure", "figcaption", "fieldset", "details", "summary"}
     VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}
+    INERT = {"script", "style", "template", "noscript", "iframe", "object"}
+    P_END = BLOCKS - {"li", "dt", "dd", "tr", "thead", "tbody", "tfoot", "br", "summary"}
+    SCOPE = {"html", "table", "td", "th", "caption", "button", "template", "object", "svg", "math"}
 
     def __init__(self):
         super().__init__(convert_charrefs=True)
@@ -43,7 +49,38 @@ class HTMLText(HTMLParser):
     def hidden(self):
         return any(hidden for _, hidden in self.stack)
 
+    def close_in_scope(self, tags, boundaries):
+        for tag, _ in reversed(self.stack):
+            if tag in tags:
+                self.handle_endtag(tag)
+                return
+            if tag in boundaries:
+                return
+
+    def implied_end(self, tag):
+        # Common optional end tags, with scope boundaries to protect nested lists/tables.
+        # This is a static text adapter, not a complete HTML5 tree builder.
+        if any(open_tag in self.INERT for open_tag, _ in self.stack):
+            return
+        if tag not in {"head", "base", "link", "meta", "title", "script", "style", "template"}:
+            self.close_in_scope({"head"}, {"body"})
+        if tag in self.P_END:
+            self.close_in_scope({"p"}, self.SCOPE)
+        if tag == "li":
+            self.close_in_scope({"li"}, {"ul", "ol", "menu", "template"})
+        elif tag in {"dt", "dd"}:
+            self.close_in_scope({"dt", "dd"}, {"dl", "template"})
+        elif tag in {"td", "th"}:
+            self.close_in_scope({"td", "th"}, {"tr", "table", "template"})
+        elif tag == "tr":
+            self.close_in_scope({"tr"}, {"table", "thead", "tbody", "tfoot", "template"})
+        elif tag in {"thead", "tbody", "tfoot"}:
+            self.close_in_scope({"thead", "tbody", "tfoot"}, {"table", "template"})
+        elif tag == "option":
+            self.close_in_scope({"option"}, {"select", "datalist", "template"})
+
     def handle_starttag(self, tag, attrs):
+        self.implied_end(tag)
         attributes = dict(attrs)
         hide = tag in {"script", "style", "head", "template", "noscript", "iframe", "object"} or "hidden" in attributes or attributes.get("aria-hidden") == "true"
         if not self.hidden() and not hide:

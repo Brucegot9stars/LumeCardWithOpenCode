@@ -17,6 +17,10 @@ a common local baseline. No Agent-specific API is required or assumed.
 
 ## Commands
 
+Run in a task workspace outside the installed skill. The examples abbreviate script
+paths; use the actual absolute skill path, and keep source/intermediate/output files
+in the workspace. This also keeps generated files out of installation integrity checks.
+
 ```sh
 python3 scripts/extract_document.py textbook.docx extracted.json
 python3 scripts/extract_document.py notes.md extracted.json
@@ -31,6 +35,9 @@ and `warnings`. It is deliberately NOT LumeCard import JSON. The Agent reads the
 segments, creates the nested content plan in format.md, then runs build_deck.py.
 Record source locators in each plan card's `source`, for example `textbook.pdf page:12`.
 HTML line numbers refer to extracted text, not exact original HTML source lines.
+Common optional closing tags for paragraphs, lists, definition lists and table rows/cells
+are handled with scope boundaries. The adapter is not a complete HTML5 tree builder;
+complex or malformed layouts still need comparison with a host reader/browser.
 
 The adapter refuses inputs over 32 MiB, DOCX expanded contents over 64 MiB or 10,000
 members, and PDFs over 1,000 pages. Split larger textbooks into manageable chunks with

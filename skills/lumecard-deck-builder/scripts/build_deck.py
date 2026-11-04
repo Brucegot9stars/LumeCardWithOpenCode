@@ -11,6 +11,9 @@ from pathlib import Path
 TYPES = {"BASIC", "REVERSED", "CLOZE", "MULTIPLE_CHOICE", "MARKDOWN"}
 FONTS = {"default", "sans-serif", "serif", "monospace", "cursive"}
 CLOZE = re.compile(r"\{\{c\d+::([^}]+)\}\}")
+LONG_MAX = 2**63 - 1
+LINE_BREAKS = re.compile(r"[\r\n\v\f\x1c-\x1e\x85\u2028\u2029]")
+RECORD_FIELDS = {"id", "createdAt", "updatedAt", "version", "deletedAt", "syncedAt"}
 
 
 def require(condition, message):
@@ -35,7 +38,23 @@ def timestamp(value, where):
     dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
+def fields(value, allowed, where):
+    require(not (set(value) - allowed), where + ": unsupported fields " + ", ".join(sorted(set(value) - allowed)))
+
+
+def choice_lines(back):
+    # Match CardComponents.kt: split only at LF, with + at column zero.
+    require(LINE_BREAKS.search(back.replace("\n", "")) is None, "choice: use LF (\\n) option separators")
+    lines = [x for x in back.split("\n") if x.strip()]
+    require(len(lines) >= 2 and any(x.startswith("+") for x in lines), "choice: at least two options and one leading + correct answer required")
+    clean = [x.removeprefix("+").strip() for x in lines]
+    require(all(clean) and len(set(clean)) == len(clean), "choice: empty or duplicate option")
+    return lines
+
+
 def load(path):
+    def constant(value):
+        raise ValueError("non-finite JSON number: " + value)
     def pairs(items):
         result = {}
         for key, value in items:
@@ -43,7 +62,7 @@ def load(path):
             result[key] = value
         return result
     with Path(path).open(encoding="utf-8-sig") as stream:
-        return json.load(stream, object_pairs_hook=pairs)
+        return json.load(stream, object_pairs_hook=pairs, parse_constant=constant)
 
 
 def style(front, back, kind, overrides):
@@ -85,8 +104,9 @@ def card_content(card):
         options = objects(options, "card.options")
         lines = []
         for option in options:
-            value = text(option.get("text"), "option.text").strip()
-            require("\n" not in value and "\r" not in value and not value.startswith("+"), "option.text: single line without leading +")
+            raw = text(option.get("text"), "option.text")
+            value = raw.strip()
+            require(LINE_BREAKS.search(raw) is None and not value.startswith("+"), "option.text: single line without leading +")
             require(type(option.get("correct")) is bool, "option.correct: expected boolean")
             lines.append(("+" if option["correct"] else "") + value)
         back = "\n".join(lines)
@@ -95,10 +115,8 @@ def card_content(card):
         back = back or "; ".join(m.group(1).split("::")[0] for m in CLOZE.finditer(front))
     text(back, "card.back")
     if kind == "MULTIPLE_CHOICE":
-        lines = [x for x in back.splitlines() if x.strip()]
-        require(len(lines) >= 2 and any(x.startswith("+") for x in lines), "choice: at least two options and one leading + correct answer required")
-        clean = [x.removeprefix("+").strip() for x in lines]
-        require(all(clean) and len(set(clean)) == len(clean), "choice: empty or duplicate option")
+        back = back.replace("\r\n", "\n").replace("\r", "\n")
+        choice_lines(back)
     return front, back, kind
 
 
@@ -133,7 +151,9 @@ def validate(data):
     require(isinstance(data, dict), "export: expected object")
     require(data.get("exportType") == "share", "exportType must be share")
     require(data.get("version") == "1.0.0" and type(data.get("schemaVersion")) is int and data["schemaVersion"] == 1, "unsupported export/schema version")
-    require(not (set(data) & {"settings", "reviewLogs", "learningPlans", "algorithmStates", "splashQuotes"}), "private backup fields forbidden")
+    require(not (set(data) & {"settings", "reviewLogs", "learningPlans", "algorithmStates", "splashQuotes", "backupFormatVersion"}), "private backup fields forbidden")
+    fields(data, {"exportType", "version", "schemaVersion", "exportDate", "deviceId", "knowledgeBases", "decks", "cards"}, "export")
+    require(data.get("deviceId") is None or isinstance(data["deviceId"], str), "deviceId: expected text or null")
     timestamp(data.get("exportDate"), "exportDate")
     ids = set()
     for key in ("knowledgeBases", "decks", "cards"):
@@ -143,16 +163,18 @@ def validate(data):
             ids.add(ident)
             for field in ("createdAt", "updatedAt"):
                 timestamp(item.get(field), key + "." + field)
-            require(type(item.get("version", 1)) is int and item.get("version", 1) >= 1, "record version: expected positive integer")
+            require(type(item.get("version", 1)) is int and 1 <= item.get("version", 1) <= LONG_MAX, "record version: expected integer 1.." + str(LONG_MAX))
             require(all(item.get(k) is None for k in ("deletedAt", "syncedAt", "lastReviewedAt", "nextReviewAt")), "history/tombstones forbidden in new decks")
     kbs = {x["id"] for x in data["knowledgeBases"]}
     decks = {x["id"] for x in data["decks"]}
     for kb in data["knowledgeBases"]:
+        fields(kb, RECORD_FIELDS | {"name", "icon", "description"}, "knowledgeBase")
         text(kb.get("name"), "knowledgeBase.name")
         if "icon" in kb:
             text(kb["icon"], "knowledgeBase.icon")
         require(kb.get("description") is None or isinstance(kb["description"], str), "knowledgeBase.description: expected text or null")
     for deck in data["decks"]:
+        fields(deck, RECORD_FIELDS | {"name", "knowledgeBaseId", "description", "color", "icon", "parentId"}, "deck")
         text(deck.get("name"), "deck.name")
         require(deck.get("knowledgeBaseId") in kbs, "dangling knowledgeBaseId")
         require(deck.get("parentId") is None, "nested decks not supported by this skill")
@@ -160,11 +182,14 @@ def validate(data):
             text(deck.get(field), "deck." + field)
         require("description" in deck and (deck["description"] is None or isinstance(deck["description"], str)), "deck.description required (text or null)")
     for card in data["cards"]:
+        fields(card, RECORD_FIELDS | {"deckId", "type", "front", "back", "title", "tags", "media", "metadata", "lastReviewedAt", "nextReviewAt"}, "card")
         require(card.get("deckId") in decks, "dangling deckId")
         require(card.get("type") in TYPES, "unsupported card type")
         text(card.get("back"), "card.back")
         require(isinstance(card.get("title", ""), str), "card.title: expected text")
         card_content(card)
+        if card["type"] == "MULTIPLE_CHOICE":
+            choice_lines(card["back"])
         require(isinstance(card.get("tags"), list) and all(isinstance(x, str) for x in card["tags"]), "tags: expected string array")
         require(card.get("media", []) == [], "external media not supported")
         meta = card.get("metadata")

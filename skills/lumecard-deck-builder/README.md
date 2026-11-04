@@ -2,7 +2,7 @@
 
 将文档、笔记、教材、文章或大纲转换为 LumeCard 可导入的闪卡 JSON。
 知识库 → 牌组 → 卡牌通过 ID 关联；自动选择卡型、居中、字号和内置字体。
-版本 0.3.0。核心定义只有标准 `SKILL.md`，没有平台专用工具依赖。
+版本 0.3.1。核心定义只有标准 `SKILL.md`，没有平台专用工具依赖。
 
 首次使用请阅读 [安装与使用指南](references/installation-and-usage.md)：包含下载、依赖准备、
 自动检测、各 Agent 调用、多格式资料、图片限制、LumeCard 导入、升级卸载和常见问题。
@@ -73,18 +73,21 @@ Claude Code / Hermes：`/lumecard-deck-builder 将 notes.md 转成 LumeCard 闪�
 OpenCode / CodeBuddy：请求使用命名技能，按各自技能列表确认已发现。
 首次安装后开新会话；权限策略可能要求允许读取或执行脚本。
 
+原始文档、提取结果、计划和卡组成品应保存到 Skill 目录之外的任务目录。
+下面从 Skill 目录演示输出到 `../lumecard-work`；也可在任务目录中使用脚本的绝对路径。
 不通过 Agent 运行时，先手工编写 [内容计划](examples/plan.json)，然后：
 
 ```sh
-python3 scripts/build_deck.py build examples/plan.json my-deck.json
-python3 scripts/build_deck.py validate my-deck.json
+mkdir -p ../lumecard-work
+python3 scripts/build_deck.py build examples/plan.json ../lumecard-work/my-deck.json
+python3 scripts/build_deck.py validate ../lumecard-work/my-deck.json
 ```
 
 文档输入先提取为有来源定位信息的中间结果，再由 Agent 提炼内容计划：
 
 ```sh
-python3 scripts/extract_document.py textbook.docx extracted.json
-python3 scripts/extract_document.py textbook.pdf extracted.json
+python3 scripts/extract_document.py ../lumecard-work/textbook.docx ../lumecard-work/extracted-docx.json
+python3 scripts/extract_document.py ../lumecard-work/textbook.pdf ../lumecard-work/extracted-pdf.json
 ```
 
 PDF 命令需要已安装的可选 pypdf。提取结果包含覆盖范围与警告，不能直接导入 LumeCard。
@@ -112,17 +115,20 @@ lumecard-deck-builder/
 
 ```sh
 python3 -m unittest discover -s tests -v
-python3 scripts/package.py /path/to/lumecard-deck-builder-0.3.0.zip
+python3 scripts/package.py /path/to/lumecard-deck-builder-0.3.1.zip
 ```
 
-打包拒绝覆盖，排除缓存和安装清单。独立发布仓库的 CI 覆盖 Linux、Windows 和 macOS；
+打包拒绝覆盖。安装器和打包器共用 `scripts/distribution.py` 中逐文件列出的发布清单，
+未列入的私人文档、中间结果、缓存与安装清单不会被复制。新增发布资源时须明确更新清单。
+独立发布仓库的 CI 覆盖 Linux、Windows 和 macOS；
 当前实际执行结果及未验证项见 [测试记录](references/testing.md)。文件结构/示例验证不等于
 各 Agent 自动触发成功，也不等于应用 UI 导入验收。发布前对目标 Agent 开新会话，运行
 `tests/scenarios.json` 的案例，保存实际发现/触发和成品结果。
 
 本仓库可执行的 Skill 出包工作流位于仓库根目录 `.github/workflows/skill-release.yml`；
 Skill 文件夹内的同名目录是独立仓库模板。远程产物统一从 SKILL.md 读取版本并附带 SHA256，
-手动运行不发布 Release，`lumecard-deck-builder-v*` 标签才会公开发布。
+相关提交和 PR 会自动运行矩阵测试及应用导入契约测试；手动运行不发布 Release，
+`lumecard-deck-builder-v*` 标签才会公开发布。
 
 维护优先级：P1 跟踪 LumeCard 序列化和渲染格式变更；P1 完成各 Agent、各 OS 的真实加载及
 应用导入验收；P2 用用户资料评估提取质量、卡牌和样式；P3 按需加 OCR/自定义字体适配。
