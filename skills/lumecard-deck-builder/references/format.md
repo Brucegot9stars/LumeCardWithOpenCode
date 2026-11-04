@@ -1,4 +1,4 @@
-# LumeCard content contract (skill 0.1.0)
+# LumeCard content contract (skill 0.2.0; unchanged since 0.1.0)
 
 Audited against LumeCardWithOpenCode commit `1cc6e56` (repository HEAD when work began;
 verify with Git history if the app changes), export version `1.0.0`, schema `1`.

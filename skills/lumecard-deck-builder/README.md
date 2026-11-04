@@ -2,12 +2,13 @@
 
 将文档、笔记、教材、文章或大纲转换为 LumeCard 可导入的闪卡 JSON。
 知识库 → 牌组 → 卡牌通过 ID 关联；自动选择卡型、居中、字号和内置字体。
-版本 0.1.0。核心定义只有标准 `SKILL.md`，没有平台专用工具依赖。
+版本 0.2.0。核心定义只有标准 `SKILL.md`，没有平台专用工具依赖。
 
 Agent 负责理解资料、提炼知识和形成内容计划；Python 标准库脚本负责生成唯一 ID、
 选择默认样式、编码与校验。没有模型 API、网络请求、自动安装依赖或外传文档。
-脚本需要 Python 3.9+；没有 Python 时，Agent 可按格式参考直接输出 JSON 并说明未机器校验。
-任意 PDF、扫描教材、图片、Word 的提取需要宿主已有能力；本项目不捆绑 OCR/转换器。
+脚本需要 Python 3.9+；没有 Python 时，Agent 可用宿主文档读取能力并按格式参考输出 JSON，
+说明未机器校验。MD/TXT、HTML、DOCX 提取使用标准库；PDF 文本提取可选使用 pypdf。
+扫描 PDF 和图片需要宿主 OCR/视觉能力，本项目不捆绑 OCR。详见 [文档格式支持](references/documents.md)。
 
 ## 安装
 
@@ -57,6 +58,18 @@ python3 scripts/build_deck.py build examples/plan.json my-deck.json
 python3 scripts/build_deck.py validate my-deck.json
 ```
 
+文档输入先提取为有来源定位信息的中间结果，再由 Agent 提炼内容计划：
+
+```sh
+python3 scripts/extract_document.py textbook.docx extracted.json
+python3 scripts/extract_document.py textbook.pdf extracted.json
+```
+
+PDF 命令需要已安装的可选 pypdf。提取结果包含覆盖范围与警告，不能直接导入 LumeCard。
+支持 `.md/.markdown/.txt/.html/.htm/.docx/.pdf`；其他格式优先用宿主已有读取或转换能力。
+提取器不会执行 HTML/文档代码，不会自动联网或安装依赖；编码失败、扫描件缺 OCR、
+加密/损坏文件会明确报告，不能宣称完整读取。
+
 Windows 可将 `python3` 换成 `py -3`。成品示例为 `examples/import.json`，在应用的
 **内容导入**入口使用；不要用完整备份恢复。重复生成会创建新 ID，再次导入可能产生重复卡。
 保留原成品可保持 ID。字号/字体对 Markdown、选择题等专用渲染器的作用有限，详见格式参考。
@@ -77,7 +90,7 @@ lumecard-deck-builder/
 
 ```sh
 python3 -m unittest discover -s tests -v
-python3 scripts/package.py /path/to/lumecard-deck-builder-0.1.0.zip
+python3 scripts/package.py /path/to/lumecard-deck-builder-0.2.0.zip
 ```
 
 打包拒绝覆盖，排除缓存和安装清单。独立发布仓库的 CI 覆盖 Linux、Windows 和 macOS；
@@ -86,7 +99,7 @@ python3 scripts/package.py /path/to/lumecard-deck-builder-0.1.0.zip
 `tests/scenarios.json` 的案例，保存实际发现/触发和成品结果。
 
 维护优先级：P1 跟踪 LumeCard 序列化和渲染格式变更；P1 完成各 Agent、各 OS 的真实加载及
-应用导入验收；P2 用用户资料评估卡牌质量和样式；P3 按需加 OCR/自定义字体适配。
+应用导入验收；P2 用用户资料评估提取质量、卡牌和样式；P3 按需加 OCR/自定义字体适配。
 每次更新先重跑生成/校验/安装/卸载测试，再复核官方路径文档；兼容性注明日期和证据。
 
 本机校验器过旧时，参见 [独立校验器更新说明](references/validators.md)，使用官方参考实现，

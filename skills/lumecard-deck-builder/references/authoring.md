@@ -21,7 +21,7 @@ these metadata preferences. Respect user overrides; font size stays in the app's
 range. These are initial heuristics, not a guarantee of fit on every device. Preview long
 cards in the app and split dense cards before increasing font size.
 
-Only readable text can be transformed without extractors. PDF scans may need OCR,
-images may need vision, and office files may need local conversion. If unavailable,
-ask for extracted text and retain a clear unprocessed-source list. Do not silently skip
-unreadable pages or report complete coverage of partially extracted material.
+Use the format-specific extraction workflow in documents.md before authoring. Read
+coverage and warnings, preserve source locators, and keep a clear unprocessed-source
+list. Scans need OCR/vision. Do not silently skip unreadable pages or equate text-only
+extraction with complete visual understanding of the document.

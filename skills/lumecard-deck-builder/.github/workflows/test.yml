@@ -14,4 +14,8 @@ jobs:
         with:
           python-version: '3.9'
       - run: python -m unittest discover -s tests -v
+      - name: Install optional PDF reader for extraction tests
+        run: python -m pip install "pypdf>=6,<7"
+      - name: Verify PDF extraction with optional dependency
+        run: python -m unittest discover -s tests -p test_documents.py -v
       - run: python scripts/package.py skill.zip
