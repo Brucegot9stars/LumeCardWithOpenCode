@@ -324,7 +324,7 @@ Card 模型定义了 `media: List<Media>` 字段，支持 IMAGE、AUDIO、VIDEO�
 - **展示规则**：`ContentScale.Fit` + 显式 `aspectRatio` + `heightIn` 高度封顶（320dp / 可用高度 45%），自适应屏幕并保持比例；加载与失败使用固定占位，避免布局跳动；内存 LRU 缓存避免翻卡重复解码。
 - **查看交互**：点击图片进入独立全屏 `Dialog` 查看器，与缩略图共享已解码 `ImageBitmap`，180ms 淡入淡出 + 缩放过渡；支持按钮/捏合缩放（1–5x）、平移、适应屏幕、点击背景或返回键关闭，底部显示说明文字。查看器打开期间屏蔽滑动与翻卡手势。
 - **录入**：创建/编辑界面提供本地选图（保存到 media 目录）与 https 图床链接录入，可设置说明文字与显示面；`updateCard` 显式保留既有 media。
-- **AI / skill**：`prompt_ai_card.md` 与 `lumecard-deck-builder` 0.4.0 支持可选 `media` / `mediaTarget` 字段，禁止编造 URL 或内联 Markdown 图片。
+- **AI / skill**：`prompt_ai_card.md` 与 `lumecard-deck-builder` 0.4.1 支持可选 `media` / `mediaTarget` 字段，禁止编造 URL 或内联 Markdown 图片。
 - **限制**：仅学习界面渲染 IMAGE；AUDIO / VIDEO / FILE 仅存储不渲染；CSV 导入不含图片字段；网络图片仅 https。
 
 相关实现：`composeApp/.../platform/CardImageLoader.kt`、`composeApp/.../ui/screens/study/CardImageViews.kt`、`composeApp/.../ui/screens/card/CardImageEditor.kt`。

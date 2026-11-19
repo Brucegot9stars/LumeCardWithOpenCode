@@ -1,9 +1,9 @@
 # lumecard-deck-builder 安装与使用指南
 
-适用版本：0.4.0。支持 Codex、Claude Code、OpenCode、Hermes Agent、CodeBuddy，
+适用版本：0.4.1。支持 Codex、Claude Code、OpenCode、Hermes Agent、CodeBuddy，
 其他支持标准 SKILL.md 的 Agent 可指定安装目录。安装器和核心脚本不依赖 CodeGraph。
 
-0.4.0 新增卡片图片支持：内容计划可写 `media`（本地 media 相对路径 / 本地 URI / https
+0.4.1 新增卡片图片支持：内容计划可写 `media`（本地 media 相对路径 / 本地 URI / https
 图床链接）与整卡级 `mediaTarget`（`both`/`front`/`back`）；校验器会拒绝 http 链接、
 `..` 路径穿越和非 IMAGE 类型。纯文字卡牌仍保持 `media: []`，行为不变。
 已有安装仍按第 8 节先卸载再安装。新校验器会拒绝未知成品字段、非字符串 deviceId、
@@ -13,7 +13,7 @@
 
 任选一种方式：
 
-- 解压分发包 `lumecard-deck-builder-0.4.0.zip`，进入其中的 `lumecard-deck-builder` 目录。
+- 解压分发包 `lumecard-deck-builder-0.4.1.zip`，进入其中的 `lumecard-deck-builder` 目录。
 - 在 LumeCardWithOpenCode 仓库中，进入 `skills/lumecard-deck-builder`。
 
 发布后可从仓库的同名 Skill Release 下载 ZIP 和 SHA256；手动构建则从对应 Actions 运行的
@@ -167,7 +167,7 @@ CodeBuddy 可用 `/skills` 检查，Hermes 可用 `hermes skills list` 检查。
 | 扫描 PDF、照片、图表 | 需要宿主 OCR/视觉能力；未提供该能力时不能声称已读取 |
 | 其他格式 | 使用宿主已有读取/转换工具，或请求提供可读文本 |
 
-0.4.0 起支持在卡牌中引用图片，但**没有完整的自动识图流程**：脚本不会识别 DOCX/PDF
+0.4.1 起支持在卡牌中引用图片，但**没有完整的自动识图流程**：脚本不会识别 DOCX/PDF
 内嵌图片，也不会自动下载 HTML/Markdown 引用的图片。宿主 Agent 若支持视觉或 OCR，
 可补充理解，但必须记录未读内容和识别不确定性。只有资料中**明确给出**的图片文件名、
 本地路径或 https 图片 URL 才能写入 `card.media`（见 `references/format.md`）；禁止

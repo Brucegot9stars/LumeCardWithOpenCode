@@ -39,9 +39,9 @@ pip install command. For reproducible CI pin a reviewed commit instead of HEAD.
 The core scripts do not need uv, pip, PyYAML or skills-ref. See the
 [upstream README](https://github.com/agentskills/agentskills/tree/main/skills-ref).
 
-## Content validator (build_deck.py), 0.4.0
+## Content validator (build_deck.py), 0.4.1
 
-This is separate from the Skill-spec validator above. As of 0.4.0, `validate()` no
+This is separate from the Skill-spec validator above. As of 0.4.1, `validate()` no
 longer rejects `card.media`. It checks every media item with `media_items()`:
 only `IMAGE`, required non-empty `id`/`filePath`, no `..` path traversal, no `http://`
 (https URLs must be well-formed), optional string `caption`/`mimeType` and a

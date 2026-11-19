@@ -1,4 +1,4 @@
-# LumeCard content contract (skill 0.4.0; serialization unchanged since 0.1.0)
+# LumeCard content contract (skill 0.4.1; serialization unchanged since 0.1.0)
 
 Audited against LumeCardWithOpenCode commit `1cc6e56` (repository HEAD when work began;
 verify with Git history if the app changes), export version `1.0.0`, schema `1`.
@@ -105,7 +105,7 @@ generic families, not bundled font files; exact glyph appearance varies by OS.
 Do not promise custom font availability. Request installed font IDs before using them
 in manually authored exports; the helper intentionally accepts built-in IDs only.
 
-## Image display and viewer behaviour (0.4.0)
+## Image display and viewer behaviour (0.4.1)
 
 How images appear in the app — keep documentation and generated content aligned with this:
 

@@ -76,7 +76,7 @@ unless explicitly recorded below. CLI existence or --help alone does not prove s
 Check Chinese text, code, cloze and choices on both desktop and Android, then verify
 knowledge-base/deck/card counts and absence of learning history changes.
 
-## 0.4.0 image support verification (2026-11-19)
+## 0.4.0 image support verification (historical, 2026-11-19)
 
 `build_deck.py` now accepts optional `media` / `mediaTarget` instead of rejecting external
 media. `media_items()` validates `id` / `type=IMAGE` / `filePath` (non-empty, no `..`,
@@ -90,6 +90,19 @@ The installed WorkBuddy copy was refreshed via installer `--uninstall` → `inst
 `diff -rq` (excluding the install manifest) confirms source and installed copy match.
 Kotlin `SkillImportContractTest`, Windows/macOS native runs and remote Actions execution
 remain unverified locally.
+
+## 0.4.1 CI runner fix verification (2026-11-19)
+
+Remote packaging of `lumecard-deck-builder-v0.4.0` failed because GitHub moved
+`ubuntu-latest` to Ubuntu 26.04, where `actions/setup-python@v7` no longer ships Python
+3.9 x64. The minimum-version matrix entry in the root `skill-release.yml` is now pinned
+to `ubuntu-24.04`; the nested standalone-repository template uses the same runner.
+`SKILL.md` was bumped to 0.4.1 and a fresh tag pushed, because an existing tag must
+never be overwritten. Re-run the full suite locally and confirm the remote
+`Skill Build and Release` run creates the ZIP, SHA256 and GitHub Release.
+
+Local run: `python -m unittest discover -s tests -p "test_*.py"` → 79 tests, OK
+(skipped=3). The distribution package resolves to `lumecard-deck-builder-0.4.1.zip`.
 
 ## 0.3.1 regression verification (historical)
 

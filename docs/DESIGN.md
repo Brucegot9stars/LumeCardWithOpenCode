@@ -280,3 +280,15 @@ BoxWithConstraints(Modifier.fillMaxWidth()) {
 | 6 | 是否进入阶段二 | ✅ **确认，开始开发** |
 
 > 阶段二已启动：开 `feat/card-image-support` 分支，按 `docs/TASK.md` 逐项实现并勾选，每完成一块做自审与构建验证；门禁规则见 TASK.md「门禁规则」。
+
+---
+
+## 10. 发布记录（2026-11-19）
+
+**分支**：`feat/card-image-support`（图片支持开发提交 `d0a0b69`，修复提交另记）。
+**第一版 tag**：`lumecard-deck-builder-v0.4.0`（附注标签，指向 `d0a0b69`）。
+
+- 分支与 tag 均成功推送到 `origin`；`Skill Build and Release` 被分支 push 与 tag push 各自动触发一次。
+- ❌ 两条 run 均失败：GitHub 已将 `ubuntu-latest` 升级到 **Ubuntu 26.04**，`actions/setup-python@v7` 不再提供 **Python 3.9 x64**，`test (ubuntu-latest, 3.9)` 在 setup-python 阶段报错，导致依赖 `needs: [prepare, test, app-contract]` 的 `build`/`publish` 被跳过 → 未生成 ZIP/SHA256、未创建 Release。`prepare`、`app-contract` 及 Windows/macOS/Ubuntu 的 3.11 测试全部通过。属平台镜像升级导致的**存量 workflow 缺陷**，与图片支持代码无关（2026-11-04 同 workflow 在 Ubuntu 24.04 上成功）。
+- 修复：把 Python 3.9 矩阵项 runner 固定为 `ubuntu-24.04`（独立仓库模板 `skills/.../.github/workflows/test.yml` 同步）；`SKILL.md` 升 **0.4.1** 并同步 references / README / 主项目文档；按 `releasing.md`「已存在的 tag 禁止覆盖」，打新 tag `lumecard-deck-builder-v0.4.1` 重发，**不删除、不覆盖 `v0.4.0` tag**。
+- 应用 tag `v0.26.17` 已于 2026-10-29 在 `main` 发布为 Latest，本次未重复创建、未覆盖。

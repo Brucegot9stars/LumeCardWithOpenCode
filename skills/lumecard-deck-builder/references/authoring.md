@@ -26,7 +26,7 @@ coverage and warnings, preserve source locators, and keep a clear unprocessed-so
 list. Scans need OCR/vision. Do not silently skip unreadable pages or equate text-only
 extraction with complete visual understanding of the document.
 
-## Images (0.4.0)
+## Images (0.4.1)
 
 The app can display images on cards, but this skill has no automatic image extraction.
 Author images only when they are genuinely available and useful:
