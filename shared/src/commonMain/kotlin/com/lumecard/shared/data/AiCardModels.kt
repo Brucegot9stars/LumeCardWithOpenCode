@@ -76,6 +76,13 @@ data class AiCardResponseJson(
     val cards: List<AiCardItemJson> = emptyList(),
 )
 
+/** Optional image reference produced by AI. Only user-provided paths / https URLs are allowed. */
+@Serializable
+data class AiMediaJson(
+    val filePath: String = "",
+    val caption: String = "",
+)
+
 @Serializable
 data class AiCardItemJson(
     val title: String = "",
@@ -83,4 +90,6 @@ data class AiCardItemJson(
     val back: String = "",
     val type: String = "BASIC",
     val tags: List<String> = emptyList(),
+    val media: List<AiMediaJson> = emptyList(),
+    val mediaTarget: String = "both",
 )

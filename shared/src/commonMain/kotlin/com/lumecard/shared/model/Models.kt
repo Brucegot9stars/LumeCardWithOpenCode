@@ -81,8 +81,9 @@ data class Media(
     val id: String,
     val type: MediaType,
     val filePath: String,
-    val mimeType: String,
-    val size: Long
+    val mimeType: String = "",
+    val size: Long = 0,
+    val caption: String = ""
 )
 
 @Serializable

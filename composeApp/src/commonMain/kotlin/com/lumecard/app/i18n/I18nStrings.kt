@@ -780,4 +780,26 @@ interface I18nStrings {
     val welcomeTourGetStarted: String
     val welcomeTourNext: String
     val welcomeTourSkip: String
+
+    // Card images (defaults are English fallbacks; each locale overrides below)
+    val cardImageLoading: String get() = "Loading image…"
+    val cardImageViewer: String get() = "Image viewer"
+    val cardImageZoomIn: String get() = "Zoom in"
+    val cardImageZoomOut: String get() = "Zoom out"
+    val cardImageFit: String get() = "Fit to screen"
+    val cardImageClose: String get() = "Close"
+    val cardImageSection: String get() = "Images"
+    val cardImageAddLocal: String get() = "Add local image"
+    val cardImageAddUrl: String get() = "Add image URL"
+    val cardImageUrlLabel: String get() = "Image URL (https)"
+    val cardImageCaption: String get() = "Caption (optional)"
+    val cardImageTarget: String get() = "Show on"
+    val cardImageTargetBoth: String get() = "Both sides"
+    val cardImageTargetFront: String get() = "Front only"
+    val cardImageTargetBack: String get() = "Back only"
+    val cardImageRemove: String get() = "Remove"
+    val cardImageEmpty: String get() = "No images yet"
+    val cardImageHttpsOnly: String get() = "Only https image URLs are supported"
+    val cardImageLocalHint: String get() = "Relative media path, file://, content:// or absolute path"
+    val cardImageInvalidUrl: String get() = "Enter a valid https URL"
 }

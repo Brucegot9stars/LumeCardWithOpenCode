@@ -10,7 +10,10 @@ from pathlib import Path
 
 TYPES = {"BASIC", "REVERSED", "CLOZE", "MULTIPLE_CHOICE", "MARKDOWN"}
 FONTS = {"default", "sans-serif", "serif", "monospace", "cursive"}
+MEDIA_TARGETS = {"both", "front", "back"}
+MEDIA_FIELDS = {"id", "type", "filePath", "mimeType", "size", "caption"}
 CLOZE = re.compile(r"\{\{c\d+::([^}]+)\}\}")
+URL_HTTPS = re.compile(r"https://\S+", re.IGNORECASE)
 LONG_MAX = 2**63 - 1
 LINE_BREAKS = re.compile(r"[\r\n\v\f\x1c-\x1e\x85\u2028\u2029]")
 RECORD_FIELDS = {"id", "createdAt", "updatedAt", "version", "deletedAt", "syncedAt"}
@@ -40,6 +43,37 @@ def timestamp(value, where):
 
 def fields(value, allowed, where):
     require(not (set(value) - allowed), where + ": unsupported fields " + ", ".join(sorted(set(value) - allowed)))
+
+
+def media_target(value, where):
+    require(value in MEDIA_TARGETS, where + ": expected both/front/back")
+    return value
+
+
+def media_items(value, where):
+    """Validate card.media and normalise it into the app's Media JSON shape."""
+    require(isinstance(value, list), where + ": expected array")
+    result = []
+    for index, item in enumerate(value):
+        loc = "%s[%d]" % (where, index)
+        require(isinstance(item, dict), loc + ": expected object")
+        fields(item, MEDIA_FIELDS, loc)
+        require(item.get("type") == "IMAGE", loc + ".type: only IMAGE is supported")
+        ident = text(item.get("id"), loc + ".id")
+        path = text(item.get("filePath"), loc + ".filePath")
+        require(".." not in path, loc + ".filePath: path traversal '..' is forbidden")
+        require(not path.lower().startswith("http://"), loc + ".filePath: only https URLs are allowed")
+        if path.lower().startswith("http"):
+            require(URL_HTTPS.fullmatch(path) is not None, loc + ".filePath: malformed https URL")
+        caption = item.get("caption", "")
+        require(isinstance(caption, str), loc + ".caption: expected text")
+        mime = item.get("mimeType", "")
+        require(isinstance(mime, str), loc + ".mimeType: expected text")
+        size = item.get("size", 0)
+        require(type(size) is int and 0 <= size <= LONG_MAX, loc + ".size: expected non-negative integer")
+        result.append({"id": ident, "type": "IMAGE", "filePath": path,
+                       "mimeType": mime, "size": size, "caption": caption})
+    return result
 
 
 def choice_lines(back):
@@ -141,8 +175,11 @@ def build(plan):
                 metadata = style(front, back, kind, card.get("style", {}))
                 if "source" in card:
                     metadata["source"] = text(card["source"], "card.source")
+                media = media_items(card.get("media", []), "card.media")
+                if media:
+                    metadata["mediaTarget"] = media_target(card.get("mediaTarget", "both"), "card.mediaTarget")
                 output["cards"].append(dict(base("card"), deckId=deck_out["id"], type=kind,
-                                            front=front, back=back, tags=tags, media=[], metadata=metadata))
+                                            front=front, back=back, tags=tags, media=media, metadata=metadata))
     validate(output)
     return output
 
@@ -191,9 +228,11 @@ def validate(data):
         if card["type"] == "MULTIPLE_CHOICE":
             choice_lines(card["back"])
         require(isinstance(card.get("tags"), list) and all(isinstance(x, str) for x in card["tags"]), "tags: expected string array")
-        require(card.get("media", []) == [], "external media not supported")
+        media_items(card.get("media", []), "card.media")
         meta = card.get("metadata")
         require(isinstance(meta, dict) and all(isinstance(v, str) for v in meta.values()), "metadata values must be strings")
+        if "mediaTarget" in meta:
+            media_target(meta["mediaTarget"], "metadata.mediaTarget")
         for key in ("hcenter", "vcenter"):
             require(meta.get(key) in {"true", "false"}, "metadata." + key + ": expected true/false string")
         require(meta.get("fontFamily") in FONTS, "unknown font ID")

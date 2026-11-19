@@ -1,5 +1,6 @@
 package com.lumecard.shared.data
 
+import com.lumecard.shared.model.MediaType
 import java.io.File
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
@@ -30,7 +31,7 @@ class SkillImportContractTest {
             val imported = manager.importData(source)
             if (accepted) {
                 val data = assertNotNull(imported, name)
-                assertNotNull(manager.importShareData(source), name)
+                val shared = assertNotNull(manager.importShareData(source), name)
                 assertEquals("share", data.exportType, name)
                 assertEquals(1, data.knowledgeBases.size, name)
                 assertEquals(1, data.decks.size, name)
@@ -41,9 +42,23 @@ class SkillImportContractTest {
                 val choice = data.cards.single { it.type == "MULTIPLE_CHOICE" }
                 val options = choice.back.split("\n").filter { it.isNotBlank() }
                 assertTrue(options.size >= 2 && options.any { it.startsWith("+") }, name)
+                assertImageCardsPreserved(data.cards, name)
+                assertImageCardsPreserved(shared.cards, name)
             } else {
                 assertNull(imported, name)
             }
         }
+    }
+
+    private fun assertImageCardsPreserved(cards: List<ExportCard>, name: String) {
+        val imageCards = cards.filter { it.media.isNotEmpty() }
+        assertTrue(imageCards.isNotEmpty(), "$name: builder output must contain at least one image card")
+        imageCards.forEach { card ->
+            assertTrue(card.media.all { it.type == MediaType.IMAGE }, name)
+            assertTrue(card.media.all { it.filePath.isNotBlank() }, name)
+            val target = card.metadata["mediaTarget"]
+            assertTrue(target == null || target in setOf("front", "back", "both"), name)
+        }
+        assertTrue(imageCards.any { card -> card.media.any { it.caption.isNotBlank() } }, name)
     }
 }

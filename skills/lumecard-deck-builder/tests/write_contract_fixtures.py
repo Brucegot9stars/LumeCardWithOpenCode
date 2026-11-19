@@ -20,6 +20,22 @@ def write_fixtures(output):
     for collection in ("knowledgeBases", "decks", "cards"):
         maximum[collection][0]["version"] = builder.LONG_MAX
     cases.append(("long_max", maximum, True))
+
+    def image_card(data):
+        for card in data["cards"]:
+            if card.get("media"):
+                return card
+        raise AssertionError("generated plan must contain an image card")
+
+    # https image-host URL is a valid source and must survive the Kotlin importer.
+    image_https = copy.deepcopy(valid)
+    image_card(image_https)["media"][0]["filePath"] = "https://example.com/diagram.png"
+    cases.append(("image_https", image_https, True))
+
+    # A Media element without its required id must be rejected by both sides.
+    image_missing_id = copy.deepcopy(valid)
+    del image_card(image_missing_id)["media"][0]["id"]
+    cases.append(("image_missing_id", image_missing_id, False))
     for name, field, value in (("device_object", "deviceId", {}),
                                ("device_number", "deviceId", 123),
                                ("backup_version", "backupFormatVersion", 99)):

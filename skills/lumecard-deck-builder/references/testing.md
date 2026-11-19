@@ -76,7 +76,22 @@ unless explicitly recorded below. CLI existence or --help alone does not prove s
 Check Chinese text, code, cloze and choices on both desktop and Android, then verify
 knowledge-base/deck/card counts and absence of learning history changes.
 
-## 0.3.1 regression verification
+## 0.4.0 image support verification (2026-11-19)
+
+`build_deck.py` now accepts optional `media` / `mediaTarget` instead of rejecting external
+media. `media_items()` validates `id` / `type=IMAGE` / `filePath` (non-empty, no `..`,
+https-only for URLs) and optional `caption` / `mimeType` / `size`; `validate()` allows
+`metadata["mediaTarget"]`. Added positive/negative tests for https+local paths, insecure
+URL rejection, path traversal rejection, target validation and legacy empty media.
+
+Local run: `python -m unittest discover -s tests -p "test_*.py"` → 79 tests, OK
+(skipped=3). The distribution package resolves to `lumecard-deck-builder-0.4.0.zip`.
+The installed WorkBuddy copy was refreshed via installer `--uninstall` → `install`;
+`diff -rq` (excluding the install manifest) confirms source and installed copy match.
+Kotlin `SkillImportContractTest`, Windows/macOS native runs and remote Actions execution
+remain unverified locally.
+
+## 0.3.1 regression verification (historical)
 
 The regression suite covers private-file exclusion from ZIPs/installations, distribution
 preflight, self-uninstall without creating bytecode, OpenCode compatibility-disable flags,

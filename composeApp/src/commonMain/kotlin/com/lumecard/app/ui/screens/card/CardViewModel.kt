@@ -5,8 +5,10 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import com.lumecard.app.ui.screens.deck.SortConfig
 import com.lumecard.app.ui.screens.deck.SortField
 import com.lumecard.app.ui.screens.deck.SortOrder
+import com.lumecard.app.platform.MEDIA_TARGET_KEY
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
+import com.lumecard.shared.model.Media
 import com.lumecard.shared.data.generateId
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.SettingsRepository
@@ -100,6 +102,8 @@ class CardViewModel(
         verticalCenter: Boolean = false,
         fontSize: Int = 16,
         fontFamily: String = "",
+        media: List<Media> = emptyList(),
+        mediaTarget: String = "both",
         onComplete: (() -> Unit)? = null,
     ) {
         if (front.isBlank() || back.isBlank()) return
@@ -113,11 +117,13 @@ class CardViewModel(
                 back = back,
                 title = title,
                 tags = tags,
+                media = media,
                 metadata = mutableMapOf<String, String>().apply {
                     if (horizontalCenter) put("hcenter", "true")
                     if (verticalCenter) put("vcenter", "true")
                     put("fontSize", fontSize.toString())
                     if (fontFamily.isNotBlank()) put("fontFamily", fontFamily)
+                    if (media.isNotEmpty()) put(MEDIA_TARGET_KEY, mediaTarget)
                 }
             )
             cardRepository.insert(card)
@@ -136,6 +142,8 @@ class CardViewModel(
         verticalCenter: Boolean = false,
         fontSize: Int = 16,
         fontFamily: String = "",
+        media: List<Media> = card.media,
+        mediaTarget: String = card.metadata[MEDIA_TARGET_KEY] ?: "both",
         onComplete: (() -> Unit)? = null,
     ) {
         screenModelScope.launch {
@@ -144,6 +152,7 @@ class CardViewModel(
                 if (verticalCenter) put("vcenter", "true")
                 put("fontSize", fontSize.toString())
                 if (fontFamily.isNotBlank()) put("fontFamily", fontFamily) else remove("fontFamily")
+                if (media.isNotEmpty()) put(MEDIA_TARGET_KEY, mediaTarget) else remove(MEDIA_TARGET_KEY)
             }
             val updated = card.copy(
                 front = front,
@@ -151,6 +160,7 @@ class CardViewModel(
                 title = title,
                 type = type,
                 tags = tags,
+                media = media,
                 metadata = metadata,
                 updatedAt = Clock.System.now()
             )

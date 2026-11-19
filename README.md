@@ -26,7 +26,8 @@
 - ✅ **排序功能** — 牌组与卡片列表支持按名称、创建时间、更新时间排序（升序/降序）
 - ✅ **WebDAV 云同步** — 手动强制覆盖（学习数据 / 配置分开独立同步）+ 覆盖前云端快照自动归档（可回滚）+ Anki 风格媒体同步（SHA-1 + mtime 缓存，仅哈希变更文件）+ 多配置管理
 - ✅ **级联软删除** — 删除知识库级联软删除下属牌组与卡片，删除牌组级联软删除下属卡片
-- ✅ **媒体贴入** — 粘贴图片到卡片编辑器字段（Desktop: AWT / Android: ClipboardManager），自动 SHA-1 去重保存，插入 Markdown 图片引用；Card 模型含 `media: List<Media>` 字段（IMAGE/AUDIO/VIDEO/FILE），但卡片创建 UI 尚未接入媒体附件选择器
+- ✅ **媒体贴入** — 粘贴图片到卡片编辑器字段（Desktop: AWT / Android: ClipboardManager），自动 SHA-1 去重保存，插入 Markdown 图片引用；Card 模型含 `media: List<Media>` 字段（IMAGE/AUDIO/VIDEO/FILE）
+- ✅ **卡片图片** — 本地图片（media 相对路径 / `file://` / `content://`）与 https 图床链接均可附加到卡片，整卡级指定正/反/双面显示；学习界面按屏幕自适应缩放、保持比例、不溢出；点击图片进入独立全屏查看器，支持手势与按钮缩放、平移、180ms 淡入淡出过渡；创建/编辑界面提供本地选图与图床链接录入；AI 制卡与 `lumecard-deck-builder` skill 同步支持可选图片字段
 - ✅ **AI 制卡助手** — SSE 流式生成 + 增量 JSON 解析 + 批量自动分类到牌组/知识库 + 实时进度气泡 + 交互日志面板 + 停止生成（保留已完成卡片）
 - ✅ **AI 事件流框架** — 事件驱动架构：`AiEventBus`（SharedFlow）+ `AiEvent` 14 种事件类型 + `AiBatchGenerator` 批处理循环 + `AiTaskStateMachine` 状态验证
 - ✅ **字体系统** — 跨平台自定义字体加载（TTF/OTF），平台字体检测（Android: `Typeface.create` / Desktop: `GraphicsEnvironment`），用户导入字体存储
@@ -44,8 +45,7 @@
 - ❌ 知识图谱
 - ❌ 学习热力图 / 日历贡献图
 - ❌ iOS 平台
-- ❌ 卡片媒体附件 — Card 模型已有 `media` 字段与 `MediaManager` 后端，但创建/编辑 UI 未接入文件选择器，学习界面未渲染图片/音视频
-- ❌ 学习界面多媒体渲染 — CardFace 仅渲染文本，不支持内嵌图片查看器、音频/视频播放器
+- ❌ 音频/视频媒体渲染 — `Media` 模型支持 AUDIO / VIDEO / FILE，但学习界面当前仅渲染 IMAGE
 
 ## 技术栈
 
@@ -90,6 +90,7 @@ LumeCard/
 │       │   │   ├── Platform.kt         # 媒体/剪贴板/路径
 │       │   │   ├── FilePicker.kt       # 文件选择器
 │       │   │   ├── MediaDropTarget.kt  # 拖拽放入
+│       │   │   ├── CardImageLoader.kt  # 卡片图片加载（三态路径 + LRU + 磁盘缓存）
 │       │   │   └── ...                 # 其他平台适配
 │       │   ├── ui/
 │       │   │   ├── components/         # 可复用组件
@@ -308,15 +309,25 @@ Knowledge Base → Deck → Card
 - **Deck** — 牌组，支持层级嵌套（`parentId` 引用），配有颜色与 emoji 图标
 - **Card** — 闪卡，7 种类型（Basic、Reversed、Cloze、Multiple Choice、Markdown、AI、Rich Text），支持标题（title）、标签（tags）、媒体附件（media）、元数据（metadata）
 
-### 媒体附件
+### 媒体附件与卡片图片
 
-Card 模型定义了 `media: List<Media>` 字段，支持 IMAGE、AUDIO、VIDEO、FILE 四种类型。后端基础设施已就绪：
+Card 模型定义了 `media: List<Media>` 字段，支持 IMAGE、AUDIO、VIDEO、FILE 四种类型。后端基础设施：
 - `MediaManager` — Manifest 序列化、SHA-1 缓存、同步差异计算
 - `MediaCacheRepository` — 媒体缓存持久化
 - 平台函数 — `pasteClipboardMedia`、`saveMediaFile`、`scanMediaDirectory`（Desktop/Android 各有实现）
 - WebDAV 媒体同步 — `SyncManager.uploadMedia()` / `downloadMedia()`
 
-**当前状态**：模型与后端已实现，但卡片创建/编辑 UI 未提供文件选择器，学习界面 CardFace 未渲染图片/音视频。
+**图片支持（IMAGE）**：
+- **数据**：复用 `media` 字段，不改 DB schema、不加 `CardType`、不改导出版本号；`Media` 新增 `caption` 并给 `mimeType` / `size` 加默认值，保证旧 JSON 严格反序列化不丢图。
+- **来源三态**：media 根目录下的相对文件名、`file://` / `content://` / 绝对路径、https 图床 URL；`http://` 与含 `..` 的路径被拒绝。相对路径经 `resolveMediaFilePath()` 防目录穿越。
+- **显示归属**：整卡级 `metadata["mediaTarget"]`（`front` / `back` / `both`，默认 `both`），不做逐图设置。
+- **展示规则**：`ContentScale.Fit` + 显式 `aspectRatio` + `heightIn` 高度封顶（320dp / 可用高度 45%），自适应屏幕并保持比例；加载与失败使用固定占位，避免布局跳动；内存 LRU 缓存避免翻卡重复解码。
+- **查看交互**：点击图片进入独立全屏 `Dialog` 查看器，与缩略图共享已解码 `ImageBitmap`，180ms 淡入淡出 + 缩放过渡；支持按钮/捏合缩放（1–5x）、平移、适应屏幕、点击背景或返回键关闭，底部显示说明文字。查看器打开期间屏蔽滑动与翻卡手势。
+- **录入**：创建/编辑界面提供本地选图（保存到 media 目录）与 https 图床链接录入，可设置说明文字与显示面；`updateCard` 显式保留既有 media。
+- **AI / skill**：`prompt_ai_card.md` 与 `lumecard-deck-builder` 0.4.0 支持可选 `media` / `mediaTarget` 字段，禁止编造 URL 或内联 Markdown 图片。
+- **限制**：仅学习界面渲染 IMAGE；AUDIO / VIDEO / FILE 仅存储不渲染；CSV 导入不含图片字段；网络图片仅 https。
+
+相关实现：`composeApp/.../platform/CardImageLoader.kt`、`composeApp/.../ui/screens/study/CardImageViews.kt`、`composeApp/.../ui/screens/card/CardImageEditor.kt`。
 
 ### 复习算法架构
 

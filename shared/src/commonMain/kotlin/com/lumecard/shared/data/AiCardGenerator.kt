@@ -6,6 +6,8 @@ import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
 import com.lumecard.shared.model.Deck
 import com.lumecard.shared.model.KnowledgeBase
+import com.lumecard.shared.model.Media
+import com.lumecard.shared.model.MediaType
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
 import com.lumecard.shared.repository.KnowledgeBaseRepository
@@ -225,6 +227,23 @@ class AiCardGenerator(
         val now = Clock.System.now()
         for (item in parsed.cards) {
             val cardType = parseCardType(item.type)
+            // Keep only valid image references: relative media names, local URIs, or https URLs.
+            // Never let AI-invented http links into the database.
+            val media = item.media
+                .mapNotNull { ref ->
+                    val path = ref.filePath.trim()
+                    if (path.isEmpty() || path.startsWith("http://", ignoreCase = true)) return@mapNotNull null
+                    if (path.contains("..")) return@mapNotNull null
+                    Media(
+                        id = generateId("img"),
+                        type = MediaType.IMAGE,
+                        filePath = path,
+                        caption = ref.caption
+                    )
+                }
+            val target = item.mediaTarget.lowercase().let {
+                if (it in setOf("front", "back", "both")) it else "both"
+            }
             val card = Card(
                 id = generateId("card"),
                 deckId = deckId,
@@ -233,6 +252,8 @@ class AiCardGenerator(
                 back = item.back,
                 title = item.title,
                 tags = item.tags,
+                media = media,
+                metadata = if (media.isEmpty()) emptyMap() else mapOf("mediaTarget" to target),
                 createdAt = now,
                 updatedAt = now,
             )

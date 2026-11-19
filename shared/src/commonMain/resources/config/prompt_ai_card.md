@@ -36,10 +36,33 @@ Your task is to analyze the learning topic and reference materials, then generat
       "tags": [
         "<tag1>",
         "<tag2>"
-      ]
+      ],
+      "media": [
+        {
+          "filePath": "<relative media filename or https image URL>",
+          "caption": "<optional short caption>"
+        }
+      ],
+      "mediaTarget": "both"
     }
   ]
 }
+
+`media` and `mediaTarget` are OPTIONAL. Omit `media` entirely (or use `[]`) for plain-text cards — this is the default and should be used for most cards. `mediaTarget` accepts `both` (default), `front`, or `back` and applies to the whole card.
+
+---
+
+## Image Rules (media)
+
+- Only include `media` when the reference material explicitly contains an image file name/path or an https image URL that belongs to the card.
+- **NEVER invent, guess, or fabricate image URLs or file names.** If no image is provided, output no `media` field at all.
+- `filePath` must be one of:
+  - a **relative file name** inside the app's media directory (e.g. `a1b2c3.png`); no `..` and no absolute paths;
+  - an **https URL** for a hosted image. `http://` is forbidden and will be rejected.
+- Keep `front` / `back` text unchanged: images are rendered as separate blocks below the text, never inline (`![...](...)` in card text is NOT supported).
+- `caption` is optional; keep it short and factual.
+- At most a few images per card; do not attach the same image to many cards unnecessarily.
+- `mediaTarget` is card-level: `both` (default) shows images on both faces, `front` only on the front, `back` only on the back.
 
 ---
 

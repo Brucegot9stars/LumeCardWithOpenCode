@@ -57,6 +57,7 @@
       "hasDangerContent": true,
       "sections": [
         { "type": "paragraph", "title": "Card Types", "content": "LumeCard supports multiple card types: Basic (front and back), Reversed (auto-generates reverse card), Cloze (fill-in-the-blank), Multiple Choice, Markdown, and Rich Text." },
+        { "type": "paragraph", "title": "Card Images", "content": "Cards can include local images or https image-host URLs. Images scale to fit the screen while keeping their aspect ratio, so they never overflow or stretch. Tap an image to open a dedicated viewer with button and pinch zoom, panning, and a smooth fade transition. When editing a card you can choose whether images appear on the front, the back, or both, and add a caption. Only https URLs are accepted; http URLs and relative paths containing .. are rejected. CSV import does not support images." },
         { "type": "steps", "title": "Editing a Card", "items": [
           "Navigate to the deck containing the card",
           "Tap the card to open its detail view",
@@ -226,6 +227,7 @@
       "hasDangerContent": false,
       "sections": [
         { "type": "paragraph", "title": "Version 0.26.x", "content": "Cloud sync backup overhaul: force upload backs up remote state, force download backs up local state. Restore history split into Local History and Cloud History. New Restore from Cloud with 3-step confirmation + manual input. Configurable backup limits (1-365, default 7). Export fixes (.json extension auto-append, knowledge base icon import). Android backup path fix (uses app internal storage). AI card generation event stream framework. Schema v3 (knowledge base icon field)." },
+        { "type": "paragraph", "title": "Card Images", "content": "Added flashcard images: local files and https image-host URLs, adaptive scaling that preserves aspect ratio without overflow; tap an image for a dedicated viewer with zoom, pan and smooth transitions; the create/edit screen can pick images and choose front/back/both; AI card generation and the deck-builder skill now support optional image fields. Fixed share-JSON import dropping media, metadata and title." },
         { "type": "paragraph", "title": "Version 0.25.x", "content": "FSRS-6 algorithm upgrade (21 parameters, trainable forgetting curve). Sample knowledge base (auto-created on first launch). Dashboard deck deletion. Card title field. Database migration to schema v2. Windows installer desktop shortcut option. Algorithm stability fixes (NaN crash, negative stability)." },
         { "type": "paragraph", "title": "Version 0.17.6", "content": "WebDAV sync improvements with bidirectional version-based merge. Splash quote sync via WebDAV. Font deletion cleanup. Background image persistence. Startup animation fix." },
         { "type": "paragraph", "title": "Version 0.17.2 - 0.17.5", "content": "Unified Quote Settings screen with collapsible sections. Global settings search. Animation support for splash quotes. Screen saver mode with auto-exit on activity. Study timer idle pause." },

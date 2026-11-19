@@ -106,6 +106,7 @@ class StudyScreen(
 
         var editSaveCount by remember { mutableIntStateOf(0) }
         var showStudyModeDialog by remember { mutableStateOf(false) }
+        var imageViewerOpen by remember { mutableStateOf(false) }
         var soundEnabled by remember { mutableStateOf(SoundSettings.enabled) }
         var hasChosenMode by remember { mutableStateOf(false) }
         val allDone = cards.isNotEmpty() && currentIndex >= cards.size
@@ -376,10 +377,10 @@ class StudyScreen(
                                         scaleY = 1f - scaleReduction
                                     }
                                     .zIndex(1f)
-                                    .pointerInput(currentCard.id) {
+                                    .pointerInput(currentCard.id, imageViewerOpen) {
                                         detectHorizontalDragGestures(
                                             onDragStart = {
-                                                if (isAnimatingOut) return@detectHorizontalDragGestures
+                                                if (isAnimatingOut || imageViewerOpen) return@detectHorizontalDragGestures
                                                 lastDragTime = Clock.System.now().toEpochMilliseconds()
                                                 lastDragX = 0f
                                                 velocity = 0f
@@ -417,7 +418,7 @@ class StudyScreen(
                                                 }
                                             },
                                             onHorizontalDrag = { change, dragAmount ->
-                                                if (isAnimatingOut) return@detectHorizontalDragGestures
+                                                if (isAnimatingOut || imageViewerOpen) return@detectHorizontalDragGestures
                                                 change.consume()
                                                 val now = Clock.System.now().toEpochMilliseconds()
                                                 val dt = (now - lastDragTime).coerceAtLeast(1)
@@ -444,19 +445,22 @@ class StudyScreen(
                                         val centerable = currentCard.type == CardType.BASIC || currentCard.type == CardType.REVERSED || currentCard.type == CardType.RICH_TEXT
                                 val hCenter = centerable && currentCard.metadata["hcenter"].toBoolean()
                                 val vCenter = centerable && currentCard.metadata["vcenter"].toBoolean()
+                                val hasCardMedia = currentCard.media.isNotEmpty()
                                 val fontSize = currentCard.metadata["fontSize"]?.toIntOrNull() ?: 16
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .padding(horizontal = 20.dp, vertical = 12.dp)
-                                        .then(if (vCenter) Modifier else Modifier.verticalScroll(rememberScrollState()))
+                                        // Cards with media keep scrolling even in vCenter mode: images are
+                                        // height-capped but text + multiple images can still exceed the card.
+                                        .then(if (vCenter && !hasCardMedia) Modifier else Modifier.verticalScroll(rememberScrollState()))
                                         .then(
                                             if (settingsState.answerDisplayMode == AnswerDisplayMode.FLIP
                                                 && currentCard.type != CardType.MULTIPLE_CHOICE
                                             ) {
-                                                Modifier.pointerInput(currentCard.id) {
+                                                Modifier.pointerInput(currentCard.id, imageViewerOpen) {
                                                     detectTapGestures {
-                                                        viewModel.flipCard()
+                                                        if (!imageViewerOpen) viewModel.flipCard()
                                                     }
                                                 }
                                             } else Modifier
@@ -477,6 +481,7 @@ class StudyScreen(
                                         fontSize = fontSize,
                                         fontFamily = currentCard.metadata["fontFamily"]?.takeIf { it.isNotBlank() }?.let { FontRegistry.resolveFontFamily(it) },
                                         onConfirmChoice = onConfirmChoice,
+                                        onImageViewerChanged = { imageViewerOpen = it },
                                     )
                                 }
                             }

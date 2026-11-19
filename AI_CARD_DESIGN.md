@@ -6,7 +6,7 @@
 shared/
 ├── src/commonMain/
 │   ├── resources/config/
-│   │   └── prompt_ai_card.txt       # 默认 Prompt
+│   │   └── prompt_ai_card.md       # 默认 Prompt
 │   └── kotlin/com/lumecard/shared/
 │       ├── data/
 │       │   ├── AiCardModels.kt      # 请求/响应/结果模型
@@ -50,7 +50,8 @@ Settings → AiCardScreen
 
 ## Prompt 外置策略
 
-- 默认 Prompt: `shared/src/commonMain/resources/config/prompt_ai_card.txt`
+- 默认 Prompt: `shared/src/commonMain/resources/config/prompt_ai_card.md`
 - 加载方式: `getResourceAsStream()` (与 AppVersion 相同)
 - 用户修改: 缓存于 SettingsRepository (key: `ai_card_prompt`)
 - 恢复默认: 从资源文件重新加载
+- 图片字段（可选）：卡片可携带 `media: [{ filePath, caption? }]` 与整卡级 `mediaTarget`（`both`/`front`/`back`）。`filePath` 仅接受 media 相对文件名或 https URL；http 与编造链接在 `AiCardGenerator.createCards` 中被过滤。

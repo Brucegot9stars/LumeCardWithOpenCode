@@ -25,3 +25,23 @@ Use the format-specific extraction workflow in documents.md before authoring. Re
 coverage and warnings, preserve source locators, and keep a clear unprocessed-source
 list. Scans need OCR/vision. Do not silently skip unreadable pages or equate text-only
 extraction with complete visual understanding of the document.
+
+## Images (0.4.0)
+
+The app can display images on cards, but this skill has no automatic image extraction.
+Author images only when they are genuinely available and useful:
+
+- **Only use explicit sources**: a media file name/path supplied by the user, or an
+  https image URL actually present in the material. Never fabricate a URL, guess a
+  file name, or copy `![alt](...)` Markdown into a card field.
+- **When to add one**: the image carries information the text cannot (diagram, map,
+  formula, screenshot) and the card's retrieval target depends on it. Skip decorative
+  images. Keep `front`/`back` self-contained: the text must still make sense alone.
+- **Caption**: write a short factual caption; do not put the answer into the caption
+  if that gives away the card.
+- **Face**: set card-level `mediaTarget` to `both` (default), `front` or `back`. For a
+  "identify this diagram" card put the image on `front`; for an answer diagram use
+  `back`. Per-image targets are not supported — split into two cards if needed.
+- **Limits**: no automatic OCR of scanned images, no inline Markdown/HTML images, no
+  http URLs, no image occlusion. If a source image cannot be read or referenced safely,
+  note it as unprocessed and leave `media` empty rather than inventing a substitute.

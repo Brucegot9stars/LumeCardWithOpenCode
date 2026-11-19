@@ -6,7 +6,7 @@
 
 | 文件 | 说明 |
 |------|------|
-| `shared/src/commonMain/resources/config/prompt_ai_card.txt` | 默认 Prompt 外置资源文件（不在 Kotlin 代码中硬编码） |
+| `shared/src/commonMain/resources/config/prompt_ai_card.md` | 默认 Prompt 外置资源文件（不在 Kotlin 代码中硬编码） |
 | `.../data/AiCardModels.kt` | AI 制卡数据模型：`AiCardMode`（3种模式）、`AiCardRequest`、`AiCardResult`、`AiCardError`、`AiCardException`、`AiCardResponseJson`、`AiCardItemJson` |
 | `.../data/AiCardPromptManager.kt` | Prompt 管理器：从资源文件加载默认、保存用户编辑到 SettingsRepository、恢复默认 |
 | `.../data/AiCardGenerator.kt` | 核心编排器：调用 AI API → 解析 JSON → 创建知识库/牌组/卡牌（含名称冲突处理） |
@@ -84,7 +84,9 @@ interface AiProtocol {
 3. 发送 AI 请求（AiClient.sendChatCompletion）：
    - 根据协议构建消息（system = Prompt + 资料，user = "生成 N 张卡片"）
 4. 接收 AI 响应：
-   - 期望 JSON：{ knowledge_base_name, deck_name, cards: [{ front, back, type, tags }] }
+   - 期望 JSON：{ knowledge_base_name, deck_name, cards: [{ title, front, back, type, tags, media?, mediaTarget? }] }
+   - `media`（可选）：[{ filePath, caption? }]，`filePath` 为 media 相对文件名或 https URL；禁止 http、禁止编造。
+   - `mediaTarget`（可选，整卡级）：`both`（默认）/ `front` / `back`。
 5. 解析 JSON → AiCardResponseJson
 6. 创建实体（按模式）：
    - 完全自动：创建 KB → 创建 Deck → 创建 Cards
@@ -156,7 +158,7 @@ SettingsScreen → [AI 制卡] → AiCardScreen
 ## 后续扩展建议
 
 1. **更多 AI Provider 支持**：为 `OpenAiResponsesProtocol` 实现 `buildChatRequest`/`parseChatResponse`；新增 Gemini Protocol 实现（需适配其 API 格式）
-2. **Prompt 国际化**：在 `resources/config/` 下按语言放置 `prompt_ai_card_{locale}.txt`，`AiCardPromptManager` 根据当前语言加载
+2. **Prompt 国际化**：在 `resources/config/` 下按语言放置 `prompt_ai_card_{locale}.md`，`AiCardPromptManager` 根据当前语言加载
 3. **PDF/Word 文件解析**：在 `AiCardViewModel.appendReferenceMaterials()` 中扩展，解析 PDF/Word 文件后提取文本
 4. **卡牌预览**：生成前展示 AI 即将创建的卡牌列表，供用户确认
 5. **批量生成进度**：单次生成超过 500 张时，显示流式进度（逐步返回已创建的卡牌）

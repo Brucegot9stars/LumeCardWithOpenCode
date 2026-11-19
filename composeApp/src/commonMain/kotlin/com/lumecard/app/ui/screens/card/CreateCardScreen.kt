@@ -25,8 +25,10 @@ import com.lumecard.app.font.FontRegistry
 import com.lumecard.app.font.FontSpec
 import com.lumecard.app.ui.components.RichTextCardEditor
 import com.lumecard.app.ui.components.MarkdownText
+import com.lumecard.app.platform.MEDIA_TARGET_KEY
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
+import com.lumecard.shared.model.Media
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.components.LumeCardTopBar
 import com.lumecard.app.ui.components.CardTypeSelector
@@ -63,6 +65,8 @@ class CreateCardScreen(
         var fontSize by remember(editCard) { mutableStateOf(editCard?.metadata?.get("fontSize")?.toIntOrNull() ?: 16) }
         var fontFamily by remember(editCard) { mutableStateOf(editCard?.metadata?.get("fontFamily") ?: "") }
         var title by remember(editCard) { mutableStateOf(editCard?.title ?: "") }
+        var media by remember(editCard) { mutableStateOf(editCard?.media ?: emptyList()) }
+        var mediaTarget by remember(editCard) { mutableStateOf(editCard?.metadata?.get(MEDIA_TARGET_KEY) ?: "both") }
         var showTypeMenu by remember { mutableStateOf(false) }
         var showTypeHelp by remember { mutableStateOf(true) }
         val isEditing = editCardId != null
@@ -90,6 +94,8 @@ class CreateCardScreen(
                                         verticalCenter = verticalCenter,
                                         fontSize = fontSize,
                                         fontFamily = fontFamily,
+                                        media = media,
+                                        mediaTarget = mediaTarget,
                                         onComplete = {
                                             onCardSaved?.invoke()
                                             navigator.pop()
@@ -107,6 +113,8 @@ class CreateCardScreen(
                                         verticalCenter = verticalCenter,
                                         fontSize = fontSize,
                                         fontFamily = fontFamily,
+                                        media = media,
+                                        mediaTarget = mediaTarget,
                                         onComplete = { navigator.pop() }
                                     )
                                 }
@@ -183,6 +191,14 @@ class CreateCardScreen(
                     label = { Text(strings.cardTags) },
                     placeholder = { Text(strings.cardTagsPlaceholder) },
                     supportingText = { Text(strings.cardTagsHint) }
+                )
+
+                CardImageEditor(
+                    media = media,
+                    onMediaChange = { media = it },
+                    mediaTarget = mediaTarget,
+                    onMediaTargetChange = { mediaTarget = it },
+                    strings = strings,
                 )
 
                 if (front.isNotBlank() || back.isNotBlank()) {

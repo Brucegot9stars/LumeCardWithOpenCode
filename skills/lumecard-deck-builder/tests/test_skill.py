@@ -102,6 +102,54 @@ class WorkflowTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "title"):
             builder.validate(self.data)
 
+    def test_plan_with_images_builds_and_validates(self):
+        data = builder.build(self.plan)
+        card = data["cards"][0]
+        self.assertEqual(card["media"][0]["filePath"], "jvm-architecture.png")
+        self.assertEqual(card["metadata"]["mediaTarget"], "front")
+        builder.validate(data)
+
+    def test_media_accepts_https_and_local_paths(self):
+        data = copy.deepcopy(self.data)
+        data["cards"][0]["media"] = [
+            {"id": "img_local", "type": "IMAGE", "filePath": "diagram.png"},
+            {"id": "img_remote", "type": "IMAGE", "filePath": "https://cdn.example.com/a.png",
+             "caption": "Remote diagram", "mimeType": "image/png", "size": 1024},
+        ]
+        data["cards"][0]["metadata"]["mediaTarget"] = "both"
+        builder.validate(data)
+
+    def test_media_rejects_insecure_and_unsafe_sources(self):
+        bad = [
+            {"id": "i", "type": "IMAGE", "filePath": "http://example.com/a.png"},
+            {"id": "i", "type": "IMAGE", "filePath": "../secret.png"},
+            {"id": "i", "type": "AUDIO", "filePath": "a.mp3"},
+            {"id": "", "type": "IMAGE", "filePath": "a.png"},
+            {"id": "i", "type": "IMAGE", "filePath": "a.png", "unknown": 1},
+            {"id": "i", "type": "IMAGE", "filePath": "a.png", "size": -1},
+        ]
+        for item in bad:
+            data = copy.deepcopy(self.data)
+            data["cards"][0]["media"] = [item]
+            with self.subTest(item=item), self.assertRaises(ValueError):
+                builder.validate(data)
+
+    def test_media_target_validation(self):
+        for value in ("both", "front", "back"):
+            data = copy.deepcopy(self.data)
+            data["cards"][0]["metadata"]["mediaTarget"] = value
+            builder.validate(data)
+        data = copy.deepcopy(self.data)
+        data["cards"][0]["metadata"]["mediaTarget"] = "sideways"
+        with self.assertRaisesRegex(ValueError, "mediaTarget"):
+            builder.validate(data)
+
+    def test_legacy_empty_media_still_valid(self):
+        data = copy.deepcopy(self.data)
+        data["cards"][0]["media"] = []
+        data["cards"][0]["metadata"].pop("mediaTarget", None)
+        builder.validate(data)
+
     def test_share_fields_and_long_version_boundaries(self):
         for field, value in (("deviceId", {}), ("deviceId", 123), ("backupFormatVersion", 99),
                              ("extra", "unexpected")):
@@ -272,8 +320,8 @@ class StructureTests(unittest.TestCase):
             result = subprocess.run(command, capture_output=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             cases = builder.load(Path(tmp) / "manifest.json")["cases"]
-            self.assertEqual(len(cases), 8)
-            self.assertEqual(sum(case["accepted"] for case in cases), 2)
+            self.assertEqual(len(cases), 10)
+            self.assertEqual(sum(case["accepted"] for case in cases), 3)
             for case in cases:
                 data = builder.load(Path(tmp) / case["file"])
                 if case["accepted"]:

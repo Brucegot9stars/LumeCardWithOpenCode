@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.i18n.I18nStrings
+import com.lumecard.app.platform.ImageRef
 import com.lumecard.app.ui.components.MarkdownText
 import com.mohamedrejeb.richeditor.model.rememberRichTextState
 import com.lumecard.shared.model.Card
@@ -42,8 +43,13 @@ internal fun CardContent(
     fontSize: Int = 16,
     fontFamily: androidx.compose.ui.text.font.FontFamily? = null,
     onConfirmChoice: (() -> Unit)? = null,
+    onImageViewerChanged: (Boolean) -> Unit = {},
 ) {
     val strings = koinInject<I18nManager>().strings
+    // Viewer state lives here, outside key(card.id)/FlipCard, so it survives card flips and
+    // recomposition. The Dialog is an independent layer and never enters the 3D/mirror subtree.
+    var viewerTarget by remember(card.id) { mutableStateOf<Pair<ImageRef, androidx.compose.ui.graphics.ImageBitmap>?>(null) }
+    LaunchedEffect(viewerTarget) { onImageViewerChanged(viewerTarget != null) }
     Column(modifier = Modifier.fillMaxWidth()) {
         when (displayMode) {
             AnswerDisplayMode.FLIP -> {
@@ -119,6 +125,22 @@ internal fun CardContent(
                 }
             }
         }
+        // Images are rendered outside FlipCard: no mirroring, no 3D layer, no subtree rebuild.
+        CardImageBlock(
+            card = card,
+            isFlipped = isFlipped,
+            displayMode = displayMode,
+            strings = strings,
+            onOpenViewer = { ref, bitmap -> viewerTarget = ref to bitmap }
+        )
+    }
+    viewerTarget?.let { (ref, bitmap) ->
+        ImageViewerDialog(
+            ref = ref,
+            bitmap = bitmap,
+            strings = strings,
+            onDismiss = { viewerTarget = null }
+        )
     }
 }
 

@@ -37,13 +37,16 @@
       "front": "JVM 执行什么？",
       "back": "Java 字节码。",
       "tags": [],
-      "media": [],
+      "media": [
+        {"id": "img_jvm_arch", "type": "IMAGE", "filePath": "jvm-architecture.png", "mimeType": "", "size": 0, "caption": "JVM 结构示意"}
+      ],
       "metadata": {
         "hcenter": "true",
         "vcenter": "true",
         "fontSize": "24",
         "fontFamily": "sans-serif",
-        "source": "notes.md paragraph 1"
+        "source": "notes.md paragraph 1",
+        "mediaTarget": "front"
       }
     },
     {
