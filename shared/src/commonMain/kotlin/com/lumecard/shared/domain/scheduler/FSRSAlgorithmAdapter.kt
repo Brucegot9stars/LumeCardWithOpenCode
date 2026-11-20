@@ -38,8 +38,8 @@ class FSRSAlgorithmAdapter(private val inner: FSRSAlgorithm) : ReviewAlgorithm {
             stability = stability,
             difficulty = difficulty,
             // NOTE: elapsedDays is a placeholder here. The actual value is provided by
-            // StudyViewModel via the daysElapsed parameter, which calculates it from
-            // lastReviewedAt. This placeholder is overwritten before scheduling.
+            // ReviewService via the daysElapsed parameter, which computes it from
+            // last_reviewed_at. This placeholder is overwritten before scheduling.
             elapsedDays = 0,
             scheduledDays = intervalDays,
             reps = repetitions,

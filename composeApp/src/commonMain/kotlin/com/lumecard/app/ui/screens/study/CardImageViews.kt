@@ -40,6 +40,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.lumecard.app.i18n.I18nStrings
 import com.lumecard.app.platform.CardImageLoader
+import com.lumecard.app.platform.FailureReason
 import com.lumecard.app.platform.ImageLoadState
 import com.lumecard.app.platform.ImageRef
 import com.lumecard.app.platform.matchesFace
@@ -109,7 +110,14 @@ private fun CardImageThumbnail(
         }
         when (val current = state) {
             is ImageLoadState.Loading -> ImagePlaceholder(maxHeight, strings.cardImageLoading, showProgress = true)
-            is ImageLoadState.Failure -> ImagePlaceholder(maxHeight, current.reason, showProgress = false)
+            is ImageLoadState.Failure -> {
+                val label = when (current.reason) {
+                    FailureReason.HTTPS_ONLY -> strings.cardImageHttpsOnly
+                    FailureReason.LOAD_FAILED -> strings.cardImageLoadFailed
+                    FailureReason.DECODE_FAILED -> strings.cardImageDecodeFailed
+                }
+                ImagePlaceholder(maxHeight, label, showProgress = false)
+            }
             is ImageLoadState.Success -> {
                 val bitmap = current.bitmap
                 val ratio = bitmap.width.toFloat() / bitmap.height.coerceAtLeast(1).toFloat()

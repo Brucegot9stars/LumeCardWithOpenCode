@@ -19,6 +19,8 @@ import kotlin.time.Instant
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+private val lenientJson = Json { ignoreUnknownKeys = true }
+
 private fun safeInstant(value: String): Instant = try { Instant.parse(value) } catch (_: Exception) { Clock.System.now() }
 private fun safeInstantOrNull(value: String?): Instant? = value?.let { try { Instant.parse(it) } catch (_: Exception) { null } }
 private fun safeCardType(value: String): CardType = try { CardType.valueOf(value) } catch (_: Exception) { CardType.BASIC }
@@ -213,8 +215,8 @@ class SqlDelightCardRepository(
                 front = card.front,
                 back = card.back,
                 tags = Json.encodeToString(card.tags),
-                media = Json.encodeToString(card.media),
-                metadata = Json.encodeToString(card.metadata),
+                media = lenientJson.encodeToString(card.media),
+                metadata = lenientJson.encodeToString(card.metadata),
                 created_at = card.createdAt.toString(),
                 updated_at = card.updatedAt.toString(),
                 last_reviewed_at = card.lastReviewedAt?.toString(),
@@ -238,8 +240,8 @@ class SqlDelightCardRepository(
                 front = card.front,
                 back = card.back,
                 tags = Json.encodeToString(card.tags),
-                media = Json.encodeToString(card.media),
-                metadata = Json.encodeToString(card.metadata),
+                media = lenientJson.encodeToString(card.media),
+                metadata = lenientJson.encodeToString(card.metadata),
                 updated_at = card.updatedAt.toString(),
                 last_reviewed_at = card.lastReviewedAt?.toString(),
                 next_review_at = card.nextReviewAt?.toString(),
@@ -450,8 +452,8 @@ private fun com.lumecard.shared.database.SelectDueCards.toDomain() = Card(
     back = back,
     title = title ?: "",
     tags = parseStringList(tags),
-    media = try { if (media.isNullOrBlank()) emptyList() else Json.decodeFromString(media) } catch (_: Exception) { emptyList() },
-    metadata = try { if (metadata.isNullOrBlank()) emptyMap() else Json.decodeFromString(metadata) } catch (_: Exception) { emptyMap() },
+    media = try { if (media.isNullOrBlank()) emptyList() else lenientJson.decodeFromString(media) } catch (_: Exception) { emptyList() },
+    metadata = try { if (metadata.isNullOrBlank()) emptyMap() else lenientJson.decodeFromString(metadata) } catch (_: Exception) { emptyMap() },
     createdAt = safeInstant(created_at),
     updatedAt = safeInstant(updated_at),
     lastReviewedAt = safeInstantOrNull(last_reviewed_at),
@@ -469,8 +471,8 @@ private fun com.lumecard.shared.database.Card.toDomain() = Card(
     back = back,
     title = title ?: "",
     tags = parseStringList(tags),
-    media = try { if (media.isNullOrBlank()) emptyList() else Json.decodeFromString(media) } catch (_: Exception) { emptyList() },
-    metadata = try { if (metadata.isNullOrBlank()) emptyMap() else Json.decodeFromString(metadata) } catch (_: Exception) { emptyMap() },
+    media = try { if (media.isNullOrBlank()) emptyList() else lenientJson.decodeFromString(media) } catch (_: Exception) { emptyList() },
+    metadata = try { if (metadata.isNullOrBlank()) emptyMap() else lenientJson.decodeFromString(metadata) } catch (_: Exception) { emptyMap() },
     createdAt = safeInstant(created_at),
     updatedAt = safeInstant(updated_at),
     lastReviewedAt = safeInstantOrNull(last_reviewed_at),

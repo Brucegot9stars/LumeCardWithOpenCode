@@ -60,11 +60,15 @@ def media_items(value, where):
         fields(item, MEDIA_FIELDS, loc)
         require(item.get("type") == "IMAGE", loc + ".type: only IMAGE is supported")
         ident = text(item.get("id"), loc + ".id")
-        path = text(item.get("filePath"), loc + ".filePath")
-        require(".." not in path, loc + ".filePath: path traversal '..' is forbidden")
-        require(not path.lower().startswith("http://"), loc + ".filePath: only https URLs are allowed")
-        if path.lower().startswith("http"):
+        path = text(item.get("filePath"), loc + ".filePath").strip()
+        require(not any(seg == ".." for seg in re.split(r"[\\/]", path)), loc + ".filePath: path traversal '..' is forbidden")
+        lower = path.lower()
+        require(not lower.startswith("http://"), loc + ".filePath: only https URLs are allowed")
+        if lower.startswith("https://"):
             require(URL_HTTPS.fullmatch(path) is not None, loc + ".filePath: malformed https URL")
+        require(not lower.startswith(("file://", "content://", "data:", "//", "/", "\\\\"))
+                and re.match(r"^[A-Za-z]:[\\/]", path) is None,
+                loc + ".filePath: only relative paths or https URLs are allowed")
         caption = item.get("caption", "")
         require(isinstance(caption, str), loc + ".caption: expected text")
         mime = item.get("mimeType", "")

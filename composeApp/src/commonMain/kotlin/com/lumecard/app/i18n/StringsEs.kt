@@ -784,6 +784,8 @@ object EsStrings : I18nStrings {
     override val cardImageRemove = "Quitar"
     override val cardImageEmpty = "Aún no hay imágenes"
     override val cardImageHttpsOnly = "Solo se admiten URL de imagen https"
+    override val cardImageLoadFailed = "No se pudo cargar la imagen"
+    override val cardImageDecodeFailed = "No se pudo decodificar la imagen"
     override val cardImageLocalHint = "Ruta relativa en media, file://, content:// o ruta absoluta"
     override val cardImageInvalidUrl = "Introduce una URL https válida"
 }

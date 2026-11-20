@@ -784,6 +784,8 @@ object ZhCnStrings : I18nStrings {
     override val cardImageRemove = "移除"
     override val cardImageEmpty = "暂无图片"
     override val cardImageHttpsOnly = "仅支持 https 图片链接"
+    override val cardImageLoadFailed = "图片加载失败"
+    override val cardImageDecodeFailed = "图片解码失败"
     override val cardImageLocalHint = "media 相对路径、file://、content:// 或绝对路径"
     override val cardImageInvalidUrl = "请输入有效的 https 链接"
 }

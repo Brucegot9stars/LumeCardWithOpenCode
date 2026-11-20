@@ -119,10 +119,31 @@ class WorkflowTests(unittest.TestCase):
         data["cards"][0]["metadata"]["mediaTarget"] = "both"
         builder.validate(data)
 
+    def test_media_filename_with_http_prefix_is_allowed(self):
+        plan = copy.deepcopy(self.plan)
+        plan["knowledgeBases"][0]["decks"][0]["cards"][0]["media"] = [
+            {"id": "img_http", "type": "IMAGE", "filePath": "httpnotes.png"}
+        ]
+        data = builder.build(plan)
+        self.assertEqual(data["cards"][0]["media"][0]["filePath"], "httpnotes.png")
+        builder.validate(data)
+
+    def test_media_filename_with_double_dot_is_allowed(self):
+        plan = copy.deepcopy(self.plan)
+        plan["knowledgeBases"][0]["decks"][0]["cards"][0]["media"] = [
+            {"id": "img_dots", "type": "IMAGE", "filePath": "a..b.png"}
+        ]
+        data = builder.build(plan)
+        self.assertEqual(data["cards"][0]["media"][0]["filePath"], "a..b.png")
+        builder.validate(data)
+
     def test_media_rejects_insecure_and_unsafe_sources(self):
         bad = [
             {"id": "i", "type": "IMAGE", "filePath": "http://example.com/a.png"},
+            {"id": "i", "type": "IMAGE", "filePath": "  http://example.com/a.png"},
+            {"id": "i", "type": "IMAGE", "filePath": "file:///etc/passwd"},
             {"id": "i", "type": "IMAGE", "filePath": "../secret.png"},
+            {"id": "i", "type": "IMAGE", "filePath": "\\\\server\\share\\a.png"},
             {"id": "i", "type": "AUDIO", "filePath": "a.mp3"},
             {"id": "", "type": "IMAGE", "filePath": "a.png"},
             {"id": "i", "type": "IMAGE", "filePath": "a.png", "unknown": 1},

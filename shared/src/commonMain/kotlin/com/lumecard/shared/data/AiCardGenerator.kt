@@ -30,8 +30,8 @@ class AiCardGenerator(
         onLog: ((LogEntry) -> Unit)? = null,
     ): Result<AiCardResult> {
         return try {
-            val promptTemplate = promptManager.getActivePrompt()
-            val systemPrompt = promptTemplate
+            val template = request.systemPrompt.ifBlank { promptManager.getActivePrompt() }
+            val systemPrompt = template
                 .replace("{card_count}", request.cardCount.toString())
                 .replace("{app_language}", request.appLanguage)
             val userMessage = buildUserMessage(request)
@@ -78,7 +78,7 @@ class AiCardGenerator(
             val parsed = try {
                 json.decodeFromString<AiCardResponseJson>(cleaned)
             } catch (e: Exception) {
-                val fallback = extractCardsFallback(cleaned)
+                val fallback = extractCardsFallback(cleaned, now, onLog)
                 if (fallback != null) {
                     onLog?.invoke(LogEntry(now, LogEntryType.WARNING, "Parse Warning", "Full JSON parse failed, extracted ${fallback.cards.size} cards via fallback"))
                     fallback
@@ -222,18 +222,31 @@ class AiCardGenerator(
         }
     }
 
+    private val windowsAbsoluteMediaPath = Regex("""^[A-Za-z]:[\\/]""")
+
+    private fun isAllowedAiMediaPath(path: String): Boolean {
+        if (path.isEmpty() || path.split('\\', '/').any { it == ".." }) return false
+        val lower = path.lowercase()
+        if (lower.startsWith("https://")) return true
+        return !lower.startsWith("http://") &&
+            !lower.startsWith("file://") &&
+            !lower.startsWith("content://") &&
+            !lower.startsWith("data:") &&
+            !lower.startsWith("/") &&
+            !windowsAbsoluteMediaPath.matches(path)
+    }
+
     private suspend fun createCards(deckId: String, parsed: AiCardResponseJson): List<String> {
         val ids = mutableListOf<String>()
         val now = Clock.System.now()
         for (item in parsed.cards) {
             val cardType = parseCardType(item.type)
-            // Keep only valid image references: relative media names, local URIs, or https URLs.
-            // Never let AI-invented http links into the database.
+            // Keep only safe image references: relative media names or https image URLs.
+            // Reject http/file/content/data URIs, absolute paths and traversal sequences.
             val media = item.media
                 .mapNotNull { ref ->
                     val path = ref.filePath.trim()
-                    if (path.isEmpty() || path.startsWith("http://", ignoreCase = true)) return@mapNotNull null
-                    if (path.contains("..")) return@mapNotNull null
+                    if (!isAllowedAiMediaPath(path)) return@mapNotNull null
                     Media(
                         id = generateId("img"),
                         type = MediaType.IMAGE,
@@ -263,7 +276,11 @@ class AiCardGenerator(
         return ids
     }
 
-    private fun extractCardsFallback(text: String): AiCardResponseJson? {
+    private fun extractCardsFallback(
+        text: String,
+        now: Long,
+        onLog: ((LogEntry) -> Unit)?,
+    ): AiCardResponseJson? {
         val trimmed = text.trim()
 
         val kbName = Regex("""knowledge_base_name["\s]*:["\s]*"([^"]*)"""").find(trimmed)?.groupValues?.getOrNull(1) ?: ""
@@ -303,7 +320,11 @@ class AiCardGenerator(
                 try {
                     val card = json.decodeFromString<AiCardItemJson>(cardJson)
                     cards.add(card)
-                } catch (_: Exception) { }
+                } catch (e: Exception) {
+                    onLog?.invoke(
+                        LogEntry(now, LogEntryType.WARNING, "Fallback Card Parse Failed", "Skipped one card: ${e.message}")
+                    )
+                }
             } else {
                 i++
             }

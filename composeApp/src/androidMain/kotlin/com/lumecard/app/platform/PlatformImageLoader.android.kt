@@ -77,6 +77,7 @@ actual fun platformFetchImageBytes(url: String): ByteArray? {
             } else if (connection.contentLength > MAX_IMAGE_BYTES) {
                 null
             } else {
+                if (!connection.url.protocol.equals("https", ignoreCase = true)) return null
                 connection.inputStream?.use { input ->
                     val buffer = ByteArrayOutputStream()
                     val chunk = ByteArray(16 * 1024)

@@ -800,6 +800,8 @@ interface I18nStrings {
     val cardImageRemove: String get() = "Remove"
     val cardImageEmpty: String get() = "No images yet"
     val cardImageHttpsOnly: String get() = "Only https image URLs are supported"
+    val cardImageLoadFailed: String get() = "Failed to load image"
+    val cardImageDecodeFailed: String get() = "Failed to decode image"
     val cardImageLocalHint: String get() = "Relative media path, file://, content:// or absolute path"
     val cardImageInvalidUrl: String get() = "Enter a valid https URL"
 }

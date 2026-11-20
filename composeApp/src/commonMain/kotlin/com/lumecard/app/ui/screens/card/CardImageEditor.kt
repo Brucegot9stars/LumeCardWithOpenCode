@@ -20,6 +20,13 @@ import com.lumecard.shared.model.MediaType
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
+import kotlin.text.RegexOption
+
+/** Requires an https URL with a real host; rejects bare schemes and malformed links. */
+internal val HTTPS_IMAGE_URL = Regex(
+    """^https://[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?::\d{1,5})?(?:[/?#][^\s]*)?$""",
+    RegexOption.IGNORE_CASE
+)
 
 /**
  * Card image editor: add local images (saved into the media dir with SHA-1 dedup) or https URLs,
@@ -54,6 +61,11 @@ internal fun CardImageEditor(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            Text(
+                strings.cardImageLocalHint,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             Spacer(Modifier.height(8.dp))
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -69,7 +81,7 @@ internal fun CardImageEditor(
                                         saveMediaFile(getMediaBasePath(), picked)
                                     }
                                     val fileName = ref?.let { extractMediaFileName(it) }
-                                    if (fileName != null) {
+                                    if (fileName != null && media.none { it.filePath == fileName }) {
                                         onMediaChange(
                                             media + Media(
                                                 id = generateId("img"),
@@ -118,21 +130,25 @@ internal fun CardImageEditor(
             Button(
                 onClick = {
                     val trimmed = urlInput.trim()
-                    if (!trimmed.startsWith("https://", ignoreCase = true)) {
+                    if (!HTTPS_IMAGE_URL.matches(trimmed)) {
                         urlError = strings.cardImageInvalidUrl
                         return@Button
                     }
-                    onMediaChange(
-                        media + Media(
-                            id = generateId("img"),
-                            type = MediaType.IMAGE,
-                            filePath = trimmed,
-                            caption = captionInput
+                    if (media.none { it.filePath == trimmed }) {
+                        onMediaChange(
+                            media + Media(
+                                id = generateId("img"),
+                                type = MediaType.IMAGE,
+                                filePath = trimmed,
+                                caption = captionInput
+                            )
                         )
-                    )
-                    urlInput = ""
-                    captionInput = ""
-                    urlError = null
+                        urlInput = ""
+                        captionInput = ""
+                        urlError = null
+                    } else {
+                        urlError = strings.cardImageInvalidUrl
+                    }
                 },
                 modifier = Modifier.align(Alignment.End)
             ) {
@@ -197,10 +213,16 @@ internal fun CardImageEditor(
     }
 }
 
-/** Extract "hash.png" from a markdown reference like "![image](hash.png)". */
+/** Extract "hash.png" from "![image](hash.png)", or accept a bare relative file name. */
 private fun extractMediaFileName(ref: String): String? {
     val start = ref.indexOf('(')
     val end = ref.lastIndexOf(')')
-    if (start < 0 || end <= start + 1) return null
-    return ref.substring(start + 1, end).takeIf { it.isNotBlank() }
+    val name = if (start >= 0 && end > start + 1) {
+        ref.substring(start + 1, end)
+    } else {
+        ref.trim()
+    }
+    return name.trim().takeIf {
+        it.isNotBlank() && !it.contains("://") && !it.contains('(') && !it.contains(')')
+    }
 }

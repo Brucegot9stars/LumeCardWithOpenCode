@@ -387,28 +387,35 @@ class StudyScreen(
                                             },
                                             onDragEnd = {
                                                 if (isAnimatingOut) return@detectHorizontalDragGestures
+                                                // 图片查看器打开时不响应滑动，回弹归位（而非裸 return 留下偏移）。
+                                                if (imageViewerOpen) {
+                                                    scope.launch { swipeOffset.animateTo(0f, spring()) }
+                                                    return@detectHorizontalDragGestures
+                                                }
                                                 val offset = swipeOffset.value
-                                                val velocityTrigger = abs(velocity) > SWIPE_VELOCITY_THRESHOLD
                                                 val distanceTrigger = abs(offset) > threshold
-                                                if (distanceTrigger || velocityTrigger) {
-                                                    isAnimatingOut = true
-                                                    val target = if (offset > 0 || velocity > 0) screenWidth * 1.5f else -screenWidth * 1.5f
-                                                    scope.launch {
-                                                        swipeOffset.animateTo(
-                                                            targetValue = target,
-                                                            animationSpec = tween(SWIPE_ANIM_DURATION_MS, easing = FastOutLinearInEasing)
-                                                        )
-                                                        swipeOffset.snapTo(0f)
-                                                        isAnimatingOut = false
-                                                        if (offset > 0 || velocity > 0) {
-                                                            if (viewModel.canGoBack) viewModel.goBack()
-                                                        } else {
-                                                            viewModel.rateCard(Rating.EASY)
-                                                        }
-                                                    }
-                                                } else {
-                                                    scope.launch {
-                                                        swipeOffset.animateTo(0f, spring())
+                                                val velocityTrigger = abs(velocity) > SWIPE_VELOCITY_THRESHOLD
+                                                if (!distanceTrigger && !velocityTrigger) {
+                                                    scope.launch { swipeOffset.animateTo(0f, spring()) }
+                                                    return@detectHorizontalDragGestures
+                                                }
+                                                // 用主导因素统一方向：距离与速度谁更"达标"由谁决定方向，
+                                                // 避免 target 用 (offset>0||velocity>0) 而评分用分离判定造成方向不一致。
+                                                val distanceDominant = abs(offset) / threshold >= abs(velocity) / SWIPE_VELOCITY_THRESHOLD
+                                                val goRight = if (distanceDominant) offset > 0 else velocity > 0
+                                                isAnimatingOut = true
+                                                val target = if (goRight) screenWidth * 1.5f else -screenWidth * 1.5f
+                                                scope.launch {
+                                                    swipeOffset.animateTo(
+                                                        targetValue = target,
+                                                        animationSpec = tween(SWIPE_ANIM_DURATION_MS, easing = FastOutLinearInEasing)
+                                                    )
+                                                    swipeOffset.snapTo(0f)
+                                                    isAnimatingOut = false
+                                                    if (goRight) {
+                                                        if (viewModel.canGoBack) viewModel.goBack()
+                                                    } else {
+                                                        viewModel.rateCard(Rating.EASY)
                                                     }
                                                 }
                                             },
@@ -447,42 +454,50 @@ class StudyScreen(
                                 val vCenter = centerable && currentCard.metadata["vcenter"].toBoolean()
                                 val hasCardMedia = currentCard.media.isNotEmpty()
                                 val fontSize = currentCard.metadata["fontSize"]?.toIntOrNull() ?: 16
-                                Box(
+                                BoxWithConstraints(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .padding(horizontal = 20.dp, vertical = 12.dp)
-                                        // Cards with media keep scrolling even in vCenter mode: images are
-                                        // height-capped but text + multiple images can still exceed the card.
-                                        .then(if (vCenter && !hasCardMedia) Modifier else Modifier.verticalScroll(rememberScrollState()))
-                                        .then(
-                                            if (settingsState.answerDisplayMode == AnswerDisplayMode.FLIP
-                                                && currentCard.type != CardType.MULTIPLE_CHOICE
-                                            ) {
-                                                Modifier.pointerInput(currentCard.id, imageViewerOpen) {
-                                                    detectTapGestures {
-                                                        if (!imageViewerOpen) viewModel.flipCard()
-                                                    }
-                                                }
-                                            } else Modifier
-                                        ),
-                                    contentAlignment = if (vCenter) Alignment.Center else Alignment.TopStart
                                 ) {
-                                    val onConfirmChoice: (() -> Unit)? = remember(currentCard) {
-                                        if (currentCard.type == CardType.MULTIPLE_CHOICE) {
-                                            { viewModel.flipCard() }
-                                        } else null
+                                    // vCenter + 有图卡：verticalScroll 会把内容 Box 高度压到内容高度，
+                                    // 使 Center 退化贴顶。用容器的可用高度作为最小高度约束，内容不足
+                                    // 一屏时仍能真正居中；超出一屏时 Box 随内容增高，依旧可滚动。
+                                    val viewportHeight = maxHeight
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .then(if (vCenter && !hasCardMedia) Modifier else Modifier.verticalScroll(rememberScrollState()))
+                                            .then(if (vCenter && hasCardMedia) Modifier.heightIn(min = viewportHeight) else Modifier)
+                                            .then(
+                                                if (settingsState.answerDisplayMode == AnswerDisplayMode.FLIP
+                                                    && currentCard.type != CardType.MULTIPLE_CHOICE
+                                                ) {
+                                                    Modifier.pointerInput(currentCard.id, imageViewerOpen) {
+                                                        detectTapGestures {
+                                                            if (!imageViewerOpen) viewModel.flipCard()
+                                                        }
+                                                    }
+                                                } else Modifier
+                                            ),
+                                        contentAlignment = if (vCenter) Alignment.Center else Alignment.TopStart
+                                    ) {
+                                        val onConfirmChoice: (() -> Unit)? = remember(currentCard) {
+                                            if (currentCard.type == CardType.MULTIPLE_CHOICE) {
+                                                { viewModel.flipCard() }
+                                            } else null
+                                        }
+                                        CardContent(
+                                            card = currentCard,
+                                            isFlipped = isFlipped,
+                                            displayMode = settingsState.answerDisplayMode,
+                                            horizontalCenter = hCenter,
+                                            verticalCenter = vCenter,
+                                            fontSize = fontSize,
+                                            fontFamily = currentCard.metadata["fontFamily"]?.takeIf { it.isNotBlank() }?.let { FontRegistry.resolveFontFamily(it) },
+                                            onConfirmChoice = onConfirmChoice,
+                                            onImageViewerChanged = { imageViewerOpen = it },
+                                        )
                                     }
-                                    CardContent(
-                                        card = currentCard,
-                                        isFlipped = isFlipped,
-                                        displayMode = settingsState.answerDisplayMode,
-                                        horizontalCenter = hCenter,
-                                        verticalCenter = vCenter,
-                                        fontSize = fontSize,
-                                        fontFamily = currentCard.metadata["fontFamily"]?.takeIf { it.isNotBlank() }?.let { FontRegistry.resolveFontFamily(it) },
-                                        onConfirmChoice = onConfirmChoice,
-                                        onImageViewerChanged = { imageViewerOpen = it },
-                                    )
                                 }
                             }
 

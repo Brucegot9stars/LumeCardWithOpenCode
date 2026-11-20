@@ -19,13 +19,23 @@ import java.io.FileOutputStream
 import java.security.MessageDigest
 import java.util.zip.ZipOutputStream
 
+// Internal disk cache lives under <media>/cache/images; never include it in the media manifest.
+private fun isUnderCacheDir(file: File, root: File): Boolean {
+    val relative = file.toPath().normalize().toString()
+        .removePrefix(root.toPath().normalize().toString() + File.separator)
+        .replace("\\", "/")
+    return relative.startsWith("cache/")
+}
+
 actual fun isDesktopPlatform(): Boolean = false
 
 actual fun scanMediaDirectory(basePath: String): List<MediaFileEntry> {
     val dir = File(basePath)
     if (!dir.exists() || !dir.isDirectory) return emptyList()
 
-    return dir.walkTopDown().filter { it.isFile }.map { file ->
+    return dir.walkTopDown().filter { it.isFile }
+        .filter { !isUnderCacheDir(it, dir) }
+        .map { file ->
         val relativePath = file.toPath().normalize().toString()
             .removePrefix(dir.toPath().normalize().toString() + File.separator)
             .replace("\\", "/")
@@ -41,7 +51,9 @@ actual fun scanMediaDirectory(basePath: String): List<MediaFileEntry> {
 actual fun scanMediaDirectoryRaw(basePath: String): List<RawFileEntry> {
     val dir = File(basePath)
     if (!dir.exists() || !dir.isDirectory) return emptyList()
-    return dir.walkTopDown().filter { it.isFile }.map { file ->
+    return dir.walkTopDown().filter { it.isFile }
+        .filter { !isUnderCacheDir(it, dir) }
+        .map { file ->
         val relativePath = file.toPath().normalize().toString()
             .removePrefix(dir.toPath().normalize().toString() + File.separator)
             .replace("\\", "/")

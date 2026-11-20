@@ -784,6 +784,8 @@ object JaStrings : I18nStrings {
     override val cardImageRemove = "削除"
     override val cardImageEmpty = "画像はまだありません"
     override val cardImageHttpsOnly = "https の画像 URL のみ対応"
+    override val cardImageLoadFailed = "画像を読み込めませんでした"
+    override val cardImageDecodeFailed = "画像をデコードできませんでした"
     override val cardImageLocalHint = "media 相対パス、file://、content:// または絶対パス"
     override val cardImageInvalidUrl = "有効な https URL を入力してください"
 }

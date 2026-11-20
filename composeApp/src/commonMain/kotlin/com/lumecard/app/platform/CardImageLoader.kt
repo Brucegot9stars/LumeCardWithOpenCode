@@ -26,10 +26,13 @@ data class ImageRef(
     val cacheKey: String = source
 )
 
+/** Typed reason for an image load failure; each maps to a localised string in the UI. */
+enum class FailureReason { HTTPS_ONLY, LOAD_FAILED, DECODE_FAILED }
+
 sealed interface ImageLoadState {
     data object Loading : ImageLoadState
     data class Success(val bitmap: ImageBitmap) : ImageLoadState
-    data class Failure(val reason: String) : ImageLoadState
+    data class Failure(val reason: FailureReason) : ImageLoadState
 }
 
 /** Metadata key for the card-level image target. */
@@ -101,13 +104,14 @@ object CardImageLoader {
     private const val MAX_ENTRIES = 32
     private const val MAX_CACHE_PIXELS = 64L * 1024 * 1024
 
-    private val memoryCache = LinkedHashMap<String, ImageBitmap>()
+    // accessOrder=true makes this a real LRU: getCached() promotes the touched key to the tail.
+    private val memoryCache = LinkedHashMap<String, ImageBitmap>(MAX_ENTRIES, 1f, true)
     private var cachedPixels = 0L
     private val mutex = Mutex()
 
     suspend fun load(ref: ImageRef): ImageLoadState = withContext(Dispatchers.IO) {
         if (ref.kind == ImageSourceKind.NETWORK && !isAllowedImageSource(ref.source)) {
-            return@withContext ImageLoadState.Failure("仅支持 https 图床链接")
+            return@withContext ImageLoadState.Failure(FailureReason.HTTPS_ONLY)
         }
         getCached(ref.cacheKey)?.let { return@withContext ImageLoadState.Success(it) }
 
@@ -124,14 +128,14 @@ object CardImageLoader {
             null
         }
         if (bytes == null || bytes.isEmpty()) {
-            return@withContext ImageLoadState.Failure("图片加载失败")
+            return@withContext ImageLoadState.Failure(FailureReason.LOAD_FAILED)
         }
 
         val bitmap = try {
             platformDecodeImage(bytes)
         } catch (_: Exception) {
             null
-        } ?: return@withContext ImageLoadState.Failure("图片解码失败")
+        } ?: return@withContext ImageLoadState.Failure(FailureReason.DECODE_FAILED)
 
         putCached(ref.cacheKey, bitmap)
         ImageLoadState.Success(bitmap)
@@ -139,11 +143,14 @@ object CardImageLoader {
 
     private fun loadNetworkBytes(url: String): ByteArray? {
         val cacheFile = diskCacheFile(url)
-        platformReadFileBytes(cacheFile)?.let { return it }
+        platformReadFileBytes(cacheFile)?.let { cached ->
+            if (cached.isNotEmpty() && cached.size <= MAX_IMAGE_BYTES) return cached
+            platformDeleteFile(cacheFile) // corrupted/oversized cache: drop it and re-download
+        }
         val downloaded = platformFetchImageBytes(url) ?: return null
         if (downloaded.size > MAX_IMAGE_BYTES) return null
         try {
-            platformWriteFileBytes(cacheFile, downloaded)
+            writeMediaFileAtomically(cacheFile, downloaded)
         } catch (_: Exception) {
             // Disk cache is best-effort; a write failure must not break rendering.
         }
@@ -168,8 +175,10 @@ object CardImageLoader {
         val previous = memoryCache.put(key, bitmap)
         cachedPixels += (bitmap.width.toLong() * bitmap.height.toLong()) -
             (previous?.let { it.width.toLong() * it.height.toLong() } ?: 0L)
-        while (memoryCache.size > MAX_ENTRIES || cachedPixels > MAX_CACHE_PIXELS) {
-            val oldest = memoryCache.entries.firstOrNull()?.key ?: break
+        // Keep the just-inserted key even when a single image alone exceeds the pixel budget:
+        // evicting it would immediately discard what we are trying to cache (self-eviction).
+        while (memoryCache.size > 1 && (memoryCache.size > MAX_ENTRIES || cachedPixels > MAX_CACHE_PIXELS)) {
+            val oldest = memoryCache.entries.firstOrNull { it.key != key }?.key ?: break
             val removed = memoryCache.remove(oldest) ?: break
             cachedPixels -= removed.width.toLong() * removed.height.toLong()
         }

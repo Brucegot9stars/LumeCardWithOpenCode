@@ -147,9 +147,9 @@ class CardViewModel(
         onComplete: (() -> Unit)? = null,
     ) {
         screenModelScope.launch {
-            val metadata = card.metadata + mutableMapOf<String, String>().apply {
-                if (horizontalCenter) put("hcenter", "true")
-                if (verticalCenter) put("vcenter", "true")
+            val metadata = card.metadata.toMutableMap().apply {
+                if (horizontalCenter) put("hcenter", "true") else remove("hcenter")
+                if (verticalCenter) put("vcenter", "true") else remove("vcenter")
                 put("fontSize", fontSize.toString())
                 if (fontFamily.isNotBlank()) put("fontFamily", fontFamily) else remove("fontFamily")
                 if (media.isNotEmpty()) put(MEDIA_TARGET_KEY, mediaTarget) else remove(MEDIA_TARGET_KEY)

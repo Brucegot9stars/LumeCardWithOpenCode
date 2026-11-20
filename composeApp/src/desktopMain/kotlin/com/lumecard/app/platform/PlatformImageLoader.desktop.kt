@@ -4,22 +4,50 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import org.jetbrains.skia.Bitmap
+import org.jetbrains.skia.Codec
+import org.jetbrains.skia.ColorAlphaType
+import org.jetbrains.skia.ColorType
+import org.jetbrains.skia.Data
 import org.jetbrains.skia.Image as SkiaImage
+import org.jetbrains.skia.ImageInfo
 import java.io.File
 import java.net.URI
 import java.net.HttpURLConnection
 
+// Keep desktop in sync with Android's MAX_DECODE_EDGE so a huge image never allocates a full bitmap.
+private const val MAX_DECODE_EDGE = 2048
+
 actual fun platformLoadImage(path: String): Painter? {
     return try {
-        val bytes = java.io.File(path).readBytes()
-        val bitmap = SkiaImage.makeFromEncoded(bytes).toComposeImageBitmap()
-        BitmapPainter(bitmap)
-    } catch (_: Exception) { null }
+        val bytes = File(path).readBytes()
+        decodeImageBitmap(bytes)?.let { BitmapPainter(it) }
+    } catch (_: Throwable) { null }
 }
 
 actual fun platformDecodeImage(bytes: ByteArray): ImageBitmap? = try {
-    SkiaImage.makeFromEncoded(bytes).toComposeImageBitmap()
-} catch (_: Exception) { null }
+    decodeImageBitmap(bytes)
+} catch (_: Throwable) { null }
+
+/**
+ * Decode through Skia Codec with power-of-two downsampling so an oversized source is never
+ * decoded at full resolution. This skiko Codec API scales by passing a smaller Bitmap to
+ * readPixels (a size different from imageInfo is treated as a scale request).
+ */
+private fun decodeImageBitmap(bytes: ByteArray): ImageBitmap? {
+    val codec = Codec.makeFromData(Data.makeFromBytes(bytes))
+    val fullEdge = maxOf(codec.imageInfo.width, codec.imageInfo.height)
+    var sample = 1
+    while (fullEdge / sample > MAX_DECODE_EDGE) sample *= 2
+    val scaledWidth = codec.imageInfo.width / sample
+    val scaledHeight = codec.imageInfo.height / sample
+    if (scaledWidth <= 0 || scaledHeight <= 0) return null
+    val info = ImageInfo(scaledWidth, scaledHeight, ColorType.RGBA_8888, ColorAlphaType.PREMUL)
+    val bitmap = Bitmap()
+    if (!bitmap.allocPixels(info)) return null
+    codec.readPixels(bitmap) // throws if the codec cannot scale; caller catches Throwable
+    return SkiaImage.makeFromBitmap(bitmap).toComposeImageBitmap()
+}
 
 actual fun platformReadImageSourceBytes(source: String): ByteArray? = try {
     when {
@@ -44,6 +72,7 @@ actual fun platformFetchImageBytes(url: String): ByteArray? {
             } else if (connection.contentLength > 20 * 1024 * 1024) {
                 null
             } else {
+                if (!connection.url.protocol.equals("https", ignoreCase = true)) return null
                 connection.inputStream.use { input ->
                     val buffer = java.io.ByteArrayOutputStream()
                     val chunk = ByteArray(16 * 1024)

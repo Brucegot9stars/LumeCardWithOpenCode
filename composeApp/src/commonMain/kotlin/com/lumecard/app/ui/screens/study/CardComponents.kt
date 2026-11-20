@@ -247,7 +247,8 @@ internal fun CardFace(
             }
             CardType.MULTIPLE_CHOICE -> {
                 val question = card.front
-                val options = remember(card.back) { card.back.split("\n").filter { it.isNotBlank() } }
+                // 先 trim 再过滤空串，避免行尾空白/空白选项导致 index 与展示不一致。
+                val options = remember(card.back) { card.back.split("\n").map { it.trim() }.filter { it.isNotBlank() } }
                 val cleanOptions = remember(options) { options.map { it.removePrefix("+").trim() } }
                 val correctIndices = remember(options) {
                     options.mapIndexedNotNull { i, opt -> if (opt.startsWith("+")) i else null }.toSet()
@@ -267,7 +268,8 @@ internal fun CardFace(
                         )
                         Spacer(Modifier.height(12.dp))
                         if (!showBack) {
-                            var selectedOptions by remember { mutableStateOf(setOf<Int>()) }
+                            // 以 card.id 为 key：SPLIT 切卡时重置已选项。
+                            var selectedOptions by remember(card.id) { mutableStateOf(setOf<Int>()) }
                             cleanOptions.forEachIndexed { idx, displayOpt ->
                                 val isSelected = idx in selectedOptions
                                 FilterChip(
@@ -340,46 +342,56 @@ internal fun cardTypeName(type: CardType): String {
 @Composable
 internal fun RichTextCardFace(html: String, horizontalCenter: Boolean = false) {
     if (html.isBlank()) return
-    // 用 Compose Rich Editor 的 setHtml 解析 HTML 得到 AnnotatedString（含加粗/颜色/字号等 SpanStyle），
-    // 但渲染改用 compose 原生 BasicText —— 绕开 richeditor 1.0.0 的 BasicRichText 渲染 bug
-    // （它在渲染 colorSpace=Uninitialized 的 Color 时当成透明，导致无显式颜色的文字不可见）。
-    val state = rememberRichTextState()
-    LaunchedEffect(html) {
-        state.setHtml(html)
-    }
-    // setHtml 对「无显式 color」的文字会写入一个完全透明（alpha=0）的 Color，
-    // BasicText 把它当成透明 → 不可见；而显式设了颜色的（如红色）正常。
-    // 这里把 alpha==0 的 span 颜色替换为 Color.Unspecified，让 BasicText 正确
-    // 回退到样式基础色，加粗/颜色/字号等 SpanStyle 正常显示。
-    val annotated = remember(state.annotatedString, horizontalCenter) {
-        val src = state.annotatedString
-        val builder = AnnotatedString.Builder()
-        builder.append(src.text)
-        for (range in src.spanStyles) {
-            if (range.start >= range.end) continue
-            val item = range.item
-            val fixed = if (item.color.alpha == 0f) {
-                item.copy(color = Color.Unspecified)
-            } else item
-            builder.addStyle(fixed, range.start, range.end)
+    // 以 html 为 key：切卡时整段 state 重建，避免复用上一张卡的富文本状态。
+    key(html) {
+        // 用 Compose Rich Editor 的 setHtml 解析 HTML 得到 AnnotatedString（含加粗/颜色/字号等 SpanStyle），
+        // 但渲染改用 compose 原生 BasicText —— 绕开 richeditor 1.0.0 的 BasicRichText 渲染 bug
+        // （它在渲染 colorSpace=Uninitialized 的 Color 时当成透明，导致无显式颜色的文字不可见）。
+        val state = rememberRichTextState()
+        var ready by remember { mutableStateOf(false) }
+        LaunchedEffect(html) {
+            state.setHtml(html)
+            ready = true
         }
-        // 段落样式（如标题对齐/行高）一并保留，避免 h1-h6 等结构信息丢失。
-        // 若开启了卡片级水平居中，则强制覆盖每个段落的对齐为 Center，
-        // 保证「水平居中」开关对所有段落（含 HTML 内单独设了左对齐的）都生效。
-        for (range in src.paragraphStyles) {
-            if (range.start >= range.end) continue
-            val item = if (horizontalCenter) range.item.copy(textAlign = TextAlign.Center) else range.item
-            builder.addStyle(item, range.start, range.end)
+        // setHtml 完成前只渲染空 Box，避免首帧显示上一张卡解析后的旧内容。
+        if (!ready) {
+            Box(Modifier.fillMaxWidth())
+        } else {
+            // setHtml 对「无显式 color」的文字会写入一个完全透明（alpha=0）的 Color，
+            // BasicText 把它当成透明 → 不可见；而显式设了颜色的（如红色）正常。
+            // 这里把 alpha==0 的 span 颜色替换为 Color.Unspecified，让 BasicText 正确
+            // 回退到样式基础色，加粗/颜色/字号等 SpanStyle 正常显示。
+            val annotated = remember(state.annotatedString, horizontalCenter) {
+                val src = state.annotatedString
+                val builder = AnnotatedString.Builder()
+                builder.append(src.text)
+                for (range in src.spanStyles) {
+                    if (range.start >= range.end) continue
+                    val item = range.item
+                    val fixed = if (item.color.alpha == 0f) {
+                        item.copy(color = Color.Unspecified)
+                    } else item
+                    builder.addStyle(fixed, range.start, range.end)
+                }
+                // 段落样式（如标题对齐/行高）一并保留，避免 h1-h6 等结构信息丢失。
+                // 若开启了卡片级水平居中，则强制覆盖每个段落的对齐为 Center，
+                // 保证「水平居中」开关对所有段落（含 HTML 内单独设了左对齐的）都生效。
+                for (range in src.paragraphStyles) {
+                    if (range.start >= range.end) continue
+                    val item = if (horizontalCenter) range.item.copy(textAlign = TextAlign.Center) else range.item
+                    builder.addStyle(item, range.start, range.end)
+                }
+                builder.toAnnotatedString()
+            }
+            BasicText(
+                text = annotated,
+                modifier = Modifier.fillMaxWidth(),
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    textAlign = if (horizontalCenter) TextAlign.Center else TextAlign.Unspecified
+                ),
+            )
         }
-        builder.toAnnotatedString()
     }
-    BasicText(
-        text = annotated,
-        modifier = Modifier.fillMaxWidth(),
-        style = MaterialTheme.typography.bodyLarge.copy(
-            textAlign = if (horizontalCenter) TextAlign.Center else TextAlign.Unspecified
-        ),
-    )
 }
 
 @Composable

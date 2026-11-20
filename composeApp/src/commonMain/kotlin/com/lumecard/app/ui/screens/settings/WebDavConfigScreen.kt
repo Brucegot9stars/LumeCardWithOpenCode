@@ -23,6 +23,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.i18n.AppLocale
+import com.lumecard.app.platform.CardImageLoader
 import com.lumecard.app.platform.hashFileSha1
 import com.lumecard.app.platform.hashBytesSha1
 import com.lumecard.app.platform.getMediaBasePath
@@ -1433,6 +1434,7 @@ private suspend fun syncMedia(
         service.download(config, local, writeFile = { path, bytes ->
             writeMediaFileAtomically(resolveMediaFilePath(mediaBase, path), bytes)
             mediaManager.invalidateCache(path)
+            CardImageLoader.clearCache()
         }, hashBytes = ::hashBytesSha1)
     } else {
         service.upload(config, local, readFile = { path ->

@@ -139,6 +139,48 @@ class FSRSAlgorithmTest {
         assertEquals(CardState.REVIEW, updated.state)
     }
 
+    @Test
+    fun `review card same day GOOD grows stability via short-term`() {
+        // mature REVIEW card S=10 D=5, daysElapsed=0, GOOD → stability 必须 > 10
+        val card = matureCard(10.0, 5.0)
+        val updated = algo.schedule(card, Rating.GOOD, daysElapsed = 0)
+        assertTrue(
+            updated.stability > card.stability,
+            "same-day GOOD on a mature card must still grow stability, got ${updated.stability}"
+        )
+    }
+
+    @Test
+    fun `review card same day AGAIN uses short-term not lapse`() {
+        // mature REVIEW card S=10 D=5, daysElapsed=0, AGAIN → stability 约在 3.5..4.7（不是 1.235）
+        val card = matureCard(10.0, 5.0)
+        val updated = algo.schedule(card, Rating.AGAIN, daysElapsed = 0)
+        assertTrue(
+            updated.stability in 3.5..4.7,
+            "same-day AGAIN must use short-term stability (not lapse), got ${updated.stability}"
+        )
+    }
+
+    @Test
+    fun `learning card next day GOOD uses recall formula`() {
+        // LEARNING card (S=0.212), daysElapsed=1, GOOD → stability > 1.5（不是 0.224）
+        val learning = algo.schedule(algo.initCard(), Rating.AGAIN)
+        assertEquals(0.212, learning.stability, 1e-9)
+        val updated = algo.schedule(learning, Rating.GOOD, daysElapsed = 1)
+        assertTrue(
+            updated.stability > 1.5,
+            "next-day GOOD must use the recall formula (not short-term), got ${updated.stability}"
+        )
+    }
+
+    @Test
+    fun `same day HARD never decreases stability`() {
+        // S=10 卡, daysElapsed=0, HARD → stability == 10.0（B2 门限）
+        val card = matureCard(10.0, 5.0)
+        val updated = algo.schedule(card, Rating.HARD, daysElapsed = 0)
+        assertEquals(10.0, updated.stability, 1e-9, "same-day HARD must clamp SInc to >= 1")
+    }
+
     // endregion
 
     // region Relearning graduation
