@@ -81,6 +81,10 @@ data class AiCardResponseJson(
 data class AiMediaJson(
     val filePath: String = "",
     val caption: String = "",
+    /** Per-image horizontal placement: "start", "center" or "end". Unknown values fall back to center. */
+    val alignment: String = "center",
+    /** Whether an oversized local source is downscaled on import. */
+    val compress: Boolean = true,
 )
 
 @Serializable

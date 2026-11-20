@@ -1,7 +1,14 @@
 package com.lumecard.app.platform
 
+import android.net.Uri
 import com.lumecard.shared.database.AndroidContextHolder
 import java.io.File
+
+/** True for the URI forms the save/open pickers hand back; everything else stays a plain path. */
+private fun isUriPath(path: String): Boolean {
+    val lower = path.lowercase()
+    return lower.startsWith("content://") || lower.startsWith("file://")
+}
 
 actual fun platformGetFileName(path: String): String = File(path).name
 
@@ -12,7 +19,19 @@ actual fun platformNormalizePath(path: String): String = File(path).absolutePath
 
 actual fun platformPathExists(path: String): Boolean = File(path).exists()
 
-actual fun platformIsFile(path: String): Boolean = File(path).isFile
+actual fun platformIsFile(path: String): Boolean {
+    if (!isUriPath(path)) return File(path).isFile
+    return try {
+        val uri = Uri.parse(path)
+        if (uri.scheme == "file") {
+            File(uri.path ?: return false).isFile
+        } else {
+            AndroidContextHolder.context.contentResolver.openFileDescriptor(uri, "r")?.use { true } ?: false
+        }
+    } catch (_: Exception) {
+        false
+    }
+}
 
 actual fun platformListFiles(dir: String): List<String> =
     File(dir).listFiles()?.map { it.absolutePath }.orEmpty()
@@ -34,7 +53,22 @@ actual fun platformWriteFileBytes(path: String, bytes: ByteArray) {
     File(path).writeBytes(bytes)
 }
 
-actual fun platformDeleteFile(path: String): Boolean = File(path).delete()
+actual fun platformDeleteFile(path: String): Boolean {
+    if (!isUriPath(path)) return File(path).delete()
+    return try {
+        val uri = Uri.parse(path)
+        if (uri.scheme == "file") {
+            File(uri.path ?: return false).delete()
+        } else {
+            // Some providers report 0 rows deleted even on success, so only an exception means
+            // the delete did not go through.
+            AndroidContextHolder.context.contentResolver.delete(uri, null, null)
+            true
+        }
+    } catch (_: Exception) {
+        false
+    }
+}
 
 actual fun platformMkdirs(path: String): Boolean = File(path).mkdirs()
 
@@ -48,7 +82,23 @@ actual fun platformReadFileText(path: String): String? = try {
 } catch (_: Exception) { null }
 
 actual fun platformWriteFileText(path: String, text: String) {
-    File(path).writeText(text)
+    if (!isUriPath(path)) {
+        File(path).writeText(text)
+        return
+    }
+    try {
+        val uri = Uri.parse(path)
+        if (uri.scheme == "file") {
+            File(uri.path ?: return).writeText(text)
+        } else {
+            // "wt" truncates instead of appending, which is what a save-to-URI needs.
+            AndroidContextHolder.context.contentResolver.openOutputStream(uri, "wt")?.use {
+                it.write(text.toByteArray(Charsets.UTF_8))
+            }
+        }
+    } catch (_: Exception) {
+        // Best effort: callers already handle a missing output by treating the export as failed.
+    }
 }
 
 actual fun platformGetParentDir(path: String): String = File(path).parent ?: ""

@@ -40,7 +40,9 @@ Your task is to analyze the learning topic and reference materials, then generat
       "media": [
         {
           "filePath": "<relative media filename or https image URL>",
-          "caption": "<optional short caption>"
+          "caption": "<optional short caption>",
+          "alignment": "start|center|end",
+          "compress": true
         }
       ],
       "mediaTarget": "both"
@@ -61,6 +63,8 @@ Your task is to analyze the learning topic and reference materials, then generat
   - an **https URL** for a hosted image. `http://` is forbidden and will be rejected.
 - Keep `front` / `back` text unchanged: images are rendered as separate blocks below the text, never inline (`![...](...)` in card text is NOT supported).
 - `caption` is optional; keep it short and factual.
+- `alignment` is optional and **per image**: `start` (left), `center` (default) or `end` (right). Use `center` unless the material's own layout carries meaning (e.g. a left-hand labelled figure). Never alternate alignment just for variety.
+- `compress` is optional (default `true`) and records whether an oversized image is downscaled to the app's 2048-pixel limit on import. Set `false` only when full resolution matters — fine-lined diagrams, dense screenshots or formulas that lose legibility when scaled down.
 - At most a few images per card; do not attach the same image to many cards unnecessarily.
 - `mediaTarget` is card-level: `both` (default) shows images on both faces, `front` only on the front, `back` only on the back.
 

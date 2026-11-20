@@ -66,7 +66,15 @@ actual suspend fun pickOpenFile(mimeType: String, initialDirectory: String?): St
             }
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
-                type = if (mimeType == "*/*") "application/json" else mimeType
+                // `*/*` must stay narrow (JSON only, as before). Any other MIME is widened to
+                // `application/*`: an import accepts both `.lumecard` archives and the plain
+                // `.json` exports older versions produced, and a doc provider that stores a
+                // `.zip` under `application/octet-stream` would otherwise be unpickable.
+                type = when (mimeType) {
+                    "*/*" -> "application/json"
+                    "application/zip" -> "application/*"
+                    else -> mimeType
+                }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && initialDirectory != null) {
                     try {
                         val uri = Uri.parse(initialDirectory)

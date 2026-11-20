@@ -10,6 +10,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assume.assumeTrue
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -58,7 +59,15 @@ class SkillImportContractTest {
             assertTrue(card.media.all { it.filePath.isNotBlank() }, name)
             val target = card.metadata["mediaTarget"]
             assertTrue(target == null || target in setOf("front", "back", "both"), name)
+            // Alignment and compression travel with each image and must survive the round trip.
+            assertTrue(card.media.all { it.alignment in setOf("start", "center", "end") }, name)
         }
         assertTrue(imageCards.any { card -> card.media.any { it.caption.isNotBlank() } }, name)
+        // The image_alignment fixture sets end/no-compress; the importer must not normalise it away.
+        if (name == "image_alignment") {
+            val media = imageCards.first().media.first()
+            assertEquals("end", media.alignment, name)
+            assertFalse(media.compress, name)
+        }
     }
 }

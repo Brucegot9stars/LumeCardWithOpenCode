@@ -71,6 +71,33 @@ class CardMediaSerializationTest {
     }
 
     @Test
+    fun `legacy media without alignment or compress decodes with defaults`() {
+        // 引入 alignment / compress 之前写入的行：两个新字段都必须有默认值，否则严格 Json 会失败。
+        val legacy = """[{"id":"m1","type":"IMAGE","filePath":"a.png","mimeType":"image/png","size":1,"caption":"旧图"}]"""
+        val list = strictJson.decodeFromString(ListSerializer(Media.serializer()), legacy)
+        assertEquals(1, list.size)
+        assertEquals("center", list[0].alignment)
+        assertEquals(true, list[0].compress)
+        assertEquals("旧图", list[0].caption)
+    }
+
+    @Test
+    fun `media alignment and compress round trip`() {
+        val original = Media(
+            id = "m4",
+            type = MediaType.IMAGE,
+            filePath = "left.png",
+            alignment = "start",
+            compress = false
+        )
+        val encoded = strictJson.encodeToString(Media.serializer(), original)
+        val restored = strictJson.decodeFromString(Media.serializer(), encoded)
+        assertEquals("start", restored.alignment)
+        assertEquals(false, restored.compress)
+        assertEquals(original, restored)
+    }
+
+    @Test
     fun `lenient json ignores unknown media fields instead of dropping whole list`() {
         // 新版本写入的 media 含 Media 尚不认识的字段：严格 Json 会解析失败被吞成 emptyList()，
         // 宽松 Json 应跳过未知键并保留已知字段（BUG-3 守护）。

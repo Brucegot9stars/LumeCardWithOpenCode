@@ -26,7 +26,7 @@ coverage and warnings, preserve source locators, and keep a clear unprocessed-so
 list. Scans need OCR/vision. Do not silently skip unreadable pages or equate text-only
 extraction with complete visual understanding of the document.
 
-## Images (0.4.1)
+## Images (0.4.1, per-image flags in 0.4.2)
 
 The app can display images on cards, but this skill has no automatic image extraction.
 Author images only when they are genuinely available and useful:
@@ -42,6 +42,15 @@ Author images only when they are genuinely available and useful:
 - **Face**: set card-level `mediaTarget` to `both` (default), `front` or `back`. For a
   "identify this diagram" card put the image on `front`; for an answer diagram use
   `back`. Per-image targets are not supported — split into two cards if needed.
+- **Alignment**: `alignment` is per image (`start` / `center` / `end`, default `center`).
+  Leave it at `center` unless the material's layout carries meaning — a labelled
+  left-hand figure or a right-floated detail only reads correctly on that side. Do not
+  alternate alignment for visual variety: the default centering is the safe choice.
+- **Compression**: `compress` (default `true`) records whether an oversized source is
+  downscaled to fit the app's 2048-pixel limit. Only set `false` when the image is meant
+  to be read at full resolution — a fine-lined diagram, a dense screenshot or a formula
+  where downscaling destroys legibility. Re-encoding never happens for images the user
+  imported without it, so this flag is honest about what will happen on import.
 - **Limits**: no automatic OCR of scanned images, no inline Markdown/HTML images, no
   http URLs, no image occlusion. If a source image cannot be read or referenced safely,
   note it as unprocessed and leave `media` empty rather than inventing a substitute.

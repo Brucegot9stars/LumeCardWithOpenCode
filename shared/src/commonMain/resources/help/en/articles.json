@@ -57,7 +57,7 @@
       "hasDangerContent": true,
       "sections": [
         { "type": "paragraph", "title": "Card Types", "content": "LumeCard supports multiple card types: Basic (front and back), Reversed (auto-generates reverse card), Cloze (fill-in-the-blank), Multiple Choice, Markdown, and Rich Text." },
-        { "type": "paragraph", "title": "Card Images", "content": "Cards can include local images or https image-host URLs. Images scale to fit the screen while keeping their aspect ratio, so they never overflow or stretch. Tap an image to open a dedicated viewer with button and pinch zoom, panning, and a smooth fade transition. When editing a card you can choose whether images appear on the front, the back, or both, and add a caption. Only https URLs are accepted; http URLs and relative paths containing .. are rejected. CSV import does not support images." },
+        { "type": "paragraph", "title": "Card Images", "content": "Cards can include local images or https image-host URLs. Images never stretch across the full row: source pixels map to physical screen pixels 1:1, so an image narrower than half the screen keeps its natural size while a wider one is capped at half the width, and the aspect ratio is always preserved. Each image can be aligned left, center or right independently, and the caption follows the same alignment. Oversized images are compressed on import by default (longest edge reduced to 2048 pixels, original format and PNG transparency kept); compression can be turned off before picking a file. Tap an image to open a dedicated viewer with button and pinch zoom, panning, and a smooth fade transition. When editing a card you can choose whether images appear on the front, the back, or both, and add a caption. Only https URLs are accepted; http URLs and relative paths containing .. are rejected. CSV import does not support images." },
         { "type": "steps", "title": "Editing a Card", "items": [
           "Navigate to the deck containing the card",
           "Tap the card to open its detail view",
@@ -161,14 +161,16 @@
         { "type": "paragraph", "title": "Automatic Local Backups", "content": "Before each force sync operation, the system automatically creates a local backup. Force download backs up local data (shown in 'Local History'), force upload backs up cloud data (shown in 'Cloud History'). Config sync (upload/download settings) also auto-backs up." },
         { "type": "steps", "title": "Exporting Data", "items": [
           "Go to Settings > Data Management",
-          "Tap 'Export Data' to create a backup file (.json) with cards, decks, and knowledge bases",
+          "Tap 'Export Data' to create a backup: knowledge bases with local images export as a .lumecard archive, text-only ones still export as .json",
           "Choose a save location on your device"
         ]},
+        { "type": "paragraph", "title": "Archives and images", "content": "A .lumecard archive contains lumecard.json plus a media directory whose file names match exactly what the cards reference (names are content hashes), so importing is a direct one-to-one restore. The archive opens in any zip tool, and its lumecard.json can also be imported on its own as a plain JSON file. Images already deleted from this device are skipped and reported by count instead of failing the whole export." },
         { "type": "steps", "title": "Importing Data", "items": [
           "Go to Settings > Data Management",
-          "Tap 'Import Data' and select a previously exported .json file",
+          "Tap 'Import Data' and select a .lumecard archive or a .json file (detected from content, so a renamed file still works)",
           "The imported data will be merged with your existing content (same-ID entities are overwritten)"
         ]},
+        { "type": "paragraph", "title": "How archived images are handled", "content": "Images from the archive are written to the local media folder before any card is inserted, so a card never appears while its image is still missing. Images that already exist with identical content are skipped; a same-name file with different content is saved under a new hash-suffixed name and the card reference is rewritten, so your local file is never overwritten." },
         { "type": "paragraph", "title": "Restore History", "content": "Restore history is split into two entries: 'Local History' shows local data backed up before force download, 'Cloud History' shows cloud data backed up before force upload. Each entry lets you restore data or config." },
         { "type": "paragraph", "title": "Restore from Cloud", "content": "The 'Restore from Cloud' feature downloads data from your WebDAV server and overwrites local data. It requires 3-step confirmation: first confirm -> confirm again -> manually type the confirmation word ('confirm' in English). Use with caution." },
         { "type": "danger", "content": "When importing data, entities with the same ID will be overwritten by the imported version. Restore from Cloud completely replaces local data with cloud data and cannot be undone. Create a backup before performing these operations." },

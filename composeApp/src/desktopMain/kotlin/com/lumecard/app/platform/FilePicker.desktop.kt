@@ -9,16 +9,23 @@ import javax.swing.filechooser.FileNameExtensionFilter
 actual suspend fun pickSaveFile(suggestedName: String, mimeType: String): String? {
     return withContext(Dispatchers.IO) {
         try {
+            // Derive the filter and the enforced extension from the suggested name, not from a
+            // hardcoded .json: archive exports use .lumecard and must not become *.lumecard.json.
+            val expectedExtension = suggestedName.substringAfterLast('.', "").lowercase()
+                .ifBlank { "json" }
             val chooser = JFileChooser().apply {
                 dialogTitle = "Save File"
                 selectedFile = File(suggestedName)
-                fileFilter = FileNameExtensionFilter("JSON Files", "json")
+                fileFilter = FileNameExtensionFilter(
+                    expectedExtension.uppercase() + " Files",
+                    expectedExtension,
+                )
             }
             val result = chooser.showSaveDialog(null)
             if (result == JFileChooser.APPROVE_OPTION) {
                 var path = chooser.selectedFile.absolutePath
-                if (!path.endsWith(".json", ignoreCase = true)) {
-                    path += ".json"
+                if (!path.endsWith(".$expectedExtension", ignoreCase = true)) {
+                    path += ".$expectedExtension"
                 }
                 path
             } else {
@@ -41,11 +48,15 @@ actual suspend fun pickOpenFile(mimeType: String, initialDirectory: String?): St
                         mimeType == "text/plain" || mimeType.startsWith("text/") -> "Text Files"
                         mimeType.contains("font") -> "Font Files"
                         mimeType == "application/json" -> "JSON Files"
+                        // Archive exports are zip containers; accept both so a user can rename or
+                        // re-zip a deck themselves and still import it.
+                        mimeType == "application/zip" -> "LumeCard Archives"
                         else -> "All Files"
                     },
                     *when {
                         mimeType == "text/plain" || mimeType.startsWith("text/") -> arrayOf("txt", "md")
                         mimeType == "application/json" -> arrayOf("json")
+                        mimeType == "application/zip" -> arrayOf("lumecard", "zip")
                         mimeType.startsWith("image/") -> arrayOf("png", "jpg", "jpeg", "gif", "webp", "bmp", "svg")
                         mimeType.contains("font") -> arrayOf("ttf", "otf", "ttc")
                         else -> emptyArray()

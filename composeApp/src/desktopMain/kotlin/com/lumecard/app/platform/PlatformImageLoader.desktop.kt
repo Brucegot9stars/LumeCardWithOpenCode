@@ -9,6 +9,7 @@ import org.jetbrains.skia.Codec
 import org.jetbrains.skia.ColorAlphaType
 import org.jetbrains.skia.ColorType
 import org.jetbrains.skia.Data
+import org.jetbrains.skia.EncodedImageFormat
 import org.jetbrains.skia.Image as SkiaImage
 import org.jetbrains.skia.ImageInfo
 import java.io.File
@@ -56,6 +57,37 @@ actual fun platformReadImageSourceBytes(source: String): ByteArray? = try {
         else -> File(source).takeIf { it.isFile }?.readBytes()
     }
 } catch (_: Exception) { null }
+
+/**
+ * Downscale to [maxEdge] and re-encode in the original format so transparency survives.
+ * Returns null when no work is needed or the source cannot be handled, letting the caller keep
+ * the untouched bytes.
+ */
+actual fun platformCompressImage(bytes: ByteArray, maxEdge: Int, sourceExtension: String): ByteArray? = try {
+    val codec = Codec.makeFromData(Data.makeFromBytes(bytes))
+    val fullEdge = maxOf(codec.imageInfo.width, codec.imageInfo.height)
+    if (maxEdge <= 0 || fullEdge <= maxEdge) {
+        null
+    } else {
+        val scaledWidth = (codec.imageInfo.width.toLong() * maxEdge / fullEdge).toInt().coerceAtLeast(1)
+        val scaledHeight = (codec.imageInfo.height.toLong() * maxEdge / fullEdge).toInt().coerceAtLeast(1)
+        val info = ImageInfo(scaledWidth, scaledHeight, ColorType.RGBA_8888, ColorAlphaType.PREMUL)
+        val bitmap = Bitmap()
+        if (!bitmap.allocPixels(info)) null else {
+            codec.readPixels(bitmap)
+            bitmap.setImmutable()
+            val image = SkiaImage.makeFromBitmap(bitmap)
+            // Transparency must survive, so PNG-ish sources stay PNG. Everything else is a photo-like
+            // format where JPEG at high quality gives a large size win with little visible loss.
+            val keepAlpha = sourceExtension.lowercase() in setOf("png", "gif", "webp", "bmp")
+            val format = if (keepAlpha) EncodedImageFormat.PNG else EncodedImageFormat.JPEG
+            val quality = if (keepAlpha) 100 else 85
+            image.encodeToData(format, quality)?.bytes
+        }
+    }
+} catch (_: Throwable) {
+    null
+}
 
 actual fun platformFetchImageBytes(url: String): ByteArray? {
     return try {

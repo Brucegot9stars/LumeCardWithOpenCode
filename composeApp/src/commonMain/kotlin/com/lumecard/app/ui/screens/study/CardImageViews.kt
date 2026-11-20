@@ -34,7 +34,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -43,6 +46,7 @@ import com.lumecard.app.platform.CardImageLoader
 import com.lumecard.app.platform.FailureReason
 import com.lumecard.app.platform.ImageLoadState
 import com.lumecard.app.platform.ImageRef
+import com.lumecard.app.platform.MediaAlignment
 import com.lumecard.app.platform.matchesFace
 import com.lumecard.app.platform.parseImageRefs
 import com.lumecard.app.ui.screens.settings.AnswerDisplayMode
@@ -101,50 +105,97 @@ private fun CardImageThumbnail(
         state = CardImageLoader.load(ref)
     }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        // maxHeight may be unbounded (e.g. inside a scrollable column); fall back to a fixed cap.
-        val maxHeight = if (maxHeight.value.isFinite()) {
-            (maxHeight * IMAGE_MAX_HEIGHT_FRACTION).coerceAtMost(320.dp)
-        } else {
-            320.dp
-        }
-        when (val current = state) {
-            is ImageLoadState.Loading -> ImagePlaceholder(maxHeight, strings.cardImageLoading, showProgress = true)
-            is ImageLoadState.Failure -> {
-                val label = when (current.reason) {
-                    FailureReason.HTTPS_ONLY -> strings.cardImageHttpsOnly
-                    FailureReason.LOAD_FAILED -> strings.cardImageLoadFailed
-                    FailureReason.DECODE_FAILED -> strings.cardImageDecodeFailed
-                }
-                ImagePlaceholder(maxHeight, label, showProgress = false)
+    val boxAlignment = when (ref.alignment) {
+        MediaAlignment.START -> Alignment.CenterStart
+        MediaAlignment.CENTER -> Alignment.Center
+        MediaAlignment.END -> Alignment.CenterEnd
+    }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth(), contentAlignment = boxAlignment) {
+            // maxHeight may be unbounded (e.g. inside a scrollable column); fall back to a fixed cap.
+            val maxHeight = if (maxHeight.value.isFinite()) {
+                (maxHeight * IMAGE_MAX_HEIGHT_FRACTION).coerceAtMost(320.dp)
+            } else {
+                320.dp
             }
-            is ImageLoadState.Success -> {
-                val bitmap = current.bitmap
-                val ratio = bitmap.width.toFloat() / bitmap.height.coerceAtLeast(1).toFloat()
-                Image(
-                    painter = BitmapPainter(bitmap),
-                    contentDescription = ref.caption.ifBlank { strings.cardImageViewer },
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(ratio, matchHeightConstraintsFirst = true)
-                        .heightIn(max = maxHeight)
-                        .clip(RoundedCornerShape(8.dp))
-                        // Consume the tap so StudyScreen's detectTapGestures { flipCard() } is not triggered.
-                        .clickable { onOpenViewer(ref, bitmap) }
+            when (val current = state) {
+                is ImageLoadState.Loading -> ImagePlaceholder(maxHeight, strings.cardImageLoading, showProgress = true)
+                is ImageLoadState.Failure -> {
+                    val label = when (current.reason) {
+                        FailureReason.HTTPS_ONLY -> strings.cardImageHttpsOnly
+                        FailureReason.LOAD_FAILED -> strings.cardImageLoadFailed
+                        FailureReason.DECODE_FAILED -> strings.cardImageDecodeFailed
+                    }
+                    ImagePlaceholder(maxHeight, label, showProgress = false)
+                }
+                is ImageLoadState.Success -> {
+                    val bitmap = current.bitmap
+                    val size = naturalOrHalfSize(
+                        widthPx = bitmap.width,
+                        heightPx = bitmap.height,
+                        containerWidth = maxWidth,
+                        heightCap = maxHeight
+                    )
+                    Image(
+                        painter = BitmapPainter(bitmap),
+                        contentDescription = ref.caption.ifBlank { strings.cardImageViewer },
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .size(width = size.width, height = size.height)
+                            .clip(RoundedCornerShape(8.dp))
+                            // Consume the tap so StudyScreen's detectTapGestures { flipCard() } is not triggered.
+                            .clickable { onOpenViewer(ref, bitmap) }
+                    )
+                }
+            }
+        }
+        if (ref.caption.isNotBlank()) {
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = boxAlignment) {
+                Text(
+                    ref.caption,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = when (ref.alignment) {
+                        MediaAlignment.START -> TextAlign.Start
+                        MediaAlignment.CENTER -> TextAlign.Center
+                        MediaAlignment.END -> TextAlign.End
+                    }
                 )
             }
         }
     }
-    if (ref.caption.isNotBlank()) {
-        Text(
-            ref.caption,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
+}
+
+/**
+ * Display size for one image inside the card body.
+ *
+ * Policy (user-confirmed): map source pixels to physical screen pixels 1:1. If the image is
+ * narrower than half the available width it keeps its natural pixel size; otherwise it is capped
+ * at half the width. The height cap only kicks in for very tall images and shrinks both axes
+ * proportionally so the aspect ratio is never distorted.
+ */
+@Composable
+private fun naturalOrHalfSize(
+    widthPx: Int,
+    heightPx: Int,
+    containerWidth: Dp,
+    heightCap: Dp,
+): DpSize {
+    val density = LocalDensity.current.density
+    if (widthPx <= 0 || heightPx <= 0 || density <= 0f) return DpSize(containerWidth, heightCap)
+
+    val ratio = widthPx.toFloat() / heightPx.toFloat()
+    val naturalWidth = (widthPx / density).dp
+    val halfWidth = containerWidth / 2
+
+    var width = if (naturalWidth <= halfWidth) naturalWidth else halfWidth
+    var height = width / ratio
+    if (height > heightCap) {
+        height = heightCap
+        width = height * ratio
     }
+    return DpSize(width, height)
 }
 
 @Composable

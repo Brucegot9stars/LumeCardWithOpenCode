@@ -242,6 +242,26 @@ object ZhCnStrings : I18nStrings {
     override val settingsImportErrorReadFile = "无法读取文件"
     override val settingsImportErrorInvalidJson = "JSON格式无效"
     override fun settingsImportSuccess(kbs: Int, decks: Int, cards: Int) = "已导入：$kbs 个知识库，$decks 个牌组，$cards 张卡片"
+    override fun settingsExportArchiveSuccess(mediaIncluded: Int) = "已导出压缩包，含 $mediaIncluded 个媒体文件"
+    override fun settingsExportArchiveFailed() = "导出失败：压缩包写入中断，已改为导出纯 JSON（图片未包含在内）"
+    override fun settingsExportMissingMedia(mediaMissing: Int) = "$mediaMissing 个图片文件已不在本地，未能写入压缩包"
+    override fun settingsImportArchiveSuccess(
+        kbs: Int,
+        decks: Int,
+        cards: Int,
+        mediaWritten: Int,
+        mediaSkipped: Int,
+        mediaMissing: Int,
+    ): String {
+        val base = "已导入：$kbs 个知识库，$decks 个牌组，$cards 张卡片"
+        if (mediaWritten == 0 && mediaSkipped == 0 && mediaMissing == 0) return base
+        val parts = mutableListOf(base)
+        if (mediaWritten > 0) parts += "新增 $mediaWritten 个媒体文件"
+        if (mediaSkipped > 0) parts += "$mediaSkipped 个已存在"
+        if (mediaMissing > 0) parts += "$mediaMissing 个在压缩包中缺失"
+        return parts.joinToString("；")
+    }
+    override fun settingsImportFailedMedia(failed: Int) = " · $failed 个图片写入失败"
     override val settingsCloudSync = "云同步"
     override val settingsCloudSyncDesc = "设置 WebDAV 同步"
     override val settingsTodayProgress = "今日学习进度"
@@ -788,4 +808,10 @@ object ZhCnStrings : I18nStrings {
     override val cardImageDecodeFailed = "图片解码失败"
     override val cardImageLocalHint = "media 相对路径、file://、content:// 或绝对路径"
     override val cardImageInvalidUrl = "请输入有效的 https 链接"
+    override val cardImageAlignment = "对齐方式"
+    override val cardImageAlignStart = "靠左"
+    override val cardImageAlignCenter = "居中"
+    override val cardImageAlignEnd = "靠右"
+    override val cardImageCompress = "压缩"
+    override val cardImageCompressHint = "导入时把超过 2048 像素的图片缩小"
 }

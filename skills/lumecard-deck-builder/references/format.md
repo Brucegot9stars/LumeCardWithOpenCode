@@ -1,4 +1,4 @@
-# LumeCard content contract (skill 0.4.1; serialization unchanged since 0.1.0)
+# LumeCard content contract (skill 0.4.2; serialization unchanged since 0.1.0)
 
 Audited against LumeCardWithOpenCode commit `1cc6e56` (repository HEAD when work began;
 verify with Git history if the app changes), export version `1.0.0`, schema `1`.
@@ -42,22 +42,53 @@ Each `media` item is an object:
 | `caption` | no | short optional caption (default `""`) |
 | `mimeType` | no | informational string (default `""`) |
 | `size` | no | non-negative integer bytes (default `0`) |
+| `alignment` | no | `start` / `center` / `end` (default `center`); horizontal placement of this one image |
+| `compress` | no | boolean (default `true`); whether an oversized import is downscaled |
 
 Rules:
 - **Never invent image URLs or file names.** Only use paths/URLs actually supplied in
   the source material or by the user. If no image is provided, omit `media` entirely.
-- Images are independent blocks rendered below the card text. Do **not** put
+- Images are independent blocks rendered outside the card text. Do **not** put
   `![alt](...)` or `<img>` inside `front`/`back`: the CLOZE regex, choice option
   splitting and Markdown/RichText renderers would be polluted.
 - `mediaTarget` is **card-level** (one value for all images on the card), stored in
   `metadata["mediaTarget"]`. `both` (default) shows on both faces, `front` only on
   the front, `back` only on the back. Per-image targets are not supported.
+- `alignment` is **per-image**: one card may mix left-, center- and right-aligned
+  images. Unknown values are rejected by the validator; the app falls back to
+  `center` at read time so hand-edited cards never lose the image.
+- `compress` records the author's import choice. The app applies it only while copying
+  a local file in — images already stored are never re-encoded behind the user's back.
 - Plain-text cards with `media: []` behave exactly as before.
+
+## Export archive (`.lumecard`)
+
+This skill emits plain JSON, and the app accepts it directly. When the **app** exports a knowledge
+base that references local media files, it produces a `.lumecard` archive instead of a bare `.json`.
+Understanding this helps explain to users what they are importing:
+
+```
+lumecard.json      the identical share/backup JSON documented below
+media/<filePath>   one entry per referenced local media file
+```
+
+- **Flat media directory**: entries sit directly under `media/` with the same relative path the app
+  uses internally (`media/a1b2c3.png`), so importing is an identity mapping. File names are content
+  SHA-1, so classification subdirectories (`media/images/…`) would add no clarity. Readers accept
+  any sub-path under `media/`, which leaves room for a future layout without a format bump.
+- **Content, not extension**: import sniffs the leading bytes, so a `.lumecard` renamed to `.zip`
+  still works, and a plain `.json` still imports as before.
+- **Absent media is reported, not fatal**: images referenced but already deleted from disk are
+  counted and omitted; a knowledge base with no local media still exports as plain `.json`.
+- **Collisions are resolved, never overwritten**: if the importing device already has a different
+  file under the same name, the incoming file is stored as `<stem>_<shorthash>.<ext>` and the card
+  reference is rewritten to match.
+
+This skill does not create archives — emit the JSON and let the app package it.
 
 ## Output JSON
 
 The app's hierarchy is represented as flat arrays, not nested entities:
-
 ```json
 {
   "exportType":"share","version":"1.0.0","schemaVersion":1,
@@ -105,18 +136,22 @@ generic families, not bundled font files; exact glyph appearance varies by OS.
 Do not promise custom font availability. Request installed font IDs before using them
 in manually authored exports; the helper intentionally accepts built-in IDs only.
 
-## Image display and viewer behaviour (0.4.1)
+## Image display and viewer behaviour (0.4.1, per-image flags in 0.4.2)
 
 How images appear in the app — keep documentation and generated content aligned with this:
 
 - **Placement**: images are separate blocks below the front/back text of a card, never
   inline in the text. Filtering by `metadata["mediaTarget"]` decides which face shows
   them; cards without images take exactly the old rendering path.
-- **Adaptive scaling**: each image scales to the available card width with
-  `ContentScale.Fit`, keeps its original aspect ratio (explicit `aspectRatio`), is
-  height-capped (≤45% of the available height, max 320dp) and never crops, stretches
-  or overflows. Loading and failure states use fixed-size placeholders to avoid layout
-  jumps. Multiple images stack vertically.
+- **Sizing**: source pixels map to physical screen pixels 1:1. An image narrower than
+  half the available width keeps its natural size — it is **not** stretched to fill the
+  row. A wider image is capped at half the width. A height cap (≤45% of available height,
+  max 320dp) only applies to very tall images and shrinks both axes together, so the
+  aspect ratio is never distorted. Loading and failure states use fixed-size placeholders
+  to avoid layout jumps. Multiple images stack vertically.
+- **Alignment**: each image honours its own `alignment` (`start` / `center` / `end`),
+  so one card can place images left, centred and right. The caption follows the same
+  alignment.
 - **Sources**: media-relative names resolve under the app media root (path escape is
   rejected); `file://`/`content://`/absolute paths load through the platform resolver;
   `https` URLs are downloaded with a size cap and cached (memory LRU + disk). `http`

@@ -126,7 +126,41 @@ class WorkflowTests(unittest.TestCase):
         ]
         data = builder.build(plan)
         self.assertEqual(data["cards"][0]["media"][0]["filePath"], "httpnotes.png")
+
+    def test_media_alignment_and_compress_are_normalised(self):
+        data = copy.deepcopy(self.data)
+        data["cards"][0]["media"] = [
+            {"id": "img_left", "type": "IMAGE", "filePath": "a.png",
+             "alignment": "start", "compress": False},
+            {"id": "img_default", "type": "IMAGE", "filePath": "b.png"},
+        ]
         builder.validate(data)
+        plan = copy.deepcopy(self.plan)
+        plan["knowledgeBases"][0]["decks"][0]["cards"][0]["media"] = [
+            {"id": "img_left", "type": "IMAGE", "filePath": "a.png",
+             "alignment": "end", "compress": False},
+        ]
+        built = builder.build(plan)
+        media = built["cards"][0]["media"][0]
+        self.assertEqual(media["alignment"], "end")
+        self.assertIs(media["compress"], False)
+        self.assertEqual(media["caption"], "")
+
+    def test_media_alignment_rejects_unknown_value(self):
+        data = copy.deepcopy(self.data)
+        data["cards"][0]["media"] = [
+            {"id": "img_bad", "type": "IMAGE", "filePath": "a.png", "alignment": "middle"}
+        ]
+        with self.assertRaises(ValueError):
+            builder.validate(data)
+
+    def test_media_compress_rejects_non_boolean(self):
+        data = copy.deepcopy(self.data)
+        data["cards"][0]["media"] = [
+            {"id": "img_bad", "type": "IMAGE", "filePath": "a.png", "compress": "yes"}
+        ]
+        with self.assertRaises(ValueError):
+            builder.validate(data)
 
     def test_media_filename_with_double_dot_is_allowed(self):
         plan = copy.deepcopy(self.plan)
@@ -341,8 +375,8 @@ class StructureTests(unittest.TestCase):
             result = subprocess.run(command, capture_output=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             cases = builder.load(Path(tmp) / "manifest.json")["cases"]
-            self.assertEqual(len(cases), 10)
-            self.assertEqual(sum(case["accepted"] for case in cases), 3)
+            self.assertEqual(len(cases), 11)
+            self.assertEqual(sum(case["accepted"] for case in cases), 4)
             for case in cases:
                 data = builder.load(Path(tmp) / case["file"])
                 if case["accepted"]:

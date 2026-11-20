@@ -17,6 +17,9 @@
 **原始需求逐条映射**：
 - 兼容本地资源路径 + 图床链接 → §3.2 `ImageRef` 三态解析
 - 按屏幕尺寸自适应缩放、保持比例、不溢出/变形 → §4.1
+- 图片不铺满、小于半宽按原尺寸、大于半宽封顶 50% → §4.1 `naturalOrHalfSize`
+- 过大图片默认压缩（降像素、少损质量）、逐图可选 → §4.1.1
+- 图片可居中 / 靠左 / 靠右，逐图设置 → §4.1 对齐
 - 点击图片进入独立查看模式、支持手动缩放 → §4.2
 - 流畅无闪烁的进入/退出过渡 → §4.3
 - 不影响现有纯文本卡 → §6 回归策略
@@ -120,28 +123,80 @@ suspend fun loadImage(ref: ImageRef): ImageLoadState                     // Load
 
 ## 4. UI 与交互设计
 
-### 4.1 卡片内自适应缩放（保持比例、不溢出、不变形）
+### 4.1 卡片内尺寸策略（1:1 物理像素、半宽封顶、不铺满）
 
 `CardFace` 的 `Column` 尾部追加 `CardImageBlock`，仅渲染 `card.media.filter { it.type == IMAGE && target 匹配当前面 }`：
+
 ```
-BoxWithConstraints(Modifier.fillMaxWidth()) {
-    val maxH = maxHeight * 0.45f              // 上限：卡片可用高度的 45%
-    Image(
-        painter = BitmapPainter(bitmap),
-        contentDescription = caption,
-        contentScale = ContentScale.Fit,       // 保持宽高比，不裁剪不拉伸
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(max = maxH)              // 防溢出
-            .aspectRatio(bitmap.width / bitmap.height.toFloat(), matchHeightConstraintsFirst = true)
-            .clip(RoundedCornerShape(8.dp))
-            .clickable { onOpenViewer(ref) }   // 独立点击，不冒泡到翻卡手势
-    )
+Column(Modifier.fillMaxWidth()) {
+    BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = boxAlignment) {
+        val maxH = if (maxHeight.value.isFinite())
+            (maxHeight * 0.45f).coerceAtMost(320.dp) else 320.dp
+        val size = naturalOrHalfSize(bitmap.width, bitmap.height, maxWidth, maxH)
+        Image(
+            painter = BitmapPainter(bitmap),
+            contentScale = ContentScale.Fit,          // 保持比例，不裁剪不拉伸
+            modifier = Modifier
+                .size(size.width, size.height)        // 显式尺寸，绝不 fillMaxWidth
+                .clip(RoundedCornerShape(8.dp))
+                .clickable { onOpenViewer(ref, bitmap) }
+        )
+    }
+    if (caption.isNotBlank()) { /* 与图片同 alignment 的 Text */ }
 }
 ```
-- `ContentScale.Fit` + 显式 `aspectRatio` 双保险；高度封顶避免 `StudyScreen.kt:452` vCenter 模式下不挂 `verticalScroll` 时溢出。
-- 多图：`LazyColumn`/`Column` 顺序排列，单图上限生效；加载中与失败态固定占位尺寸，避免布局跳动。
+
+尺寸计算 `naturalOrHalfSize(widthPx, heightPx, containerWidth, heightCap)`：
+
+```
+val naturalWidth = (widthPx / LocalDensity.current.density).dp   // 物理像素 → dp，1:1
+val halfWidth    = containerWidth / 2
+var width  = if (naturalWidth <= halfWidth) naturalWidth else halfWidth
+var height = width / (widthPx.toFloat() / heightPx)
+if (height > heightCap) { height = heightCap; width = height * ratio }   // 超高图按比例收缩两轴
+```
+
+- **核心改动**：原实现用 `fillMaxWidth()` 撑满整行，小图被强行放大。现在小于半宽的图**保持原像素尺寸**，大于半宽的图**封顶 50%**，两张图在视觉上不会再被拉成同宽。
+- **对齐**：`MediaAlignment.START/CENTER/END` → `Alignment.CenterStart/Center/CenterEnd`；`BoxWithConstraints` 的 `contentAlignment` 负责水平定位，图注 `Text` 用对应 `TextAlign`。逐图独立，同一张卡可左中右混排。
+- 高度封顶（320dp / 可用高度 45%）避免 `StudyScreen` vCenter 模式下不挂 `verticalScroll` 时溢出；仅在超高图时生效，且**两轴同比缩小**，比例永不变形。
+- 多图：`Column` 顺序排列，单图上限生效；加载中与失败态固定占位尺寸，避免布局跳动。
 - 纯文本卡 `media` 为空 → 不进入该分支，渲染路径与现状完全一致。
+
+### 4.1.1 导入期压缩（降像素、保格式）
+
+`platformCompressImage(bytes, maxEdge = 2048, sourceExtension): ByteArray?`（expect/actual）：
+
+- Desktop：`Codec.makeFromData` 读尺寸 → `Codec.readPixels(Bitmap(新尺寸))` 完成降采样 → `Image.encodeToData(PNG-100 / JPEG-85)`。
+- Android：`inJustDecodeBounds` 读尺寸 → `inSampleSize` 2 的幂降采样 → `createScaledBitmap` 精确缩放 → `Bitmap.compress`，并显式 `recycle()` 中间 bitmap。
+- 格式策略：png / gif / webp / bmp 保持 PNG（透明不丢）；其余转 JPEG 质量 85。
+- **返回 `null` 一律回退原始字节**（未超阈值 / 解码失败 / 编码失败），压缩失败永不丢图。
+- 压缩发生在**算哈希之前**，故压缩产物有独立内容哈希，与原图不冲突可共存；已入库文件不会被二次重编码——开关只能影响下一次导入。
+
+### 4.1.2 导出/导入归档（`.lumecard`）
+
+JSON 无法携带媒体文件，因此**含本地图片**的知识库导出为 zip 归档，纯文字仍导出 `.json`。
+
+归档结构（格式版本 1，**不改 `EXPORT_VERSION` / `SCHEMA_VERSION`**）：
+
+```
+lumecard.json        与普通 .json 导出字节完全一致
+media/<filePath>     每个被引用的本地媒体一个条目，路径与媒体根恒等
+```
+
+- **为什么用拉通目录**：媒体文件名本身就是内容 SHA-1，分类子目录（`media/images/…`）只增加观感上的归类，却要付出真实成本——改写所有 `Card.media.filePath`、并让 WebDAV manifest 里每条路径都"变新"而触发一次全量重传。读侧仍接受 `media/` 下任意子路径，将来换布局不必升格式版本。
+- **格式规则**集中在 `LumecardArchive.kt` 的纯函数里：`referencedLocalMedia` 只收集 `LOCAL_RELATIVE` 的 IMAGE；`isArchivableMediaPath` 拒绝 `http(s)://`/`file://`/`content://`/`data:`/绝对路径/反斜杠；`isSafeMediaRelativePath` 拒绝 `.`、`..`、空段。**写任何 media 条目都必须先过这三道**。
+- **导出**（`packageExport`）：有可用媒体才打包；缺失的被计数（`ExportOutcome.mediaMissing`）并跳过——**单个文件被删不能让整次导出失败**；无任何可用媒体时回退为纯 JSON，避免产出 `media/` 为空的误导性归档。
+- **导入**（`importArchiveMedia`）：媒体**先于**卡片写入，杜绝"卡片已存在但图缺失"的中间态。内容相同 → 跳过；同名不同内容 → 存为 `<stem>_<shorthash>.<ext>` 并回传 `renamed`，由调用方改写 `Card.media.filePath`，**绝不覆盖用户本地文件**。
+- **按内容识别**：`readFileHeader(path, 4)` + `looksLikeZip`（`PK\x03\x04`），不看扩展名，故重命名过的归档仍可导入。
+- **平台层**（`Archive.kt`）：Desktop 用 `ZipFile`（可随机访问）；Android 必须用 `ZipInputStream`，因为 `content://` URI 无法 seek。因此导入走 `readZipArchiveEntries` **一次流式扫描**取全部媒体——逐条 `readZipArchiveEntry` 会让 Android 把同一份流重扫 N 次（O(n²)），100 张图就会卡到不可用。
+- **暂存目录**：manifest 先写到 `getApkCacheDir()/export-staging/manifest-<ts>-<rand>.json`，**绝不从 `outputPath` 推导**。Android 的 `pickSaveFile` 返回 `content://`，其"父目录"不是目录，据此写暂存会静默失败 → zip 里缺 `lumecard.json` → 产出不可导入的归档而 UI 仍报成功（本项目曾真实出现过）。
+- **成功判定**：`packageExport` 必须校验 `writtenEntries` 里**确实含** `ENTRY_MANIFEST`；缺失即按 `writeFailed` 处理（删半成品 + 回退纯 JSON + 明确告知）。仅靠"媒体数 > 0"判断成功不够。
+- **资源上限**：manifest 64 MB（`readManifest` 要 `decodeToString()`，UTF-16 会翻倍）、单个 media 512 MB、单次导入最多 10000 条媒体。溢出计入 `failed` 而非静默丢弃。
+- **导入结果四元组**：`written`（新落盘）/ `skipped`（内容相同已存在）/ `missing`（**manifest 引用但归档里没有**）/ `failed`（归档里有但写不进去）。`missing` 必须按 `referencedPaths` 求差，而不是"归档条目总数 - 落盘数"，否则多余条目会反向虚增缺失数。
+- **回滚**：`importArchiveMedia` 返回 `newlyWrittenPaths`（仅本次新建）。卡片插入中途抛异常时，调用方据此删除刚写入的媒体，避免孤儿文件被 media scan 反复同步；已存在的同名文件**不在**该列表中，绝不误删用户数据。
+- **写入类型对称**：导出只收 `IMAGE`，导入计算 `missing` 时也必须按同一类型过滤，否则带本地音频的卡片每次导入都会误报"图片缺失"。
+- ⚠️ `pickSaveFile` 的强制扩展名改为从**建议文件名**推导，否则 `.lumecard` 会被补成 `*.lumecard.json`。
+- ⚠️ `jsonSiblingPath` 对 `content://`/`file://` 输入**原样返回**：在 document-id 段后拼 `.json` 会得到任何 provider 都解析不了的伪 URI。
 
 ### 4.2 独立图片查看模式（手动放大/缩小）
 
@@ -234,14 +289,23 @@ BoxWithConstraints(Modifier.fillMaxWidth()) {
 | # | 标准 | 状态 | 依据 |
 |---|---|---|---|
 | 1 | 三类图片显示 / http 拒绝 | ✅ 已验证（代码级）· 🟡 未做真机目视 | `CardImageLoader` 三态解析、`http://` 直接返回 `Failure`；Desktop/Android actual 双端编译通过；`image_https` 契约用例通过 |
-| 2 | 自适应缩放 / 纯文本卡零变化 | ✅ 已验证（代码级）· 🟡 未做真机目视 | `ContentScale.Fit` + `aspectRatio(matchHeightConstraintsFirst)` + `heightIn(max=320dp/45%)` + 固定占位；`media` 为空不进入新分支；72 tests 全绿 |
+| 2 | 尺寸策略 / 对齐 / 纯文本卡零变化 | ✅ 已验证（代码级）· 🟡 未做真机目视 | `naturalOrHalfSize` 按 `LocalDensity.density` 1:1 换算、≤半宽保持原尺寸、>半宽封顶 50%、超高图两轴同比收缩；`BoxWithConstraints(contentAlignment)` + 逐图 `TextAlign` 实现对齐；`media` 为空不进入新分支；`shared` 80 tests + `composeApp` 10 tests 全绿 |
 | 3 | 查看器交互 / 无闪烁 | 🟡 代码级保证 · ⚠️ **未做真机 GUI 验收** | 独立 `Dialog` + 共享 `ImageBitmap` + `AnimatedVisibility` 180ms + LRU；`:composeApp:run` exit 1 未根治，无法目视确认「无白屏/无镜像/无闪烁」 |
-| 4 | 编辑录入 / media 保留 | ✅ 已验证（代码级 + 编译） | `CardImageEditor` 本地选图 / https URL / caption / `mediaTarget`；`updateCard` 默认 `media = card.media`；双端编译通过；UI 层无自动化测试框架，靠静态自审 |
-| 5 | 导出→导入 / 备份 / 同步 media 完整 | ✅ 部分验证 | `SettingsScreen` 补齐 `media`/`metadata`/`title`；`CardImageImportTest` 3 例 + `CardMediaSerializationTest` 4 例 + 契约 10 fixtures 全通过；WebDAV/备份链路复用既有代码，靠静态自审 + `MediaSyncServiceTest` 7 例 |
-| 6 | skill 带图 JSON 通过 validate + 契约测试 | ✅ 已验证 | Python 79 tests OK；`build_deck.py` 带图示例 build/validate 通过；fixtures 10 例 / 3 accepted；`SkillImportContractTest` PASSED（未跳过） |
-| 7 | AI 提示词 / 带 media 入库 | ✅ 已验证（代码级 + 编译）· 🟡 未接真实 LLM | `AiMediaJson` + `mediaTarget`、过滤 `http://`/`..`/空路径、`prompt_ai_card.md` Image Rules；双端编译通过 |
+| 4 | 编辑录入 / media 保留 | ✅ 已验证（代码级 + 编译） | `CardImageEditor` 本地选图 / https URL / caption / `mediaTarget` / 逐图 alignment chips / 选图前 `compressOnImport`；`updateCard` 默认 `media = card.media`；双端编译通过；UI 层无自动化测试框架，靠静态自审 |
+| 5 | 导出→导入 / 备份 / 同步 media 完整 | ✅ 部分验证 | `SettingsScreen` 补齐 `media`/`metadata`/`title`；`CardImageImportTest` 3 例 + `CardMediaSerializationTest` 6 例（含 legacy 无 alignment/compress 兼容）+ 契约 11 fixtures 全通过；WebDAV/备份链路复用既有代码，靠静态自审 + `MediaSyncServiceTest` 7 例 |
+| 6 | skill 带图 JSON 通过 validate + 契约测试 | ✅ 已验证 | Python 84 tests OK（skipped=3）；`build_deck.py` 校验 `alignment`/`compress`；fixtures 11 例 / 4 accepted；`SkillImportContractTest` PASSED（未跳过，含 `image_alignment` 定向断言） |
+| 7 | AI 提示词 / 带 media 入库 | ✅ 已验证（代码级 + 编译）· 🟡 未接真实 LLM | `AiMediaJson.alignment`/`compress` + `mediaTarget`、过滤 `http://`/`..`/空路径、未知 alignment 回落 `center`、`prompt_ai_card.md` Image Rules 含对齐与压缩说明；双端编译通过 |
 | 8 | 文档 / i18n / 无残留 | ✅ 已验证 | README / AGENTS.md / 5 语言 articles.json（JSON 合法）/ 5 份 `Strings*.kt` / skill references 全量同步；残留检索为空；安装副本 `diff -rq` 一致（32 托管文件） |
-| 9 | 全量编译与测试 | ✅ 已验证 | Gradle `BUILD SUCCESSFUL in 3m 3s`；`:shared:desktopTest` 72 tests / 0 fail / 0 skipped；Python 79 tests OK（skipped=3） |
+| 9 | 全量编译与测试 | ✅ 已验证 | Gradle `BUILD SUCCESSFUL`；`:shared:desktopTest` 80 tests / 0 fail / 0 skipped；`:composeApp:desktopTest` 10 tests / 0 fail / 0 skipped；Python 84 tests OK（skipped=3） |
+
+**追加需求（2026-11-19，尺寸 / 压缩 / 对齐）验收补充**：
+
+| # | 标准 | 状态 | 依据 |
+|---|---|---|---|
+| 2a | 图片不铺满整行 | ✅ 已验证（代码级）· 🟡 未做真机目视 | 移除 `fillMaxWidth()`，改 `Modifier.size(DpSize)`；`ContentScale.Fit` 不变形 |
+| 2b | 小于半宽按原尺寸、大于半宽封顶 50% | ✅ 已验证（代码级）· 🟡 未做真机目视 | `naturalOrHalfSize` + `LocalDensity.density` 1:1 换算；纯函数，逻辑可静态推演 |
+| 2c | 逐图居中 / 靠左 / 靠右 | ✅ 已验证（代码级 + 单测） | `MediaAlignmentParsingTest` 5 例覆盖 `parseMediaAlignment` 宽松回退与 `parseImageRefs` 逐图传递 |
+| 2d | 超大图导入默认压缩、逐图可选 | ✅ 编译 + 静态自审 · ⚠️ 未做真机画质/体积验收 | Desktop skiko `Codec`/`encodeToData`、Android `inSampleSize`/`createScaledBitmap` 双端编译通过；`null` 回退原始字节保证不丢图；**实际压缩率与画质未实测** |
 
 **实现与设计的偏差（如实记录，不影响验收）**：
 - T3 / §3.1 计划「复用 `SharedModule` 已注册的 Ktor `HttpClient`」，实际采用平台原生 `HttpURLConnection`（Desktop `URI(url).toURL()`、Android `HttpURLConnection`）：仍是**零新依赖**、手动校验 2xx、15s/30s 超时 + 20MB 上限、仅 https，且规避了在 commonMain 引入 Ktor 客户端的编译风险。`expectSuccess=false` 的 planned 处理不适用。

@@ -11,7 +11,8 @@ from pathlib import Path
 TYPES = {"BASIC", "REVERSED", "CLOZE", "MULTIPLE_CHOICE", "MARKDOWN"}
 FONTS = {"default", "sans-serif", "serif", "monospace", "cursive"}
 MEDIA_TARGETS = {"both", "front", "back"}
-MEDIA_FIELDS = {"id", "type", "filePath", "mimeType", "size", "caption"}
+MEDIA_ALIGNMENTS = {"start", "center", "end"}
+MEDIA_FIELDS = {"id", "type", "filePath", "mimeType", "size", "caption", "alignment", "compress"}
 CLOZE = re.compile(r"\{\{c\d+::([^}]+)\}\}")
 URL_HTTPS = re.compile(r"https://\S+", re.IGNORECASE)
 LONG_MAX = 2**63 - 1
@@ -75,8 +76,13 @@ def media_items(value, where):
         require(isinstance(mime, str), loc + ".mimeType: expected text")
         size = item.get("size", 0)
         require(type(size) is int and 0 <= size <= LONG_MAX, loc + ".size: expected non-negative integer")
+        alignment = item.get("alignment", "center")
+        require(alignment in MEDIA_ALIGNMENTS, loc + ".alignment: expected start, center or end")
+        compress = item.get("compress", True)
+        require(isinstance(compress, bool), loc + ".compress: expected boolean")
         result.append({"id": ident, "type": "IMAGE", "filePath": path,
-                       "mimeType": mime, "size": size, "caption": caption})
+                       "mimeType": mime, "size": size, "caption": caption,
+                       "alignment": alignment, "compress": compress})
     return result
 
 

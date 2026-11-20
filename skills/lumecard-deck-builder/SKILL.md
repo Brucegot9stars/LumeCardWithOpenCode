@@ -3,7 +3,7 @@ name: lumecard-deck-builder
 description: Convert PDF, DOCX, Markdown, TXT, HTML documents or supplied notes and outlines into LumeCard importable flashcard JSON with knowledge bases, decks and cards. Use for LumeCard deck creation or conversion, not generic summaries, Anki exports or application code changes.
 license: MIT
 metadata:
-  version: "0.4.1"
+  version: "0.4.2"
 ---
 
 # LumeCard deck builder
@@ -26,7 +26,8 @@ the installed skill folder. Use absolute script paths when running from that wor
 
 1. Read [references/format.md](references/format.md) before producing any JSON. It records
    the actual LumeCard serialization and renderer constraints, including card-type syntax
-   and the optional card image fields (`media`, `mediaTarget`) with their display/viewer rules.
+   and the optional card image fields (`media` with per-image `alignment`/`compress`, plus
+   card-level `mediaTarget`) with their sizing/alignment/viewer rules.
 2. For document files, read [references/documents.md](references/documents.md), then use
    an available document reader or `python3 /path/to/skill/scripts/extract_document.py source.docx extracted.json`.
    Check extraction coverage/warnings before authoring cards; extracted.json is intermediate

@@ -24,13 +24,13 @@ Artifact 保留 30 天，仍受仓库/组织的保留策略限制。Artifact 下
 
 ## 标签发布：提供公开下载资产
 
-Skill 标签格式：`lumecard-deck-builder-v<metadata.version>`。例如当前版本 0.4.1：
+Skill 标签格式：`lumecard-deck-builder-v<metadata.version>`。例如当前版本 0.4.2：
 
 ```sh
 # 先确认 HEAD 是要发布且测试通过的提交，再推送该分支。
 git push origin HEAD
-git tag -a lumecard-deck-builder-v0.4.1 -m 'lumecard-deck-builder 0.4.1'
-git push origin refs/tags/lumecard-deck-builder-v0.4.1
+git tag -a lumecard-deck-builder-v0.4.2 -m 'lumecard-deck-builder 0.4.2'
+git push origin refs/tags/lumecard-deck-builder-v0.4.2
 ```
 
 这些命令由发布者按需执行，新增工作流并不等于已经远程出包或发布。
@@ -40,8 +40,8 @@ SKILL.md 后使用新标签。预发布版本目前不支持，需要另行扩�
 
 标签触发的四组 Python 测试和应用导入契约测试全部通过后，工作流会生成：
 
-- `lumecard-deck-builder-0.4.1.zip`
-- `lumecard-deck-builder-0.4.1.zip.sha256`
+- `lumecard-deck-builder-0.4.2.zip`
+- `lumecard-deck-builder-0.4.2.zip.sha256`
 
 两份文件先上传到 Artifact，再作为资产发布到同名 GitHub Release。
 Skill Release 显式设置 `--latest=false`，不会替换应用 Release 的 Latest 标记。
@@ -65,20 +65,20 @@ Skill Release 显式设置 `--latest=false`，不会替换应用 Release 的 Lat
 Linux：
 
 ```sh
-sha256sum --check lumecard-deck-builder-0.4.1.zip.sha256
+sha256sum --check lumecard-deck-builder-0.4.2.zip.sha256
 ```
 
 macOS：
 
 ```sh
-shasum -a 256 -c lumecard-deck-builder-0.4.1.zip.sha256
+shasum -a 256 -c lumecard-deck-builder-0.4.2.zip.sha256
 ```
 
 PowerShell：
 
 ```powershell
-$expectedHash = (Get-Content 'lumecard-deck-builder-0.4.1.zip.sha256').Split(' ')[0]
-$actualHash = (Get-FileHash 'lumecard-deck-builder-0.4.1.zip' -Algorithm SHA256).Hash.ToLowerInvariant()
+$expectedHash = (Get-Content 'lumecard-deck-builder-0.4.2.zip.sha256').Split(' ')[0]
+$actualHash = (Get-FileHash 'lumecard-deck-builder-0.4.2.zip' -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($actualHash -ne $expectedHash) { throw 'SHA256 mismatch' }
 ```
 
@@ -93,7 +93,7 @@ python3 scripts/release_skill.py metadata
 python3 scripts/release_skill.py build --output-dir dist/release-preview
 ```
 
-可加 `--expected-tag lumecard-deck-builder-v0.4.1` 验证标签匹配。
+可加 `--expected-tag lumecard-deck-builder-v0.4.2` 验证标签匹配。
 该辅助脚本只读版本、生成 ZIP/校验文件，不调用 GitHub API，不创建标签或上传文件。
 ZIP 和安装器使用 `scripts/distribution.py` 中相同的逐文件白名单。新增脚本、参考资料或
 测试时须审查并更新该清单；任一必需文件缺失或为符号链接时，在创建 ZIP 前失败。

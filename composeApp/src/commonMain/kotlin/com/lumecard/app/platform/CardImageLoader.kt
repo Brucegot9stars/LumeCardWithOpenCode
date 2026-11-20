@@ -15,6 +15,9 @@ enum class ImageSourceKind { LOCAL_RELATIVE, LOCAL_URI, NETWORK }
 /** Which card face an image belongs to (card-level, from metadata["mediaTarget"]). */
 enum class MediaTarget { FRONT, BACK, BOTH }
 
+/** Horizontal alignment of one image on the card face. */
+enum class MediaAlignment { START, CENTER, END }
+
 /** A resolved, renderable reference to one card image. */
 data class ImageRef(
     val mediaId: String,
@@ -22,6 +25,7 @@ data class ImageRef(
     val kind: ImageSourceKind,
     val target: MediaTarget,
     val caption: String,
+    val alignment: MediaAlignment = MediaAlignment.CENTER,
     /** Stable key for remember()/caching; equal for the same source. */
     val cacheKey: String = source
 )
@@ -37,6 +41,13 @@ sealed interface ImageLoadState {
 
 /** Metadata key for the card-level image target. */
 const val MEDIA_TARGET_KEY = "mediaTarget"
+
+/** Parse a stored alignment string; unknown values fall back to center so old rows stay valid. */
+fun parseMediaAlignment(value: String?): MediaAlignment = when (value?.trim()?.lowercase()) {
+    "start", "left" -> MediaAlignment.START
+    "end", "right" -> MediaAlignment.END
+    else -> MediaAlignment.CENTER
+}
 
 /** Max bytes accepted from a remote image (guards against OOM). */
 private const val MAX_IMAGE_BYTES = 20 * 1024 * 1024
@@ -78,7 +89,8 @@ fun resolveImageRef(media: Media, target: MediaTarget = MediaTarget.BOTH): Image
         source = source,
         kind = kind,
         target = target,
-        caption = media.caption
+        caption = media.caption,
+        alignment = parseMediaAlignment(media.alignment)
     )
 }
 

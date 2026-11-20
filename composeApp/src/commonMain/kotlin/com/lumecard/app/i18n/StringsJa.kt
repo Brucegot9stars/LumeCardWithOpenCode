@@ -242,6 +242,26 @@ object JaStrings : I18nStrings {
     override val settingsImportErrorReadFile = "ファイルを読み取れません"
     override val settingsImportErrorInvalidJson = "無効なJSON形式です"
     override fun settingsImportSuccess(kbs: Int, decks: Int, cards: Int) = "インポート完了：$kbs KB、$decks デッキ、$cards カード"
+    override fun settingsExportArchiveSuccess(mediaIncluded: Int) = "アーカイブを書き出しました（メディア $mediaIncluded 件）"
+    override fun settingsExportArchiveFailed() = "書き出しに失敗しました：アーカイブの書き込みが中断されたため、代わりに JSON のみを書き出しました（画像は含まれません）"
+    override fun settingsExportMissingMedia(mediaMissing: Int) = "$mediaMissing 件の画像がローカルに存在せず、含められませんでした"
+    override fun settingsImportArchiveSuccess(
+        kbs: Int,
+        decks: Int,
+        cards: Int,
+        mediaWritten: Int,
+        mediaSkipped: Int,
+        mediaMissing: Int,
+    ): String {
+        val base = "インポート完了：$kbs KB、$decks デッキ、$cards カード"
+        if (mediaWritten == 0 && mediaSkipped == 0 && mediaMissing == 0) return base
+        val parts = mutableListOf(base)
+        if (mediaWritten > 0) parts += "メディア $mediaWritten 件を追加"
+        if (mediaSkipped > 0) parts += "$mediaSkipped 件は既に存在"
+        if (mediaMissing > 0) parts += "$mediaMissing 件がアーカイブにありません"
+        return parts.joinToString("; ")
+    }
+    override fun settingsImportFailedMedia(failed: Int) = " · $failed 件の画像を書き込めませんでした"
     override val settingsCloudSync = "クラウド同期"
     override val settingsCloudSyncDesc = "WebDAV 同期を設定"
     override val settingsTodayProgress = "今日の学習進捗"
@@ -788,4 +808,10 @@ object JaStrings : I18nStrings {
     override val cardImageDecodeFailed = "画像をデコードできませんでした"
     override val cardImageLocalHint = "media 相対パス、file://、content:// または絶対パス"
     override val cardImageInvalidUrl = "有効な https URL を入力してください"
+    override val cardImageAlignment = "配置"
+    override val cardImageAlignStart = "左寄せ"
+    override val cardImageAlignCenter = "中央"
+    override val cardImageAlignEnd = "右寄せ"
+    override val cardImageCompress = "圧縮"
+    override val cardImageCompressHint = "読み込み時に 2048 ピクセルを超える画像を縮小します"
 }

@@ -32,6 +32,17 @@ def write_fixtures(output):
     image_card(image_https)["media"][0]["filePath"] = "https://example.com/diagram.png"
     cases.append(("image_https", image_https, True))
 
+    # Per-image alignment and the compression flag must survive the round trip unchanged.
+    image_alignment = copy.deepcopy(valid)
+    entry = image_card(image_alignment)["media"][0]
+    entry["alignment"] = "end"
+    entry["compress"] = False
+    cases.append(("image_alignment", image_alignment, True))
+
+    # An unknown alignment is a skill-validator error only: the app stays lenient at read time so a
+    # hand-edited or future value degrades to centered instead of dropping the image. This is not a
+    # shared contract case, so it is asserted in the Python suite rather than here.
+
     # A Media element without its required id must be rejected by both sides.
     image_missing_id = copy.deepcopy(valid)
     del image_card(image_missing_id)["media"][0]["id"]

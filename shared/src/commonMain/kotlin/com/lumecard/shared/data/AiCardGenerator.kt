@@ -224,6 +224,8 @@ class AiCardGenerator(
 
     private val windowsAbsoluteMediaPath = Regex("""^[A-Za-z]:[\\/]""")
 
+    private val AI_MEDIA_ALIGNMENTS = setOf("start", "center", "end")
+
     private fun isAllowedAiMediaPath(path: String): Boolean {
         if (path.isEmpty() || path.split('\\', '/').any { it == ".." }) return false
         val lower = path.lowercase()
@@ -251,7 +253,13 @@ class AiCardGenerator(
                         id = generateId("img"),
                         type = MediaType.IMAGE,
                         filePath = path,
-                        caption = ref.caption
+                        caption = ref.caption,
+                        // A model can emit anything here; keep the three known values and centre the rest
+                        // so an odd response degrades gracefully instead of breaking the card.
+                        alignment = ref.alignment.trim().lowercase().let {
+                            if (it in AI_MEDIA_ALIGNMENTS) it else "center"
+                        },
+                        compress = ref.compress
                     )
                 }
             val target = item.mediaTarget.lowercase().let {

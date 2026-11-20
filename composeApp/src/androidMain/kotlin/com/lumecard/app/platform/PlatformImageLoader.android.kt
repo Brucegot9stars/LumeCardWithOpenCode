@@ -62,6 +62,56 @@ actual fun platformReadImageSourceBytes(source: String): ByteArray? = try {
     }
 } catch (_: Exception) { null }
 
+/**
+ * Downscale to [maxEdge] and re-encode in the original format so transparency survives.
+ * Uses BitmapFactory inSampleSize for the heavy reduction, then scales exactly so the result is not
+ * bound to power-of-two factors. Returns null when no work is needed or decoding fails.
+ */
+actual fun platformCompressImage(bytes: ByteArray, maxEdge: Int, sourceExtension: String): ByteArray? {
+    return try {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        val edge = max(bounds.outWidth, bounds.outHeight)
+        if (maxEdge <= 0 || bounds.outWidth <= 0 || bounds.outHeight <= 0 || edge <= maxEdge) {
+            null
+        } else {
+            var sample = 1
+            while (edge / sample > maxEdge) sample *= 2
+            val decoded = BitmapFactory.decodeByteArray(
+                bytes, 0, bytes.size,
+                BitmapFactory.Options().apply {
+                    inSampleSize = sample
+                    inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
+                }
+            ) ?: return null
+
+            val currentEdge = max(decoded.width, decoded.height)
+            val scaled = if (currentEdge <= maxEdge) {
+                decoded
+            } else {
+                val targetWidth = (decoded.width.toLong() * maxEdge / currentEdge).toInt().coerceAtLeast(1)
+                val targetHeight = (decoded.height.toLong() * maxEdge / currentEdge).toInt().coerceAtLeast(1)
+                android.graphics.Bitmap.createScaledBitmap(decoded, targetWidth, targetHeight, true)
+                    .also { if (it !== decoded) decoded.recycle() }
+            }
+
+            val keepAlpha = sourceExtension.lowercase() in setOf("png", "gif", "webp", "bmp")
+            val format = if (keepAlpha) {
+                android.graphics.Bitmap.CompressFormat.PNG
+            } else {
+                android.graphics.Bitmap.CompressFormat.JPEG
+            }
+            val quality = if (keepAlpha) 100 else 85
+            val output = ByteArrayOutputStream()
+            val ok = scaled.compress(format, quality, output)
+            if (scaled !== decoded) scaled.recycle()
+            if (ok) output.toByteArray() else null
+        }
+    } catch (_: Throwable) {
+        null
+    }
+}
+
 actual fun platformFetchImageBytes(url: String): ByteArray? {
     return try {
         val connection = (URI(url).toURL().openConnection() as HttpURLConnection).apply {

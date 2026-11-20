@@ -54,4 +54,4 @@ Settings → AiCardScreen
 - 加载方式: `getResourceAsStream()` (与 AppVersion 相同)
 - 用户修改: 缓存于 SettingsRepository (key: `ai_card_prompt`)
 - 恢复默认: 从资源文件重新加载
-- 图片字段（可选）：卡片可携带 `media: [{ filePath, caption? }]` 与整卡级 `mediaTarget`（`both`/`front`/`back`）。`filePath` 仅接受 media 相对文件名或 https URL；http 与编造链接在 `AiCardGenerator.createCards` 中被过滤。
+- 图片字段（可选）：卡片可携带 `media: [{ filePath, caption?, alignment?, compress? }]` 与整卡级 `mediaTarget`（`both`/`front`/`back`）。`filePath` 仅接受 media 相对文件名或 https URL；http 与编造链接在 `AiCardGenerator.createCards` 中被过滤。`alignment`（`start`/`center`/`end`，默认 `center`）逐图生效，模型返回未知值时回落 `center`；`compress`（默认 `true`）仅记录导入时是否降采样，不触发任何后台重编码。

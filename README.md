@@ -21,13 +21,13 @@
 - ✅ **上一张功能** — 学习过程中可返回上一张卡片重新评分
 - ✅ **复习日志** — 每条评分记录持久化，支持学习统计
 - ✅ **统计分析** — 总卡片数、总牌组数、总复习数、今日/本周/本月复习数、记忆保持率、学习时长、连续学习天数、新卡片/待复习/未到期卡片分布
-- ✅ **数据导入导出** — JSON 格式完整导出/导入，支持分享导出（不含学习进度）与完整备份导出分离
+- ✅ **数据导入导出** — JSON 格式完整导出/导入，支持分享导出（不含学习进度）与完整备份导出分离；含本地图片时自动打包为 `.lumecard` 归档（媒体目录与媒体根恒等映射）
 - ✅ **全文搜索** — SQL LIKE 搜索 + FTS5 虚拟表全文索引（FTS5 不可用时自动降级 LIKE）
 - ✅ **排序功能** — 牌组与卡片列表支持按名称、创建时间、更新时间排序（升序/降序）
 - ✅ **WebDAV 云同步** — 手动强制覆盖（学习数据 / 配置分开独立同步）+ 覆盖前云端快照自动归档（可回滚）+ Anki 风格媒体同步（SHA-1 + mtime 缓存，仅哈希变更文件）+ 多配置管理
 - ✅ **级联软删除** — 删除知识库级联软删除下属牌组与卡片，删除牌组级联软删除下属卡片
 - ✅ **媒体贴入** — 粘贴图片到卡片编辑器字段（Desktop: AWT / Android: ClipboardManager），自动 SHA-1 去重保存，插入 Markdown 图片引用；Card 模型含 `media: List<Media>` 字段（IMAGE/AUDIO/VIDEO/FILE）
-- ✅ **卡片图片** — 本地图片（media 相对路径 / `file://` / `content://`）与 https 图床链接均可附加到卡片，整卡级指定正/反/双面显示；学习界面按屏幕自适应缩放、保持比例、不溢出；点击图片进入独立全屏查看器，支持手势与按钮缩放、平移、180ms 淡入淡出过渡；创建/编辑界面提供本地选图与图床链接录入；AI 制卡与 `lumecard-deck-builder` skill 同步支持可选图片字段
+- ✅ **卡片图片** — 本地图片（media 相对路径 / `file://` / `content://`）与 https 图床链接均可附加到卡片，整卡级指定正/反/双面显示；图片**不铺满整行**：按屏幕物理像素 1:1 换算，小于半宽保持原尺寸、超过半宽封顶 50%，保持比例不拉伸；每张图可独立设置居中/靠左/靠右；超大图片导入时默认压缩（最长边 2048px、保留格式与透明度），逐图可选是否压缩；点击图片进入独立全屏查看器，支持手势与按钮缩放、平移、180ms 淡入淡出过渡；AI 制卡与 `lumecard-deck-builder` skill 同步支持可选图片字段
 - ✅ **AI 制卡助手** — SSE 流式生成 + 增量 JSON 解析 + 批量自动分类到牌组/知识库 + 实时进度气泡 + 交互日志面板 + 停止生成（保留已完成卡片）
 - ✅ **AI 事件流框架** — 事件驱动架构：`AiEventBus`（SharedFlow）+ `AiEvent` 14 种事件类型 + `AiBatchGenerator` 批处理循环 + `AiTaskStateMachine` 状态验证
 - ✅ **字体系统** — 跨平台自定义字体加载（TTF/OTF），平台字体检测（Android: `Typeface.create` / Desktop: `GraphicsEnvironment`），用户导入字体存储
@@ -318,13 +318,16 @@ Card 模型定义了 `media: List<Media>` 字段，支持 IMAGE、AUDIO、VIDEO�
 - WebDAV 媒体同步 — `SyncManager.uploadMedia()` / `downloadMedia()`
 
 **图片支持（IMAGE）**：
-- **数据**：复用 `media` 字段，不改 DB schema、不加 `CardType`、不改导出版本号；`Media` 新增 `caption` 并给 `mimeType` / `size` 加默认值，保证旧 JSON 严格反序列化不丢图。
+- **数据**：复用 `media` 字段，不改 DB schema、不加 `CardType`、不改导出版本号；`Media` 新增 `caption`、`alignment`、`compress` 并给 `mimeType` / `size` / 新增字段都加默认值，保证旧 JSON 严格反序列化不丢图。
 - **来源三态**：media 根目录下的相对文件名、`file://` / `content://` / 绝对路径、https 图床 URL；`http://` 与含 `..` 的路径被拒绝。相对路径经 `resolveMediaFilePath()` 防目录穿越。
 - **显示归属**：整卡级 `metadata["mediaTarget"]`（`front` / `back` / `both`，默认 `both`），不做逐图设置。
-- **展示规则**：`ContentScale.Fit` + 显式 `aspectRatio` + `heightIn` 高度封顶（320dp / 可用高度 45%），自适应屏幕并保持比例；加载与失败使用固定占位，避免布局跳动；内存 LRU 缓存避免翻卡重复解码。
+- **对齐**：逐图 `alignment`（`start` / `center` / `end`，默认 `center`），同一张卡可混排左/中/右；说明文字跟随图片对齐。校验器拒绝未知值，读取时宽松回落到 `center`，手改卡不会丢图。
+- **展示尺寸**：`ContentScale.Fit` + 显式 `Modifier.size(DpSize)`，**不再 `fillMaxWidth` 铺满**。源图像素按 `LocalDensity.density` 换算成 dp 与「可用宽度一半」比较：小于半宽按原尺寸显示、超过半宽封顶 50%；高度上限（320dp / 可用高度 45%）仅在超高图时生效，且按比例同时缩小两轴，比例永不变形。加载与失败使用固定占位避免布局跳动；内存 LRU 缓存避免翻卡重复解码。
+- **压缩**：`platformCompressImage` 在**导入拷贝瞬间**执行——最长边超过 2048px 时降采样并重编码（PNG 保 PNG 保留透明、JPEG 质量 85），压缩后内容再算 SHA-1 命名，故与原图不碰撞；返回 `null`（未超阈值 / 解码失败 / 编码失败）一律回退原始字节，图片永不丢失。开关必须在导入前设置，已入库文件不会被偷偷重编码。
 - **查看交互**：点击图片进入独立全屏 `Dialog` 查看器，与缩略图共享已解码 `ImageBitmap`，180ms 淡入淡出 + 缩放过渡；支持按钮/捏合缩放（1–5x）、平移、适应屏幕、点击背景或返回键关闭，底部显示说明文字。查看器打开期间屏蔽滑动与翻卡手势。
-- **录入**：创建/编辑界面提供本地选图（保存到 media 目录）与 https 图床链接录入，可设置说明文字与显示面；`updateCard` 显式保留既有 media。
-- **AI / skill**：`prompt_ai_card.md` 与 `lumecard-deck-builder` 0.4.1 支持可选 `media` / `mediaTarget` 字段，禁止编造 URL 或内联 Markdown 图片。
+- **录入**：创建/编辑界面提供本地选图（保存到 media 目录）与 https 图床链接录入，可设置说明文字、显示面、逐图对齐，并在选图前切换「导入时压缩」；`updateCard` 显式保留既有 media。
+- **导出/导入归档**：含本地图片的知识库导出为 `.lumecard` 压缩包（`lumecard.json` + `media/<filePath>`，与媒体根恒等映射），无本地媒体时仍是单个可读的 `.json`；导入按内容识别（看头部字节，不依赖扩展名），解包时逐个校验路径防穿越，同名不同内容改名写入并同步改写卡片引用，缺失媒体只统计不中断。
+- **AI / skill**：`prompt_ai_card.md` 与 `lumecard-deck-builder` 0.4.1 支持可选 `media` / `mediaTarget` / 逐图 `alignment` / `compress` 字段，禁止编造 URL 或内联 Markdown 图片。
 - **限制**：仅学习界面渲染 IMAGE；AUDIO / VIDEO / FILE 仅存储不渲染；CSV 导入不含图片字段；网络图片仅 https。
 
 相关实现：`composeApp/.../platform/CardImageLoader.kt`、`composeApp/.../ui/screens/study/CardImageViews.kt`、`composeApp/.../ui/screens/card/CardImageEditor.kt`。

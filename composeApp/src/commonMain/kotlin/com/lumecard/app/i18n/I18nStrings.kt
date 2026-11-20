@@ -243,6 +243,35 @@ interface I18nStrings {
     val settingsImportErrorReadFile: String
     val settingsImportErrorInvalidJson: String
     fun settingsImportSuccess(kbs: Int, decks: Int, cards: Int): String
+    /**
+     * Export result. [mediaIncluded] > 0 means a .lumecard archive was written;
+     * [mediaMissing] > 0 means some referenced files no longer exist on disk.
+     */
+    fun settingsExportArchiveSuccess(mediaIncluded: Int): String
+    /**
+     * The archive write broke off midway and the export fell back to a plain JSON file, so the
+     * media files are *not* included. Must be shown instead of a success message.
+     */
+    fun settingsExportArchiveFailed(): String
+    fun settingsExportMissingMedia(mediaMissing: Int): String
+    /**
+     * Import result. [mediaWritten] / [mediaSkipped] / [mediaMissing] describe archived
+     * media handling and are all 0 for a plain JSON import.
+     */
+    fun settingsImportArchiveSuccess(
+        kbs: Int,
+        decks: Int,
+        cards: Int,
+        mediaWritten: Int,
+        mediaSkipped: Int,
+        mediaMissing: Int,
+    ): String
+    /**
+     * Suffix appended to the success message when archived media files were present but could not
+     * be written to disk. Kept separate from [settingsImportArchiveSuccess] so plain JSON imports
+     * are unaffected.
+     */
+    fun settingsImportFailedMedia(failed: Int): String
     val settingsCloudSync: String
     val settingsCloudSyncDesc: String
     val settingsTodayProgress: String
@@ -804,4 +833,10 @@ interface I18nStrings {
     val cardImageDecodeFailed: String get() = "Failed to decode image"
     val cardImageLocalHint: String get() = "Relative media path, file://, content:// or absolute path"
     val cardImageInvalidUrl: String get() = "Enter a valid https URL"
+    val cardImageAlignment: String get() = "Alignment"
+    val cardImageAlignStart: String get() = "Left"
+    val cardImageAlignCenter: String get() = "Center"
+    val cardImageAlignEnd: String get() = "Right"
+    val cardImageCompress: String get() = "Compress"
+    val cardImageCompressHint: String get() = "Shrink images over 2048px on import"
 }

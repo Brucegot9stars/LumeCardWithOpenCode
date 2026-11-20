@@ -12,8 +12,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.lumecard.app.i18n.I18nStrings
 import com.lumecard.app.platform.getMediaBasePath
+import com.lumecard.app.platform.hashBytesSha1
 import com.lumecard.app.platform.pickMediaFile
+import com.lumecard.app.platform.platformCompressImage
+import com.lumecard.app.platform.platformMkdirs
+import com.lumecard.app.platform.platformReadImageSourceBytes
 import com.lumecard.app.platform.saveMediaFile
+import com.lumecard.app.platform.writeMediaFileAtomically
 import com.lumecard.shared.data.generateId
 import com.lumecard.shared.model.Media
 import com.lumecard.shared.model.MediaType
@@ -46,6 +51,7 @@ internal fun CardImageEditor(
     var urlError by remember { mutableStateOf<String?>(null) }
     var captionInput by remember { mutableStateOf("") }
     var isPicking by remember { mutableStateOf(false) }
+    var compressOnImport by remember { mutableStateOf(true) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -68,6 +74,24 @@ internal fun CardImageEditor(
             )
             Spacer(Modifier.height(8.dp))
 
+            // Compression is applied while copying the file in, so the switch has to be set before
+            // picking. It stays per-image: the choice is recorded on the Media entry.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = compressOnImport,
+                    onCheckedChange = { compressOnImport = it }
+                )
+                Text(strings.cardImageCompress, style = MaterialTheme.typography.labelMedium)
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    strings.cardImageCompressHint,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 2
+                )
+            }
+
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = {
@@ -77,8 +101,9 @@ internal fun CardImageEditor(
                             try {
                                 val picked = pickMediaFile()
                                 if (picked != null) {
+                                    val compress = compressOnImport
                                     val ref = withContext(Dispatchers.IO) {
-                                        saveMediaFile(getMediaBasePath(), picked)
+                                        savePickedImage(picked, compress)
                                     }
                                     val fileName = ref?.let { extractMediaFileName(it) }
                                     if (fileName != null && media.none { it.filePath == fileName }) {
@@ -87,7 +112,8 @@ internal fun CardImageEditor(
                                                 id = generateId("img"),
                                                 type = MediaType.IMAGE,
                                                 filePath = fileName,
-                                                caption = captionInput
+                                                caption = captionInput,
+                                                compress = compress
                                             )
                                         )
                                         captionInput = ""
@@ -184,27 +210,59 @@ internal fun CardImageEditor(
                 )
             } else {
                 media.forEach { item ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            item.filePath,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.weight(1f),
-                            maxLines = 1
-                        )
-                        if (item.caption.isNotBlank()) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
-                                item.caption,
+                                item.filePath,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1
+                            )
+                            if (item.caption.isNotBlank()) {
+                                Text(
+                                    item.caption,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    modifier = Modifier.padding(start = 6.dp)
+                                )
+                            }
+                            IconButton(onClick = { onMediaChange(media - item) }) {
+                                Icon(Icons.Default.Delete, contentDescription = strings.cardImageRemove)
+                            }
+                        }
+                        // Per-image alignment: one card can mix left, centered and right images.
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf(
+                                "start" to strings.cardImageAlignStart,
+                                "center" to strings.cardImageAlignCenter,
+                                "end" to strings.cardImageAlignEnd
+                            ).forEach { (value, label) ->
+                                FilterChip(
+                                    selected = item.alignment == value,
+                                    onClick = {
+                                        onMediaChange(
+                                            media.map {
+                                                if (it.id == item.id) it.copy(alignment = value) else it
+                                            }
+                                        )
+                                    },
+                                    label = { Text(label, style = MaterialTheme.typography.labelSmall) }
+                                )
+                            }
+                        }
+                        if (item.compress) {
+                            // Status only: compression happens while the file is copied in, so it
+                            // cannot be toggled afterwards without re-importing the original.
+                            Text(
+                                strings.cardImageCompress,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                modifier = Modifier.padding(start = 6.dp)
+                                maxLines = 1
                             )
-                        }
-                        IconButton(onClick = { onMediaChange(media - item) }) {
-                            Icon(Icons.Default.Delete, contentDescription = strings.cardImageRemove)
                         }
                     }
                 }
@@ -226,3 +284,36 @@ private fun extractMediaFileName(ref: String): String? {
         it.isNotBlank() && !it.contains("://") && !it.contains('(') && !it.contains(')')
     }
 }
+
+/**
+ * Save a picked image into the media directory, optionally shrinking it first.
+ *
+ * Compression happens before hashing, so a re-encoded file gets its own content hash and cannot
+ * collide with the original. If compression is skipped or fails for any reason we fall back to the
+ * untouched bytes, so the image is never lost.
+ */
+private fun savePickedImage(sourcePath: String, compress: Boolean): String? {
+    val extension = sourcePath.substringAfterLast('.', "").lowercase()
+    if (extension !in IMAGE_EXTENSIONS) return saveMediaFile(getMediaBasePath(), sourcePath)
+
+    val original = platformReadImageSourceBytes(sourcePath) ?: return null
+    val finalBytes = if (compress) {
+        platformCompressImage(original, COMPRESS_MAX_EDGE, extension) ?: original
+    } else {
+        original
+    }
+    val fileName = hashBytesSha1(finalBytes) + "." + extension
+    val target = getMediaBasePath().trimEnd('/', '\\') + "/" + fileName
+    return try {
+        platformMkdirs(getMediaBasePath())
+        writeMediaFileAtomically(target, finalBytes)
+        "![image]($fileName)"
+    } catch (_: Exception) {
+        null
+    }
+}
+
+private val IMAGE_EXTENSIONS = setOf("png", "jpg", "jpeg", "gif", "webp", "bmp")
+
+/** Longest edge allowed after compression; matches the decode cap so rendering never pays twice. */
+private const val COMPRESS_MAX_EDGE = 2048

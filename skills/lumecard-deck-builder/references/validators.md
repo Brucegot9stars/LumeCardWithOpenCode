@@ -48,3 +48,16 @@ only `IMAGE`, required non-empty `id`/`filePath`, no `..` path traversal, no `ht
 non-negative integer `size`. `metadata["mediaTarget"]` is accepted only when it is
 `both` / `front` / `back`. Legacy exports with `media: []` still pass unchanged.
 `build()` writes `mediaTarget` into metadata only for cards that actually have images.
+
+Two per-image presentation fields are validated as well:
+
+- `alignment` must be one of `start` / `center` / `end`; anything else is rejected, and
+  omitting it normalises to `center`. The app is deliberately more lenient at read time
+  (unknown values fall back to `center` instead of dropping the image), so an invalid
+  alignment is a skill-side authoring error only and is **not** part of the shared
+  contract fixtures.
+- `compress` must be a real boolean (not `"true"`, `1` or `null`); omitting it
+  normalises to `true`.
+
+Unknown keys inside a media item are still rejected through the media field allow-list,
+so a typo such as `aligment` fails loudly instead of being silently ignored.

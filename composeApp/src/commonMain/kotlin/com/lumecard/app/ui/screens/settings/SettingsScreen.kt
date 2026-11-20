@@ -30,6 +30,7 @@ import com.lumecard.shared.domain.scheduler.ReviewMode
 import com.lumecard.shared.repository.CardRepository
 import com.lumecard.shared.repository.DeckRepository
 import com.lumecard.app.i18n.AppLocale
+import com.lumecard.app.i18n.I18nStrings
 import com.lumecard.app.ui.components.ContextHelpButton
 import com.lumecard.app.ui.components.LumeCardDialog
 import com.lumecard.app.ui.components.LumeCardTopBar
@@ -56,8 +57,17 @@ import com.lumecard.app.platform.getAppVersion
 import com.lumecard.app.platform.pickSaveFile
 import com.lumecard.app.platform.pickOpenFile
 import com.lumecard.app.platform.readFileContent
-import com.lumecard.app.platform.writeFileContent
 import com.lumecard.app.platform.fileParentDirectory
+import com.lumecard.app.platform.readFileHeader
+import com.lumecard.app.platform.getMediaBasePath
+import com.lumecard.app.platform.platformDeleteFile
+import com.lumecard.app.platform.resolveMediaFilePath
+import com.lumecard.app.data.LumecardArchive
+import com.lumecard.app.data.ExportOutcome
+import com.lumecard.app.data.importArchiveMedia
+import com.lumecard.app.data.jsonSiblingPath
+import com.lumecard.app.data.packageExport
+import com.lumecard.app.data.resolveRenamedPath
 import com.lumecard.app.platform.installApk
 import com.lumecard.app.platform.getApkCacheDir
 import com.lumecard.app.platform.isDesktopPlatform
@@ -811,21 +821,47 @@ class SettingsScreen(
                             modifier = Modifier.clickable {
                                 scope.launch {
                                     try {
-                                        val filePath = pickSaveFile("lumecard_export.json", "application/json")
-                                        if (filePath == null) {
-                                            snackbarHostState.showSnackbar(strings.actionCancel)
-                                            return@launch
-                                        }
                                         val knowledgeBases = knowledgeBaseRepository.getAll().first()
                                         val decks = deckRepository.getAll().first()
                                         val allCards = cardRepository.getAll().first()
-                                        val json = withContext(Dispatchers.IO) { exportManager.exportShareData(knowledgeBases, decks, allCards) }
-                                        val success = withContext(Dispatchers.IO) { writeFileContent(filePath, json) }
-                                        if (success) {
-                                            snackbarHostState.showSnackbar(strings.settingsExportSuccess(json.length))
-                                        } else {
-                                            snackbarHostState.showSnackbar(strings.settingsExportError(strings.exportErrorWrite))
+                                        val json = withContext(Dispatchers.IO) {
+                                            exportManager.exportShareData(knowledgeBases, decks, allCards)
                                         }
+                                        // Knowledge bases that reference local media must ship those
+                                        // files too, otherwise the JSON points at images the
+                                        // recipient does not have. Ask for a .lumecard archive up
+                                        // front so the picker suggests the right extension.
+                                        val hasLocalMedia = withContext(Dispatchers.IO) {
+                                            LumecardArchive.referencedLocalMedia(allCards).isNotEmpty()
+                                        }
+                                        val baseName = "lumecard_export"
+                                        val suggestedName = if (hasLocalMedia) {
+                                            "$baseName.${LumecardArchive.EXTENSION}"
+                                        } else {
+                                            "$baseName.json"
+                                        }
+                                        val chosenPath = pickSaveFile(
+                                            suggestedName,
+                                            if (hasLocalMedia) LumecardArchive.MIME_TYPE else "application/json",
+                                        )
+                                        if (chosenPath == null) {
+                                            snackbarHostState.showSnackbar(strings.actionCancel)
+                                            return@launch
+                                        }
+                                        val outcome = withContext(Dispatchers.IO) {
+                                            // A `.lumecard` picker name must not turn into
+                                            // `x.lumecard.json` when the export falls back to JSON.
+                                            val jsonOutputPath = jsonSiblingPath(chosenPath)
+                                            packageExport(
+                                                manifestJson = json,
+                                                cards = allCards,
+                                                outputPath = chosenPath,
+                                                jsonOutputPath = jsonOutputPath,
+                                            )
+                                        }
+                                        snackbarHostState.showSnackbar(
+                                            outcome.exportMessage(strings, json.length, chosenPath)
+                                        )
                                     } catch (e: Exception) {
                                         snackbarHostState.showSnackbar(strings.settingsExportError(e.message ?: "未知错误"))
                                     }
@@ -840,14 +876,25 @@ class SettingsScreen(
                             modifier = Modifier.clickable {
                                 scope.launch {
                                     try {
-                                        val filePath = pickOpenFile("application/json")
-                                        if (filePath == null) {
+                                        // Accept both .lumecard archives and plain .json exports.
+                                        val pickedPath = pickOpenFile("application/zip")
+                                        if (pickedPath == null) {
+                                            // A null result is either a cancelled picker or an
+                                            // unusable selection, so do not claim the user cancelled.
                                             snackbarHostState.showSnackbar(strings.settingsImportHint)
                                             return@launch
                                         }
-                                        val json = withContext(Dispatchers.IO) { readFileContent(filePath) }
+                                        val isArchive = withContext(Dispatchers.IO) {
+                                            readFileHeader(pickedPath, 4)?.let { LumecardArchive.looksLikeZip(it) } == true
+                                        }
+                                        val json = withContext(Dispatchers.IO) {
+                                            if (isArchive) LumecardArchive.readManifest(pickedPath)
+                                            else readFileContent(pickedPath)
+                                        }
                                         if (json == null) {
-                                            snackbarHostState.showSnackbar(strings.settingsImportError(strings.settingsImportErrorReadFile))
+                                            snackbarHostState.showSnackbar(
+                                                strings.settingsImportError(strings.settingsImportErrorReadFile)
+                                            )
                                             return@launch
                                         }
                                         val export = exportManager.importData(json)
@@ -855,7 +902,29 @@ class SettingsScreen(
                                             snackbarHostState.showSnackbar(strings.settingsImportError(strings.settingsImportErrorInvalidJson))
                                             return@launch
                                         }
-                                        withContext(Dispatchers.IO) {
+                                        // Extract archived media first: a card must not be inserted
+                                        // while its image is still missing on disk.
+                                        val mediaOutcome = if (isArchive) {
+                                            withContext(Dispatchers.IO) {
+                                                val entries = LumecardArchive.listEntries(pickedPath).orEmpty()
+                                                importArchiveMedia(
+                                                    pickedPath,
+                                                    entries,
+                                                    // Filter by type the same way the writer does.
+                                                    // Audio/video are never archived today, so
+                                                    // counting them here would report them as
+                                                    // missing images on every import.
+                                                    referencedPaths = LumecardArchive.referencedLocalMediaFrom(
+                                                        export.cards.flatMap { c ->
+                                                            c.media.map { it.filePath to it.type.name }
+                                                        }
+                                                    ),
+                                                )
+                                            }
+                                        } else null
+                                        val renames = mediaOutcome?.renamed.orEmpty()
+                                        try {
+                                            withContext(Dispatchers.IO) {
                                             for (ekb in export.knowledgeBases) {
                                                 knowledgeBaseRepository.insert(
                                                     KnowledgeBase(
@@ -881,12 +950,19 @@ class SettingsScreen(
                                                 )
                                             }
                                             for (ec in export.cards) {
+                                                // A rename only happens on a same-name/different-content
+                                                // collision, so the card reference must follow the file.
+                                                val media = if (renames.isEmpty()) ec.media else {
+                                                    ec.media.map { m ->
+                                                        resolveRenamedPath(renames, m.filePath)?.let { m.copy(filePath = it) } ?: m
+                                                    }
+                                                }
                                                 cardRepository.insert(
                                                     Card(
                                                         id = ec.id, deckId = ec.deckId,
                                                         type = try { CardType.valueOf(ec.type) } catch (_: Exception) { CardType.BASIC },
                                                         front = ec.front, back = ec.back, tags = ec.tags,
-                                                        title = ec.title, media = ec.media, metadata = ec.metadata,
+                                                        title = ec.title, media = media, metadata = ec.metadata,
                                                         createdAt = Instant.parse(ec.createdAt),
                                                         updatedAt = Instant.parse(ec.updatedAt),
                                                         lastReviewedAt = ec.lastReviewedAt?.let { Instant.parse(it) },
@@ -895,11 +971,35 @@ class SettingsScreen(
                                                     )
                                                 )
                                             }
+                                            }
+                                        } catch (e: Exception) {
+                                            // The cards never landed, so the media just written has
+                                            // nothing pointing at it. Remove it rather than leaving
+                                            // orphan files that the media scan would keep syncing.
+                                            withContext(Dispatchers.IO) {
+                                                mediaOutcome?.newlyWrittenPaths?.forEach { path ->
+                                                    runCatching {
+                                                        platformDeleteFile(
+                                                            resolveMediaFilePath(getMediaBasePath(), path)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                            throw e
                                         }
                                         val importedKBs = export.knowledgeBases.size
                                         val importedDecks = export.decks.size
                                         val importedCards = export.cards.size
-                                        snackbarHostState.showSnackbar(strings.settingsImportSuccess(importedKBs, importedDecks, importedCards))
+                                        // Files that were in the archive but could not land on disk
+                                        // are neither "written" nor "missing", so report them apart.
+                                        val failedMedia = mediaOutcome?.failed ?: 0
+                                        val importMessage = strings.settingsImportArchiveSuccess(
+                                            importedKBs, importedDecks, importedCards,
+                                            mediaOutcome?.written ?: 0,
+                                            mediaOutcome?.skipped ?: 0,
+                                            mediaOutcome?.missing ?: 0,
+                                        ) + if (failedMedia > 0) strings.settingsImportFailedMedia(failedMedia) else ""
+                                        snackbarHostState.showSnackbar(importMessage)
                                     } catch (e: Exception) {
                                         snackbarHostState.showSnackbar(strings.settingsImportError(e.message ?: strings.errorUnknown))
                                     }
@@ -1254,6 +1354,37 @@ private fun reviewModeDesc(mode: ReviewMode): String {
         ReviewMode.SM2 -> s.algoSm2Desc
         ReviewMode.LEITNER -> s.algoLeitnerDesc
         ReviewMode.SIMPLE -> s.algoSimpleDesc
+    }
+}
+
+/**
+ * Turn an [ExportOutcome] into a user-facing message.
+ *
+ * Missing media is reported explicitly instead of being folded into "success": the archive is
+ * valid but some referenced images were already gone from disk before the export ran.
+ *
+ * The written file name is appended whenever it differs from what the user picked, because a
+ * fallback (`writeFailed`, or every image missing) silently changes both the format and the name,
+ * and the user needs to know what to look for in their file manager.
+ */
+private fun ExportOutcome.exportMessage(strings: I18nStrings, jsonLength: Int, chosenPath: String): String {
+    val writtenName = path.substringAfterLast('/').substringAfterLast('\\')
+    val chosenName = chosenPath.substringAfterLast('/').substringAfterLast('\\')
+    val base = when {
+        // A write that broke off must be stated explicitly: the user asked for an archive and got JSON.
+        writeFailed -> strings.settingsExportArchiveFailed()
+        !isArchive && mediaMissing > 0 -> strings.settingsExportMissingMedia(mediaMissing)
+        isArchive && mediaMissing > 0 ->
+            strings.settingsExportArchiveSuccess(mediaIncluded) + " · " + strings.settingsExportMissingMedia(mediaMissing)
+        isArchive -> strings.settingsExportArchiveSuccess(mediaIncluded)
+        else -> strings.settingsExportSuccess(jsonLength)
+    }
+    return when {
+        writtenName.isBlank() -> base
+        // Only name the file when it differs from the name the user picked: repeating the obvious
+        // for a normal export would just add noise to the snackbar.
+        writtenName == chosenName -> base
+        else -> "$base · $writtenName"
     }
 }
 

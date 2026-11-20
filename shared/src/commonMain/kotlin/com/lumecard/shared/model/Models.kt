@@ -83,7 +83,11 @@ data class Media(
     val filePath: String,
     val mimeType: String = "",
     val size: Long = 0,
-    val caption: String = ""
+    val caption: String = "",
+    /** Horizontal alignment on the card face: "start", "center" or "end". Unrecognised values fall back to center. */
+    val alignment: String = "center",
+    /** Whether an oversized source should be downscaled and re-encoded when imported. */
+    val compress: Boolean = true
 )
 
 @Serializable

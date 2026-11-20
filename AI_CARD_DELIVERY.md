@@ -85,7 +85,9 @@ interface AiProtocol {
    - 根据协议构建消息（system = Prompt + 资料，user = "生成 N 张卡片"）
 4. 接收 AI 响应：
    - 期望 JSON：{ knowledge_base_name, deck_name, cards: [{ title, front, back, type, tags, media?, mediaTarget? }] }
-   - `media`（可选）：[{ filePath, caption? }]，`filePath` 为 media 相对文件名或 https URL；禁止 http、禁止编造。
+   - `media`（可选）：[{ filePath, caption?, alignment?, compress? }]，`filePath` 为 media 相对文件名或 https URL；禁止 http、禁止编造。
+   - `alignment`（可选，逐图）：`start` / `center`（默认）/ `end`，未知值回落 `center`。
+   - `compress`（可选，逐图）：boolean，默认 `true`，仅表示导入时是否降采样。
    - `mediaTarget`（可选，整卡级）：`both`（默认）/ `front` / `back`。
 5. 解析 JSON → AiCardResponseJson
 6. 创建实体（按模式）：

@@ -242,6 +242,26 @@ object EnStrings : I18nStrings {
     override val settingsImportErrorReadFile = "Cannot read file"
     override val settingsImportErrorInvalidJson = "Invalid JSON format"
     override fun settingsImportSuccess(kbs: Int, decks: Int, cards: Int) = "Imported: $kbs KBs, $decks decks, $cards cards"
+    override fun settingsExportArchiveSuccess(mediaIncluded: Int) = "Archive exported with $mediaIncluded media files"
+    override fun settingsExportArchiveFailed() = "Export failed: the archive write was interrupted, so a plain JSON was exported instead (images not included)"
+    override fun settingsExportMissingMedia(mediaMissing: Int) = "$mediaMissing image files are no longer on disk and were left out"
+    override fun settingsImportArchiveSuccess(
+        kbs: Int,
+        decks: Int,
+        cards: Int,
+        mediaWritten: Int,
+        mediaSkipped: Int,
+        mediaMissing: Int,
+    ): String {
+        val base = "Imported: $kbs KBs, $decks decks, $cards cards"
+        if (mediaWritten == 0 && mediaSkipped == 0 && mediaMissing == 0) return base
+        val parts = mutableListOf(base)
+        if (mediaWritten > 0) parts += "$mediaWritten media files added"
+        if (mediaSkipped > 0) parts += "$mediaSkipped already present"
+        if (mediaMissing > 0) parts += "$mediaMissing missing from the archive"
+        return parts.joinToString("; ")
+    }
+    override fun settingsImportFailedMedia(failed: Int) = " · $failed image(s) could not be written"
     override val settingsCloudSync = "Cloud Sync"
     override val settingsCloudSyncDesc = "Configure WebDAV sync"
     override val settingsTodayProgress = "Today's Progress"
@@ -788,4 +808,10 @@ object EnStrings : I18nStrings {
     override val cardImageDecodeFailed = "Failed to decode image"
     override val cardImageLocalHint = "Relative media path, file://, content:// or absolute path"
     override val cardImageInvalidUrl = "Enter a valid https URL"
+    override val cardImageAlignment = "Alignment"
+    override val cardImageAlignStart = "Left"
+    override val cardImageAlignCenter = "Center"
+    override val cardImageAlignEnd = "Right"
+    override val cardImageCompress = "Compress"
+    override val cardImageCompressHint = "Shrink images over 2048px on import"
 }
