@@ -3,6 +3,7 @@ package com.lumecard.app.di
 import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.components.OperationConfirmationManager
 import com.lumecard.app.data.AiCardGenerationManager
+import com.lumecard.app.data.ObjectTransferFacade
 import com.lumecard.app.ui.screens.aicard.AiCardViewModel
 import com.lumecard.shared.data.EntityMergeManager
 import com.lumecard.app.ui.screens.card.CardViewModel
@@ -28,6 +29,7 @@ val appModule = module {
     single { SettingsStateHolder() }
     single { ExportManager() }
     single { I18nManager() }
+    single { ObjectTransferFacade(get(), get(), get(), get(), get()) }
     single { EntityMergeManager(get(), get(), get()) }
     single { OperationConfirmationManager() }
     single { AiCardGenerationManager(get(), get(), get(), get(), get(), get(), get()) }

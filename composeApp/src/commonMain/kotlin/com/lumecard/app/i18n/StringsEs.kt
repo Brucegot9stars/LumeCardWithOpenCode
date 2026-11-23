@@ -814,4 +814,89 @@ object EsStrings : I18nStrings {
     override val cardImageAlignEnd = "Derecha"
     override val cardImageCompress = "Comprimir"
     override val cardImageCompressHint = "Reduce las imágenes de más de 2048 px al importarlas"
+
+    // Exportación de un objeto / importación por tipo de objeto
+    override val objectTransferTitle = "Importar por objeto"
+    override val objectTransferEntry = "Importar por objeto"
+    override val objectTransferEntryDesc = "Importa una sola base de conocimiento, mazo o tarjeta"
+    override val objectTransferPickFile = "Elegir archivo"
+    override val objectTransferRepick = "Elegir otro archivo"
+    override val objectTransferFileType = "Tipo de archivo"
+    override val objectTransferObjectName = "Objeto"
+    override val objectTransferFullRejected = "Esta es una exportación completa. Usa el botón «Importar datos» de Ajustes."
+    override val objectTransferConflictTitle = "Conflicto de nombres"
+    override val objectTransferConflictOverwrite = "Sobrescribir el objeto existente"
+    override val objectTransferConflictKeepBoth = "Conservar ambos (renombrar)"
+    override val objectTransferDuplicateTitle = "Tarjetas duplicadas (tipo + anverso/reverso)"
+    override val objectTransferDuplicateOverwrite = "Sobrescribir duplicadas"
+    override val objectTransferDuplicateKeepBoth = "Conservar ambas"
+    override val objectTransferDuplicateSkip = "Omitir duplicadas"
+    override val objectTransferTargetKb = "Base de conocimiento destino"
+    override val objectTransferTargetDeck = "Mazo destino"
+    override val objectTransferCreateKb = "Crear una base de conocimiento"
+    override val objectTransferCreateDeck = "Crear un mazo"
+    override val objectTransferNewKbName = "Nombre de la nueva base de conocimiento"
+    override val objectTransferNewDeckName = "Nombre del nuevo mazo"
+    override val objectTransferNoKb = "Todavía no hay bases de conocimiento; crea una abajo."
+    override val objectTransferStart = "Importar"
+    override val objectTransferBusy = "Importando…"
+    override val objectTransferExportAction = "Exportar este objeto"
+    override val objectTransferResultTitle = "Resultado"
+    override val objectTransferConfirmTitle = "Confirmar sobrescritura"
+    override val objectTransferConfirmOverwrite = "Sobrescribir"
+
+    override fun objectTransferExportSuccess(name: String, path: String): String = "Se exportó «$name» a $path"
+    override fun objectTransferExportFailed(reason: String): String = "Error al exportar: $reason"
+    override fun objectTransferImportFailed(reason: String): String = "Error al importar: $reason"
+    // El español concuerda en número y género: «1 tarjetas omitidas» sería incorrecto, así que
+    // todas las cifras usan la forma «etiqueta: n», que es válida para cualquier cantidad.
+    override fun objectTransferImportSuccess(kb: Int, deck: Int, card: Int): String =
+        "Importación completada — bases de conocimiento: $kb, mazos: $deck, tarjetas: $card"
+    override fun objectTransferSkipped(count: Int): String = "Tarjetas duplicadas omitidas: $count"
+    override fun objectTransferRenamed(count: Int): String = "Objetos renombrados automáticamente: $count"
+    override fun objectTransferUnusedMediaRemoved(count: Int): String =
+        "Archivos sobrantes de esta importación eliminados: $count"
+    override fun objectTransferNonImageSkipped(count: Int): String =
+        "Archivos de audio/vídeo/adjuntos no incluidos en las exportaciones: $count"
+    override fun objectTransferMediaFailed(count: Int): String =
+        "Archivos multimedia que no se pudieron escribir: $count"
+    override fun objectTransferPlansScrubbed(count: Int): String = "Planes de estudio actualizados: $count"
+    override fun objectTransferDeleted(kb: Int, deck: Int, card: Int): String =
+        "Eliminados — bases de conocimiento: $kb, mazos: $deck, tarjetas: $card"
+    override fun objectTransferMediaMissing(count: Int): String =
+        "Imágenes referenciadas que faltaban en el archivo: $count"
+    override fun objectTransferExportMediaMissing(count: Int): String =
+        "Imágenes no almacenadas localmente (no incluidas): $count"
+    override fun objectTransferRollbackIncomplete(count: Int): String =
+        "Archivos importados que no se pudieron limpiar: $count"
+    override fun objectTransferPlanWillDelete(kb: Int, deck: Int, card: Int): String =
+        "Sobrescribir elimina — bases de conocimiento: $kb, mazos: $deck, tarjetas: $card. ¿Continuar?"
+
+    override fun objectTransferTypeLabel(type: String): String = when (type) {
+        "knowledgeBase" -> "Base de conocimiento"
+        "deck" -> "Mazo"
+        "card" -> "Tarjeta"
+        else -> "Exportación completa"
+    }
+
+    override fun objectTransferErrorLabel(code: String): String = when (code) {
+        "EMPTY_ROOT" -> "No se seleccionó ningún objeto"
+        "UNKNOWN_OBJECT_TYPE" -> "Tipo de objeto desconocido"
+        "INVALID_JSON" -> "JSON no válido"
+        "UNSUPPORTED_SCHEMA" -> "Versión de archivo no compatible"
+        "EMPTY_PAYLOAD" -> "El archivo no contiene datos importables"
+        "INVALID_ID" -> "El archivo contiene una referencia rota"
+        "INVALID_TIMESTAMP" -> "El archivo contiene una marca de tiempo no válida"
+        "INVALID_CARD_TYPE" -> "El archivo contiene un tipo de tarjeta desconocido"
+        "DUPLICATE_ID" -> "El archivo contiene IDs duplicados"
+        "DECK_CYCLE" -> "El archivo contiene un ciclo de mazos padre/hijo"
+        "PAYLOAD_TOO_LARGE" -> "El archivo es demasiado grande"
+        "TARGET_REQUIRED" -> "Elige un destino primero"
+        "TARGET_NOT_FOUND" -> "El destino elegido ya no existe"
+        "TARGET_DECK_MISMATCH" -> "El mazo elegido no pertenece al destino"
+        "NO_KNOWLEDGE_BASE" -> "Crea primero una base de conocimiento"
+        "READ_FAILED" -> "No se pudo leer el archivo"
+        "WRITE_FAILED" -> "No se pudo escribir el archivo"
+        else -> code
+    }
 }

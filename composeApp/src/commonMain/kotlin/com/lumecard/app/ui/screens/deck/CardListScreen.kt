@@ -19,6 +19,8 @@ import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.ui.components.OperationConfirmationManager
+import com.lumecard.app.data.ObjectExportOutcome
+import com.lumecard.app.data.ObjectTransferFacade
 import com.lumecard.app.ui.screens.card.CardViewModel
 import com.lumecard.app.ui.screens.card.CreateCardScreen
 import com.lumecard.app.ui.components.ConfirmOperationDialog
@@ -27,6 +29,7 @@ import com.lumecard.app.i18n.I18nManager
 import com.lumecard.app.ui.screens.study.StudyScreen
 import com.lumecard.shared.data.EntityMergeManager
 import com.lumecard.shared.data.EntityOperationType
+import com.lumecard.shared.data.ObjectType
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.Deck
 import com.lumecard.shared.repository.DeckRepository
@@ -54,10 +57,13 @@ class CardListScreen(
         val mergeManager: EntityMergeManager = koinInject()
         val confirmManager: OperationConfirmationManager = koinInject()
         val deckRepository: DeckRepository = koinInject()
+        val objectTransferFacade: ObjectTransferFacade = koinInject()
         val allDecks by deckRepository.getAll().collectAsState(initial = emptyList())
         var moveCardTarget by remember { mutableStateOf<Card?>(null) }
         var showMoveDeckPicker by remember { mutableStateOf(false) }
         var moveResultMessage by remember { mutableStateOf<String?>(null) }
+        var exportResultMessage by remember { mutableStateOf<String?>(null) }
+        var exporting by remember { mutableStateOf(false) }
         val scope = rememberCoroutineScope()
 
         LaunchedEffect(deckId) {
@@ -183,6 +189,26 @@ class CardListScreen(
                                 moveCardTarget = card
                                 showMoveDeckPicker = true
                             },
+                            onExport = {
+                                if (!exporting) {
+                                    exporting = true
+                                    scope.launch {
+                                        try {
+                                            when (val outcome = objectTransferFacade.export(
+                                                ObjectType.CARD, listOf(card.id)
+                                            )) {
+                                                is ObjectExportOutcome.Success ->
+                                                    exportResultMessage = outcome.message
+                                                is ObjectExportOutcome.Failure ->
+                                                    exportResultMessage = outcome.message
+                                                ObjectExportOutcome.Cancelled -> Unit
+                                            }
+                                        } finally {
+                                            exporting = false
+                                        }
+                                    }
+                                }
+                            },
                         )
                     }
                 }
@@ -252,6 +278,19 @@ class CardListScreen(
                 },
             )
         }
+        // Scoped export result dialog
+        if (exportResultMessage != null) {
+            AlertDialog(
+                onDismissRequest = { exportResultMessage = null },
+                title = { Text(strings.objectTransferResultTitle) },
+                text = { Text(exportResultMessage ?: "") },
+                confirmButton = {
+                    TextButton(onClick = { exportResultMessage = null }) {
+                        Text(strings.actionOk)
+                    }
+                },
+            )
+        }
     }
 }
 
@@ -261,6 +300,7 @@ fun CardItem(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onMove: () -> Unit,
+    onExport: () -> Unit,
 ) {
     val strings = koinInject<I18nManager>().strings
     Card(
@@ -372,6 +412,16 @@ fun CardItem(
                         },
                         leadingIcon = {
                                                         Icon(Icons.Default.DriveFileMove, contentDescription = null)
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(strings.objectTransferExportAction) },
+                        onClick = {
+                            expanded = false
+                            onExport()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Share, contentDescription = null)
                         },
                     )
                 }

@@ -30,11 +30,14 @@ import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.ui.components.ConfirmOperationDialog
+import com.lumecard.app.data.ObjectExportOutcome
+import com.lumecard.app.data.ObjectTransferFacade
 import com.lumecard.app.ui.components.EmojiPickerField
 import com.lumecard.app.ui.components.OperationConfirmationManager
 import com.lumecard.app.ui.screens.study.StudyScreen
 import com.lumecard.shared.data.EntityMergeManager
 import com.lumecard.shared.data.EntityOperationType
+import com.lumecard.shared.data.ObjectType
 import com.lumecard.shared.model.Deck
 import com.lumecard.shared.model.KnowledgeBase
 import com.lumecard.shared.repository.KnowledgeBaseRepository
@@ -67,6 +70,7 @@ class DeckListScreen(
         val mergeManager: EntityMergeManager = koinInject()
         val confirmManager: OperationConfirmationManager = koinInject()
         val kbRepository: KnowledgeBaseRepository = koinInject()
+        val objectTransferFacade: ObjectTransferFacade = koinInject()
         val allKbs by kbRepository.getAll().collectAsState(initial = emptyList())
 
         LaunchedEffect(knowledgeBaseId) {
@@ -82,6 +86,8 @@ class DeckListScreen(
         var movingDeckId by remember { mutableStateOf<String?>(null) }
         var showMoveKbPicker by remember { mutableStateOf(false) }
         var mergeResultMessage by remember { mutableStateOf<String?>(null) }
+        var exportResultMessage by remember { mutableStateOf<String?>(null) }
+        var exporting by remember { mutableStateOf(false) }
 
         // Drag state
         var draggingDeckId by remember { mutableStateOf<String?>(null) }
@@ -377,6 +383,33 @@ class DeckListScreen(
                                                         Icon(Icons.Default.DriveFileMove, contentDescription = null)
                                                     },
                                                 )
+                                                DropdownMenuItem(
+                                                    text = { Text(strings.objectTransferExportAction) },
+                                                    onClick = {
+                                                        expanded = false
+                                                        if (!exporting) {
+                                                            exporting = true
+                                                            scope.launch {
+                                                                try {
+                                                                    when (val outcome = objectTransferFacade.export(
+                                                                        ObjectType.DECK, listOf(deck.id)
+                                                                    )) {
+                                                                        is ObjectExportOutcome.Success ->
+                                                                            exportResultMessage = outcome.message
+                                                                        is ObjectExportOutcome.Failure ->
+                                                                            exportResultMessage = outcome.message
+                                                                        ObjectExportOutcome.Cancelled -> Unit
+                                                                    }
+                                                                } finally {
+                                                                    exporting = false
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    leadingIcon = {
+                                                        Icon(Icons.Default.Share, contentDescription = null)
+                                                    },
+                                                )
                                             }
                                         }
                                     }
@@ -618,6 +651,20 @@ class DeckListScreen(
                 dismissButton = {
                     TextButton(onClick = { showMoveKbPicker = false; movingDeckId = null }) {
                         Text(strings.actionCancel)
+                    }
+                },
+            )
+        }
+        // Same feedback component as the knowledge-base and card screens: a snackbar would clip
+        // the saved path and disappear before the user can read it.
+        if (exportResultMessage != null) {
+            AlertDialog(
+                onDismissRequest = { exportResultMessage = null },
+                title = { Text(strings.objectTransferResultTitle) },
+                text = { Text(exportResultMessage ?: "") },
+                confirmButton = {
+                    TextButton(onClick = { exportResultMessage = null }) {
+                        Text(strings.actionOk)
                     }
                 },
             )

@@ -8,7 +8,10 @@ import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.CardType
 import com.lumecard.shared.model.Media
 import com.lumecard.shared.model.MediaType
+import java.io.ByteArrayOutputStream
+import java.io.DataOutputStream
 import java.io.File
+import java.util.zip.CRC32
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import kotlin.test.AfterTest
@@ -16,6 +19,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -295,6 +299,52 @@ class ExportArchiveServiceTest {
     }
 
     @Test
+    fun `rename lookup refuses an ambiguous case only match`() {
+        assertNull(
+            resolveRenamedPath(mapOf("A.png" to "first.png", "a.png" to "second.png"), "a.PNG"),
+            "two case-only candidates are two different files; picking one would show the wrong image",
+        )
+    }
+
+    @Test
+    fun `case only media names keep their own content`() = runBlocking {
+        // On a case-sensitive filesystem these are two distinct files. Folding them together when
+        // matching archive entries against the manifest used to make both cards point at one image.
+        val archive = File(tempRoot, "case.lumecard").absolutePath
+        val upper = byteArrayOf(1, 1, 1)
+        val lower = byteArrayOf(2, 2, 2)
+        ZipOutputStream(File(archive).outputStream()).use { zip ->
+            zip.putNextEntry(ZipEntry(LumecardArchive.ENTRY_MANIFEST))
+            zip.write(manifest.encodeToByteArray())
+            zip.closeEntry()
+            for ((name, bytes) in listOf("A.png" to upper, "a.png" to lower)) {
+                zip.putNextEntry(ZipEntry("media/$name"))
+                zip.write(bytes)
+                zip.closeEntry()
+            }
+        }
+        val names = assertNotNull(LumecardArchive.listEntries(archive))
+        // Force a collision on both case-sensitive and case-insensitive filesystems. Without it,
+        // Linux would write two fresh files, produce no `renamed`, and could never detect a
+        // regression in the identity entries that disambiguate case twins for downstream lookups.
+        writeMediaFile("a.png", byteArrayOf(9, 9))
+
+        val outcome = importArchiveMedia(archive, names, referencedPaths = listOf("A.png", "a.png"))
+
+        assertEquals(0, outcome.failed)
+        assertEquals(0, outcome.missing)
+        assertEquals(2, outcome.written)
+        // Both byte sequences surviving somewhere is not enough: the old fold-to-lowercase bug
+        // also left both on disk while pointing both cards at one file. Resolve each card's final
+        // path the way the import does and verify each reference reaches its own content.
+        val pathA = resolveRenamedPath(outcome.renamed, "A.png") ?: "A.png"
+        val pathB = resolveRenamedPath(outcome.renamed, "a.png") ?: "a.png"
+        assertNotEquals(pathA, pathB, "the two case-only references must not collapse onto one file")
+        assertContentEqualsSafe(upper, File(getMediaBasePath(), pathA).readBytes())
+        assertContentEqualsSafe(lower, File(getMediaBasePath(), pathB).readBytes())
+    }
+
+    @Test
     fun `media missing counts referenced paths absent from the archive`() = runBlocking {
         writeMediaFile("present.png", byteArrayOf(3))
         val archiveOut = File(tempRoot, "out.lumecard").absolutePath
@@ -320,7 +370,7 @@ class ExportArchiveServiceTest {
     }
 
     @Test
-    fun `extra unreferenced archive entry does not inflate missing`() = runBlocking {
+    fun `unreferenced archive entry is neither extracted nor counted as missing`() = runBlocking {
         val archiveOut = File(tempRoot, "extra.lumecard").absolutePath
         val mediaDir = File(getMediaBasePath())
         mediaDir.mkdirs()
@@ -343,10 +393,11 @@ class ExportArchiveServiceTest {
 
         val outcome = importArchiveMedia(archiveOut, names, referencedPaths = listOf("present.png"))
 
-        // The un-referenced entry is still unpacked, but it is neither missing nor failed.
+        // The un-referenced entry is dropped: it is neither missing, nor failed, nor written.
         assertEquals(0, outcome.missing)
-        assertEquals(2, outcome.written)
-        assertTrue(File(getMediaBasePath(), "junk.png").exists())
+        assertEquals(1, outcome.written)
+        assertTrue(File(getMediaBasePath(), "present.png").exists())
+        assertFalse(File(getMediaBasePath(), "junk.png").exists())
     }
 
     @Test
@@ -416,9 +467,10 @@ class ExportArchiveServiceTest {
 
     @Test
     fun `duplicate entry names are unpacked once`() = runBlocking {
-        // ZipOutputStream refuses to write the same name twice, but a hand-built archive can hold
-        // it (and some tools do). The entry list is the input the importer trusts, so deduplicate
-        // there: counting it twice would report more files than actually landed on disk.
+        // A caller may hand the importer the same entry name twice (a hand-built archive can hold
+        // it, and some tools do). The importer deduplicates that list: counting it twice would
+        // report more files than actually landed on disk. Listing-level rejection is covered by
+        // `duplicate archive entry names are rejected before import`.
         val archive = File(tempRoot, "dup.lumecard").absolutePath
         ZipOutputStream(File(archive).outputStream()).use { zip ->
             zip.putNextEntry(ZipEntry(LumecardArchive.ENTRY_MANIFEST))
@@ -442,7 +494,9 @@ class ExportArchiveServiceTest {
     fun `entry count is bounded so a hostile archive cannot demand unbounded work`() = runBlocking {
         // 10k is the cap; the overflow is reported as failed instead of being silently dropped.
         val archive = File(tempRoot, "flood.lumecard").absolutePath
-        val total = 10_050
+        // Past the *listing* cap (20 000 entries at this build), so the archive is rejected before
+        // any name list is materialised.
+        val total = 20_050
         ZipOutputStream(File(archive).outputStream()).use { zip ->
             zip.putNextEntry(ZipEntry(LumecardArchive.ENTRY_MANIFEST))
             zip.write(manifest.encodeToByteArray())
@@ -453,12 +507,54 @@ class ExportArchiveServiceTest {
                 zip.closeEntry()
             }
         }
-        val names = assertNotNull(LumecardArchive.listEntries(archive))
+        // The listing stage must reject the archive before it materialises thousands of names.
+        assertNull(
+            LumecardArchive.listEntries(archive),
+            "an archive over the entry cap must be rejected while listing, not after extraction",
+        )
 
-        val outcome = importArchiveMedia(archive, names)
+        // A legacy caller may still hand the importer an unbounded list. The importer's own cap
+        // must remain, reporting the overflow as failed rather than silently dropping entries.
+        val legacyNames = (0 until 10_050).map { "media/n$it.png" }
+        val outcome = importArchiveMedia(archive, legacyNames)
 
         assertTrue(outcome.failed >= 50, "entries past the cap must be reported, got ${outcome.failed}")
         assertTrue(outcome.written <= 10_000, "no more than the cap may be written")
+    }
+
+    @Test
+    fun `an archive with exactly the media cap stays listable`() = runBlocking {
+        // The listing cap includes lumecard.json, so 10 000 media files must still pass.
+        val archive = File(tempRoot, "at-cap.lumecard").absolutePath
+        ZipOutputStream(File(archive).outputStream()).use { zip ->
+            zip.putNextEntry(ZipEntry(LumecardArchive.ENTRY_MANIFEST))
+            zip.write(manifest.encodeToByteArray())
+            zip.closeEntry()
+            repeat(10_000) { i ->
+                zip.putNextEntry(ZipEntry("media/c$i.png"))
+                zip.write(byteArrayOf(0))
+                zip.closeEntry()
+            }
+            // Extra, unreferenced entries are legal: the listing cap must not reject a valid
+            // at-the-media-cap archive just because it also carries a readme or spare media.
+            zip.putNextEntry(ZipEntry("README.txt"))
+            zip.write(byteArrayOf(1))
+            zip.closeEntry()
+        }
+
+        val names = assertNotNull(LumecardArchive.listEntries(archive))
+        assertEquals(10_002, names.size)
+    }
+
+    @Test
+    fun `duplicate archive entry names are rejected before import`() = runBlocking {
+        // ZipFile.getEntry() returns the last duplicate on Desktop; ZipInputStream sees the first
+        // on Android. Reject the archive rather than importing different images on each platform.
+        val archive = File(tempRoot, "duplicate.lumecard").absolutePath
+        // ZipOutputStream refuses a duplicate name, so write the local headers by hand.
+        File(archive).writeBytes(zipWithDuplicateNames())
+
+        assertNull(LumecardArchive.listEntries(archive))
     }
 
     @Test
@@ -543,7 +639,108 @@ class ExportArchiveServiceTest {
         )
     }
 
+    @Test
+    fun `an explicit empty reference list extracts nothing`() = runBlocking {
+        // A manifest that references no local media must not cause the archive's media/ folder to be
+        // unpacked: those files would be written, never referenced, and cleaned up again. `null`
+        // still means "legacy caller that cannot tell us", which keeps the extract-all behaviour.
+        val archive = File(tempRoot, "unused.lumecard").absolutePath
+        ZipOutputStream(File(archive).outputStream()).use { zip ->
+            zip.putNextEntry(ZipEntry(LumecardArchive.ENTRY_MANIFEST))
+            zip.write(manifest.encodeToByteArray())
+            zip.closeEntry()
+            zip.putNextEntry(ZipEntry("media/stray.png"))
+            zip.write(byteArrayOf(9))
+            zip.closeEntry()
+        }
+        val names = assertNotNull(LumecardArchive.listEntries(archive))
+
+        val outcome = importArchiveMedia(archive, names, referencedPaths = emptyList())
+
+        assertEquals(0, outcome.written)
+        assertTrue(outcome.newlyWrittenPaths.isEmpty())
+        assertFalse(File(getMediaBasePath(), "stray.png").exists(), "unreferenced media must not land")
+        assertEquals(0, outcome.missing)
+    }
+
+    @Test
+    fun `media lands under the manifest spelling, not the archive spelling`() = runBlocking {
+        // Entry matching is case-insensitive but a filesystem may not be: writing `photo.png` while
+        // the card references `Photo.png` produces a broken image that nothing reports as missing.
+        val archive = File(tempRoot, "case.lumecard").absolutePath
+        ZipOutputStream(File(archive).outputStream()).use { zip ->
+            zip.putNextEntry(ZipEntry(LumecardArchive.ENTRY_MANIFEST))
+            zip.write(manifest.encodeToByteArray())
+            zip.closeEntry()
+            zip.putNextEntry(ZipEntry("media/photo.png"))
+            zip.write(byteArrayOf(4, 2))
+            zip.closeEntry()
+        }
+        val names = assertNotNull(LumecardArchive.listEntries(archive))
+
+        val outcome = importArchiveMedia(archive, names, referencedPaths = listOf("Photo.png"))
+
+        assertEquals(listOf("Photo.png"), outcome.newlyWrittenPaths)
+        assertEquals(0, outcome.missing)
+    }
+
+    @Test
+    fun `plainJsonWriteFailureIsReportedWhenNoMediaIsReferenced`() = runBlocking {
+        // No local media means packageExport takes the direct plain-JSON branch, never the
+        // archive-write fallback. `platformWriteFileText` used to swallow every error, so Android
+        // claimed success for a document the provider had refused; that failure must reach the UI.
+        val blockedJson = File(tempRoot, "blocked-json").absolutePath
+        assertTrue(File(blockedJson).mkdirs(), "need a directory squatting on the target path")
+
+        val outcome = packageExport(manifest, emptyList(), blockedJson, blockedJson)
+
+        assertTrue(outcome.plainJsonWriteFailed)
+        assertFalse(outcome.writeFailed)
+    }
+
     private fun assertContentEqualsSafe(expected: ByteArray, actual: ByteArray) {
         assertEquals(expected.toList(), actual.toList())
+    }
+
+    private fun DataOutputStream.le16(value: Int) {
+        writeByte(value and 0xFF); writeByte((value shr 8) and 0xFF)
+    }
+
+    private fun DataOutputStream.le32(value: Int) {
+        le16(value and 0xFFFF); le16((value shr 16) and 0xFFFF)
+    }
+
+    /** Two stored entries with the same name — a file ZipOutputStream itself refuses to write. */
+    private fun zipWithDuplicateNames(): ByteArray {
+        val bytes = ByteArrayOutputStream()
+        val out = DataOutputStream(bytes)
+        val central = ByteArrayOutputStream()
+        val cd = DataOutputStream(central)
+        val nameBytes = "media/same.png".toByteArray()
+        val offsets = mutableListOf<Int>()
+        repeat(2) { i ->
+            val data = byteArrayOf(i.toByte())
+            val crc = CRC32().apply { update(data) }.value.toInt()
+            offsets += bytes.size()
+            // ZIP fields are little-endian; DataOutputStream's writeInt/writeShort are not.
+            out.le32(0x04034B50); out.le16(20); out.le16(0); out.le16(0)
+            out.le16(0); out.le16(0x21) // DOS date 1980-01-01
+            out.le32(crc); out.le32(data.size); out.le32(data.size)
+            out.le16(nameBytes.size); out.le16(0)
+            out.write(nameBytes); out.write(data)
+
+            cd.le32(0x02014B50); cd.le16(20); cd.le16(20)
+            cd.le16(0); cd.le16(0); cd.le16(0); cd.le16(0x21)
+            cd.le32(crc); cd.le32(data.size); cd.le32(data.size)
+            cd.le16(nameBytes.size); cd.le16(0); cd.le16(0)
+            cd.le16(0); cd.le16(0); cd.le32(0)
+            cd.le32(offsets.last()); cd.write(nameBytes)
+        }
+        val centralBytes = central.toByteArray()
+        out.write(centralBytes)
+        out.le32(0x06054B50); out.le16(0); out.le16(0)
+        out.le16(2); out.le16(2)
+        out.le32(centralBytes.size); out.le32(offsets.first()); out.le16(0)
+        return bytes.toByteArray()
     }
 }

@@ -222,20 +222,22 @@ class AiCardGenerator(
         }
     }
 
-    private val windowsAbsoluteMediaPath = Regex("""^[A-Za-z]:[\\/]""")
-
     private val AI_MEDIA_ALIGNMENTS = setOf("start", "center", "end")
 
+    /**
+     * A model may emit any string as `filePath`. Only two forms are acceptable: an https image
+     * URL, or a strictly safe media-root relative name.
+     *
+     * The relative form deliberately reuses [MediaPathRules] — the same rule the exporter, the
+     * validator and the archive writer apply. The hand-rolled check this replaced was weaker
+     * (no Windows-reserved names, no trailing dot/space, no `:`, no backslash, no length caps),
+     * so a model output like `CON.png` or `a.png.` could land in the database and then make the
+     * whole deck fail `validate()` on export, or silently drop the image during archive packaging.
+     */
     private fun isAllowedAiMediaPath(path: String): Boolean {
-        if (path.isEmpty() || path.split('\\', '/').any { it == ".." }) return false
-        val lower = path.lowercase()
-        if (lower.startsWith("https://")) return true
-        return !lower.startsWith("http://") &&
-            !lower.startsWith("file://") &&
-            !lower.startsWith("content://") &&
-            !lower.startsWith("data:") &&
-            !lower.startsWith("/") &&
-            !windowsAbsoluteMediaPath.matches(path)
+        if (path.isEmpty()) return false
+        if (path.lowercase().startsWith("https://")) return true
+        return MediaPathRules.isSafeRelativePath(path)
     }
 
     private suspend fun createCards(deckId: String, parsed: AiCardResponseJson): List<String> {

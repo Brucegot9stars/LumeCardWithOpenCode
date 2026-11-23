@@ -21,6 +21,9 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.shared.AppVersion
 import com.lumecard.shared.data.ExportManager
+import com.lumecard.shared.data.ObjectExportBuilder
+import com.lumecard.shared.data.ObjectFileKind
+import com.lumecard.shared.data.ObjectTransferError
 import com.lumecard.shared.data.UpdateManager
 import com.lumecard.shared.data.UpdateState
 import com.lumecard.shared.data.AiConfigManager
@@ -902,11 +905,40 @@ class SettingsScreen(
                                             snackbarHostState.showSnackbar(strings.settingsImportError(strings.settingsImportErrorInvalidJson))
                                             return@launch
                                         }
+                                        // Only *scoped* share files can be validated: a full share
+                                        // export carries the same exportType but has no objectScope,
+                                        // and validate() would reject it as UNKNOWN_OBJECT_TYPE.
+                                        val validationError = if (
+                                            withContext(Dispatchers.IO) { ObjectExportBuilder.detect(json) } ==
+                                            ObjectFileKind.SCOPED
+                                        ) {
+                                            withContext(Dispatchers.IO) {
+                                                ObjectExportBuilder.decode(json)?.let { ObjectExportBuilder.validate(it) }
+                                                    ?: ObjectTransferError.INVALID_JSON
+                                            }
+                                        } else null
+                                        if (validationError != null) {
+                                            snackbarHostState.showSnackbar(
+                                                strings.settingsImportError(strings.objectTransferErrorLabel(validationError.name))
+                                            )
+                                            return@launch
+                                        }
                                         // Extract archived media first: a card must not be inserted
                                         // while its image is still missing on disk.
                                         val mediaOutcome = if (isArchive) {
+                                            val entries = withContext(Dispatchers.IO) {
+                                                LumecardArchive.listEntries(pickedPath)
+                                            }
+                                            // A null/empty listing means the archive is damaged or
+                                            // over the entry cap. Importing anyway would insert all
+                                            // the cards with dead image paths and still say "success".
+                                            if (entries.isNullOrEmpty()) {
+                                                snackbarHostState.showSnackbar(
+                                                    strings.settingsImportError(strings.settingsImportErrorReadFile)
+                                                )
+                                                return@launch
+                                            }
                                             withContext(Dispatchers.IO) {
-                                                val entries = LumecardArchive.listEntries(pickedPath).orEmpty()
                                                 importArchiveMedia(
                                                     pickedPath,
                                                     entries,
@@ -923,9 +955,20 @@ class SettingsScreen(
                                             }
                                         } else null
                                         val renames = mediaOutcome?.renamed.orEmpty()
+                                        // Each repository insert commits on its own. Track what this
+                                        // attempt wrote so a failure can undo it before the media is
+                                        // removed; otherwise the catch leaves live rows whose images
+                                        // are gone — a half-import that looks successful in the DB.
+                                        val insertedKbIds = mutableListOf<String>()
+                                        val insertedDeckIds = mutableListOf<String>()
+                                        val insertedCardIds = mutableListOf<String>()
                                         try {
                                             withContext(Dispatchers.IO) {
                                             for (ekb in export.knowledgeBases) {
+                                                // insert() uses REPLACE. Only rows that did not exist
+                                                // belong to this attempt; rolling back a replaced row
+                                                // would delete the user's original data.
+                                                val existed = knowledgeBaseRepository.getById(ekb.id) != null
                                                 knowledgeBaseRepository.insert(
                                                     KnowledgeBase(
                                                         id = ekb.id, name = ekb.name, description = ekb.description,
@@ -935,8 +978,10 @@ class SettingsScreen(
                                                         version = ekb.version
                                                     )
                                                 )
+                                                if (!existed) insertedKbIds += ekb.id
                                             }
                                             for (ed in export.decks) {
+                                                val existed = deckRepository.getById(ed.id) != null
                                                 deckRepository.insert(
                                                     Deck(
                                                         id = ed.id, knowledgeBaseId = ed.knowledgeBaseId,
@@ -948,6 +993,7 @@ class SettingsScreen(
                                                         version = ed.version
                                                     )
                                                 )
+                                                if (!existed) insertedDeckIds += ed.id
                                             }
                                             for (ec in export.cards) {
                                                 // A rename only happens on a same-name/different-content
@@ -957,6 +1003,7 @@ class SettingsScreen(
                                                         resolveRenamedPath(renames, m.filePath)?.let { m.copy(filePath = it) } ?: m
                                                     }
                                                 }
+                                                val existed = cardRepository.getById(ec.id) != null
                                                 cardRepository.insert(
                                                     Card(
                                                         id = ec.id, deckId = ec.deckId,
@@ -970,13 +1017,18 @@ class SettingsScreen(
                                                         version = ec.version
                                                     )
                                                 )
+                                                if (!existed) insertedCardIds += ec.id
                                             }
                                             }
                                         } catch (e: Exception) {
-                                            // The cards never landed, so the media just written has
-                                            // nothing pointing at it. Remove it rather than leaving
-                                            // orphan files that the media scan would keep syncing.
+                                            // Undo only the rows this attempt actually wrote, then the
+                                            // media. Reversing in child→parent order keeps the soft
+                                            // deletes valid under foreign keys, and leaves no live row
+                                            // pointing at a file we are about to remove.
                                             withContext(Dispatchers.IO) {
+                                                insertedCardIds.forEach { id -> runCatching { cardRepository.delete(id) } }
+                                                insertedDeckIds.forEach { id -> runCatching { deckRepository.delete(id) } }
+                                                insertedKbIds.forEach { id -> runCatching { knowledgeBaseRepository.delete(id) } }
                                                 mediaOutcome?.newlyWrittenPaths?.forEach { path ->
                                                     runCatching {
                                                         platformDeleteFile(
@@ -1003,6 +1055,21 @@ class SettingsScreen(
                                     } catch (e: Exception) {
                                         snackbarHostState.showSnackbar(strings.settingsImportError(e.message ?: strings.errorUnknown))
                                     }
+                                }
+                            },
+                        )
+                        HorizontalDivider()
+                        // Independent scoped-import entry point. The full-import button above is a
+                        // separate path (hardened here); this screen refuses FULL exports.
+                        ListItem(
+                            headlineContent = { Text(strings.objectTransferEntry) },
+                            supportingContent = { Text(strings.objectTransferEntryDesc) },
+                            leadingContent = { Icon(Icons.Default.Add, contentDescription = null) },
+                            modifier = Modifier.clickable {
+                                // The screen key is constant; a double tap would otherwise leave
+                                // two identical screens on the back stack.
+                                if (navigator.lastItemOrNull?.key != ObjectImportScreen().key) {
+                                    navigator.push(ObjectImportScreen())
                                 }
                             },
                         )
@@ -1371,6 +1438,14 @@ private fun ExportOutcome.exportMessage(strings: I18nStrings, jsonLength: Int, c
     val writtenName = path.substringAfterLast('/').substringAfterLast('\\')
     val chosenName = chosenPath.substringAfterLast('/').substringAfterLast('\\')
     val base = when {
+        // Checked *before* writeFailed: both can be true at once, and "a plain JSON was exported
+        // instead" would be a lie when the fallback write failed too (nothing landed at all).
+        // Reuses the localized WRITE_FAILED label rather than the read-error string, which would
+        // tell the user the wrong thing about what failed.
+        plainJsonWriteFailed ->
+            strings.objectTransferExportFailed(
+                strings.objectTransferErrorLabel(ObjectTransferError.WRITE_FAILED.name)
+            )
         // A write that broke off must be stated explicitly: the user asked for an archive and got JSON.
         writeFailed -> strings.settingsExportArchiveFailed()
         !isArchive && mediaMissing > 0 -> strings.settingsExportMissingMedia(mediaMissing)

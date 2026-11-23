@@ -1,6 +1,7 @@
 package com.lumecard.app.data
 
 import com.lumecard.app.platform.getApkCacheDir
+import com.lumecard.app.platform.MAX_ARCHIVE_ENTRIES
 import com.lumecard.app.platform.getMediaBasePath
 import com.lumecard.app.platform.hashBytesSha1
 import com.lumecard.app.platform.platformDeleteFile
@@ -12,6 +13,7 @@ import com.lumecard.app.platform.platformWriteFileText
 import com.lumecard.app.platform.readZipArchiveEntries
 import com.lumecard.app.platform.resolveMediaFilePath
 import com.lumecard.app.platform.writeMediaFileAtomically
+import com.lumecard.shared.data.MediaPathRules
 import com.lumecard.shared.model.Card
 import kotlin.random.Random
 import kotlin.time.Clock
@@ -27,10 +29,16 @@ data class ExportOutcome(
     /** Referenced media that no longer exist on disk and therefore could not be archived. */
     val mediaMissing: Int,
     /**
-     * True when the archive write was interrupted midway: the half-written file was deleted and
+     * True when the archive write was interrupted midway: the half-written file was removed and
      * the export fell back to a plain JSON. The UI must surface this rather than a plain success.
      */
     val writeFailed: Boolean = false,
+    /**
+     * True when the plain-JSON fallback could not be written either — [path] then points at a file
+     * that does not exist. Kept separate from [writeFailed] so the message can stop claiming "a
+     * JSON was written instead" when no file landed at all.
+     */
+    val plainJsonWriteFailed: Boolean = false,
 )
 
 /** Result of unpacking an archive's media into the media root. */
@@ -90,14 +98,9 @@ fun jsonSiblingPath(chosenPath: String): String {
     return directory + stem + ".json"
 }
 
-/**
- * Upper bound on media entries unpacked from one archive.
- *
- * A real export is bounded by the user's own media usage; a hand-built archive can hold hundreds of
- * thousands of tiny entries, each of which is read into memory. Ten thousand is far above any
- * legitimate knowledge base and low enough that the work stays bounded.
- */
-private const val MAX_ARCHIVE_ENTRIES = 10_000
+/** Import-side caps: a card image is never legitimately this large, and the sum is the real risk. */
+private const val MAX_IMPORT_MEDIA_BYTES = 64L * 1024 * 1024
+private const val MAX_IMPORT_MEDIA_TOTAL_BYTES = 1024L * 1024 * 1024
 
 /**
  * Unique-enough name for a staging file. Two exports running at once must not overwrite each
@@ -123,8 +126,11 @@ suspend fun packageExport(
 ): ExportOutcome {
     val referenced = LumecardArchive.referencedLocalMedia(cards)
     if (referenced.isEmpty()) {
-        platformWriteFileText(jsonOutputPath, manifestJson)
-        return ExportOutcome(jsonOutputPath, isArchive = false, mediaIncluded = 0, mediaMissing = 0)
+        val ok = platformWriteFileText(jsonOutputPath, manifestJson)
+        return ExportOutcome(
+            jsonOutputPath, isArchive = false, mediaIncluded = 0, mediaMissing = 0,
+            plainJsonWriteFailed = !ok,
+        )
     }
 
     val mediaRoot = getMediaBasePath()
@@ -147,8 +153,11 @@ suspend fun packageExport(
     // Nothing survived: emitting an archive with an empty media/ dir would imply files that are
     // not there, so fall back to the plain JSON and report the misses.
     if (available.isEmpty()) {
-        platformWriteFileText(jsonOutputPath, manifestJson)
-        return ExportOutcome(jsonOutputPath, isArchive = false, mediaIncluded = 0, mediaMissing = missing)
+        val ok = platformWriteFileText(jsonOutputPath, manifestJson)
+        return ExportOutcome(
+            jsonOutputPath, isArchive = false, mediaIncluded = 0, mediaMissing = missing,
+            plainJsonWriteFailed = !ok,
+        )
     }
 
     // Stage the manifest in the app's own cache directory, under a name unique to this call.
@@ -160,23 +169,30 @@ suspend fun packageExport(
     val stagingRoot = platformJoinPath(getApkCacheDir().absolutePath, "export-staging")
     platformMkdirs(stagingRoot)
     val manifestTemp = platformJoinPath(stagingRoot, stagingFileName())
-    platformWriteFileText(manifestTemp, manifestJson)
-    val entries = LumecardArchive.buildEntries(manifestTemp, available)
-    val writtenEntries = LumecardArchive.write(outputPath, entries)
+    // A failed staging write may leave a *partial* file that still looks like a valid source.
+    // Only a confirmed write may become the archive's manifest entry.
+    val staged = platformWriteFileText(manifestTemp, manifestJson)
+    val entries = if (staged) LumecardArchive.buildEntries(manifestTemp, available) else emptyList()
+    val writtenEntries = if (staged) LumecardArchive.write(outputPath, entries) else null
     val manifestWritten = writtenEntries != null &&
         writtenEntries.any { it == LumecardArchive.ENTRY_MANIFEST }
     if (writtenEntries == null || !manifestWritten) {
         // Either the write aborted, or the manifest entry was skipped because the staging file was
         // missing. Both leave an archive without its payload, so treat them identically.
-        platformDeleteFile(outputPath)
+        //
+        // Delete the partial archive only when it is a real path. On Android [jsonSiblingPath]
+        // returns the same `content://` URI, and deleting that document would make the fallback
+        // write target a URI that no longer exists — the user would end up with neither file.
+        if (!isDocumentUri(outputPath)) platformDeleteFile(outputPath)
         platformDeleteFile(manifestTemp)
-        platformWriteFileText(jsonOutputPath, manifestJson)
+        val ok = writeJsonFallback(jsonOutputPath, manifestJson)
         return ExportOutcome(
             jsonOutputPath,
             isArchive = false,
             mediaIncluded = 0,
             mediaMissing = missing,
             writeFailed = true,
+            plainJsonWriteFailed = !ok,
         )
     }
     platformDeleteFile(manifestTemp)
@@ -184,21 +200,44 @@ suspend fun packageExport(
     // Count by entry name: the manifest is always first, so `size - 1` would silently depend on
     // that ordering surviving every write.
     val mediaWritten = writtenEntries.count { it.startsWith(LumecardArchive.MEDIA_DIR) }
+    // A source can disappear between the availability check and the write; `writeZipArchive`
+    // skips it without reporting. Those files are missing from the export just as surely as the
+    // ones that were already absent, so do not let them vanish from the count.
+    val missingAtWrite = (available.size - mediaWritten).coerceAtLeast(0)
     if (mediaWritten == 0) {
         // Media existed a moment ago but none reached the archive (files removed between the
         // availability check and the write). Reporting a plain "success" here would tell the user
         // their images were exported when none were.
-        platformDeleteFile(outputPath)
-        platformWriteFileText(jsonOutputPath, manifestJson)
+        if (!isDocumentUri(outputPath)) platformDeleteFile(outputPath)
+        val ok = writeJsonFallback(jsonOutputPath, manifestJson)
         return ExportOutcome(
             jsonOutputPath,
             isArchive = false,
             mediaIncluded = 0,
-            mediaMissing = missing,
+            mediaMissing = missing + missingAtWrite,
             writeFailed = true,
+            plainJsonWriteFailed = !ok,
         )
     }
-    return ExportOutcome(outputPath, isArchive = true, mediaIncluded = mediaWritten, mediaMissing = missing)
+    return ExportOutcome(
+        outputPath, isArchive = true, mediaIncluded = mediaWritten,
+        mediaMissing = missing + missingAtWrite,
+    )
+}
+
+/**
+ * Write the plain-JSON fallback, reporting whether it actually landed.
+ *
+ * Try the write first: on Android `jsonSiblingPath` hands back the very same `content://` URI and
+ * `openOutputStream(uri, "wt")` truncates in place, which is exactly what replacing a partial
+ * archive needs. Only a plain path can be deleted and retried, which covers the desktop case where
+ * a stale read-only file blocks the write.
+ */
+private fun writeJsonFallback(jsonOutputPath: String, manifestJson: String): Boolean {
+    if (platformWriteFileText(jsonOutputPath, manifestJson)) return true
+    if (isDocumentUri(jsonOutputPath)) return false
+    if (!platformDeleteFile(jsonOutputPath)) return false
+    return platformWriteFileText(jsonOutputPath, manifestJson)
 }
 
 /**
@@ -215,11 +254,13 @@ suspend fun packageExport(
  * @param referencedPaths the local media paths the manifest/cards actually reference. [MediaImportOutcome.missing]
  *   is computed against this list ("referenced but absent from the archive"), not against whatever
  *   the archive happens to contain — an extra, unreferenced entry must not inflate the count.
+ *   Pass `null` only when the caller genuinely does not know what it needs (legacy callers); an
+ *   explicit empty list means "nothing is needed", and nothing is extracted.
  */
 suspend fun importArchiveMedia(
     archivePath: String,
     entryNames: List<String>,
-    referencedPaths: List<String> = emptyList(),
+    referencedPaths: List<String>? = null,
 ): MediaImportOutcome {
     val mediaRoot = getMediaBasePath()
     platformMkdirs(mediaRoot)
@@ -227,43 +268,84 @@ suspend fun importArchiveMedia(
     // Deduplicate: a zip may legally contain the same entry name twice (the second one shadows the
     // first for some readers, the first one wins for others). Processing both would double-count the
     // outcome and, worse, make `written`/`skipped` disagree with what actually landed on disk.
-    val archived = entryNames.mapNotNull { LumecardArchive.mediaPathFromEntry(it) }.distinct()
-    val archivedSet = archived.toSet()
-    val missing = referencedPaths.filter { it !in archivedSet }.size
+    val allArchived = entryNames.mapNotNull { LumecardArchive.mediaPathFromEntry(it) }.distinct()
+    val archivedKeys = allArchived.map { it.trim().lowercase() }.toSet()
+    val referencedKeys = referencedPaths?.map { it.trim().lowercase() }?.toSet()
+    val missing = referencedPaths.orEmpty().count { it.trim().lowercase() !in archivedKeys }
 
-    if (archived.isEmpty()) {
+    // Write to the *manifest* spelling: otherwise the file lands under a name no card references
+    // and the image is silently broken on a case-sensitive filesystem. Match the exact spelling
+    // first; a case-insensitive fallback is only safe when it identifies exactly one manifest name.
+    // Folding every name into one `lowercase` key would silently merge `A.png` and `a.png` (two
+    // distinct files on Linux) and make both cards point at whichever bytes happened to arrive last.
+    val manifestNames = referencedPaths.orEmpty().map { it.trim() }.distinct()
+    val referencedByExact = manifestNames.associateBy { it }
+    val referencedByFolded = manifestNames.groupBy { it.lowercase() }
+
+    // Only files the manifest actually references are written. An archive may legally carry extra
+    // `media/` entries; extracting them would let a small file fill the disk with data no card
+    // can ever use, and nothing would clean it up afterwards.
+    val referencedOnly = if (referencedKeys == null) {
+        allArchived
+    } else {
+        allArchived.filter { it.trim().lowercase() in referencedKeys }
+    }
+
+    if (referencedOnly.isEmpty()) {
         return MediaImportOutcome(written = 0, skipped = 0, missing = missing)
     }
 
     // Cap the work an archive can demand. Every entry is read into memory, so an archive with
     // hundreds of thousands of tiny entries would otherwise be a cheap denial of service; the
     // overflow is reported as failed rather than silently ignored.
-    val accepted = if (archived.size <= MAX_ARCHIVE_ENTRIES) {
-        archived
+    val accepted = if (referencedOnly.size <= MAX_ARCHIVE_ENTRIES) {
+        referencedOnly
     } else {
-        archived.take(MAX_ARCHIVE_ENTRIES)
+        referencedOnly.take(MAX_ARCHIVE_ENTRIES)
     }
-    val overflow = archived.size - accepted.size
+    val overflow = referencedOnly.size - accepted.size
 
     var written = 0
     var skipped = 0
     var failed = overflow
+    var bytesWritten = 0L
     val renamed = mutableMapOf<String, String>()
     val newlyWritten = mutableListOf<String>()
 
     // One pass over the archive instead of one read per entry: on Android the archive is a
     // `content://` stream with no random access, so per-entry reads would rescan it N times.
+    //
+    // Both budgets go down into the reader. The returned map is fully resident in memory, so
+    // checking the total afterwards would mean allocating up to `entries × 64 MB` (10 000 × 64 MB)
+    // before rejecting it — the check has to happen while reading, not after.
     val wanted = accepted.map { LumecardArchive.mediaEntryName(it) }.toSet()
-    val payloads = readZipArchiveEntries(archivePath, wanted, LumecardArchive.MAX_MEDIA_BYTES)
-        ?: emptyMap()
+    val payloads = readZipArchiveEntries(
+        archivePath,
+        wanted,
+        MAX_IMPORT_MEDIA_BYTES,
+        MAX_IMPORT_MEDIA_TOTAL_BYTES,
+    ) ?: emptyMap()
 
-    for (relativePath in accepted) {
-        val bytes = payloads[LumecardArchive.mediaEntryName(relativePath)]
+    for (archivedPath in accepted) {
+        val bytes = payloads[LumecardArchive.mediaEntryName(archivedPath)]
         if (bytes == null) {
             // Present in the entry list but unreadable: the file did not land on disk.
             failed++
             continue
         }
+        // A second, independent budget: entry count alone cannot bound total footprint because a
+        // single entry may be megabytes. Kept as a belt-and-braces check next to the reader's own.
+        if (bytesWritten + bytes.size > MAX_IMPORT_MEDIA_TOTAL_BYTES) {
+            failed++
+            continue
+        }
+        // Land the file under the spelling the manifest uses, not the archive's. An ambiguous
+        // case-only match cannot be resolved without guessing, so keep the archive's own spelling
+        // rather than merging two different files into one.
+        val trimmedArchived = archivedPath.trim()
+        val relativePath = referencedByExact[trimmedArchived]
+            ?: referencedByFolded[trimmedArchived.lowercase()]?.singleOrNull()
+            ?: archivedPath
         val target = try {
             resolveMediaFilePath(mediaRoot, relativePath)
         } catch (_: Exception) {
@@ -279,6 +361,12 @@ suspend fun importArchiveMedia(
             }
             // Same name, different content: keep both rather than overwriting the user's file.
             val uniquePath = uniqueMediaPath(relativePath, bytes, mediaRoot)
+            if (uniquePath == null) {
+                // Every collision-free candidate is occupied: never fall back to a name that could
+                // overwrite the existing file. Report the entry as failed instead.
+                failed++
+                continue
+            }
             val uniqueTarget = try {
                 resolveMediaFilePath(mediaRoot, uniquePath)
             } catch (_: Exception) {
@@ -289,6 +377,7 @@ suspend fun importArchiveMedia(
                 writeMediaFileAtomically(uniqueTarget, bytes)
                 renamed[relativePath] = uniquePath
                 newlyWritten.add(uniquePath)
+                bytesWritten += bytes.size
                 written++
             } catch (_: Exception) {
                 // Unwritable target: counted as failed, never as "missing from the archive".
@@ -300,11 +389,22 @@ suspend fun importArchiveMedia(
         try {
             writeMediaFileAtomically(target, bytes)
             newlyWritten.add(relativePath)
+            bytesWritten += bytes.size
             written++
         } catch (_: Exception) {
             failed++
         }
     }
+
+    // Several manifest spellings may differ only by case. Downstream lookups allow a
+    // case-insensitive fallback, which would point the card that kept its own name at a
+    // *different* file after its case twin was renamed. Pin an identity entry for every
+    // such spelling that was not renamed, so exact matching wins for those cards.
+    manifestNames.groupBy { it.lowercase() }
+        .values
+        .filter { it.size > 1 }
+        .flatten()
+        .forEach { name -> renamed.putIfAbsent(name, name) }
 
     return MediaImportOutcome(
         written = written,
@@ -326,26 +426,34 @@ fun resolveRenamedPath(renamed: Map<String, String>, filePath: String): String? 
     val trimmed = filePath.trim()
     renamed[trimmed]?.let { return it }
     val lower = trimmed.lowercase()
-    return renamed.entries.firstOrNull { it.key.trim().lowercase() == lower }?.value
+    // Several case-only keys can mean different files; picking the first would silently repoint a
+    // card at the wrong image. Match the new export builder's behaviour: only a unique candidate.
+    return renamed.entries.groupBy { it.key.trim().lowercase() }[lower]?.singleOrNull()?.value
 }
 
-/** Derive a non-colliding media name: `<stem>_<shorthash>.<ext>`. */
-private fun uniqueMediaPath(relativePath: String, bytes: ByteArray, mediaRoot: String): String {
+/** Derive a non-colliding media name: `<stem>_<shorthash>.<ext>`, or null when all candidates are taken. */
+private fun uniqueMediaPath(relativePath: String, bytes: ByteArray, mediaRoot: String): String? {
     val dot = relativePath.lastIndexOf('.')
     val stem = if (dot > 0) relativePath.substring(0, dot) else relativePath
     val extension = if (dot > 0) relativePath.substring(dot) else ""
     val shortHash = hashBytesSha1(bytes).take(8)
-    var candidate = "${stem}_$shortHash$extension"
-    var attempt = 2
-    while (true) {
+
+    // The suffix makes the name longer. A stem already at the segment limit therefore produces a
+    // path the validator rejects — and that rejection happens *after* the row is written, surfacing
+    // as an unrelated INVALID_ID for the whole import. Offer a short flat name as the last resort.
+    val candidates = buildList {
+        add("${stem}_$shortHash$extension")
+        for (attempt in 2..100) add("${stem}_${shortHash}_$attempt$extension")
+        add("$shortHash$extension")
+    }
+    for (candidate in candidates) {
+        if (!MediaPathRules.isSafeRelativePath(candidate)) continue
         val absolute = try {
             resolveMediaFilePath(mediaRoot, candidate)
         } catch (_: Exception) {
-            return candidate
+            continue
         }
         if (!platformIsFile(absolute)) return candidate
-        candidate = "${stem}_${shortHash}_$attempt$extension"
-        attempt++
-        if (attempt > 100) return candidate
     }
+    return null
 }

@@ -183,6 +183,11 @@ class ExportManager {
     private val json = Json {
         prettyPrint = true
         ignoreUnknownKeys = true
+        // Write discriminators explicitly. Without this a share export omits
+        // `"exportType": "share"`, and any reader that decodes it as DataExport falls back to
+        // its own `"backup"` default — which is exactly how a content-only share file can be
+        // mistaken for a destructive full-backup source.
+        encodeDefaults = true
     }
 
     private fun exportKbs(kbs: List<KnowledgeBase>) = kbs.map { kb ->

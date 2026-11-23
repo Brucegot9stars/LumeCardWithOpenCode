@@ -74,10 +74,80 @@ class LearningPlanMutationService(
     /** Invoked by content repositories before their enclosing transaction commits. */
     internal fun contentChanged() = reviewService.reconcileAllInCurrentTransaction()
 
+    /**
+     * Re-point learning plans at the freshly copied objects, then recompute every plan.
+     *
+     * Learning plans store member ids as JSON arrays with no foreign keys, so a scoped import that
+     * overwrites a knowledge base / deck / card must **transfer** membership, not just drop it:
+     * filtering alone would empty a user's plan on every overwrite. Ids with a replacement are
+     * rewritten to the new id; ids that genuinely disappeared are scrubbed.
+     *
+     * Runs as a joinable transaction, so it works both standalone and inside the importer's
+     * transaction, and the recompute always sees the final rows.
+     *
+     * @return number of plans whose id arrays were rewritten.
+     */
+    internal fun contentReplaced(
+        knowledgeBaseIdMap: Map<String, String> = emptyMap(),
+        deckIdMap: Map<String, String> = emptyMap(),
+        cardIdMap: Map<String, String> = emptyMap(),
+        deletedKnowledgeBaseIds: Set<String> = emptySet(),
+        deletedDeckIds: Set<String> = emptySet(),
+        deletedCardIds: Set<String> = emptySet(),
+    ): Int = database.transactionWithResult(noEnclosing = false) {
+        val now = Clock.System.now().toString()
+        var scrubbed = 0
+        queries.selectAllLearningPlans().executeAsList().forEach { plan ->
+            val kbIds = decodeIds(plan.knowledge_base_ids)
+            val deckIds = decodeIds(plan.deck_ids)
+            val cardIds = decodeIds(plan.card_ids)
+            val newKbIds = remap(kbIds, knowledgeBaseIdMap, deletedKnowledgeBaseIds)
+            val newDeckIds = remap(deckIds, deckIdMap, deletedDeckIds)
+            val newCardIds = remap(cardIds, cardIdMap, deletedCardIds)
+            if (newKbIds != kbIds || newDeckIds != deckIds || newCardIds != cardIds) {
+                queries.updateLearningPlan(
+                    plan.name, plan.description, plan.status, plan.is_default,
+                    json.encodeToString(newKbIds), json.encodeToString(newDeckIds),
+                    json.encodeToString(newCardIds), plan.total_cards, plan.completed_cards,
+                    now, plan.deleted_at, null, plan.id,
+                )
+                scrubbed++
+            }
+        }
+        contentChanged()
+        scrubbed
+    }
+
+    /** A corrupt array must not abort an import: treat it as empty and leave the row untouched. */
+    private fun decodeIds(raw: String?): List<String> = try {
+        json.decodeFromString<List<String>>(raw ?: "[]")
+    } catch (_: Exception) {
+        emptyList()
+    }
+
+    /** Replace-then-scrub, preserving order and dropping duplicates introduced by a merge. */
+    private fun remap(
+        ids: List<String>,
+        replacements: Map<String, String>,
+        deleted: Set<String>,
+    ): List<String> {
+        if (replacements.isEmpty() && deleted.isEmpty()) return ids
+        val result = LinkedHashSet<String>(ids.size)
+        for (id in ids) {
+            val replacement = replacements[id]
+            when {
+                replacement != null -> result += replacement
+                id in deleted -> Unit
+                else -> result += id
+            }
+        }
+        return result.toList()
+    }
+
     internal fun deckDeleted(deckId: String) {
         val now = Clock.System.now()
         queries.selectAllLearningPlans().executeAsList().forEach { plan ->
-            val ids = json.decodeFromString<List<String>>(plan.deck_ids ?: "[]")
+            val ids = decodeIds(plan.deck_ids)
             if (deckId in ids) updateRawPlan(plan, deckIds = ids - deckId, updatedAt = now.toString())
         }
         contentChanged()
@@ -88,8 +158,10 @@ class LearningPlanMutationService(
         val deletedDeckIds = queries.selectBackupDecks().executeAsList()
             .filter { it.knowledge_base_id == kbId }.map { it.id }.toSet()
         queries.selectAllLearningPlans().executeAsList().forEach { plan ->
-            val ids = json.decodeFromString<List<String>>(plan.knowledge_base_ids ?: "[]")
-            val deckIds = json.decodeFromString<List<String>>(plan.deck_ids ?: "[]")
+            // decodeIds(), not a bare decode: one corrupt row must not make every subsequent deck
+            // or knowledge-base deletion throw, which is what a raw decodeFromString does here.
+            val ids = decodeIds(plan.knowledge_base_ids)
+            val deckIds = decodeIds(plan.deck_ids)
             if (kbId in ids || deckIds.any { it in deletedDeckIds }) {
                 updateRawPlan(plan, knowledgeBaseIds = ids - kbId,
                     deckIds = deckIds.filterNot { it in deletedDeckIds }, updatedAt = now.toString())

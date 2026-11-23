@@ -31,6 +31,8 @@ import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.lumecard.app.i18n.I18nManager
+import com.lumecard.app.data.ObjectExportOutcome
+import com.lumecard.app.data.ObjectTransferFacade
 import com.lumecard.app.ui.components.ConfirmOperationDialog
 import com.lumecard.app.ui.components.EmojiPickerField
 import com.lumecard.app.ui.components.LumeCardDialog
@@ -41,6 +43,7 @@ import com.lumecard.app.ui.screens.deck.DeckListScreen
 import com.lumecard.app.ui.theme.LumeCardTheme
 import com.lumecard.shared.data.EntityMergeManager
 import com.lumecard.shared.data.EntityOperationType
+import com.lumecard.shared.data.ObjectType
 import com.lumecard.shared.model.KnowledgeBase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -65,9 +68,12 @@ class KnowledgeBaseScreen : Screen {
         val scope = rememberCoroutineScope()
         val mergeManager: EntityMergeManager = koinInject()
         val confirmManager: OperationConfirmationManager = koinInject()
+        val objectTransferFacade: ObjectTransferFacade = koinInject()
         var showCreateDialog by remember { mutableStateOf(false) }
         var editingKb by remember { mutableStateOf<KnowledgeBase?>(null) }
         var deleteConfirmId by remember { mutableStateOf<String?>(null) }
+        var exportResultMessage by remember { mutableStateOf<String?>(null) }
+        var exporting by remember { mutableStateOf(false) }
 
         // Drag state
         var draggedKbId by remember { mutableStateOf<String?>(null) }
@@ -254,6 +260,32 @@ class KnowledgeBaseScreen : Screen {
                                     }
                                 }
                                 if (draggedKbId == null) {
+                                    IconButton(
+                                        enabled = !exporting,
+                                        onClick = {
+                                            if (!exporting) {
+                                                exporting = true
+                                                scope.launch {
+                                                    try {
+                                                        when (val outcome = objectTransferFacade.export(
+                                                            ObjectType.KNOWLEDGE_BASE, listOf(kb.id)
+                                                        )) {
+                                                            is ObjectExportOutcome.Success ->
+                                                                exportResultMessage = outcome.message
+                                                            is ObjectExportOutcome.Failure ->
+                                                                exportResultMessage = outcome.message
+                                                            ObjectExportOutcome.Cancelled -> Unit
+                                                        }
+                                                    } finally {
+                                                        exporting = false
+                                                    }
+                                                }
+                                            }
+                                        },
+                                    ) {
+                                        Icon(Icons.Default.Share, contentDescription = strings.objectTransferExportAction,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
                                     IconButton(onClick = { editingKb = kb }) {
                                         Icon(Icons.Default.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
@@ -318,6 +350,20 @@ class KnowledgeBaseScreen : Screen {
                 text = { Text(mergeResultMessage ?: "") },
                 confirmButton = {
                     TextButton(onClick = { mergeResultMessage = null }) {
+                        Text(strings.actionOk)
+                    }
+                },
+            )
+        }
+
+        // Scoped export result dialog
+        if (exportResultMessage != null) {
+            AlertDialog(
+                onDismissRequest = { exportResultMessage = null },
+                title = { Text(strings.objectTransferResultTitle) },
+                text = { Text(exportResultMessage ?: "") },
+                confirmButton = {
+                    TextButton(onClick = { exportResultMessage = null }) {
                         Text(strings.actionOk)
                     }
                 },

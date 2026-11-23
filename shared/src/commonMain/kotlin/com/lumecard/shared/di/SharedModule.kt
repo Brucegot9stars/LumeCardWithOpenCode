@@ -2,6 +2,7 @@ package com.lumecard.shared.di
 
 import com.lumecard.shared.data.AiCardGenerator
 import com.lumecard.shared.data.BackupRestoreService
+import com.lumecard.shared.data.ObjectImportService
 import com.lumecard.shared.data.ReviewService
 import com.lumecard.shared.data.LearningPlanMutationService
 import com.lumecard.shared.data.AiCardPromptManager
@@ -67,6 +68,7 @@ val sharedModule = module {
     single { BackupRestoreService(get()) }
     single { ReviewService(get(), get()) }
     single { LearningPlanMutationService(get(), get()) }
+    single { ObjectImportService(get(), get()) }
 
     // Demo data
     single { DemoDataManager(get(), get(), get(), get()) }

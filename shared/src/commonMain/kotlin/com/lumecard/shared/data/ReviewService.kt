@@ -99,19 +99,35 @@ class ReviewService(private val database: LumeCardDatabase, fsrs: FSRSAlgorithm)
         return algorithms.getValue(mode)
     }
 
+    /**
+     * Parse a plan's id array defensively.
+     *
+     * A single malformed row (hand-edited backup, data from an older version) used to throw from a
+     * bare `decodeFromString` and abort *every* progress recalculation, i.e. all review writes and
+     * all imports. A corrupt plan must degrade to "empty selection" instead.
+     */
+    private fun decodePlanIds(raw: String?): List<String> = try {
+        json.decodeFromString<List<String>>(raw ?: "[]")
+    } catch (_: Exception) {
+        emptyList()
+    }
+
     private fun refreshPlans(now: Instant, cardId: String? = null, planId: String? = null) {
         val plans = queries.selectAllLearningPlans().executeAsList()
             .filter { planId == null || it.id == planId }
         if (plans.isEmpty()) return
         val cards = queries.selectAllCards().executeAsList().map { PlanCardRef(it.id, it.deck_id) }
         val decks = queries.selectAllDecks().executeAsList().map { PlanDeckRef(it.id, it.knowledge_base_id) }
+        // Built once for the whole batch. `LearningPlanCardResolver.cardIds` used to rebuild this
+        // map per plan, which made every review write O(plans × decks) at the 20 000-deck cap.
+        val resolver = LearningPlanCardResolver.Scoped(decks)
         val membersByPlan = plans.mapNotNull { plan ->
             val selection = PlanSelection(
-                json.decodeFromString(plan.knowledge_base_ids ?: "[]"),
-                json.decodeFromString(plan.deck_ids ?: "[]"),
-                json.decodeFromString(plan.card_ids ?: "[]"),
+                decodePlanIds(plan.knowledge_base_ids),
+                decodePlanIds(plan.deck_ids),
+                decodePlanIds(plan.card_ids),
             )
-            val members = LearningPlanCardResolver.cardIds(selection, cards, decks)
+            val members = resolver.cardIds(selection, cards)
             if (cardId != null && cardId !in members) null else plan to members
         }
         if (membersByPlan.isEmpty()) return

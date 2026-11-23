@@ -839,4 +839,88 @@ interface I18nStrings {
     val cardImageAlignEnd: String get() = "Right"
     val cardImageCompress: String get() = "Compress"
     val cardImageCompressHint: String get() = "Shrink images over 2048px on import"
+
+    // ── Object-scoped export / import (defaults are English; each locale overrides below) ──
+    val objectTransferTitle: String get() = "Import by object"
+    val objectTransferEntry: String get() = "Import by object"
+    val objectTransferEntryDesc: String get() = "Import a single knowledge base, deck or card"
+    val objectTransferPickFile: String get() = "Choose a file"
+    val objectTransferRepick: String get() = "Choose another file"
+    val objectTransferFileType: String get() = "File type"
+    val objectTransferObjectName: String get() = "Object"
+    val objectTransferFullRejected: String get() = "This is a full export. Use the regular Import button in Settings."
+    val objectTransferConflictTitle: String get() = "Name conflict"
+    val objectTransferConflictOverwrite: String get() = "Overwrite the existing object"
+    val objectTransferConflictKeepBoth: String get() = "Keep both (auto-rename)"
+    val objectTransferDuplicateTitle: String get() = "Duplicate cards (type + front/back)"
+    val objectTransferDuplicateOverwrite: String get() = "Overwrite duplicates"
+    val objectTransferDuplicateKeepBoth: String get() = "Keep both"
+    val objectTransferDuplicateSkip: String get() = "Skip duplicates"
+    val objectTransferTargetKb: String get() = "Target knowledge base"
+    val objectTransferTargetDeck: String get() = "Target deck"
+    val objectTransferCreateKb: String get() = "Create a new knowledge base"
+    val objectTransferCreateDeck: String get() = "Create a new deck"
+    val objectTransferNewKbName: String get() = "New knowledge base name"
+    val objectTransferNewDeckName: String get() = "New deck name"
+    val objectTransferNoKb: String get() = "No knowledge base exists yet — create one below."
+    val objectTransferStart: String get() = "Import"
+    val objectTransferBusy: String get() = "Importing…"
+    val objectTransferExportAction: String get() = "Export this object"
+    val objectTransferResultTitle: String get() = "Result"
+    val objectTransferConfirmTitle: String get() = "Confirm overwrite"
+    val objectTransferConfirmOverwrite: String get() = "Overwrite"
+
+    fun objectTransferExportSuccess(name: String, path: String): String = "Exported \"$name\" to $path"
+    fun objectTransferExportFailed(reason: String): String = "Export failed: $reason"
+    fun objectTransferImportFailed(reason: String): String = "Import failed: $reason"
+    // Counts use a "label: n" shape on purpose: the interface has no plural rules, so
+    // "$n card(s)" is the only alternative and it reads as a bug in the UI.
+    fun objectTransferImportSuccess(kb: Int, deck: Int, card: Int): String =
+        "Imported — knowledge bases: $kb, decks: $deck, cards: $card"
+    fun objectTransferSkipped(count: Int): String = "Duplicate cards skipped: $count"
+    fun objectTransferRenamed(count: Int): String = "Objects auto-renamed: $count"
+    fun objectTransferUnusedMediaRemoved(count: Int): String =
+        "Unused files from this import removed: $count"
+    fun objectTransferNonImageSkipped(count: Int): String =
+        "Audio/video/attachment files not included in exports: $count"
+    fun objectTransferMediaFailed(count: Int): String = "Media files that could not be written: $count"
+    fun objectTransferPlansScrubbed(count: Int): String = "Learning plans updated: $count"
+    fun objectTransferDeleted(kb: Int, deck: Int, card: Int): String =
+        "Removed — knowledge bases: $kb, decks: $deck, cards: $card"
+    fun objectTransferMediaMissing(count: Int): String =
+        "Referenced images missing from the file: $count"
+    fun objectTransferExportMediaMissing(count: Int): String =
+        "Images not stored locally (not included): $count"
+    fun objectTransferRollbackIncomplete(count: Int): String =
+        "Imported files that could not be cleaned up: $count"
+    fun objectTransferPlanWillDelete(kb: Int, deck: Int, card: Int): String =
+        "Overwriting removes — knowledge bases: $kb, decks: $deck, cards: $card. Continue?"
+
+    fun objectTransferTypeLabel(type: String): String = when (type) {
+        "knowledgeBase" -> "Knowledge base"
+        "deck" -> "Deck"
+        "card" -> "Card"
+        else -> "Full export"
+    }
+
+    fun objectTransferErrorLabel(code: String): String = when (code) {
+        "EMPTY_ROOT" -> "No object was selected"
+        "UNKNOWN_OBJECT_TYPE" -> "Unknown object type"
+        "INVALID_JSON" -> "Invalid JSON"
+        "UNSUPPORTED_SCHEMA" -> "Unsupported file version"
+        "EMPTY_PAYLOAD" -> "The file contains no importable data"
+        "INVALID_ID" -> "The file contains a broken reference"
+        "INVALID_TIMESTAMP" -> "The file contains an invalid timestamp"
+        "INVALID_CARD_TYPE" -> "The file contains an unknown card type"
+        "DUPLICATE_ID" -> "The file contains duplicate IDs"
+        "DECK_CYCLE" -> "The file contains a deck parent cycle"
+        "PAYLOAD_TOO_LARGE" -> "The file is too large"
+        "TARGET_REQUIRED" -> "Choose a target first"
+        "TARGET_NOT_FOUND" -> "The chosen target no longer exists"
+        "TARGET_DECK_MISMATCH" -> "The chosen deck does not belong to the target"
+        "NO_KNOWLEDGE_BASE" -> "Create a knowledge base first"
+        "READ_FAILED" -> "Could not read the file"
+        "WRITE_FAILED" -> "Could not write the file"
+        else -> code
+    }
 }

@@ -814,4 +814,7 @@ object EnStrings : I18nStrings {
     override val cardImageAlignEnd = "Right"
     override val cardImageCompress = "Compress"
     override val cardImageCompressHint = "Shrink images over 2048px on import"
+
+    // Object-scoped export/import strings intentionally inherit the English defaults declared on
+    // I18nStrings. This note keeps a future edit from mistaking that for a missing translation.
 }

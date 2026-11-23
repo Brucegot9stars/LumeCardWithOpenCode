@@ -814,4 +814,84 @@ object JaStrings : I18nStrings {
     override val cardImageAlignEnd = "右寄せ"
     override val cardImageCompress = "圧縮"
     override val cardImageCompressHint = "読み込み時に 2048 ピクセルを超える画像を縮小します"
+
+    // 単一オブジェクトのエクスポート / オブジェクト種別ごとの読み込み
+    override val objectTransferTitle = "オブジェクト単位でインポート"
+    override val objectTransferEntry = "オブジェクト単位でインポート"
+    override val objectTransferEntryDesc = "単一のナレッジベース・デッキ・カードをインポートします"
+    override val objectTransferPickFile = "ファイルを選択"
+    override val objectTransferRepick = "別のファイルを選択"
+    override val objectTransferFileType = "ファイル種別"
+    override val objectTransferObjectName = "オブジェクト"
+    override val objectTransferFullRejected = "これは全量エクスポートです。設定画面の「データをインポート」を使用してください。"
+    override val objectTransferConflictTitle = "名前の重複"
+    override val objectTransferConflictOverwrite = "既存のオブジェクトを上書き"
+    override val objectTransferConflictKeepBoth = "両方残す（自動改名）"
+    override val objectTransferDuplicateTitle = "重複カード（種類 + 表裏の内容）"
+    override val objectTransferDuplicateOverwrite = "重複カードを上書き"
+    override val objectTransferDuplicateKeepBoth = "両方残す"
+    override val objectTransferDuplicateSkip = "重複カードをスキップ"
+    override val objectTransferTargetKb = "対象ナレッジベース"
+    override val objectTransferTargetDeck = "対象デッキ"
+    override val objectTransferCreateKb = "新しいナレッジベースを作成"
+    override val objectTransferCreateDeck = "新しいデッキを作成"
+    override val objectTransferNewKbName = "新しいナレッジベース名"
+    override val objectTransferNewDeckName = "新しいデッキ名"
+    override val objectTransferNoKb = "ナレッジベースがまだありません。下で作成してください。"
+    override val objectTransferStart = "インポート"
+    override val objectTransferBusy = "インポート中…"
+    override val objectTransferExportAction = "このオブジェクトをエクスポート"
+    override val objectTransferResultTitle = "結果"
+    override val objectTransferConfirmTitle = "上書きの確認"
+    override val objectTransferConfirmOverwrite = "上書き"
+
+    // 助数詞を統一：カード・画像は「枚」、ナレッジベース・デッキ・ファイル・計画は「件」。
+    override fun objectTransferExportSuccess(name: String, path: String): String = "「$name」を $path にエクスポートしました"
+    override fun objectTransferExportFailed(reason: String): String = "エクスポート失敗：$reason"
+    override fun objectTransferImportFailed(reason: String): String = "インポート失敗：$reason"
+    override fun objectTransferImportSuccess(kb: Int, deck: Int, card: Int): String = "インポート完了：ナレッジベース $kb 件、デッキ $deck 件、カード $card 枚"
+    override fun objectTransferSkipped(count: Int): String = "重複カード $count 枚をスキップしました"
+    override fun objectTransferRenamed(count: Int): String = "$count 件のオブジェクトを自動改名しました"
+    override fun objectTransferUnusedMediaRemoved(count: Int): String = "今回のインポートで不要になった $count 件のファイルを削除しました"
+    override fun objectTransferNonImageSkipped(count: Int): String = "$count 件の音声・動画・添付ファイルはエクスポートに含まれません"
+    override fun objectTransferMediaFailed(count: Int): String = "$count 件のメディアを書き込めませんでした"
+    override fun objectTransferPlansScrubbed(count: Int): String = "$count 件の学習計画を更新しました"
+    override fun objectTransferDeleted(kb: Int, deck: Int, card: Int): String =
+        "$kb 件のナレッジベース、$deck 件のデッキ、$card 枚のカードを削除しました"
+    override fun objectTransferMediaMissing(count: Int): String =
+        "$count 枚の参照画像がファイルに含まれていません"
+    override fun objectTransferExportMediaMissing(count: Int): String =
+        "$count 枚の画像がローカルにないためエクスポートに含まれていません"
+    override fun objectTransferRollbackIncomplete(count: Int): String =
+        "$count 件のインポート済みファイルを削除できませんでした"
+    override fun objectTransferPlanWillDelete(kb: Int, deck: Int, card: Int): String =
+        "上書きすると $kb 件のナレッジベース、$deck 件のデッキ、$card 枚のカードが削除されます。続行しますか？"
+
+    override fun objectTransferTypeLabel(type: String): String = when (type) {
+        "knowledgeBase" -> "ナレッジベース"
+        "deck" -> "デッキ"
+        "card" -> "カード"
+        else -> "全量エクスポート"
+    }
+
+    override fun objectTransferErrorLabel(code: String): String = when (code) {
+        "EMPTY_ROOT" -> "オブジェクトが選択されていません"
+        "UNKNOWN_OBJECT_TYPE" -> "不明なオブジェクト種別です"
+        "INVALID_JSON" -> "JSON が不正です"
+        "UNSUPPORTED_SCHEMA" -> "対応していないファイル形式です"
+        "EMPTY_PAYLOAD" -> "読み込めるデータがありません"
+        "INVALID_ID" -> "参照が壊れています"
+        "INVALID_TIMESTAMP" -> "タイムスタンプが不正です"
+        "INVALID_CARD_TYPE" -> "不明なカード種別です"
+        "DUPLICATE_ID" -> "ID が重複しています"
+        "DECK_CYCLE" -> "デッキの親子関係に循環があります"
+        "PAYLOAD_TOO_LARGE" -> "データ量が大きすぎます"
+        "TARGET_REQUIRED" -> "対象を選択してください"
+        "TARGET_NOT_FOUND" -> "選択した対象が見つかりません"
+        "TARGET_DECK_MISMATCH" -> "選択したデッキが対象に属していません"
+        "NO_KNOWLEDGE_BASE" -> "先にナレッジベースを作成してください"
+        "READ_FAILED" -> "ファイルを読み込めませんでした"
+        "WRITE_FAILED" -> "ファイルを書き込めませんでした"
+        else -> code
+    }
 }

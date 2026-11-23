@@ -89,3 +89,12 @@ sqldelight {
         }
     }
 }
+
+// Timing-sensitive scaling benchmark. Opt in per run:
+//   ./gradlew :shared:desktopTest -PrunScaleBenchmark=true --tests "*ObjectImportPlannerBenchmark"
+// Default runs keep it as a no-op so shared CI is not exposed to wall-clock flakiness.
+// Kotlin/JVM test tasks are not `org.gradle.api.tasks.testing.Test`, so the property is set on the
+// concrete KMP type instead of withType<Test>().
+tasks.withType<org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest>().configureEach {
+    systemProperty("runScaleBenchmark", (findProperty("runScaleBenchmark") as String?) ?: "false")
+}

@@ -3,6 +3,7 @@ package com.lumecard.app.data
 import com.lumecard.app.platform.listZipArchive
 import com.lumecard.app.platform.readZipArchiveEntry
 import com.lumecard.app.platform.writeZipArchive
+import com.lumecard.shared.data.MediaPathRules
 import com.lumecard.shared.model.Card
 import com.lumecard.shared.model.MediaType
 
@@ -40,7 +41,7 @@ object LumecardArchive {
      */
     private const val MAX_MANIFEST_BYTES = 64L * 1024 * 1024
 
-    /** Per-file cap for archived media, matching the loader's own download guard. */
+    /** Cap for diagnostic `readMedia()` calls. The import path uses 64 MB per file / 1 GB total in `ExportArchiveService`. */
     const val MAX_MEDIA_BYTES = 512L * 1024 * 1024
 
     /**
@@ -95,20 +96,11 @@ object LumecardArchive {
         return isSafeMediaRelativePath(path)
     }
 
-    /** Reject any path that could escape the media root once joined to it. */
-    fun isSafeMediaRelativePath(path: String): Boolean {
-        if (path.isBlank()) return false
-        if (path.any { it.code < 32 }) return false
-        if (path.contains('\\')) return false
-        // A drive prefix makes the name absolute on Windows, and `File(parent, child)` silently
-        // drops the parent for an absolute child. `resolveMediaFilePath` would still catch it via
-        // the canonical-path check, but rejecting it here keeps the guarantee local to the format
-        // rules instead of depending on a downstream call staying in place.
-        if (Regex("^[A-Za-z]:").containsMatchIn(path)) return false
-        return path.split('/').all { segment ->
-            segment.isNotEmpty() && segment != "." && segment != ".."
-        }
-    }
+    /**
+     * Reject any path that could escape the media root once joined to it. Delegates to the shared
+     * rules so export validation, archiving and orphan cleanup cannot drift apart again.
+     */
+    fun isSafeMediaRelativePath(path: String): Boolean = MediaPathRules.isSafeRelativePath(path)
 
     /** Media entry name for an archive-relative media path. */
     fun mediaEntryName(relativePath: String): String = MEDIA_DIR + relativePath
