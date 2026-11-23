@@ -15,7 +15,26 @@ package com.lumecard.app.platform
  */
 expect suspend fun writeZipArchive(outputPath: String, entries: List<Pair<String, String>>): List<String>?
 
-/** Read the entry names of a zip archive. Returns null when the file is missing or not a zip. */
+/**
+ * Hard cap on the entry names one archive may expose.
+ *
+ * Listing happens *before* the importer can filter down to the media it needs, so a hand-built
+ * archive with millions of tiny entries would otherwise be fully materialised on both platforms.
+ * Ten thousand is the *import-side* budget for referenced media. Listing has its own, larger cap:
+ * [MAX_ARCHIVE_LIST_ENTRIES] counts every non-directory entry (manifest and extras included), and
+ * `listZipArchive` returns null past it, which the loader reports as a read failure.
+ */
+const val MAX_ARCHIVE_ENTRIES = 10_000
+
+/**
+ * The listing cap counts *all* non-directory entries, while the importer's cap counts only media
+ * the manifest references. A legal archive may therefore carry [MAX_ARCHIVE_ENTRIES] referenced
+ * media plus the manifest and arbitrary extra files. Allow twice the media budget here: still
+ * bounded (a few tens of thousands of names), but no boundary-case rejection of a valid export.
+ */
+internal const val MAX_ARCHIVE_LIST_ENTRIES = MAX_ARCHIVE_ENTRIES * 2
+
+/** Read the entry names of a zip archive. Returns null when the file is missing, not a zip, or over [MAX_ARCHIVE_LIST_ENTRIES]. */
 expect suspend fun listZipArchive(archivePath: String): List<String>?
 
 /**
@@ -32,14 +51,19 @@ expect suspend fun readZipArchiveEntry(archivePath: String, entryPath: String, m
 /**
  * Read several entries in one pass.
  *
- * Entries are only held in the returned map when they exist and fit under [maxBytes]; everything
- * else is simply absent. This exists because Android archives arrive through a `content://` URI,
- * which has no random access — one call here replaces N full scans of the same stream.
+ * Entries are only held in the returned map when they exist, fit under [maxBytes] **and** the
+ * running total of everything already held stays under [maxTotalBytes]. Both budgets are enforced
+ * while reading, not afterwards, because the whole map is resident in memory: `entries × maxBytes`
+ * (10 000 × 64 MB) would be allocated in full before any caller could check the total.
+ *
+ * This exists because Android archives arrive through a `content://` URI, which has no random
+ * access — one call here replaces N full scans of the same stream.
  */
 expect suspend fun readZipArchiveEntries(
     archivePath: String,
     entryPaths: Set<String>,
     maxBytes: Long = 512L * 1024 * 1024,
+    maxTotalBytes: Long = Long.MAX_VALUE,
 ): Map<String, ByteArray>?
 
 /**

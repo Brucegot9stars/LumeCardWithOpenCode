@@ -81,23 +81,31 @@ actual fun platformReadFileText(path: String): String? = try {
     File(path).readText()
 } catch (_: Exception) { null }
 
-actual fun platformWriteFileText(path: String, text: String) {
+actual fun platformWriteFileText(path: String, text: String): Boolean {
     if (!isUriPath(path)) {
-        File(path).writeText(text)
-        return
+        return try {
+            File(path).writeText(text)
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
-    try {
+    return try {
         val uri = Uri.parse(path)
         if (uri.scheme == "file") {
-            File(uri.path ?: return).writeText(text)
+            val filePath = uri.path ?: return false
+            File(filePath).writeText(text)
+            true
         } else {
-            // "wt" truncates instead of appending, which is what a save-to-URI needs.
-            AndroidContextHolder.context.contentResolver.openOutputStream(uri, "wt")?.use {
-                it.write(text.toByteArray(Charsets.UTF_8))
-            }
+            // "wt" truncates instead of appending, which is what a save-to-URI needs. A null stream
+            // means the provider refused the document — that is a failure, not a silent no-op.
+            val stream = AndroidContextHolder.context.contentResolver.openOutputStream(uri, "wt")
+                ?: return false
+            stream.use { it.write(text.toByteArray(Charsets.UTF_8)) }
+            true
         }
     } catch (_: Exception) {
-        // Best effort: callers already handle a missing output by treating the export as failed.
+        false
     }
 }
 

@@ -191,7 +191,7 @@ media/<filePath>     每个被引用的本地媒体一个条目，路径与媒�
 - **平台层**（`Archive.kt`）：Desktop 用 `ZipFile`（可随机访问）；Android 必须用 `ZipInputStream`，因为 `content://` URI 无法 seek。因此导入走 `readZipArchiveEntries` **一次流式扫描**取全部媒体——逐条 `readZipArchiveEntry` 会让 Android 把同一份流重扫 N 次（O(n²)），100 张图就会卡到不可用。
 - **暂存目录**：manifest 先写到 `getApkCacheDir()/export-staging/manifest-<ts>-<rand>.json`，**绝不从 `outputPath` 推导**。Android 的 `pickSaveFile` 返回 `content://`，其"父目录"不是目录，据此写暂存会静默失败 → zip 里缺 `lumecard.json` → 产出不可导入的归档而 UI 仍报成功（本项目曾真实出现过）。
 - **成功判定**：`packageExport` 必须校验 `writtenEntries` 里**确实含** `ENTRY_MANIFEST`；缺失即按 `writeFailed` 处理（删半成品 + 回退纯 JSON + 明确告知）。仅靠"媒体数 > 0"判断成功不够。
-- **资源上限**：manifest 64 MB（`readManifest` 要 `decodeToString()`，UTF-16 会翻倍）、单个 media 512 MB、单次导入最多 10000 条媒体。溢出计入 `failed` 而非静默丢弃。
+- **资源上限**：manifest 64 MB（`readManifest` 要 `decodeToString()`，UTF-16 会翻倍）、单个 media 64 MB、单次导入累计 1 GB、最多 10000 条媒体。两个字节预算都**在流式读取过程中**生效（`readZipArchiveEntries` 的 `maxBytes` / `maxTotalBytes`），因为返回的 `Map<String, ByteArray>` 是全量驻留内存的——读完再检查等于先分配 `10000 × 64 MB` 再拒绝。溢出计入 `failed` 而非静默丢弃。（`readMedia()` 里的 512 MB 只服务于测试读取，不在导入路径上。）
 - **导入结果四元组**：`written`（新落盘）/ `skipped`（内容相同已存在）/ `missing`（**manifest 引用但归档里没有**）/ `failed`（归档里有但写不进去）。`missing` 必须按 `referencedPaths` 求差，而不是"归档条目总数 - 落盘数"，否则多余条目会反向虚增缺失数。
 - **回滚**：`importArchiveMedia` 返回 `newlyWrittenPaths`（仅本次新建）。卡片插入中途抛异常时，调用方据此删除刚写入的媒体，避免孤儿文件被 media scan 反复同步；已存在的同名文件**不在**该列表中，绝不误删用户数据。
 - **写入类型对称**：导出只收 `IMAGE`，导入计算 `missing` 时也必须按同一类型过滤，否则带本地音频的卡片每次导入都会误报"图片缺失"。
@@ -356,3 +356,79 @@ media/<filePath>     每个被引用的本地媒体一个条目，路径与媒�
 - ❌ 两条 run 均失败：GitHub 已将 `ubuntu-latest` 升级到 **Ubuntu 26.04**，`actions/setup-python@v7` 不再提供 **Python 3.9 x64**，`test (ubuntu-latest, 3.9)` 在 setup-python 阶段报错，导致依赖 `needs: [prepare, test, app-contract]` 的 `build`/`publish` 被跳过 → 未生成 ZIP/SHA256、未创建 Release。`prepare`、`app-contract` 及 Windows/macOS/Ubuntu 的 3.11 测试全部通过。属平台镜像升级导致的**存量 workflow 缺陷**，与图片支持代码无关（2026-11-04 同 workflow 在 Ubuntu 24.04 上成功）。
 - 修复：把 Python 3.9 矩阵项 runner 固定为 `ubuntu-24.04`（独立仓库模板 `skills/.../.github/workflows/test.yml` 同步）；`SKILL.md` 升 **0.4.1** 并同步 references / README / 主项目文档；按 `releasing.md`「已存在的 tag 禁止覆盖」，打新 tag `lumecard-deck-builder-v0.4.1` 重发，**不删除、不覆盖 `v0.4.0` tag**。
 - 应用 tag `v0.26.17` 已于 2026-10-29 在 `main` 发布为 Latest，本次未重复创建、未覆盖。
+
+---
+
+## 11. 附录：指定对象单独导出 / 按对象类型导入（2026-11-21，增量功能）
+
+详细设计见 `README.md` 同名章节；本节只记录与既有图片支持设计的衔接与验收结论。
+
+### 11.1 关键决策（用户交互确认 3/3）
+
+| 决策项 | 结论 |
+| --- | --- |
+| 重名 / 重复且「不覆盖」 | **保留两者（自动改名 + 全新 ID）** |
+| 重复卡牌判定 | **类型 + 正背面内容**（前后 `trim`，NUL 分隔避免内容含分隔符误判） |
+| 导入入口 | **新增独立入口，原全量导入按钮保留**（本批对其归档校验与失败回滚做了加固，不再是完全原样） |
+
+### 11.2 与既有格式的衔接
+
+- `ObjectExport` = `ShareExport` + 顶层 `objectScope`；`exportType` 显式写 `"share"`（`encodeDefaults = true`）。**必须显式写**：kotlinx 默认省略等于默认值的字段，若省略，旧 `DataExport` 解码器会回落到 `"backup"`，`importBackup()` 的条件 `backupFormatVersion == 1` 会误把分享文件当作破坏性备份接受。已由 `scopedExportIsAcceptedByTheUnchangedLegacyImporter` 回归测试守护。
+- 单个 Deck / Card 导出仍携带祖先 Deck 与所属 KB 作为「容器」，导出数组**父先子后**排列，使任何按顺序插表的读取器外键可解析。注意这只是格式层面的可解析：旧 `importData()` 按原 ID 直插，同设备仍会撞主键，对象语义只有新入口能保留。
+- `.lumecard` 归档复用 `packageExport()` / `importArchiveMedia()`；对象导入用 `ObjectExportBuilder.rewriteMediaPaths()` 把整份 manifest 的重命名映射一次应用（旧入口的 `resolveRenamedPath()` 只处理单条路径，语义相同、作用层不同）。未改动归档格式版本。归档只解压 manifest 引用的条目，写盘时用**manifest 里的路径拼写**（匹配大小写不敏感，但文件名必须落到卡片实际引用的名字上，否则在大小写敏感文件系统上就是坏图），且只打包 `MediaType.IMAGE`。
+
+### 11.3 一致性与回滚
+
+`ObjectImportService.execute()` 在**单事务**内完成：软删除覆盖子树（保留 tombstone，避免破坏 `ReviewLog.card_id` FK）→ 按父先子后写入新副本 → 维护 `CardFTS` / `AlgorithmState` → `LearningPlanMutationService.contentReplaced()` 重映射学习计划。规划器写 id map 时会**同时**登记「文件 ID → 新 ID」与「被覆盖的本地 ID → 新 ID」（计划里存的是本地 ID；只登记前者会让覆盖把计划清空）；覆盖知识库时，其中的牌组按名称路径、卡牌按内容身份对应到副本。之后 `reconcileAllInCurrentTransaction()` 在同一事务内重算进度。数据库失败整体回滚；归档媒体在事务外用 `MediaImportOutcome.newlyWrittenPaths` 精确回滚。
+
+不存在「孤儿媒体」集合：被删的卡是软删除，tombstone 仍保存 `media`，文件依然被引用，因此一律保留；只清理「本次导入新写入且最终无人引用」的文件（`unusedNewMediaPaths`）。路径比较大小写不敏感。
+
+### 11.4 性能：索引化（2026-11-21）
+
+文档化上限是 `MAX_DECKS = 20 000` / `MAX_CARDS = 100 000`（`ObjectExportBuilder`）。在此量级下，规划器与执行路径原本有 **5 处二次复杂度**，全部是同一模式：以「整表扫描」回答点查询。
+
+| 位置 | 原实现 | 代价（20k 牌组） | 现在 |
+| --- | --- | --- | --- |
+| `ObjectImportPlanner` 知识库/牌组碰撞查找 | 每个 payload 对象 `context.decks.filter { ... }` | payload × library ≈ 4×10⁸ 次 trim 比较 | `LocalIndex`：一次建 `(kbId, parentId, name)` → 桶，点查询 O(1) |
+| `ObjectImportPlanner.resolveParent` | 每层祖先各扫一遍 live 列表 | 深 payload × library | 同上，按层 O(1) |
+| `ObjectImportPlanner` 覆盖知识库的牌组路径映射 | 每行 `deckPath()` 重新走到根 | O(n × depth)，且两侧各建一次 map | `DeckTree.pathOf()` + 两侧各建一次索引 |
+| `ObjectImportPlanner` 同名后缀探测（第 5 轮补） | 每行从 ` (1)` 重新试到 ` (k)` | N 个同名牌组 ≈ N²/2 次探测 | 按 base 记录上次落点，探测从该处续（`kbClaimHint` / `deckClaimHint`），语义不变 |
+| `LearningPlanCardResolver`（第 5 轮补） | `decks.associateBy` 在每个计划里重建，`deckIds` 内部再建一次 | 复习写路径 O(计划数 × 牌组数) | `Scoped` 每批建一次索引 |
+| `ObjectImportService` 未用媒体路径核算（第 5 轮补） | `newlyWrittenPaths` 为空时仍 JSON 解码全库 `media` | 每次无附件导入 O(100k) 解码 | 空即早退 |
+| `ObjectExportBuilder.expandDescendants/Ancestors` | `while (changed) { for (deck in all) }` | O(n²)，层数越深越慢 | `DeckTree` 层级索引 + 单趟 BFS，O(n + e) |
+| `ObjectImportService.expandedDeleteCounts` / `execute` 子树展开 | 同上（`execute` 内还在**写锁**下） | O(n²) 两次 | 同上，索引只建一次 |
+
+新增 `DeckTree.kt`（`commonMain`，`internal`）：`parentById` + `childrenByParent` 两个 `HashMap`，提供 `expandDescendants` / `expandAncestors` / `pathOf`。缺失父节点按「根」处理（与旧扫描一致），因此软删除父节点或脏父 id 的既有行为不变；`pathOf` 仍有 64 层上限防环，但触顶时会标记（见下）。
+
+**截断必须可区分（第 6 轮）**：`pathOf` 撞到 64 层上限时，结果首位会加一个「停止处祖先 id」标记（`TRUNCATED_MARKER + cursor`），而不是静默截短。原因是截断后的路径只剩「叶子 + 最近 64 个祖先」，两条只在第 65 层以上分叉的链会产出**完全相同**的字符串，`remapLocalDeckSelections` 于是把两个本地牌组映射到同一个副本——学习计划指向错卡，且无异常。加标记后，截断路径不可能等于完整路径，最坏退化为「不匹配」（即索引化之前对未知祖先的行为），而不是「错匹配」。
+
+**行为不变性**：桶内保留 `context.decks` 原顺序，`delete*Ids` 顺序与旧的 `filter` 完全一致；`cardsInDeckByIdentity` / `DeckTree` 均为惰性构建，CARD 分支不会为 20k 牌组建索引；`ofRows()` 让服务层直接索引 SQLDelight 投影，避免为两列额外物化 20k 个 `Deck`。
+
+**实测**（本机 Desktop，纯规划，`-PrunScaleBenchmark=true`；两次不同负载下取样，给出区间）：
+
+| 库规模 | 覆盖式导入整库耗时 |
+| --- | --- |
+| 2 500 牌组 | 55 – 111 ms |
+| 5 000 牌组 | 71 – 152 ms |
+| 10 000 牌组 | 85 – 130 ms |
+| 20 000 牌组（上限） | 199 – 302 ms |
+
+8 倍数据约 3 – 4 倍耗时（线性区间；旧实现为约 64 倍）。服务层 6 000 牌组 × 2 卡：`expandedDeleteCounts` 136 ms；`execute()` 4.3 s，其中展开已可忽略，剩余为 12 000 张卡的 SQL 写入本身。绝对毫秒数随机器负载浮动，结论看的是**增长倍率**，因此基准断言用的是倍率而不是绝对时限。
+
+### 11.5 验收执行结果
+
+| 项 | 命令 / 方式 | 结果 |
+| --- | --- | --- |
+| shared Desktop 编译 | `:shared:compileKotlinDesktop` | ✅ BUILD SUCCESSFUL |
+| composeApp Desktop 编译 | `:composeApp:compileKotlinDesktop` | ✅ BUILD SUCCESSFUL |
+| shared 单元测试 | `:shared:desktopTest` — 154 个用例（`ObjectTransferTest` 36 / `ObjectImportPlannerScaleTest` 7 / `ObjectImportNameClaimTest` 4 / `DeckTreeIndexTest` 11 / `ObjectImportServiceTest` 9 / `ObjectImportServiceScaleTest` 2 等） | ✅ 0 失败（1 跳过：既有 `SkillImportContractTest`；计时基准默认 no-op，需 `-PrunScaleBenchmark=true`） |
+| composeApp 单元测试 | `:composeApp:desktopTest` — 54 个用例（归档 / 路径安全 / 引用集回归） | ✅ 0 失败 |
+| Android 编译 | `:shared:compileDebugKotlinAndroid` + `:composeApp:compileDebugKotlinAndroid` | ✅ BUILD SUCCESSFUL |
+| 规模基准 | `:shared:desktopTest -PrunScaleBenchmark=true --tests "*ObjectImportPlannerBenchmark"` | ✅ 见 11.4 表 |
+| 向后兼容 | `ExportManager().importData()` 解码 scoped 文件 | ✅ 单测覆盖 |
+| 事务级回归 | `ObjectImportServiceTest`：目标二次校验、学习计划重映射、子树展开计数 | ✅ 覆盖上述两类回归 |
+| 真机 GUI 视觉验收 | — | ❌ 未执行（沿用此前降级结论，不虚报） |
+
+> 说明：验收以「编译 + 自动化测试 + 静态自审」为准，未做 GUI 手工点击验证。`ObjectImportServiceTest` 是第 7 轮终审后补的：此前 `execute()` 零测试，导致「目标校验误伤本次新建目标」「学习计划 id map 只登记文件 id」两个缺陷只在规划层测试中隐形通过。
+>
+> **关于时限断言（第 4 轮修正）**：规模测试里的绝对秒数门槛只是**卡死检测**，不是复杂度判据。旧实现跑满上限约 6–16 s，任何能容忍 CI 抖动的门槛（20–60 s）都会放它过去。真正的判据是 `ObjectImportPlannerScaleTest.plannerGrowthRatioStaysLinear`：同一夹具下 2 500 与 20 000 牌组的**耗时倍率**，索引化约 8 倍、嵌套扫描约 64 倍，阈值取 24 倍。同轮还修掉了三处「恒真断言」：整库覆盖分支的 `deleteDeckIds` 与 `renamed` 在该形态下必然为空（现在断言它们**必须**为空，并补了 `deckLevelLookupAtTheCapStaysLinear` 去真正命中牌组级分桶）、以及 `pathIsCappedOnACorruptCycle` 的 `size <= 65`（现在断言恰好跑满上限）。

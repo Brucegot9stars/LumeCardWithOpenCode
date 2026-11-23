@@ -10,6 +10,9 @@ import com.lumecard.shared.database.AndroidContextHolder
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
+/** Matches the desktop reader; large enough for a 100k-card export, small enough to stay safe. */
+private const val MAX_TEXT_BYTES = 64L * 1024 * 1024
+
 object FilePickerState {
     var activity: android.app.Activity? = null
     var launcher: ActivityResultLauncher<Intent>? = null
@@ -66,14 +69,25 @@ actual suspend fun pickOpenFile(mimeType: String, initialDirectory: String?): St
             }
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
-                // `*/*` must stay narrow (JSON only, as before). Any other MIME is widened to
-                // `application/*`: an import accepts both `.lumecard` archives and the plain
-                // `.json` exports older versions produced, and a doc provider that stores a
-                // `.zip` under `application/octet-stream` would otherwise be unpickable.
+                // `*/*` means "any file" (the media picker needs images); a zip request is widened
+                // to the document MIME types an export can actually carry. Previously `*/*` was
+                // narrowed to `application/json`, which made the image picker show no images at
+                // all, and `application/*` hid `.json` files that providers report as `text/plain`.
                 type = when (mimeType) {
-                    "*/*" -> "application/json"
-                    "application/zip" -> "application/*"
+                    "application/zip" -> "*/*"
                     else -> mimeType
+                }
+                if (mimeType == "application/zip") {
+                    putExtra(
+                        Intent.EXTRA_MIME_TYPES,
+                        arrayOf(
+                            "application/json",
+                            "application/zip",
+                            "application/octet-stream",
+                            "text/plain",
+                            "text/json",
+                        ),
+                    )
                 }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && initialDirectory != null) {
                     try {
@@ -94,14 +108,34 @@ actual fun readFileContent(path: String): String? {
         val context = AndroidContextHolder.context
         val uri = Uri.parse(path)
         if (uri.scheme == "content" || uri.scheme == "file") {
-            context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+            // `readText()` grows without a bound: a malicious pick could hand us a 1 GB stream and
+            // OOM before any size check runs. Read with a hard cap instead.
+            context.contentResolver.openInputStream(uri)?.use { stream -> readBounded(stream) }
         } else {
             val file = java.io.File(path)
-            if (!file.exists()) null else file.readText(Charsets.UTF_8)
+            if (!file.exists() || file.length() > MAX_TEXT_BYTES) null else file.readText(Charsets.UTF_8)
         }
     } catch (e: Exception) {
         null
     }
+}
+
+/**
+ * Bounded decode. Counts **bytes** (not chars) so the limit means the same thing as the desktop
+ * reader; a char-based check would let a CJK file twice as large through on Android only.
+ */
+private fun readBounded(stream: java.io.InputStream): String? {
+    val out = java.io.ByteArrayOutputStream()
+    val buffer = ByteArray(64 * 1024)
+    var total = 0L
+    while (true) {
+        val read = stream.read(buffer)
+        if (read < 0) break
+        total += read
+        if (total > MAX_TEXT_BYTES) return null
+        out.write(buffer, 0, read)
+    }
+    return out.toString("UTF-8")
 }
 
 actual suspend fun pickMediaFile(): String? {

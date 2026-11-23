@@ -77,10 +77,19 @@ actual suspend fun listZipArchive(archivePath: String): List<String>? = withCont
     val input = openArchiveInput(archivePath) ?: return@withContext null
     try {
         val names = mutableListOf<String>()
+        val seen = mutableSetOf<String>()
         ZipInputStream(input.buffered()).use { zip ->
             while (true) {
                 val entry = zip.nextEntry ?: break
-                if (!entry.isDirectory) names.add(entry.name)
+                if (!entry.isDirectory) {
+                    // A duplicate name would be read differently on Desktop (ZipFile picks the
+                    // last copy) and here (first copy). Reject the ambiguous archive instead of
+                    // importing different bytes on different devices.
+                    if (names.size >= MAX_ARCHIVE_LIST_ENTRIES || !seen.add(entry.name)) {
+                        return@withContext null
+                    }
+                    names.add(entry.name)
+                }
                 // Drain the entry instead of jumping straight to closeEntry: some providers hand
                 // back a stream that will not advance to the next header otherwise.
                 drainEntry(zip)
@@ -138,11 +147,13 @@ actual suspend fun readZipArchiveEntries(
     archivePath: String,
     entryPaths: Set<String>,
     maxBytes: Long,
+    maxTotalBytes: Long,
 ): Map<String, ByteArray>? = withContext(Dispatchers.IO) {
     if (entryPaths.isEmpty()) return@withContext emptyMap()
     val input = openArchiveInput(archivePath) ?: return@withContext null
     try {
         val result = mutableMapOf<String, ByteArray>()
+        var held = 0L
         ZipInputStream(input.buffered()).use { zip ->
             while (true) {
                 val entry = zip.nextEntry ?: break
@@ -165,8 +176,13 @@ actual suspend fun readZipArchiveEntries(
                     if (overflow) {
                         // Oversized entry: discard the rest but keep scanning for the others.
                         drainEntry(zip)
+                    } else if (held + total > maxTotalBytes) {
+                        // Total budget exhausted: stop holding bytes. The caller counts what is
+                        // absent as failed, so an archive cannot force unbounded allocation.
+                        return@withContext result
                     } else {
                         result[entry.name] = out.toByteArray()
+                        held += total
                     }
                     zip.closeEntry()
                 } else {

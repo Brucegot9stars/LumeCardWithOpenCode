@@ -32,6 +32,13 @@ expect fun platformListFileNames(dir: String): List<String>
 
 expect fun platformReadFileText(path: String): String?
 
-expect fun platformWriteFileText(path: String, text: String)
+/**
+ * Write [text] to [path], reporting whether the bytes actually reached the target.
+ *
+ * Must return `false` instead of throwing and must **not** swallow the failure silently: on Android
+ * [path] may be a `content://` document whose provider has revoked access, and a caller that cannot
+ * tell success from failure will report "exported to …" for a file that does not exist.
+ */
+expect fun platformWriteFileText(path: String, text: String): Boolean
 
 expect fun platformGetParentDir(path: String): String

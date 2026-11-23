@@ -23,11 +23,21 @@ actual suspend fun pickSaveFile(suggestedName: String, mimeType: String): String
             }
             val result = chooser.showSaveDialog(null)
             if (result == JFileChooser.APPROVE_OPTION) {
-                var path = chooser.selectedFile.absolutePath
-                if (!path.endsWith(".$expectedExtension", ignoreCase = true)) {
-                    path += ".$expectedExtension"
+                val chosen = chooser.selectedFile.absolutePath
+                // Replace a known export extension instead of appending to it: a user typing
+                // `notes.json` must not end up with `notes.json.lumecard` (or `notes.json.json`
+                // after the plain-JSON fallback).
+                val withoutKnownSuffix = when {
+                    chosen.endsWith(".lumecard", ignoreCase = true) ->
+                        chosen.dropLast(".lumecard".length)
+                    chosen.endsWith(".json", ignoreCase = true) -> chosen.dropLast(".json".length)
+                    else -> chosen
                 }
-                path
+                if (withoutKnownSuffix.endsWith(".$expectedExtension", ignoreCase = true)) {
+                    chosen
+                } else {
+                    "$withoutKnownSuffix.$expectedExtension"
+                }
             } else {
                 null
             }
@@ -48,15 +58,16 @@ actual suspend fun pickOpenFile(mimeType: String, initialDirectory: String?): St
                         mimeType == "text/plain" || mimeType.startsWith("text/") -> "Text Files"
                         mimeType.contains("font") -> "Font Files"
                         mimeType == "application/json" -> "JSON Files"
-                        // Archive exports are zip containers; accept both so a user can rename or
-                        // re-zip a deck themselves and still import it.
-                        mimeType == "application/zip" -> "LumeCard Archives"
+                        // Archive exports are zip containers; plain .json exports are equally
+                        // valid input (the caller sniffs the header). Mirrors Android, where
+                        // application/zip is widened to application/* so both can be picked.
+                        mimeType == "application/zip" -> "LumeCard Exports"
                         else -> "All Files"
                     },
                     *when {
                         mimeType == "text/plain" || mimeType.startsWith("text/") -> arrayOf("txt", "md")
                         mimeType == "application/json" -> arrayOf("json")
-                        mimeType == "application/zip" -> arrayOf("lumecard", "zip")
+                        mimeType == "application/zip" -> arrayOf("lumecard", "zip", "json")
                         mimeType.startsWith("image/") -> arrayOf("png", "jpg", "jpeg", "gif", "webp", "bmp", "svg")
                         mimeType.contains("font") -> arrayOf("ttf", "otf", "ttc")
                         else -> emptyArray()
@@ -86,7 +97,7 @@ actual fun readFileContent(path: String): String? {
         val name = file.name.lowercase()
         val binaryExtensions = setOf("docx", "doc", "pdf", "xls", "xlsx", "ppt", "pptx", "zip", "rar", "7z", "exe", "dll", "so", "dylib", "bin", "dat")
         if (binaryExtensions.any { name.endsWith(it) }) return null
-        if (file.length() > 5 * 1024 * 1024) return null
+        if (file.length() > 64L * 1024 * 1024) return null
         file.readText()
     } catch (e: Exception) {
         null

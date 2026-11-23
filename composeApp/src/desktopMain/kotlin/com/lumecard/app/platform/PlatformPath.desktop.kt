@@ -45,8 +45,12 @@ actual fun platformReadFileText(path: String): String? = try {
     File(path).readText()
 } catch (_: Exception) { null }
 
-actual fun platformWriteFileText(path: String, text: String) {
+actual fun platformWriteFileText(path: String, text: String): Boolean = try {
     File(path).writeText(text)
+    true
+} catch (_: Exception) {
+    // Reported instead of thrown so both platforms produce the same message for the same failure.
+    false
 }
 
 actual fun platformGetParentDir(path: String): String = File(path).parent ?: ""
