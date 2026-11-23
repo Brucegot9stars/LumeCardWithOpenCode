@@ -1,7 +1,8 @@
-# LumeCard content contract (skill 0.4.2; serialization unchanged since 0.1.0)
+# LumeCard content contract (skill 0.4.3; serialization unchanged since 0.1.0)
 
-Audited against LumeCardWithOpenCode commit `1cc6e56` (repository HEAD when work began;
-verify with Git history if the app changes), export version `1.0.0`, schema `1`.
+Audited against LumeCardWithOpenCode commit `1cc6e56` and re-verified against the archive
+export/import rework (app 0.27.0, branch `feat/card-image-support`, 2026-11-23); verify with
+Git history if the app changes. Export version `1.0.0`, schema `1`.
 Evidence: `shared/src/commonMain/kotlin/com/lumecard/shared/data/ExportManager.kt`
 (`ShareExport`, `ExportKnowledgeBase`, `ExportDeck`, `ExportCard`, `importData`);
 `shared/src/commonMain/kotlin/com/lumecard/shared/model/Models.kt` (`Card`, `Media`);
@@ -38,7 +39,7 @@ Each `media` item is an object:
 |---|---|---|
 | `id` | yes | non-empty unique string within the card |
 | `type` | yes | must be `"IMAGE"` |
-| `filePath` | yes | media-relative file name (no `..`), `file://`, `content://`, absolute path, or an **https** URL. `http://` is rejected |
+| `filePath` | yes | an **https** URL, or a media-relative file name passing the strict rules below (also accepts `file://`, `content://` and absolute paths the app itself writes). `http://` is rejected |
 | `caption` | no | short optional caption (default `""`) |
 | `mimeType` | no | informational string (default `""`) |
 | `size` | no | non-negative integer bytes (default `0`) |
@@ -48,6 +49,13 @@ Each `media` item is an object:
 Rules:
 - **Never invent image URLs or file names.** Only use paths/URLs actually supplied in
   the source material or by the user. If no image is provided, omit `media` entirely.
+- Relative names must pass the app's shared `MediaPathRules`, which the importer, the
+  exporter's validator and the archive writer all enforce: `/`-separated, no empty/`.`/`..`
+  segments, no leading `/`, no backslash, no drive letter, no `:` anywhere, no control
+  characters, no segment ending in a dot or space, no Windows-reserved segment (`CON`,
+  `PRN`, `AUX`, `NUL`, `COM1-9`/`LPT1-9`, including the superscript spellings), at most 128
+  characters per segment and 255 per path. A weaker name imports today but fails the deck's
+  next export, so the builder rejects it up front.
 - Images are independent blocks rendered outside the card text. Do **not** put
   `![alt](...)` or `<img>` inside `front`/`back`: the CLOZE regex, choice option
   splitting and Markdown/RichText renderers would be polluted.
@@ -86,6 +94,14 @@ media/<filePath>   one entry per referenced local media file
 
 This skill does not create archives — emit the JSON and let the app package it.
 
+## Import entry points (app 0.27.0)
+
+JSON produced by this skill carries no `objectScope` marker, so the app classifies it as a
+**full share export**. It imports through the full-import button in Settings, which accepts
+any share file. The separate scoped object-import screen only accepts files the app itself
+exported (they carry `objectScope`) and reports full files as rejected — tell users to use
+the Settings import, not that screen. Both entries accept the same media fields.
+
 ## Output JSON
 
 The app's hierarchy is represented as flat arrays, not nested entities:
@@ -103,7 +119,8 @@ Use new UUIDs for real generated IDs. Dates are UTC ISO 8601 strings. `descripti
 on a deck is required by serialization even when null; `tags` is required on cards.
 Metadata is `Map<String,String>`: booleans and font size MUST be strings in output.
 `media` items always carry `id`/`type`/`filePath` plus optional `mimeType`/`size`/
-`caption` (all with defaults in the app model, so older JSON without them still loads).
+`caption`/`alignment`/`compress` (all with defaults in the app model, so older JSON
+without them still loads).
 `mediaTarget` appears in `metadata` only when the card has images.
 Never include private learning plans, settings, review logs, scheduling or tombstones.
 The strict validator accepts only documented share/record fields; plan-only fields such

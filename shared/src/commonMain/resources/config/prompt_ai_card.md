@@ -59,7 +59,7 @@ Your task is to analyze the learning topic and reference materials, then generat
 - Only include `media` when the reference material explicitly contains an image file name/path or an https image URL that belongs to the card.
 - **NEVER invent, guess, or fabricate image URLs or file names.** If no image is provided, output no `media` field at all.
 - `filePath` must be one of:
-  - a **relative file name** inside the app's media directory (e.g. `a1b2c3.png`); no `..` and no absolute paths;
+  - a **relative file name** inside the app's media directory (e.g. `a1b2c3.png`). Keep it strictly safe: forward slashes only, no `..` or `.` segments, no empty segments, no leading `/`, no backslash, no drive letter, no `:` anywhere, no control characters, no segment ending in a dot or space, no Windows reserved names (`CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`), at most 255 characters total. Unsafe names are rejected at import and the image is silently dropped;
   - an **https URL** for a hosted image. `http://` is forbidden and will be rejected.
 - Keep `front` / `back` text unchanged: images are rendered as separate blocks below the text, never inline (`![...](...)` in card text is NOT supported).
 - `caption` is optional; keep it short and factual.

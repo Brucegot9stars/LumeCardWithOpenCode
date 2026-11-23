@@ -189,6 +189,25 @@ class WorkflowTests(unittest.TestCase):
             with self.subTest(item=item), self.assertRaises(ValueError):
                 builder.validate(data)
 
+    def test_media_relative_names_mirror_app_path_rules(self):
+        # Mirrors shared MediaPathRules: a weaker builder rule would emit a name that imports
+        # today but makes the imported deck fail validate() on export or drops the image on
+        # archive packaging.
+        bad = [
+            "CON.png", "COM¹.png", "a.png.", "dir /a.png", "a.png:hidden",
+            "a\\b.png", "a//b.png", "a/./b.png", "a\u0001.png",
+            "x" * 129 + ".png", "x" * 256 + ".png",
+        ]
+        for path in bad:
+            data = copy.deepcopy(self.data)
+            data["cards"][0]["media"] = [{"id": "i", "type": "IMAGE", "filePath": path}]
+            with self.subTest(path=path), self.assertRaisesRegex(ValueError, "filePath"):
+                builder.validate(data)
+        for path in ("images/a1b2c3.png", "a..b.png", "https://cdn.example.com/a.png"):
+            data = copy.deepcopy(self.data)
+            data["cards"][0]["media"] = [{"id": "i", "type": "IMAGE", "filePath": path}]
+            builder.validate(data)
+
     def test_media_target_validation(self):
         for value in ("both", "front", "back"):
             data = copy.deepcopy(self.data)

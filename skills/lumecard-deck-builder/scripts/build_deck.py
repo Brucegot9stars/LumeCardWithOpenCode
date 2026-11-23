@@ -15,6 +15,8 @@ MEDIA_ALIGNMENTS = {"start", "center", "end"}
 MEDIA_FIELDS = {"id", "type", "filePath", "mimeType", "size", "caption", "alignment", "compress"}
 CLOZE = re.compile(r"\{\{c\d+::([^}]+)\}\}")
 URL_HTTPS = re.compile(r"https://\S+", re.IGNORECASE)
+# Same rule as the app's MediaPathRules, including the superscript device spellings (COM¹ …).
+WINDOWS_RESERVED = re.compile(r"^(con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³])(\..*)?$", re.IGNORECASE)
 LONG_MAX = 2**63 - 1
 LINE_BREAKS = re.compile(r"[\r\n\v\f\x1c-\x1e\x85\u2028\u2029]")
 RECORD_FIELDS = {"id", "createdAt", "updatedAt", "version", "deletedAt", "syncedAt"}
@@ -70,6 +72,24 @@ def media_items(value, where):
         require(not lower.startswith(("file://", "content://", "data:", "//", "/", "\\\\"))
                 and re.match(r"^[A-Za-z]:[\\/]", path) is None,
                 loc + ".filePath: only relative paths or https URLs are allowed")
+        if not lower.startswith("https://"):
+            # Mirror the app's MediaPathRules for relative names. The importer, exporter and
+            # archive writer all enforce these, so a weaker check here would build a file whose
+            # imported deck then fails validate() on export or drops the image when archived.
+            require("\\" not in path, loc + ".filePath: use '/' separators, no backslashes")
+            require(len(path) <= 255 and all(ord(ch) >= 32 for ch in path),
+                    loc + ".filePath: expected 1-255 printable characters")
+            segments = path.split("/")
+            require(all(seg and seg not in (".", "..") for seg in segments),
+                    loc + ".filePath: no empty, '.' or '..' segments")
+            require(all(len(seg) <= 128 for seg in segments),
+                    loc + ".filePath: segment longer than 128 characters")
+            require(all(not seg.endswith(".") and not seg.endswith(" ") for seg in segments),
+                    loc + ".filePath: no segment may end with a dot or space")
+            require(all(":" not in seg for seg in segments),
+                    loc + ".filePath: ':' is not allowed in a relative name")
+            require(all(WINDOWS_RESERVED.fullmatch(seg) is None for seg in segments),
+                    loc + ".filePath: Windows reserved names are not allowed")
         caption = item.get("caption", "")
         require(isinstance(caption, str), loc + ".caption: expected text")
         mime = item.get("mimeType", "")

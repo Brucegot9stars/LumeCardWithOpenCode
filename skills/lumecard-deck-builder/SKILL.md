@@ -3,7 +3,7 @@ name: lumecard-deck-builder
 description: Convert PDF, DOCX, Markdown, TXT, HTML documents or supplied notes and outlines into LumeCard importable flashcard JSON with knowledge bases, decks and cards. Use for LumeCard deck creation or conversion, not generic summaries, Anki exports or application code changes.
 license: MIT
 metadata:
-  version: "0.4.2"
+  version: "0.4.3"
 ---
 
 # LumeCard deck builder
@@ -50,7 +50,8 @@ the installed skill folder. Use absolute script paths when running from that wor
    unavailable. Script execution is optional; no Agent-specific tool API is required.
 7. Deliver a UTF-8 `.json` file, its path, knowledge-base/deck/card counts, source coverage,
    uncertainties and validation status. Explain that it is a **content share**, to be imported
-   using LumeCard's content import flow, not full backup restore. Never claim UI import was
+   with the full-import button in LumeCard's Settings (the scoped object-import screen only
+   accepts files the app exported itself), not a full backup restore. Never claim UI import was
    tested unless it actually was.
 
 ## Failure and safety rules

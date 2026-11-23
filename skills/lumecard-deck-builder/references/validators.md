@@ -45,7 +45,11 @@ This is separate from the Skill-spec validator above. As of 0.4.1, `validate()` 
 longer rejects `card.media`. It checks every media item with `media_items()`:
 only `IMAGE`, required non-empty `id`/`filePath`, no `..` path traversal, no `http://`
 (https URLs must be well-formed), optional string `caption`/`mimeType` and a
-non-negative integer `size`. `metadata["mediaTarget"]` is accepted only when it is
+non-negative integer `size`. As of 0.4.3 relative names must also pass the app's
+strict `MediaPathRules` mirror (no backslash, no drive letter or `:`, no control
+characters, no trailing dot/space, no Windows-reserved segment, 128/255 length caps)
+— the app's importer, exporter and archive writer enforce the same rule.
+`metadata["mediaTarget"]` is accepted only when it is
 `both` / `front` / `back`. Legacy exports with `media: []` still pass unchanged.
 `build()` writes `mediaTarget` into metadata only for cards that actually have images.
 
