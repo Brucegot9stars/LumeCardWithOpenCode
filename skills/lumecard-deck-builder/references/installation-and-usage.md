@@ -1,6 +1,6 @@
 # lumecard-deck-builder 安装与使用指南
 
-适用版本：0.4.4。支持 Codex、Claude Code、OpenCode、Hermes Agent、CodeBuddy，
+适用版本：0.4.5。支持 Codex、Claude Code、OpenCode、Hermes Agent、CodeBuddy，
 其他支持标准 SKILL.md 的 Agent 可指定安装目录。安装器和核心脚本不依赖 CodeGraph。
 
 0.4.1 新增卡片图片支持：内容计划的 `media` 可写本地 media 相对路径或 https 图床链接，
@@ -17,7 +17,7 @@
 
 任选一种方式：
 
-- 解压分发包 `lumecard-deck-builder-0.4.4.zip`，进入其中的 `lumecard-deck-builder` 目录。
+- 解压分发包 `lumecard-deck-builder-0.4.5.zip`，进入其中的 `lumecard-deck-builder` 目录。
 - 在 LumeCardWithOpenCode 仓库中，进入 `skills/lumecard-deck-builder`。
 
 发布后可从仓库的同名 Skill Release 下载 ZIP 和 SHA256；手动构建则从对应 Actions 运行的

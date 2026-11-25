@@ -1328,8 +1328,12 @@ class WorkflowTests(unittest.TestCase):
         # A Chinese Windows console uses strict GBK stdout; printing an emoji path raised after
         # install() had already written to disk, reporting failure for a successful operation.
         env = dict(os.environ, PYTHONIOENCODING="gbk", PYTHONUTF8="0")
+        # Anchor under the temp dir so the path is absolute on every platform. A Windows-style
+        # "D:/..." literal is relative on POSIX, resolved inside the source tree, and rejected by
+        # the overlap guard long before the encoding behaviour under test is exercised.
+        dest = Path(tempfile.gettempdir()) / "测试😀" / "skills"
         command = [sys.executable, str(ROOT / "scripts/install.py"),
-                   "--agent", "custom", "--dest", "D:/测试😀/skills", "--dry-run"]
+                   "--agent", "custom", "--dest", str(dest), "--dry-run"]
         # Capture bytes: the test harness itself decodes text=True with the parent locale,
         # which is UTF-8 here and cannot read GBK output.
         result = subprocess.run(command, capture_output=True, env=env)
@@ -1521,7 +1525,10 @@ class StructureTests(unittest.TestCase):
                                     capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             info = json.loads(result.stdout)
-            self.assertEqual(info["version"], "0.4.4")
+            # Derive from SKILL.md instead of hardcoding: a literal here has to be edited on
+            # every version bump and fails the CI matrix for an unrelated reason.
+            expected = module("release_skill").metadata(ROOT)["version"]
+            self.assertEqual(info["version"], expected)
             self.assertTrue((Path(tmp) / "dist" / info["checksum"]).exists())
 
     def test_release_build_reports_packaging_failure_as_one_error_line(self):

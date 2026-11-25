@@ -1,4 +1,4 @@
-# LumeCard content contract (skill 0.4.4; serialization unchanged since 0.1.0)
+# LumeCard content contract (skill 0.4.5; serialization unchanged since 0.1.0)
 
 Audited against LumeCardWithOpenCode commit `1cc6e56` and re-verified against the archive
 export/import rework (app 0.27.0, branch `feat/card-image-support`, 2026-11-23) plus the
