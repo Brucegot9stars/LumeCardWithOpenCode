@@ -23,4 +23,11 @@ def main():
 
 
 if __name__ == "__main__":
+    # The archive path can contain non-GBK characters on a Chinese Windows console. A strict
+    # stdout would raise after the zip was created, leaving a traceback and a "failed" command
+    # that actually succeeded. Match stderr's backslashreplace policy.
+    try:
+        sys.stdout.reconfigure(errors="backslashreplace")
+    except (AttributeError, OSError):
+        pass
     main()

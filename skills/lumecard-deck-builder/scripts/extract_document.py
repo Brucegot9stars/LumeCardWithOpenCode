@@ -45,22 +45,46 @@ class HTMLText(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.stack = []
         self.parts = []
+        # Scanning the whole open-tag stack on every callback made deeply nested documents
+        # quadratic: 16k nested <div> took ~49s and a 25 MB file below MAX_BYTES could hang the
+        # agent for hours. Keep O(1) counts of the states the parser asks about repeatedly.
+        self.counts = {}
+        self.hidden_count = 0
 
     def hidden(self):
-        return any(hidden for _, hidden in self.stack)
+        return self.hidden_count > 0
+
+    def pop_through(self, index):
+        """Drop stack entries from `index` on, keeping the O(1) counters in sync."""
+        for name, hidden in self.stack[index:]:
+            self.counts[name] -= 1
+            if self.counts[name] == 0:
+                del self.counts[name]
+            if hidden:
+                self.hidden_count -= 1
+        del self.stack[index:]
 
     def close_in_scope(self, tags, boundaries):
-        for tag, _ in reversed(self.stack):
-            if tag in tags:
-                self.handle_endtag(tag)
+        # Fast path: if none of the target tags is open, there is nothing to close. This is the
+        # common case for long runs of the same unrelated tag and removes the quadratic scan.
+        if not any(name in self.counts for name in tags):
+            return
+        for index in range(len(self.stack) - 1, -1, -1):
+            name = self.stack[index][0]
+            if name in tags:
+                # Match handle_endtag's observable output: an implicitly closed block still
+                # separates the text before and after it.
+                if not self.hidden() and name in self.BLOCKS:
+                    self.parts.append("\n")
+                self.pop_through(index)
                 return
-            if tag in boundaries:
+            if name in boundaries:
                 return
 
     def implied_end(self, tag):
         # Common optional end tags, with scope boundaries to protect nested lists/tables.
         # This is a static text adapter, not a complete HTML5 tree builder.
-        if any(open_tag in self.INERT for open_tag, _ in self.stack):
+        if any(name in self.counts for name in self.INERT):
             return
         if tag not in {"head", "base", "link", "meta", "title", "script", "style", "template"}:
             self.close_in_scope({"head"}, {"body"})
@@ -90,6 +114,9 @@ class HTMLText(HTMLParser):
                 self.parts.append("\t")
         if tag not in self.VOID:
             self.stack.append((tag, hide))
+            self.counts[tag] = self.counts.get(tag, 0) + 1
+            if hide:
+                self.hidden_count += 1
 
     def handle_startendtag(self, tag, attrs):
         self.handle_starttag(tag, attrs)
@@ -101,12 +128,12 @@ class HTMLText(HTMLParser):
             self.parts.append("\n")
         for index in range(len(self.stack) - 1, -1, -1):
             if self.stack[index][0] == tag:
-                del self.stack[index:]
+                self.pop_through(index)
                 break
 
     def handle_data(self, data):
         if not self.hidden():
-            self.parts.append(data if any(tag == "pre" for tag, _ in self.stack) else re.sub(r"\s+", " ", data))
+            self.parts.append(data if "pre" in self.counts else re.sub(r"\s+", " ", data))
 
 
 def docx(raw):

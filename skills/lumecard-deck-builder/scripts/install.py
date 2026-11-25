@@ -102,8 +102,10 @@ def safe_parents(path):
 
 def destination(agent, scope, project=None, dest=None):
     if dest:
-        # Custom --dest is a parent directory, never an arbitrary deletion target.
-        parent = Path(dest).absolute()
+        # Custom --dest is a parent directory, never an arbitrary deletion target. Expand `~`
+        # here as build_deck.py does for its paths: a runbook that uses `~/skills` for both must
+        # not silently create a literal `~` directory in the current folder.
+        parent = Path(os.path.expanduser(dest)).absolute()
     else:
         user, local = PATHS[agent]
         if scope == "project":
@@ -111,7 +113,7 @@ def destination(agent, scope, project=None, dest=None):
                 raise ValueError(agent + ": project discovery not verified; use --dest for an explicit manual adapter")
             if not project or not Path(project).is_dir():
                 raise ValueError("project installation requires --project pointing to an existing directory")
-            parent = Path(project).absolute() / local
+            parent = Path(os.path.expanduser(project)).absolute() / local
         else:
             if agent == "opencode" and os.environ.get("XDG_CONFIG_HOME"):
                 parent = Path(os.environ["XDG_CONFIG_HOME"]) / "opencode/skills"
@@ -246,4 +248,12 @@ def main():
 
 
 if __name__ == "__main__":
+    # Windows consoles default to GBK with strict stdout: printing a path containing an emoji or
+    # a character outside GBK raised UnicodeEncodeError *after* install() had already written to
+    # disk, so the command reported failure for a successful install. stderr already uses
+    # backslashreplace; apply the same policy to stdout so output is always printable.
+    try:
+        sys.stdout.reconfigure(errors="backslashreplace")
+    except (AttributeError, OSError):
+        pass
     sys.exit(main())

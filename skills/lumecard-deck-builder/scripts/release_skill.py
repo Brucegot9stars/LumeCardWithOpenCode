@@ -53,7 +53,18 @@ def build(output_dir, expected_tag=None, root=ROOT):
     if archive.exists() or checksum.exists():
         raise ValueError("release outputs already exist; use a new output directory")
     output_dir.mkdir(parents=True, exist_ok=True)
-    subprocess.run([sys.executable, str(root / "scripts/package.py"), str(archive)], check=True)
+    # Capture both streams: package.py prints the archive path on stdout, which would otherwise
+    # become a stray first line before this command's own JSON and break an agent that parses
+    # stdout. Its stderr is captured too so a failure becomes one actionable `error:` line from
+    # main() instead of a raw child traceback.
+    # `text=True` otherwise decodes with the parent locale, which can disagree with the child's
+    # inherited PYTHONIOENCODING (cp936 parent vs utf-8 child here) and raise inside the reader
+    # thread. Decode explicitly with replace so failure details always survive.
+    result = subprocess.run([sys.executable, str(root / "scripts/package.py"), str(archive)],
+                            capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "package.py failed").strip().splitlines()
+        raise ValueError("release packaging failed: " + (detail[-1] if detail else "unknown error"))
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
     with checksum.open("x", encoding="ascii", newline="\n") as stream:
         stream.write(digest + "  " + archive.name + "\n")

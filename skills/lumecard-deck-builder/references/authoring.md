@@ -26,14 +26,22 @@ coverage and warnings, preserve source locators, and keep a clear unprocessed-so
 list. Scans need OCR/vision. Do not silently skip unreadable pages or equate text-only
 extraction with complete visual understanding of the document.
 
-## Images (0.4.1, per-image flags in 0.4.2)
+## Images (0.4.1, per-image flags in 0.4.2, local embedding in 0.4.4)
 
 The app can display images on cards, but this skill has no automatic image extraction.
 Author images only when they are genuinely available and useful:
 
-- **Only use explicit sources**: a media file name/path supplied by the user, or an
-  https image URL actually present in the material. Never fabricate a URL, guess a
-  file name, or copy `![alt](...)` Markdown into a card field.
+- **Only use explicit sources**: a local image file the user actually supplied (0.4.4:
+  put its path in `media[].sourcePath` and build with `build_deck.py package … out.lumecard`,
+  which embeds the bytes and derives `filePath` from their SHA-1), or an https image URL
+  actually present in the material. Never fabricate a URL, guess a file name, or copy
+  `![alt](...)` Markdown into a card field. A local `filePath` alone names a file the
+  archive cannot carry and is rejected; `file://`/`content://` URIs are rejected for the
+  same reason even though the app itself can display them.
+- **Local image checklist**: each `sourcePath` must be a real regular file (not a symlink),
+  PNG/JPEG/GIF/WebP/BMP with a valid format header and real image data — a file containing
+  only a magic-number prefix is rejected as truncated. SVG must be converted first — neither
+  the desktop nor the Android decoder can render it. The per-image cap is 64 MiB.
 - **When to add one**: the image carries information the text cannot (diagram, map,
   formula, screenshot) and the card's retrieval target depends on it. Skip decorative
   images. Keep `front`/`back` self-contained: the text must still make sense alone.

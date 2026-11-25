@@ -1,16 +1,17 @@
 ---
 name: lumecard-deck-builder
-description: Convert PDF, DOCX, Markdown, TXT, HTML documents or supplied notes and outlines into LumeCard importable flashcard JSON with knowledge bases, decks and cards. Use for LumeCard deck creation or conversion, not generic summaries, Anki exports or application code changes.
+description: Convert PDF, DOCX, Markdown, TXT, HTML documents or supplied notes and outlines into LumeCard importable flashcard JSON or .lumecard media archives with knowledge bases, decks and cards. Use for LumeCard deck creation or conversion, not generic summaries, Anki exports or application code changes.
 license: MIT
 metadata:
-  version: "0.4.3"
+  version: "0.4.4"
 ---
 
 # LumeCard deck builder
 
 Requires reading source text and writing JSON. Optional helper scripts require Python
-3.9+. Generation, validation and text/HTML/DOCX extraction use only the standard library;
-the optional PDF extraction adapter requires pypdf or an available host PDF reader.
+3.9+. Generation, validation, text/HTML/DOCX extraction and archive packaging use only the
+standard library; the optional PDF extraction adapter requires pypdf or an available host
+PDF reader.
 
 ## Inputs and scope
 
@@ -43,16 +44,34 @@ the installed skill folder. Use absolute script paths when running from that wor
 5. With Python available, run `python3 /path/to/skill/scripts/build_deck.py build plan.json output.json`
    from the task workspace, replacing `/path/to/skill` with the actual installed skill path
    (use `python` or `py -3` on Windows as available). The helper chooses card types/styles when not specified, generates
-   IDs and validates output. It refuses to overwrite existing files.
-6. Run `python3 /path/to/skill/scripts/build_deck.py validate output.json`. If Python or shell execution
+   IDs and validates output. It refuses to overwrite existing files. **Skip this step when the
+   plan contains local images** — those need `sourcePath` and step 6. `build` rejects a
+   `sourcePath` item (bare JSON cannot carry its bytes) and any absolute/local-looking `filePath`,
+   but a media-root-relative `filePath` such as `diagram.png` is accepted: it names a file that
+   must already have been placed in the app's media directory, so `build` alone would produce a
+   share whose picture is missing unless the user supplies that file separately. Use `package`
+   whenever the image is a local file the user supplied.
+6. **If the source includes local image files** the user supplied, reference each one with
+   `media[].sourcePath` (never a guessed `filePath`) and use `package` instead of `build`:
+   `... build_deck.py package plan.json deck.lumecard`. That reads the files, names them by content
+   SHA-1 the way the app does, and writes a `.lumecard` archive whose `media/` entries are exactly
+   what the cards reference — so images render after import. Only PNG/JPEG/GIF/WebP/BMP are
+   accepted; SVG decodes on neither platform, so convert it or use an `https` URL. A plan that
+   supplies local image bytes via `sourcePath` but is run through `build` is rejected on purpose:
+   a bare JSON copies no media into the app and the pictures would silently fail to load.
+7. Run `python3 /path/to/skill/scripts/build_deck.py validate output.json` (or
+   `... inspect deck.lumecard` for an archive). If Python or shell execution
    is unavailable, write the share JSON directly using the format reference and check all
-   references, types and metadata manually. Explicitly report that machine validation was
-   unavailable. Script execution is optional; no Agent-specific tool API is required.
-7. Deliver a UTF-8 `.json` file, its path, knowledge-base/deck/card counts, source coverage,
-   uncertainties and validation status. Explain that it is a **content share**, to be imported
-   with the full-import button in LumeCard's Settings (the scoped object-import screen only
-   accepts files the app exported itself), not a full backup restore. Never claim UI import was
-   tested unless it actually was.
+   references, types and metadata manually. This fallback is for **text-only plans**: bare JSON
+   cannot carry local image bytes, so a plan with user-supplied images cannot be completed without
+   `package` — report the images as unprocessed rather than emit `filePath` references whose
+   pictures will break. Explicitly report that machine validation was unavailable. Script
+   execution is optional; no Agent-specific tool API is required.
+8. Deliver a UTF-8 `.json` or `.lumecard` file, its path, knowledge-base/deck/card counts, how many
+   images were embedded, source coverage, uncertainties and validation status. Explain that it is a
+   **content share**, to be imported with the full-import button in LumeCard's Settings (the scoped
+   object-import screen only accepts files the app exported itself), not a full backup restore.
+   Never claim UI import was tested unless it actually was.
 
 ## Failure and safety rules
 

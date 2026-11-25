@@ -15,6 +15,14 @@ a common local baseline. No Agent-specific API is required or assumed.
 | Scanned PDF, photos and image-only pages | Host vision/OCR or user-provided extraction | No bundled OCR; do not interpret empty extraction as successful coverage |
 | `.doc`, `.pptx`, `.xlsx`, EPUB, other formats | Host reader or an authorized local converter | Not supported by this adapter; request readable text if no reader is available |
 
+Extraction yields **text only** — it never pulls images out of a document. Embedding pictures is a
+separate, explicit step: the user supplies the image files, the plan references them with
+`media[].sourcePath`, and `build_deck.py package` bundles them into a `.lumecard` archive (see
+[format.md](format.md#delivering-images)). For a DOCX you can find its pictures inside the file
+(`word/media/…` is a plain ZIP member), but unpacking them is a deliberate action with its own
+authorization: do not extract and republish document images silently, and never treat a caption or
+a figure reference as an image you actually have.
+
 ## Commands
 
 Run in a task workspace outside the installed skill. The examples abbreviate script
