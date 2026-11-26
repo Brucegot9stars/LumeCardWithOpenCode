@@ -58,6 +58,7 @@ class CreateCardScreen(
 
         var front by remember(editCard) { mutableStateOf(editCard?.front ?: "") }
         var back by remember(editCard) { mutableStateOf(editCard?.back ?: "") }
+        var explanation by remember(editCard) { mutableStateOf(editCard?.explanation ?: "") }
         var cardType by remember(editCard) { mutableStateOf(editCard?.type ?: CardType.BASIC) }
         var tags by remember(editCard) { mutableStateOf(editCard?.tags?.joinToString(", ") ?: "") }
         var horizontalCenter by remember(editCard) { mutableStateOf(editCard?.metadata?.get("hcenter")?.toBoolean() ?: false) }
@@ -80,6 +81,7 @@ class CreateCardScreen(
                             onClick = {
                                 val saveFront = front
                                 val saveBack = back
+                                val saveExplanation = explanation
                                 val saveTags = tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
                                 if (isEditing) {
                                     val savedCard = editCard ?: return@IconButton
@@ -87,6 +89,7 @@ class CreateCardScreen(
                                         card = savedCard,
                                         front = saveFront,
                                         back = saveBack,
+                                        explanation = saveExplanation,
                                         type = cardType,
                                         tags = saveTags,
                                         title = title,
@@ -106,6 +109,7 @@ class CreateCardScreen(
                                         deckId = deckId,
                                         front = saveFront,
                                         back = saveBack,
+                                        explanation = saveExplanation,
                                         type = cardType,
                                         tags = saveTags,
                                         title = title,
@@ -185,6 +189,15 @@ class CreateCardScreen(
                 )
 
                 OutlinedTextField(
+                    value = explanation,
+                    onValueChange = { explanation = it },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
+                    label = { Text(strings.cardExplanation) },
+                    placeholder = { Text(strings.cardExplanation) },
+                    supportingText = { Text(strings.cardExplanationHint) },
+                )
+
+                OutlinedTextField(
                     value = tags,
                     onValueChange = { tags = it },
                     modifier = Modifier.fillMaxWidth(),
@@ -211,6 +224,11 @@ class CreateCardScreen(
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                                 Text(strings.cardAnswerLabel, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 CardPreviewContent(text = back, cardType = cardType, fontSize = fontSize)
+                            }
+                            if (explanation.isNotBlank()) {
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                                Text(strings.cardExplanation, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(explanation, modifier = Modifier.fillMaxWidth(), fontSize = fontSize.sp)
                             }
                         }
                     }

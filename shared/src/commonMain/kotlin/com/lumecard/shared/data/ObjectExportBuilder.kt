@@ -473,7 +473,7 @@ object ObjectExportBuilder {
 
     private fun Card.toExport() = ExportCard(
         id = id, deckId = deckId, type = type.name, front = front, back = back,
-        title = title, tags = tags, media = media, metadata = metadata,
+        explanation = explanation, title = title, tags = tags, media = media, metadata = metadata,
         createdAt = createdAt.toString(), updatedAt = updatedAt.toString(),
         lastReviewedAt = lastReviewedAt?.toString(), nextReviewAt = nextReviewAt?.toString(),
         version = version, deletedAt = deletedAt?.toString(), syncedAt = syncedAt?.toString(),

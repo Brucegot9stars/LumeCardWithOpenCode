@@ -322,6 +322,23 @@ internal fun CardFace(
                 }
             }
         }
+        // Independent from `back` so MULTIPLE_CHOICE option lines stay intact. Shown on every
+        // card type because the explanation is part of the answer, not another option.
+        if (showBack && card.explanation.isNotBlank()) {
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            Text(
+                text = strings.studyExplanation,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = card.explanation,
+                modifier = Modifier.fillMaxWidth(),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
     }
 }
 

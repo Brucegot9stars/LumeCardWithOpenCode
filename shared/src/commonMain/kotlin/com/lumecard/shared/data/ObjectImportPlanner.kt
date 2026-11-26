@@ -824,7 +824,7 @@ object ObjectImportPlanner {
     private fun ExportCard.toDomain(id: String, deckId: String, now: Instant) = Card(
         id = id, deckId = deckId,
         type = CardType.entries.firstOrNull { it.name == type } ?: CardType.BASIC,
-        front = front, back = back, title = title, tags = tags,
+        front = front, back = back, explanation = explanation, title = title, tags = tags,
         media = media, metadata = metadata,
         // A copied card starts unscheduled: the original review logs / algorithm state are not
         // part of a share export, so carrying due dates would surface a card with no state.

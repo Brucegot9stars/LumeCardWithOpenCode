@@ -1,4 +1,4 @@
-# LumeCard content contract (skill 0.4.5; serialization unchanged since 0.1.0)
+# LumeCard content contract (skill 0.4.6; serialization unchanged since 0.1.0)
 
 Audited against LumeCardWithOpenCode commit `1cc6e56` and re-verified against the archive
 export/import rework (app 0.27.0, branch `feat/card-image-support`, 2026-11-23) plus the
@@ -26,8 +26,8 @@ This helper validates a strict **new content subset**, not every historical app 
 ```
 
 Optional card fields: `title` (string, up to 200 characters, shown in the card list),
-`type`, `tags` (string array), `source` (locator),
-`bidirectional` (true only for safe two-way recall), `style` with boolean `hcenter`/
+`type`, `tags` (string array), `source` (locator), `explanation` (string; shown below the answer on the back, including
+choice cards), `bidirectional` (true only for safe two-way recall), `style` with boolean `hcenter`/
 `vcenter`, integer `fontSize` 12–120, built-in `fontFamily` ID, `options` (array of
 `{text, correct}` for `MULTIPLE_CHOICE`, converted into the `back` option lines), plus
 the optional image fields `media` (array) and `mediaTarget` (`both`/`front`/`back`,
@@ -178,7 +178,7 @@ The app's hierarchy is represented as flat arrays, not nested entities:
   "exportDate":"2026-11-04T00:00:00Z",
   "knowledgeBases":[{"id":"kb_unique","name":"Biology","icon":"📁","createdAt":"2026-11-04T00:00:00Z","updatedAt":"2026-11-04T00:00:00Z"}],
   "decks":[{"id":"deck_unique","knowledgeBaseId":"kb_unique","name":"Cells","description":null,"color":"#4CAF50","icon":"📚","createdAt":"2026-11-04T00:00:00Z","updatedAt":"2026-11-04T00:00:00Z"}],
-  "cards":[{"id":"card_unique","deckId":"deck_unique","type":"BASIC","front":"What stores genetic information?","back":"DNA.","tags":[],"media":[{"id":"img_unique","type":"IMAGE","filePath":"a1b2c3.png","mimeType":"","size":0,"caption":"Cell diagram"}],"metadata":{"hcenter":"true","vcenter":"true","fontSize":"24","fontFamily":"sans-serif","mediaTarget":"both"},"createdAt":"2026-11-04T00:00:00Z","updatedAt":"2026-11-04T00:00:00Z"}]
+  "cards":[{"id":"card_unique","deckId":"deck_unique","type":"BASIC","front":"What stores genetic information?","back":"DNA.","explanation":"DNA carries the genetic instructions.","tags":[],"media":[{"id":"img_unique","type":"IMAGE","filePath":"a1b2c3.png","mimeType":"","size":0,"caption":"Cell diagram"}],"metadata":{"hcenter":"true","vcenter":"true","fontSize":"24","fontFamily":"sans-serif","mediaTarget":"both"},"createdAt":"2026-11-04T00:00:00Z","updatedAt":"2026-11-04T00:00:00Z"}]
 }
 ```
 
@@ -186,7 +186,9 @@ Use new UUIDs for real generated IDs. Dates are UTC ISO 8601 strings with a `Z` 
 and at most nine fractional-second digits — the app parses them with `Instant.parse`, which
 rejects more. `description` on a deck is required by serialization even when null; `tags`
 is required on cards. `title` is an optional card string (up to 200 characters) shown in the
-card list; omit it or use `""` when absent. CLOZE cards may carry `back: ""` because the app
+card list; omit it or use `""` when absent. `explanation` is an optional card string shown below
+the answer on the study screen; for `MULTIPLE_CHOICE` it is the only safe place for an explanation
+because every line of `back` is parsed as an option. CLOZE cards may carry `back: ""` because the app
 derives both faces from `front`.
 Metadata is `Map<String,String>`: booleans and font size MUST be strings in output.
 `media` items always carry `id`/`type`/`filePath` plus optional `mimeType`/`size`/
@@ -210,7 +212,8 @@ present, must be a string or null. Record versions must be integers 1..922337203
   study renderer). Multiple correct answers are supported. Kotlin's `Char.isWhitespace()` also
   treats NBSP, figure space and narrow no-break space as blank, so such a line is ignored just
   like an ordinary empty line and the `back` text is left unchanged. Use plain ASCII spaces for
-  indentation. Never append explanation paragraphs to back: they would become extra options.
+  indentation. Never append explanation paragraphs to back: they would become extra options;
+  put them in the card-level `explanation` field instead.
   Export option separators must be LF (`\n`), matching the app renderer. The builder
   normalizes CRLF/CR in a plan's choice back; validation never rewrites an existing file.
   Individual option text cannot contain line breaks, including Unicode separators.

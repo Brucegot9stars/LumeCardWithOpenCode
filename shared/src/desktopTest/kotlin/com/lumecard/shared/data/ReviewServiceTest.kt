@@ -84,7 +84,7 @@ class ReviewServiceTest {
     fun automaticCompletionReopensWhenPlanGrowsButManualCompletionPersists() = withDatabase { _, db, service ->
         val queries = db.lumeCardDatabaseQueries
         fun addCard(id: String) {
-            queries.insertCard(id, "deck", "BASIC", null, id, "back", "[]", "[]", "{}",
+            queries.insertCard(id, "deck", "BASIC", null, id, "back", "", "[]", "[]", "{}",
                 date, date, null, null, 1L, null, null)
         }
         service.review("card", Rating.GOOD, 1000, "review-1")

@@ -184,7 +184,7 @@ class ObjectImportService(
             }
             plan.cards.forEach { card ->
                 queries.insertCard(
-                    card.id, card.deckId, card.type.name, card.title, card.front, card.back,
+                    card.id, card.deckId, card.type.name, card.title, card.front, card.back, card.explanation,
                     lenientJson.encodeToString(card.tags), lenientJson.encodeToString(card.media),
                     lenientJson.encodeToString(card.metadata),
                     card.createdAt.toString(), card.updatedAt.toString(),

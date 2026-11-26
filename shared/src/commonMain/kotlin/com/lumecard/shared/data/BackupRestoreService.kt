@@ -43,7 +43,8 @@ class BackupRestoreService(private val database: LumeCardDatabase) {
             cards = queries.selectBackupCards().executeAsList().map {
                 ExportCard(
                     id = it.id, deckId = it.deck_id, type = it.type, title = it.title.orEmpty(),
-                    front = it.front, back = it.back, tags = json.decodeFromString(it.tags ?: "[]"),
+                    front = it.front, back = it.back, explanation = it.explanation.orEmpty(),
+                    tags = json.decodeFromString(it.tags ?: "[]"),
                     media = json.decodeFromString(it.media ?: "[]"), metadata = json.decodeFromString(it.metadata ?: "{}"),
                     createdAt = it.created_at, updatedAt = it.updated_at, lastReviewedAt = it.last_reviewed_at,
                     nextReviewAt = it.next_review_at, version = it.version, deletedAt = it.deleted_at, syncedAt = it.synced_at,
@@ -123,7 +124,7 @@ class BackupRestoreService(private val database: LumeCardDatabase) {
                 it.createdAt, it.updatedAt, it.version, it.deletedAt, syncTime ?: it.syncedAt)
         }
         data.cards.forEach {
-            saveCard(it.id, it.deckId, it.type, it.title, it.front, it.back, json.encodeToString(it.tags),
+            saveCard(it.id, it.deckId, it.type, it.title, it.front, it.back, it.explanation, json.encodeToString(it.tags),
                 json.encodeToString(it.media), json.encodeToString(it.metadata), it.createdAt, it.updatedAt,
                 it.lastReviewedAt, it.nextReviewAt, it.version, it.deletedAt, syncTime ?: it.syncedAt)
             queries.deleteCardFts(it.id)

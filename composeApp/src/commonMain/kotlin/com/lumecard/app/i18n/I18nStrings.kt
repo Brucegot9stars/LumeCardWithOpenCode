@@ -92,6 +92,7 @@ interface I18nStrings {
     val studySwipeBack: String
     val studyQuestion: String
     val studyAnswer: String
+    val studyExplanation: String
     val studyRevealed: String
     val studyClozeHint: String
 
@@ -138,6 +139,8 @@ interface I18nStrings {
     val cardPreview: String
     val cardQuestionLabel: String
     val cardAnswerLabel: String
+    val cardExplanation: String
+    val cardExplanationHint: String
     val cardFrontLabel: String
     val cardBackLabel: String
     val cardTitle: String

@@ -129,7 +129,7 @@ private fun verifyBusinessColumns(driver: SqlDriver) {
     val columns = mapOf(
         "KnowledgeBase" to "id,name,description,icon,created_at,updated_at,version,deleted_at,synced_at",
         "Deck" to "id,knowledge_base_id,name,description,color,icon,parent_id,created_at,updated_at,version,deleted_at,synced_at",
-        "Card" to "id,deck_id,type,title,front,back,tags,media,metadata,created_at,updated_at,last_reviewed_at,next_review_at,version,deleted_at,synced_at",
+        "Card" to "id,deck_id,type,title,front,back,explanation,tags,media,metadata,created_at,updated_at,last_reviewed_at,next_review_at,version,deleted_at,synced_at",
         "ReviewLog" to "id,card_id,rating,review_time,interval,ease_factor,repetitions,lapse_count,reviewed_at,version,deleted_at,synced_at",
         "AppSettings" to "key,setting_value",
         "AlgorithmState" to "card_id,mode,state_json",
@@ -167,17 +167,17 @@ actual fun upgradeToFts5(driver: app.cash.sqldelight.db.SqlDriver) {
  * Tries each ALTER TABLE; "duplicate column name" means already applied (skip).
  */
 private fun applyKnownMigrations(driver: SqlDriver, from: Long, to: Long) {
-    check(to <= 3L) { "No manual migration available for schema version $to" }
-    val migrations = mutableListOf<Pair<Long, String>>()
-    if (from < 2 && to >= 2) {
-        migrations.add(2L to "ALTER TABLE Card ADD COLUMN title TEXT")
-    }
-    if (from < 3 && to >= 3) {
-        migrations.add(3L to "ALTER TABLE KnowledgeBase ADD COLUMN icon TEXT DEFAULT '📁'")
-    }
-    for ((targetVer, sql) in migrations) {
-        val table = if (targetVer == 2L) "Card" else "KnowledgeBase"
-        val column = if (targetVer == 2L) "title" else "icon"
+    check(to <= 4L) { "No manual migration available for schema version $to" }
+    // target version -> (table, column, SQL). Keeping the table/column next to the SQL avoids the
+    // old if/else chain silently applying v3's column to v4's table when a new migration is added.
+    val migrations = listOf(
+        2L to Triple("Card", "title", "ALTER TABLE Card ADD COLUMN title TEXT"),
+        3L to Triple("KnowledgeBase", "icon", "ALTER TABLE KnowledgeBase ADD COLUMN icon TEXT DEFAULT '📁'"),
+        4L to Triple("Card", "explanation", "ALTER TABLE Card ADD COLUMN explanation TEXT NOT NULL DEFAULT ''"),
+    )
+    for ((targetVer, migration) in migrations) {
+        if (targetVer <= from || targetVer > to) continue
+        val (table, column, sql) = migration
         val columns = driver.executeQuery(null, "PRAGMA table_info($table)", { cursor ->
             val names = mutableSetOf<String>()
             while (cursor.next().value) names.add(checkNotNull(cursor.getString(1)))

@@ -52,6 +52,8 @@ data class Card(
     val type: CardType,
     val front: String,
     val back: String,
+    /** Optional answer explanation, kept separate so MULTIPLE_CHOICE option lines stay intact. */
+    val explanation: String = "",
     val title: String = "",
     val tags: List<String> = emptyList(),
     val media: List<Media> = emptyList(),

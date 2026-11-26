@@ -551,6 +551,8 @@ def build(plan, sources=None):
             for card_index, card in enumerate(objects(deck.get("cards"), deck_where + ".cards")):
                 card_where = "%s.cards[%d]" % (deck_where, card_index)
                 front, back, kind = card_content(card, card_where)
+                explanation = card.get("explanation", "")
+                require(isinstance(explanation, str), card_where + ".explanation: expected text")
                 tags = card.get("tags", [])
                 require(isinstance(tags, list) and all(isinstance(x, str) for x in tags),
                         card_where + ".tags: expected string array")
@@ -568,8 +570,8 @@ def build(plan, sources=None):
                 require(isinstance(title, str) and len(title) <= 200,
                         card_where + ".title: expected text of at most 200 characters")
                 output["cards"].append(dict(base("card"), deckId=deck_out["id"], type=kind,
-                                            front=front, back=back, title=title, tags=tags,
-                                            media=media, metadata=metadata))
+                                            front=front, back=back, explanation=explanation,
+                                            title=title, tags=tags, media=media, metadata=metadata))
     validate(output)
     return output
 
@@ -613,7 +615,7 @@ def validate(data):
         require("description" in deck and (deck["description"] is None or isinstance(deck["description"], str)), "deck.description required (text or null)")
     for index, card in enumerate(data["cards"]):
         where = "cards[%d]" % index
-        fields(card, RECORD_FIELDS | {"deckId", "type", "front", "back", "title", "tags", "media", "metadata", "lastReviewedAt", "nextReviewAt"}, where)
+        fields(card, RECORD_FIELDS | {"deckId", "type", "front", "back", "explanation", "title", "tags", "media", "metadata", "lastReviewedAt", "nextReviewAt"}, where)
         require(card.get("deckId") in decks, "dangling deckId")
         require(card.get("type") in TYPES, "unsupported card type")
         # The app's CLOZE renderer derives both faces from `front` and never reads `back`; its own
@@ -624,6 +626,7 @@ def validate(data):
         if card["type"] != "CLOZE":
             text(card.get("back"), where + ".back")
         require(isinstance(card.get("title", ""), str), where + ".title: expected text")
+        require(isinstance(card.get("explanation", ""), str), where + ".explanation: expected text")
         card_content(card, where)
         if card["type"] == "MULTIPLE_CHOICE":
             choice_lines(card["back"], where + ".back")

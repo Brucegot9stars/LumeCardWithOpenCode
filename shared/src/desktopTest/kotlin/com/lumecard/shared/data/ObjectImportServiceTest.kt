@@ -292,7 +292,7 @@ class ObjectImportServiceTest {
         // only looks at live rows, this file is deleted although a tombstone still names it.
         db.lumeCardDatabaseQueries.updateCard(
             deck_id = "deck-child", type = "BASIC", title = null, front = "Q2", back = "A2",
-            tags = "[]", media = """[{"id":"m","type":"IMAGE","filePath":"tombstone.png"}]""",
+            explanation = "", tags = "[]", media = """[{"id":"m","type":"IMAGE","filePath":"tombstone.png"}]""",
             metadata = "{}", updated_at = date, last_reviewed_at = null, next_review_at = null,
             id = "card-child",
         )

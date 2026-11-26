@@ -2,7 +2,7 @@
 
 将文档、笔记、教材、文章或大纲转换为 LumeCard 可导入的闪卡 JSON 或带图 `.lumecard` 归档包。
 知识库 → 牌组 → 卡牌通过 ID 关联；自动选择卡型、居中、字号和内置字体。
-版本 0.4.5。核心定义只有标准 `SKILL.md`，没有平台专用工具依赖。
+版本 0.4.6。核心定义只有标准 `SKILL.md`，没有平台专用工具依赖。
 0.4.1 起支持卡片图片（`media`/`mediaTarget`）：成品 JSON 可引用本地 media 相对路径或 https 图床链接；
 App 自身也能显示 `file://`/`content://` 本地 URI，但本 Skill 的校验器拒绝它们——这类 URI 无法随归档搬运。
 逐图可设 `alignment`（靠左/居中/靠右）与 `compress`（导入时是否降采样）。
@@ -135,7 +135,7 @@ lumecard-deck-builder/
 
 ```sh
 python3 -m unittest discover -s tests -v
-python3 scripts/package.py /path/to/lumecard-deck-builder-0.4.5.zip
+python3 scripts/package.py /path/to/lumecard-deck-builder-0.4.6.zip
 ```
 
 打包拒绝覆盖。安装器和打包器共用 `scripts/distribution.py` 中逐文件列出的发布清单，

@@ -86,12 +86,14 @@ class DatabaseInitializationTest {
     fun versionOneMigrationsPreserveRows() = inMemory { driver ->
         LumeCardDatabase.Schema.create(driver)
         driver.execute(null, "ALTER TABLE Card DROP COLUMN title", 0, null)
+        driver.execute(null, "ALTER TABLE Card DROP COLUMN explanation", 0, null)
         driver.execute(null, "ALTER TABLE KnowledgeBase DROP COLUMN icon", 0, null)
         driver.execute(null, "PRAGMA user_version = 1", 0, null)
         val queries = LumeCardDatabase(driver).lumeCardDatabaseQueries
         queries.insertSetting("sentinel", "keep")
         initializeDesktopSchema(driver)
         assertTrue("title" in columns(driver, "Card"))
+        assertTrue("explanation" in columns(driver, "Card"))
         assertTrue("icon" in columns(driver, "KnowledgeBase"))
         assertEquals(LumeCardDatabase.Schema.version, version(driver))
         assertEquals("keep", queries.selectSetting("sentinel").executeAsOne().setting_value)
